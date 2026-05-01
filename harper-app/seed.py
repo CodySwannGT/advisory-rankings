@@ -1,56 +1,27 @@
 #!/usr/bin/env python3
-"""Seed Harper with data extracted from the two scraped articles.
+"""Seed Harper with canonical sample data from the two scraped articles.
 
-Talks to Harper's operations API over a Unix domain socket (sandbox-friendly
-since this kernel rejects SO_REUSEPORT TCP binds). For a normal install,
-swap the socket for http://127.0.0.1:9925/.
+Targets whichever Harper $HDB_TARGET_URL points at (HTTPS for Fabric),
+or falls back to the local Unix domain socket. See scripts/_harper.py
+for the transport rules.
 """
-import base64
-import json
-import os
 import pathlib
-import subprocess
 import sys
 
 # Reuse the same UUID derivation as scripts/ingest.py so seed-loaded rows
 # and ingest-loaded rows merge under the same primary keys.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
 from _ids import uid, firm_id, article_id  # noqa: E402
+from _harper import upsert as _upsert, describe_target  # noqa: E402
 
-HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
-SOCKET   = f"{HDB_ROOT}/operations-server"
-AUTH     = base64.b64encode(
-    f"{os.environ.get('HDB_ADMIN_USERNAME','admin')}:"
-    f"{os.environ.get('HDB_ADMIN_PASSWORD','admin-local')}".encode()
-).decode()
+print(f"[seed] target: {describe_target()}", file=sys.stderr)
 
-def op(payload):
-    res = subprocess.run(
-        ["curl", "-sS", "--unix-socket", SOCKET, "-m", "10",
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: Basic {AUTH}",
-         "-d", json.dumps(payload),
-         "-w", "\n--HTTP=%{http_code}",
-         "http://localhost/"],
-        capture_output=True, text=True,
-    )
-    body, _, status = res.stdout.rpartition("\n--HTTP=")
-    return int(status.strip() or 0), body
 
 def insert(table, records):
-    """Idempotent upsert (named `insert` for historical reasons)."""
-    code, body = op({
-        "operation": "upsert",
-        "database":  "data",
-        "table":     table,
-        "records":   records,
-    })
-    if code != 200:
-        print(f"FAIL upsert {table}: HTTP {code}\n{body}", file=sys.stderr)
-        sys.exit(1)
-    res = json.loads(body)
-    upserted = res.get("upserted_hashes", []) if isinstance(res, dict) else []
-    print(f"  upsert {table}: {len(records)} ({len(upserted)} touched)")
+    """Idempotent upsert. Named `insert` for backwards compatibility with
+    earlier versions of this script."""
+    n = _upsert(table, records)
+    print(f"  upsert {table}: {len(records)} ({n} touched)")
 
 # ─── FIRMS ───
 # Firm.id is derived from the canonical name via firm_id() so seed-loaded

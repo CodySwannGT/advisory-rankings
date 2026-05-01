@@ -22,14 +22,10 @@ Usage:
 """
 from __future__ import annotations
 import argparse
-import base64
 import json
-import os
 import pathlib
 import shutil
-import subprocess
 import sys
-from typing import Any
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from _ids import (  # noqa: E402
@@ -38,52 +34,17 @@ from _ids import (  # noqa: E402
     employment_history_id, team_membership_id, metric_snapshot_id,
     sanction_id,
 )
+# Shared transport: HDB_TARGET_URL → Fabric, else local Unix socket.
+from _harper import (  # noqa: E402
+    op as harper_op,
+    sql as harper_sql,
+    upsert as harper_upsert,
+    describe_target,
+)
 
 REPO         = pathlib.Path(__file__).resolve().parent.parent
 EXTRACT_DIR  = REPO / "research" / "extractions"
 LOADED_DIR   = EXTRACT_DIR / ".loaded"
-
-HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
-SOCKET   = f"{HDB_ROOT}/operations-server"
-TCP_URL  = "http://127.0.0.1:9925/"
-AUTH     = base64.b64encode(
-    f"{os.environ.get('HDB_ADMIN_USERNAME','admin')}:"
-    f"{os.environ.get('HDB_ADMIN_PASSWORD','admin-local')}".encode()
-).decode()
-
-
-# ── Harper API helpers ────────────────────────────────────────────
-
-def harper_op(payload: dict) -> Any:
-    transport = (["--unix-socket", SOCKET] if os.path.exists(SOCKET) else [])
-    res = subprocess.run(
-        ["curl", "-sS", "-m", "20", *transport,
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: Basic {AUTH}",
-         "-d", json.dumps(payload),
-         "-w", "\n--HTTP=%{http_code}",
-         "http://localhost/" if transport else TCP_URL],
-        capture_output=True, text=True,
-    )
-    body, _, status = res.stdout.rpartition("\n--HTTP=")
-    code = int(status.strip() or 0)
-    if code != 200:
-        raise SystemExit(
-            f"Harper {payload.get('operation')} → HTTP {code}\n{body[:600]}"
-        )
-    return json.loads(body) if body.strip() else None
-
-
-def harper_sql(query: str) -> list[dict]:
-    return harper_op({"operation": "sql", "sql": query}) or []
-
-
-def harper_upsert(table: str, records: list[dict]) -> int:
-    if not records:
-        return 0
-    res = harper_op({"operation": "upsert", "database": "data",
-                     "table": table, "records": records})
-    return len(res.get("upserted_hashes", [])) if isinstance(res, dict) else 0
 
 
 def sql_str(s: str) -> str:
@@ -636,6 +597,7 @@ def main():
         return 0
 
     resolver = Resolver()
+    print(f"[load] target: {describe_target()}", file=sys.stderr)
     print(f"[load] {len(files)} extraction file(s)")
     for f in files:
         try:

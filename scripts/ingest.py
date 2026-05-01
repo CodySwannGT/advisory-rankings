@@ -23,29 +23,18 @@ Env (optional):
 """
 from __future__ import annotations
 import argparse
-import base64
 import json
-import os
 import pathlib
 import re
-import subprocess
 import sys
-import uuid
-from typing import Any, Iterable
+from typing import Iterable
 
 from bs4 import BeautifulSoup  # already a dep via the extractor
 
-# Local imports — ID derivation is shared with harper-app/seed.py
+# Local imports — ID derivation + Harper transport are shared
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from _ids import uid, firm_id, article_id  # noqa: E402
-
-HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
-SOCKET   = f"{HDB_ROOT}/operations-server"
-TCP_URL  = "http://127.0.0.1:9925/"
-AUTH = base64.b64encode(
-    f"{os.environ.get('HDB_ADMIN_USERNAME','admin')}:"
-    f"{os.environ.get('HDB_ADMIN_PASSWORD','admin-local')}".encode()
-).decode()
+from _harper import upsert as _harper_upsert, describe_target  # noqa: E402
 
 # Known firm aliases for cheap firm-mention extraction.
 # (alias -> canonical_name). Add to this list as new firms appear.
@@ -94,33 +83,12 @@ FIRM_ALIASES: list[tuple[str, str]] = [
 
 # ── Harper API helpers ────────────────────────────────────────────
 
-def op(payload: dict) -> Any:
-    """Talk to Harper. Tries Unix socket first, falls back to TCP."""
-    transport = (["--unix-socket", SOCKET] if os.path.exists(SOCKET)
-                 else [])
-    res = subprocess.run(
-        ["curl", "-sS", "-m", "15", *transport,
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: Basic {AUTH}",
-         "-d", json.dumps(payload),
-         "-w", "\n--HTTP=%{http_code}",
-         "http://localhost/" if transport else TCP_URL],
-        capture_output=True, text=True,
-    )
-    body, _, status = res.stdout.rpartition("\n--HTTP=")
-    code = int(status.strip() or 0)
-    if code != 200:
-        raise SystemExit(f"Harper {payload.get('operation')} -> HTTP {code}\n{body[:500]}")
-    return json.loads(body) if body.strip() else None
-
 def upsert(table: str, records: list[dict]) -> dict:
-    """Idempotent insert. Harper's upsert by primary key."""
+    """Idempotent upsert by primary key (uses the shared transport)."""
     if not records:
-        return {"new": 0, "updated": 0}
-    res = op({"operation": "upsert", "database": "data",
-              "table": table, "records": records})
-    upserted = res.get("upserted_hashes", []) if isinstance(res, dict) else []
-    return {"upserted": len(upserted), "total": len(records)}
+        return {"upserted": 0, "total": 0}
+    n = _harper_upsert(table, records)
+    return {"upserted": n, "total": len(records)}
 
 # ── parsing ───────────────────────────────────────────────────────
 
@@ -199,6 +167,7 @@ def main():
                     help="cap total posts processed (0 = no cap)")
     args = ap.parse_args()
 
+    print(f"[ingest] target: {describe_target()}", file=sys.stderr)
     wp = pathlib.Path(args.wpjson_dir)
     sample_dir = pathlib.Path("research/articles")
 

@@ -1,34 +1,17 @@
 #!/usr/bin/env python3
-"""Verify the seeded data with cross-table SQL queries."""
-import base64, json, subprocess, sys
+"""Verify the seeded data with cross-table SQL queries.
 
-import os
-HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
-SOCKET   = f"{HDB_ROOT}/operations-server"
-AUTH     = base64.b64encode(
-    f"{os.environ.get('HDB_ADMIN_USERNAME','admin')}:"
-    f"{os.environ.get('HDB_ADMIN_PASSWORD','admin-local')}".encode()
-).decode()
+Talks to whichever Harper target $HDB_TARGET_URL points at (HTTPS for
+Fabric), or falls back to the local Unix domain socket. See
+scripts/_harper.py for the transport rules.
+"""
+import pathlib, sys
 
-def op(payload):
-    res = subprocess.run(
-        ["curl", "-sS", "--unix-socket", SOCKET, "-m", "10",
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: Basic {AUTH}",
-         "-d", json.dumps(payload),
-         "-w", "\n--HTTP=%{http_code}",
-         "http://localhost/"],
-        capture_output=True, text=True,
-    )
-    body, _, status = res.stdout.rpartition("\n--HTTP=")
-    code = int(status.strip() or 0)
-    if code != 200:
-        print(f"HTTP {code}: {body}", file=sys.stderr)
-        return None
-    return json.loads(body)
+# Reuse the shared Harper client.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
+from _harper import op, sql, describe_target  # noqa: E402
 
-def sql(q):
-    return op({"operation": "sql", "sql": q})
+print(f"[verify] target: {describe_target()}", file=sys.stderr)
 
 def section(title):
     print(f"\n══ {title} " + "═" * (60 - len(title)))

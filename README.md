@@ -3,6 +3,11 @@
 A data schema for US wealth-management financial advisors, sourced
 from AdvisorHub.com coverage and running on Harper.
 
+> **Deploying to production?** See
+> [`docs/deploy-to-harper-fabric.md`](docs/deploy-to-harper-fabric.md)
+> for the Harper Fabric (managed cloud) signup, cluster creation, and
+> deployment flow.
+
 ## Quick start
 
 Requires Node ≥ 18 and Python 3.
@@ -23,10 +28,12 @@ npm run reset         # nuke ~/.harperdb and rebuild from scratch
 
 ```
 docs/
-  advisor-schema.md          conceptual entity model + field tables
-  data-model-decisions.md    Postgres-flavored DDL resolutions
-                             (polymorphic FKs, hierarchies, snapshots,
-                             provenance log, …)
+  advisor-schema.md            conceptual entity model + field tables
+  data-model-decisions.md      Postgres-flavored DDL resolutions
+                               (polymorphic FKs, hierarchies, snapshots,
+                               provenance log, …)
+  deploy-to-harper-fabric.md   account creation, cluster setup, push/pull
+                               deployment, prod checklist
 
 harper-app/
   config.yaml                Harper component config
