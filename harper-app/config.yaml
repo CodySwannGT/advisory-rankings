@@ -1,0 +1,11 @@
+# Harper component config — declares this directory as a Harper application.
+# Docs: https://docs.harperdb.io/docs/developers/components
+
+graphqlSchema:
+  files: '*.graphql'
+
+rest: true
+
+# Static export of files (none for now)
+# fastifyRoutes: false
+# jsResource: false

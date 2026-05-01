@@ -1,0 +1,470 @@
+# Advisor data — Harper schema (v0.1)
+#
+# Implements the core entities from docs/advisor-schema.md, in a form
+# Harper's GraphQL SDL can express.
+#
+# Caveats vs. the Postgres design in docs/data-model-decisions.md:
+#   - Harper doesn't enforce foreign keys, CHECK constraints, partial unique
+#     indexes, or triggers. Those guarantees move to the application layer.
+#   - Polymorphic subjects (TransitionEvent / RankingEntry) and per-target
+#     mention tables stay as nullable scalar IDs here; the CHECK
+#     "exactly one of advisor_id/team_id/firm_id" is enforced in code.
+#   - Snapshots-only metric tables: we still use them, but the
+#     "current metrics" view is a query at read time.
+#   - Bitemporal validity (effective_from/effective_to) is just two date
+#     columns; uniqueness of "current" is enforced in code.
+#
+# Directives used:
+#   @table         — declare as a table
+#   @export        — expose via REST under /<TableName>
+#   @primaryKey    — PK column
+#   @indexed       — secondary index
+#   @createdTime   — auto-managed insert timestamp
+#   @updatedTime   — auto-managed update timestamp
+
+# ─── FIRMS ─────────────────────────────────────────────────────────
+
+type Firm @table @export {
+  id: ID @primaryKey
+  name: String! @indexed
+  legalName: String
+  parentFirmId: ID @indexed
+  channel: String! @indexed         # wirehouse, regional_bd, pure_ria, etc.
+  subChannel: String                # FiNet, LPL_Strategic_Wealth, etc.
+  finraCrd: String @indexed
+  secFilerId: String @indexed
+  foundedYear: Int
+  dissolvedYear: Int
+  dissolutionReason: String         # acquired, merged, seized, bankruptcy, ...
+  hqCity: String
+  hqState: String
+  hqCountry: String
+  isAggregator: Boolean
+  notes: String
+  website: String
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type FirmSuccession @table @export {
+  id: ID @primaryKey
+  predecessorFirmId: ID! @indexed
+  successorFirmId: ID! @indexed
+  successionDate: Date
+  successionType: String            # acquired, merged, seized, spun_off, wound_down
+  transferredAssetsPct: Float
+  transferredAdvisorsPct: Float
+  notes: String
+  createdAt: Date @createdTime
+}
+
+# ─── BRANCHES (market → complex → branch hierarchy) ────────────────
+
+type Branch @table @export {
+  id: ID @primaryKey
+  firmId: ID! @indexed
+  parentBranchId: ID @indexed
+  level: String! @indexed           # market, complex, branch
+  name: String
+  buildingName: String              # e.g. "GM building"
+  address: String
+  city: String @indexed
+  state: String @indexed
+  country: String
+  postalCode: String
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type BranchAssignment @table @export {
+  id: ID @primaryKey
+  branchId: ID! @indexed
+  advisorId: ID! @indexed
+  role: String! @indexed            # branch_manager, complex_executive, market_leader
+  effectiveFrom: Date
+  effectiveTo: Date                 # null = current
+  createdAt: Date @createdTime
+}
+
+# ─── ADVISORS ──────────────────────────────────────────────────────
+
+type Advisor @table @export {
+  id: ID @primaryKey
+  legalName: String! @indexed
+  firstName: String
+  middleInitial: String
+  middleName: String
+  lastName: String @indexed
+  suffix: String
+  preferredName: String
+  gender: String                    # female, male, nonbinary, undisclosed
+  birthYear: Int
+  industryStartDate: Date
+  yearsExperience: Int @indexed
+  careerStatus: String @indexed     # active, retired, barred, suspended, deceased, withdrawn
+  finraCrd: String @indexed
+  secIard: String @indexed
+  headshotUrl: String
+  bioText: String
+  linkedinUrl: String
+  businessEmail: String
+  businessPhone: String
+  piiLevel: String                  # public, restricted
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type Education @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  institution: String @indexed
+  degree: String                    # BA, BS, MBA, JD, MS, PhD, MD, other
+  field: String
+  graduationYear: Int
+}
+
+type Designation @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  code: String! @indexed            # CFP, CFA, CIMA, CPWA, ChFC, ...
+  grantingBody: String
+  earnedDate: Date
+  expiresDate: Date
+  status: String                    # active, lapsed, revoked
+}
+
+type License @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  licenseType: String! @indexed     # Series_7, Series_66, state_insurance_NY
+  state: String @indexed
+  grantedDate: Date
+  expiresDate: Date
+  status: String
+}
+
+# ─── EMPLOYMENT & TEAMS ────────────────────────────────────────────
+
+type EmploymentHistory @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  firmId: ID! @indexed
+  branchId: ID @indexed
+  roleTitle: String
+  roleCategory: String              # lead_advisor, partner, support_csa, ...
+  startDate: Date @indexed
+  endDate: Date
+  reasonForLeaving: String          # voluntary, terminated_for_cause, retired, ...
+  aumAtDeparture: Float
+  productionT12AtDeparture: Float
+  signingBonusPromissoryNote: Boolean
+  signingBonusAmount: Float
+  u5Filed: Boolean
+  u5FilingDate: Date
+  terminationDisclosureId: ID
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type RegistrationApplication @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  firmId: ID! @indexed
+  appliedDate: Date
+  status: String                    # pending, approved, withdrawn_by_advisor, withdrawn_by_firm, denied
+  resolvedDate: Date
+}
+
+type Team @table @export {
+  id: ID @primaryKey
+  name: String! @indexed
+  currentFirmId: ID @indexed
+  currentBranchId: ID @indexed
+  firmProgram: String               # "Private Wealth Management", etc.
+  foundedYear: Int
+  dissolvedYear: Int
+  serviceModel: String              # mass_affluent, hnw, uhnw, institutional, mixed
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type TeamMembership @table @export {
+  id: ID @primaryKey
+  teamId: ID! @indexed
+  advisorId: ID! @indexed
+  role: String                      # founding_partner, lead, partner, support_csa, ...
+  startDate: Date
+  endDate: Date
+}
+
+type TeamMetricSnapshot @table @export {
+  id: ID @primaryKey
+  teamId: ID! @indexed
+  asOf: Date! @indexed
+  aum: Float
+  annualRevenue: Float
+  householdCount: Int
+  teamSize: Int
+  sourceType: String                # advisorhub_article, barrons_profile, form_adv, ...
+  sourceRef: String
+  createdAt: Date @createdTime
+}
+
+type AdvisorMetricSnapshot @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  asOf: Date! @indexed
+  aum: Float
+  productionT12: Float
+  householdCount: Int
+  sourceType: String
+  sourceRef: String
+}
+
+# ─── EVENTS ────────────────────────────────────────────────────────
+
+type TransitionEvent @table @export {
+  id: ID @primaryKey
+  # Subject is exactly one of these (CHECK enforced in app code):
+  subjectAdvisorId: ID @indexed
+  subjectTeamId: ID @indexed
+  subjectFirmId: ID @indexed
+  fromFirmId: ID! @indexed
+  toFirmId: ID! @indexed
+  fromBranchId: ID
+  toBranchId: ID
+  moveDate: Date @indexed
+  announcedDate: Date
+  aumMoved: Float
+  productionT12: Float
+  headcountMoved: Int
+  recruitingDealId: ID
+  isBreakaway: Boolean
+  isReturn: Boolean
+  notes: String
+  createdAt: Date @createdTime
+}
+
+type RecruitingDealQuote @table @export {
+  id: ID @primaryKey
+  firmId: ID! @indexed
+  asOfDate: Date
+  channelTarget: String
+  producerTier: String              # top_producer, mid, entry
+  upfrontPctT12: Float              # 2.75 = 275%
+  totalPctT12: Float
+  forgivableLoanTermYears: Int
+  backendMetrics: String
+  clawbackTerms: String
+  appliesToTransitionEventId: ID
+  sourceArticleId: ID
+}
+
+# ─── COMPLIANCE / DISCLOSURES ──────────────────────────────────────
+
+type Disclosure @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  firmIdAtTime: ID @indexed
+  clusterId: ID @indexed
+  disclosureType: String! @indexed  # regulatory, customer_dispute, employment_separation, ...
+  regulator: String @indexed        # FINRA, SEC, state_securities, JAMS, AAA, ...
+  regulatorState: String
+  forum: String                     # FINRA_arbitration, regulator_AWC, ...
+  allegationText: String
+  allegationPeriodStart: Date
+  allegationPeriodEnd: Date
+  allegationCategories: [String]    # unauthorized_trading, OBA_undisclosed, ...
+  productCategories: [String]
+  ruleViolations: [String]          # ["FINRA Rule 3270", "FINRA Rule 2010"]
+  status: String @indexed
+  admitDeny: String
+  wasProSe: Boolean
+  dateInitiated: Date @indexed
+  dateResolved: Date
+  damagesRequested: Float
+  settlementAmount: Float
+  awardAmount: Float
+  isFirmLevel: Boolean
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type DisclosureCluster @table @export {
+  id: ID @primaryKey
+  rootEventDescription: String
+  primaryDisclosureId: ID
+  createdAt: Date @createdTime
+}
+
+type Sanction @table @export {
+  id: ID @primaryKey
+  disclosureId: ID! @indexed
+  sanctionType: String! @indexed    # fine, suspension, bar, censure, restitution, disgorgement
+  amount: Float
+  durationMonths: Float
+  jurisdiction: String
+  effectiveDate: Date
+  endDate: Date
+}
+
+type OutsideBusinessActivity @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  name: String
+  vehicleType: String               # LLC, LP, partnership, ...
+  withCustomers: Boolean
+  disclosedToFirm: Boolean
+  startDate: Date
+  endDate: Date
+  compensationReceived: Boolean
+  compensationAmountMin: Float
+  compensationAmountMax: Float
+}
+
+# ─── SPECIALIZATION ────────────────────────────────────────────────
+
+type EmployerConcentration @table @export {
+  id: ID @primaryKey
+  subjectType: String!              # 'advisor' or 'team'
+  subjectId: ID! @indexed
+  employerName: String! @indexed
+  clientRoleType: String            # employees, executives, founders, retirees_alumni, mixed
+  concentrationEstimatePct: Float
+  notes: String
+}
+
+# ─── RANKINGS ──────────────────────────────────────────────────────
+
+type Ranking @table @export {
+  id: ID @primaryKey
+  publisher: String! @indexed       # AdvisorHub, Barron's, Forbes
+  name: String! @indexed            # Advisors to Watch, Women Advisors, Next Gen, ...
+  year: Int! @indexed
+  subjectType: String               # advisor, team, firm
+  methodologyUrl: String
+  eligibilityCriteria: String       # JSON-encoded
+}
+
+type RankingEntry @table @export {
+  id: ID @primaryKey
+  rankingId: ID! @indexed
+  subjectAdvisorId: ID @indexed
+  subjectTeamId: ID @indexed
+  subjectFirmId: ID @indexed
+  rank: Int
+  scoreTotal: Float
+  scoreScale: Float
+  scoreGrowth: Float
+  scoreProfessionalism: Float
+  aum: Float
+  productionT12: Float
+  householdCount: Int
+  teamSize: Int
+  growthYoyAumPct: Float
+  growthYoyClientsPct: Float
+  growthYoyProductionPct: Float
+  regulatoryClean: Boolean
+}
+
+# ─── PROVENANCE ────────────────────────────────────────────────────
+
+type Article @table @export {
+  id: ID @primaryKey
+  wpId: Int @indexed
+  wpPostType: String @indexed
+  url: String! @indexed
+  slug: String @indexed
+  headline: String
+  dek: String
+  publishedDate: Date @indexed
+  modifiedDate: Date
+  authors: [String]
+  category: String @indexed
+  wpCategories: [Int]
+  wpTags: [Int]
+  bodyText: String
+  bodyHtml: String
+  createdAt: Date @createdTime
+}
+
+# Per-target mention tables (clean indexes, real shape)
+type ArticleAdvisorMention @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  advisorId: ID! @indexed
+}
+
+type ArticleFirmMention @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  firmId: ID! @indexed
+}
+
+type ArticleTeamMention @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  teamId: ID! @indexed
+}
+
+type ArticleTransitionEventMention @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  transitionEventId: ID! @indexed
+}
+
+type ArticleDisclosureMention @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  disclosureId: ID! @indexed
+}
+
+# Append-only provenance log: one row per fact asserted by an article.
+type FieldAssertion @table @export {
+  id: ID @primaryKey
+  articleId: ID! @indexed
+  targetTable: String! @indexed
+  targetId: ID! @indexed
+  fieldName: String! @indexed
+  assertedValue: String             # JSON-encoded
+  quotePhrase: String
+  confidence: String                # asserted, inferred, derived
+  assertedAt: Date @createdTime
+}
+
+# ─── USER LAYER ────────────────────────────────────────────────────
+
+type User @table @export {
+  id: ID @primaryKey
+  email: String! @indexed
+  displayName: String
+  createdAt: Date @createdTime
+}
+
+type UserRating @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  userId: ID! @indexed
+  ratingInt: Int
+  responsiveness: Int
+  transparency: Int
+  performance: Int
+  planningDepth: Int
+  reviewText: String
+  createdAt: Date @createdTime
+}
+
+type UserList @table @export {
+  id: ID @primaryKey
+  userId: ID! @indexed
+  name: String!
+  createdAt: Date @createdTime
+}
+
+type UserListEntry @table @export {
+  id: ID @primaryKey
+  listId: ID! @indexed
+  advisorId: ID! @indexed
+  rank: Int
+  note: String
+}
