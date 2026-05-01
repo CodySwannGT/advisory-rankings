@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=5, minimum-scale=1.0,user-scalable=0" name="viewport">
+    <link rel="shortcut icon"
+        href="https://www.advisorhub.com/wp-content/themes/advisorhub/favicon.ico"/>
+  <link rel="profile" href="https://gmpg.org/xfn/11" />
+  <link rel="pingback" href="https://www.advisorhub.com/xmlrpc.php"/>
+
+    <meta content="ie=edge" http-equiv="X-UA-Compatible"><script type="text/javascript">(window.NREUM||(NREUM={})).init={ajax:{deny_list:["bam.nr-data.net"]},feature_flags:["soft_nav"]};(window.NREUM||(NREUM={})).loader_config={licenseKey:"7f434b1373",applicationID:"37636178",browserID:"37636257"};;/*! For license information please see nr-loader-rum-1.313.1.min.js.LICENSE.txt */
+(()=>{var e,t,r={163:(e,t,r)=>{"use strict";r.d(t,{j:()=>T});var n=r(384),i=r(1741);var s=r(2555);r(860).K7.genericEvents;const o="experimental.resources",a="register",c=e=>{if(!e||"string"!=typeof e)return!1;try{document.createDocumentFragment().querySelector(e)}catch{return!1}return!0};var u=r(2614),d=r(944),l=r(8122);const f="[data-nr-mask]",g=e=>(0,l.a)(e,(()=>{const e={feature_flags:[],experimental:{register:!1,resources:!1},mask_selector:"*",block_selector:"[data-nr-block]",mask_input_options:{color:!1,date:!1,"datetime-local":!1,email:!1,month:!1,number:!1,range:!1,search:!1,tel:!1,text:!1,time:!1,url:!1,week:!1,textarea:!1,select:!1,password:!0}};return{ajax:{deny_list:void 0,block_internal:!0,enabled:!0,autoStart:!0},api:{register:{get enabled(){return e.feature_flags.includes(a)||e.experimental.register},set enabled(t){e.experimental.register=t},duplicate_data_to_container:!1}},browser_consent_mode:{enabled:!1},distributed_tracing:{enabled:void 0,exclude_newrelic_header:void 0,cors_use_newrelic_header:void 0,cors_use_tracecontext_headers:void 0,allowed_origins:void 0},get feature_flags(){return e.feature_flags},set feature_flags(t){e.feature_flags=t},generic_events:{enabled:!0,autoStart:!0},harvest:{interval:30},jserrors:{enabled:!0,autoStart:!0},logging:{enabled:!0,autoStart:!0},metrics:{enabled:!0,autoStart:!0},obfuscate:void 0,page_action:{enabled:!0},page_view_event:{enabled:!0,autoStart:!0},page_view_timing:{enabled:!0,autoStart:!0},performance:{capture_marks:!1,capture_measures:!1,capture_detail:!0,resources:{get enabled(){return e.feature_flags.includes(o)||e.experimental.resources},set enabled(t){e.experimental.resources=t},asset_types:[],first_party_domains:[],ignore_newrelic:!0}},privacy:{cookies_enabled:!0},proxy:{assets:void 0,beacon:void 0},session:{expiresMs:u.wk,inactiveMs:u.BB},session_replay:{autoStart:!0,enabled:!1,preload:!1,sampling_rate:10,error_sampling_rate:100,collect_fonts:!1,inline_images:!1,fix_stylesheets:!0,mask_all_inputs:!0,get mask_text_selector(){return e.mask_selector},set mask_text_selector(t){c(t)?e.mask_selector="".concat(t,",").concat(f):""===t||null===t?e.mask_selector=f:(0,d.R)(5,t)},get block_class(){return"nr-block"},get ignore_class(){return"nr-ignore"},get mask_text_class(){return"nr-mask"},get block_selector(){return e.block_selector},set block_selector(t){c(t)?e.block_selector+=",".concat(t):""!==t&&(0,d.R)(6,t)},get mask_input_options(){return e.mask_input_options},set mask_input_options(t){t&&"object"==typeof t?e.mask_input_options={...t,password:!0}:(0,d.R)(7,t)}},session_trace:{enabled:!0,autoStart:!0},soft_navigations:{enabled:!0,autoStart:!0},ssl:void 0,user_actions:{enabled:!0,elementAttributes:["id","className","tagName","type"]}}})());var p=r(6154),m=r(9324);let h=0;const v={buildEnv:m.F3,distMethod:m.Xs,version:m.xv,originTime:p.WN},b={consented:!1},y={activatedFeatures:void 0,appMetadata:{},configured:!1,get consented(){return this.session?.state?.consent||b.consented},set consented(e){b.consented=e},customTransaction:void 0,denyList:[],disabled:!1,drainRegistry:new Map,harvester:void 0,isolatedBacklog:!1,isRecording:!1,loaderType:void 0,maxBytes:3e4,obfuscator:void 0,onerror:void 0,ptid:void 0,releaseIds:{},session:void 0,timeKeeper:void 0,registeredEntities:[],jsAttributesMetadata:{bytes:0},get harvestCount(){return++h}},_=e=>{const t=(0,l.a)(e,y),r=Object.keys(v).reduce((e,t)=>(e[t]={value:v[t],writable:!1,configurable:!0,enumerable:!0},e),{});return Object.defineProperties(t,r)},w=e=>{const t=e.startsWith("http");e+="/",r.p=t?e:"https://"+e};var x=r(7836),R=r(3241);const k={accountID:void 0,trustKey:void 0,agentID:void 0,licenseKey:void 0,applicationID:void 0,xpid:void 0},A=e=>(0,l.a)(e,k);function T(e,t={},r,o){let{init:a,info:c,loader_config:u,runtime:d={},exposed:l=!0}=t;if(!c){const e=(0,n.pV)();a=e.init,c=e.info,u=e.loader_config}e.init=g(a||{}),e.loader_config=A(u||{}),c.jsAttributes??={},p.bv&&(c.jsAttributes.isWorker=!0),e.info=(0,s.D)(c);const f=e.init;e.runtime??=_(d),f.proxy.assets&&w(f.proxy.assets),e.runtime.configured||(Object.defineProperty(e,"beacons",{get:()=>[e.info.beacon,e.info.errorBeacon,e.init.proxy.assets,e.init.proxy.beacon].filter(Boolean)}),Object.defineProperty(e.runtime,"denyList",{get:()=>[...e.init.ajax.deny_list||[],...e.init.ajax.block_internal?e.beacons:[]]}),e.runtime.ptid=e.agentIdentifier,function(e){const t=(0,n.pV)();Object.getOwnPropertyNames(i.W.prototype).forEach(r=>{const n=i.W.prototype[r];if("function"!=typeof n||"constructor"===n)return;let s=t[r];e[r]&&!1!==e.exposed&&"micro-agent"!==e.runtime?.loaderType&&(t[r]=(...t)=>{const n=e[r](...t);return s?s(...t):n})})}(e),e.runtime.loaderType=r,e.ee=x.ee.get(e.agentIdentifier),e.exposed=l,(0,R.W)({drained:!!e.runtime.activatedFeatures,type:"lifecycle",name:"initialize",feature:void 0,data:e.config}),e.runtime.configured=!0)}},384:(e,t,r)=>{"use strict";r.d(t,{NT:()=>a,Zm:()=>c,bQ:()=>d,dV:()=>u,pV:()=>l});var n=r(6154),i=r(1863),s=r(944),o=r(1910);const a={beacon:"bam.nr-data.net",errorBeacon:"bam.nr-data.net"};function c(){return n.gm.NREUM||(n.gm.NREUM={}),void 0===n.gm.newrelic&&(n.gm.newrelic=n.gm.NREUM),n.gm.NREUM}function u(){let e=c();return e.o||(e.o={ST:n.gm.setTimeout,SI:n.gm.setImmediate||n.gm.setInterval,CT:n.gm.clearTimeout,XHR:n.gm.XMLHttpRequest,REQ:n.gm.Request,EV:n.gm.Event,PR:n.gm.Promise,MO:n.gm.MutationObserver,FETCH:n.gm.fetch,WS:n.gm.WebSocket},(0,o.i)(...Object.values(e.o))),e}function d(e,t){let r=c();r.initializedAgents??={},t.initializedAt={ms:(0,i.t)(),date:new Date},r.initializedAgents[e]=t,2===Object.keys(r.initializedAgents).length&&(0,s.R)(69)}function l(){return function(){let e=c();const t=e.info||{};e.info={beacon:a.beacon,errorBeacon:a.errorBeacon,...t}}(),function(){let e=c();const t=e.init||{};e.init={...t}}(),u(),function(){let e=c();const t=e.loader_config||{};e.loader_config={...t}}(),c()}},782:(e,t,r)=>{"use strict";r.d(t,{T:()=>n});const n=r(860).K7.pageViewTiming},860:(e,t,r)=>{"use strict";r.d(t,{$J:()=>d,K7:()=>c,P3:()=>u,XX:()=>i,Yy:()=>a,df:()=>s,qY:()=>n,v4:()=>o});const n="events",i="jserrors",s="browser/blobs",o="rum",a="browser/logs",c={ajax:"ajax",genericEvents:"generic_events",jserrors:i,logging:"logging",metrics:"metrics",pageAction:"page_action",pageViewEvent:"page_view_event",pageViewTiming:"page_view_timing",sessionReplay:"session_replay",sessionTrace:"session_trace",softNav:"soft_navigations"},u={[c.pageViewEvent]:1,[c.pageViewTiming]:2,[c.metrics]:3,[c.jserrors]:4,[c.softNav]:5,[c.ajax]:6,[c.sessionTrace]:7,[c.sessionReplay]:8,[c.logging]:9,[c.genericEvents]:10},d={[c.pageViewEvent]:o,[c.pageViewTiming]:n,[c.ajax]:n,[c.softNav]:n,[c.metrics]:i,[c.jserrors]:i,[c.sessionTrace]:s,[c.sessionReplay]:s,[c.logging]:a,[c.genericEvents]:"ins"}},944:(e,t,r)=>{"use strict";r.d(t,{R:()=>i});var n=r(3241);function i(e,t){"function"==typeof console.debug&&(console.debug("New Relic Warning: https://github.com/newrelic/newrelic-browser-agent/blob/main/docs/warning-codes.md#".concat(e),t),(0,n.W)({drained:null,type:"data",name:"warn",feature:"warn",data:{code:e,secondary:t}}))}},1687:(e,t,r)=>{"use strict";r.d(t,{Ak:()=>a,Ze:()=>u,x3:()=>c});var n=r(3241),i=r(3606),s=r(860),o=r(2646);function a(e,t){if(!e)return;const r={staged:!1,priority:s.P3[t]||0};e.runtime.drainRegistry.get(t)||e.runtime.drainRegistry.set(t,r)}function c(e,t){if(!e)return;const r=e.runtime.drainRegistry;r&&(r.get(t)&&r.delete(t),l(e,t,!1),r.size&&d(e))}function u(e,t="feature",r=!1){if(e){if(!e.runtime.drainRegistry.get(t)||r)return l(e,t);e.runtime.drainRegistry.get(t).staged=!0,d(e)}}function d(e){if(!e)return;const t=Array.from(e.runtime.drainRegistry);t.every(([e,t])=>t.staged)&&(t.sort((e,t)=>e[1].priority-t[1].priority),t.forEach(([t])=>{e.runtime.drainRegistry.delete(t),l(e,t)}))}function l(e,t,r=!0){if(!e)return;const s=e.ee,a=i.i.handlers;if(s&&!s.aborted&&s.backlog&&a){if((0,n.W)({type:"lifecycle",name:"drain",feature:t}),r){const e=s.backlog[t],r=a[t];if(r){for(let t=0;e&&t<e.length;++t)f(e[t],r);Object.entries(r).forEach(([e,t])=>{Object.values(t||{}).forEach(t=>{t[0]?.on&&t[0].context()instanceof o.y&&!t[0].listeners(e).includes(t[1])&&t[0].on(e,t[1])})})}}s.isolatedBacklog||delete a[t],s.backlog[t]=null,s.emit("drain-"+t,[])}}function f(e,t){var r=e[1];Object.values(t[r]||{}).forEach(t=>{var r=e[0];if(t[0]===r){var n=t[1],i=e[3],s=e[2];n.apply(i,s)}})}},1738:(e,t,r)=>{"use strict";r.d(t,{U:()=>f,Y:()=>l});var n=r(3241),i=r(9908),s=r(1863),o=r(944),a=r(3969),c=r(8362),u=r(860),d=r(4261);function l(e,t,r,s){const l=s||r;!l||l[e]&&l[e]!==c.d.prototype[e]||(l[e]=function(){(0,i.p)(a.xV,["API/"+e+"/called"],void 0,u.K7.metrics,r.ee),(0,n.W)({drained:!!r.runtime?.activatedFeatures,type:"data",name:"api",feature:d.Pl+e,data:{}});try{return t.apply(this,arguments)}catch(e){(0,o.R)(23,e)}})}function f(e,t,r,n,o){const a=e.info;null===r?delete a.jsAttributes[t]:a.jsAttributes[t]=r,(o||null===r)&&(0,i.p)(d.Pl+n,[(0,s.t)(),t,r],void 0,"session",e.ee)}},1741:(e,t,r)=>{"use strict";r.d(t,{W:()=>s});var n=r(944),i=r(4261);class s{#e(e,...t){if(this[e]!==s.prototype[e])return this[e](...t);(0,n.R)(35,e)}addPageAction(e,t){return this.#e(i.hG,e,t)}register(e){return this.#e(i.eY,e)}recordCustomEvent(e,t){return this.#e(i.fF,e,t)}setPageViewName(e,t){return this.#e(i.Fw,e,t)}setCustomAttribute(e,t,r){return this.#e(i.cD,e,t,r)}noticeError(e,t){return this.#e(i.o5,e,t)}setUserId(e,t=!1){return this.#e(i.Dl,e,t)}setApplicationVersion(e){return this.#e(i.nb,e)}setErrorHandler(e){return this.#e(i.bt,e)}addRelease(e,t){return this.#e(i.k6,e,t)}log(e,t){return this.#e(i.$9,e,t)}start(){return this.#e(i.d3)}finished(e){return this.#e(i.BL,e)}recordReplay(){return this.#e(i.CH)}pauseReplay(){return this.#e(i.Tb)}addToTrace(e){return this.#e(i.U2,e)}setCurrentRouteName(e){return this.#e(i.PA,e)}interaction(e){return this.#e(i.dT,e)}wrapLogger(e,t,r){return this.#e(i.Wb,e,t,r)}measure(e,t){return this.#e(i.V1,e,t)}consent(e){return this.#e(i.Pv,e)}}},1863:(e,t,r)=>{"use strict";function n(){return Math.floor(performance.now())}r.d(t,{t:()=>n})},1910:(e,t,r)=>{"use strict";r.d(t,{i:()=>s});var n=r(944);const i=new Map;function s(...e){return e.every(e=>{if(i.has(e))return i.get(e);const t="function"==typeof e?e.toString():"",r=t.includes("[native code]"),s=t.includes("nrWrapper");return r||s||(0,n.R)(64,e?.name||t),i.set(e,r),r})}},2555:(e,t,r)=>{"use strict";r.d(t,{D:()=>a,f:()=>o});var n=r(384),i=r(8122);const s={beacon:n.NT.beacon,errorBeacon:n.NT.errorBeacon,licenseKey:void 0,applicationID:void 0,sa:void 0,queueTime:void 0,applicationTime:void 0,ttGuid:void 0,user:void 0,account:void 0,product:void 0,extra:void 0,jsAttributes:{},userAttributes:void 0,atts:void 0,transactionName:void 0,tNamePlain:void 0};function o(e){try{return!!e.licenseKey&&!!e.errorBeacon&&!!e.applicationID}catch(e){return!1}}const a=e=>(0,i.a)(e,s)},2614:(e,t,r)=>{"use strict";r.d(t,{BB:()=>o,H3:()=>n,g:()=>u,iL:()=>c,tS:()=>a,uh:()=>i,wk:()=>s});const n="NRBA",i="SESSION",s=144e5,o=18e5,a={STARTED:"session-started",PAUSE:"session-pause",RESET:"session-reset",RESUME:"session-resume",UPDATE:"session-update"},c={SAME_TAB:"same-tab",CROSS_TAB:"cross-tab"},u={OFF:0,FULL:1,ERROR:2}},2646:(e,t,r)=>{"use strict";r.d(t,{y:()=>n});class n{constructor(e){this.contextId=e}}},2843:(e,t,r)=>{"use strict";r.d(t,{G:()=>s,u:()=>i});var n=r(3878);function i(e,t=!1,r,i){(0,n.DD)("visibilitychange",function(){if(t)return void("hidden"===document.visibilityState&&e());e(document.visibilityState)},r,i)}function s(e,t,r){(0,n.sp)("pagehide",e,t,r)}},3241:(e,t,r)=>{"use strict";r.d(t,{W:()=>s});var n=r(6154);const i="newrelic";function s(e={}){try{n.gm.dispatchEvent(new CustomEvent(i,{detail:e}))}catch(e){}}},3606:(e,t,r)=>{"use strict";r.d(t,{i:()=>s});var n=r(9908);s.on=o;var i=s.handlers={};function s(e,t,r,s){o(s||n.d,i,e,t,r)}function o(e,t,r,i,s){s||(s="feature"),e||(e=n.d);var o=t[s]=t[s]||{};(o[r]=o[r]||[]).push([e,i])}},3878:(e,t,r)=>{"use strict";function n(e,t){return{capture:e,passive:!1,signal:t}}function i(e,t,r=!1,i){window.addEventListener(e,t,n(r,i))}function s(e,t,r=!1,i){document.addEventListener(e,t,n(r,i))}r.d(t,{DD:()=>s,jT:()=>n,sp:()=>i})},3969:(e,t,r)=>{"use strict";r.d(t,{TZ:()=>n,XG:()=>a,rs:()=>i,xV:()=>o,z_:()=>s});const n=r(860).K7.metrics,i="sm",s="cm",o="storeSupportabilityMetrics",a="storeEventMetrics"},4234:(e,t,r)=>{"use strict";r.d(t,{W:()=>i});var n=r(1687);class i{constructor(e,t){this.agentRef=e,this.ee=e?.ee,this.featureName=t,this.blocked=!1}deregisterDrain(){(0,n.x3)(this.agentRef,this.featureName)}}},4261:(e,t,r)=>{"use strict";r.d(t,{$9:()=>u,BL:()=>a,CH:()=>g,Dl:()=>_,Fw:()=>y,PA:()=>h,Pl:()=>n,Pv:()=>k,Tb:()=>l,U2:()=>s,V1:()=>R,Wb:()=>x,bt:()=>b,cD:()=>v,d3:()=>w,dT:()=>c,eY:()=>p,fF:()=>f,hG:()=>i,k6:()=>o,nb:()=>m,o5:()=>d});const n="api-",i="addPageAction",s="addToTrace",o="addRelease",a="finished",c="interaction",u="log",d="noticeError",l="pauseReplay",f="recordCustomEvent",g="recordReplay",p="register",m="setApplicationVersion",h="setCurrentRouteName",v="setCustomAttribute",b="setErrorHandler",y="setPageViewName",_="setUserId",w="start",x="wrapLogger",R="measure",k="consent"},5289:(e,t,r)=>{"use strict";r.d(t,{GG:()=>o,Qr:()=>c,sB:()=>a});var n=r(3878),i=r(6389);function s(){return"undefined"==typeof document||"complete"===document.readyState}function o(e,t){if(s())return e();const r=(0,i.J)(e),o=setInterval(()=>{s()&&(clearInterval(o),r())},500);(0,n.sp)("load",r,t)}function a(e){if(s())return e();(0,n.DD)("DOMContentLoaded",e)}function c(e){if(s())return e();(0,n.sp)("popstate",e)}},5607:(e,t,r)=>{"use strict";r.d(t,{W:()=>n});const n=(0,r(9566).bz)()},6154:(e,t,r)=>{"use strict";r.d(t,{OF:()=>u,RI:()=>i,WN:()=>l,bv:()=>s,gm:()=>o,m:()=>c,mw:()=>a,sb:()=>d,zk:()=>f});var n=r(1863);const i="undefined"!=typeof window&&!!window.document,s="undefined"!=typeof WorkerGlobalScope&&("undefined"!=typeof self&&self instanceof WorkerGlobalScope&&self.navigator instanceof WorkerNavigator||"undefined"!=typeof globalThis&&globalThis instanceof WorkerGlobalScope&&globalThis.navigator instanceof WorkerNavigator),o=i?window:"undefined"!=typeof WorkerGlobalScope&&("undefined"!=typeof self&&self instanceof WorkerGlobalScope&&self||"undefined"!=typeof globalThis&&globalThis instanceof WorkerGlobalScope&&globalThis),a=Boolean("hidden"===o?.document?.visibilityState),c=""+o?.location,u=/iPad|iPhone|iPod/.test(o.navigator?.userAgent),d=u&&"undefined"==typeof SharedWorker,l=((()=>{const e=o.navigator?.userAgent?.match(/Firefox[/\s](\d+\.\d+)/);Array.isArray(e)&&e.length>=2&&e[1]})(),Date.now()-(0,n.t)()),f=()=>{const e=o?.performance?.getEntriesByType?.("navigation")?.[0];if(e&&e.responseStart>0&&e.responseStart<o.performance.now())return e}},6389:(e,t,r)=>{"use strict";function n(e,t=500,r={}){const n=r?.leading||!1;let i;return(...r)=>{n&&void 0===i&&(e.apply(this,r),i=setTimeout(()=>{i=clearTimeout(i)},t)),n||(clearTimeout(i),i=setTimeout(()=>{e.apply(this,r)},t))}}function i(e){let t=!1;return(...r)=>{t||(t=!0,e.apply(this,r))}}r.d(t,{J:()=>i,s:()=>n})},6630:(e,t,r)=>{"use strict";r.d(t,{T:()=>n});const n=r(860).K7.pageViewEvent},7699:(e,t,r)=>{"use strict";r.d(t,{It:()=>s,KC:()=>a,No:()=>i,qh:()=>o});var n=r(860);const i=16e3,s=1e6,o="SESSION_ERROR",a={[n.K7.logging]:!0,[n.K7.genericEvents]:!0,[n.K7.jserrors]:!0,[n.K7.ajax]:!0}},7836:(e,t,r)=>{"use strict";r.d(t,{P:()=>a,ee:()=>c});var n=r(384),i=r(8990),s=r(2646),o=r(5607);const a="nr@context:".concat(o.W),c=function e(t,r){var n={},o={},d={},l=!1;try{l=16===r.length&&u.initializedAgents?.[r]?.runtime.isolatedBacklog}catch(e){}var f={on:p,addEventListener:p,removeEventListener:function(e,t){var r=n[e];if(!r)return;for(var i=0;i<r.length;i++)r[i]===t&&r.splice(i,1)},emit:function(e,r,n,i,s){!1!==s&&(s=!0);if(c.aborted&&!i)return;t&&s&&t.emit(e,r,n);var a=g(n);m(e).forEach(e=>{e.apply(a,r)});var u=v()[o[e]];u&&u.push([f,e,r,a]);return a},get:h,listeners:m,context:g,buffer:function(e,t){const r=v();if(t=t||"feature",f.aborted)return;Object.entries(e||{}).forEach(([e,n])=>{o[n]=t,t in r||(r[t]=[])})},abort:function(){f._aborted=!0,Object.keys(f.backlog).forEach(e=>{delete f.backlog[e]})},isBuffering:function(e){return!!v()[o[e]]},debugId:r,backlog:l?{}:t&&"object"==typeof t.backlog?t.backlog:{},isolatedBacklog:l};return Object.defineProperty(f,"aborted",{get:()=>{let e=f._aborted||!1;return e||(t&&(e=t.aborted),e)}}),f;function g(e){return e&&e instanceof s.y?e:e?(0,i.I)(e,a,()=>new s.y(a)):new s.y(a)}function p(e,t){n[e]=m(e).concat(t)}function m(e){return n[e]||[]}function h(t){return d[t]=d[t]||e(f,t)}function v(){return f.backlog}}(void 0,"globalEE"),u=(0,n.Zm)();u.ee||(u.ee=c)},8122:(e,t,r)=>{"use strict";r.d(t,{a:()=>i});var n=r(944);function i(e,t){try{if(!e||"object"!=typeof e)return(0,n.R)(3);if(!t||"object"!=typeof t)return(0,n.R)(4);const r=Object.create(Object.getPrototypeOf(t),Object.getOwnPropertyDescriptors(t)),s=0===Object.keys(r).length?e:r;for(let o in s)if(void 0!==e[o])try{if(null===e[o]){r[o]=null;continue}Array.isArray(e[o])&&Array.isArray(t[o])?r[o]=Array.from(new Set([...e[o],...t[o]])):e[o]instanceof Map||e[o]instanceof Set||e[o]instanceof Date||e[o]instanceof RegExp?r[o]=e[o]:"object"==typeof e[o]&&"object"==typeof t[o]?r[o]=i(e[o],t[o]):r[o]=e[o]}catch(e){r[o]||(0,n.R)(1,e)}return r}catch(e){(0,n.R)(2,e)}}},8362:(e,t,r)=>{"use strict";r.d(t,{d:()=>s});var n=r(9566),i=r(1741);class s extends i.W{agentIdentifier=(0,n.LA)(16)}},8374:(e,t,r)=>{r.nc=(()=>{try{return document?.currentScript?.nonce}catch(e){}return""})()},8990:(e,t,r)=>{"use strict";r.d(t,{I:()=>i});var n=Object.prototype.hasOwnProperty;function i(e,t,r){if(n.call(e,t))return e[t];var i=r();if(Object.defineProperty&&Object.keys)try{return Object.defineProperty(e,t,{value:i,writable:!0,enumerable:!1}),i}catch(e){}return e[t]=i,i}},9324:(e,t,r)=>{"use strict";r.d(t,{F3:()=>i,Xs:()=>s,xv:()=>n});const n="1.313.1",i="PROD",s="CDN"},9566:(e,t,r)=>{"use strict";r.d(t,{LA:()=>a,bz:()=>o});var n=r(6154);const i="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";function s(e,t){return e?15&e[t]:16*Math.random()|0}function o(){const e=n.gm?.crypto||n.gm?.msCrypto;let t,r=0;return e&&e.getRandomValues&&(t=e.getRandomValues(new Uint8Array(30))),i.split("").map(e=>"x"===e?s(t,r++).toString(16):"y"===e?(3&s()|8).toString(16):e).join("")}function a(e){const t=n.gm?.crypto||n.gm?.msCrypto;let r,i=0;t&&t.getRandomValues&&(r=t.getRandomValues(new Uint8Array(e)));const o=[];for(var a=0;a<e;a++)o.push(s(r,i++).toString(16));return o.join("")}},9908:(e,t,r)=>{"use strict";r.d(t,{d:()=>n,p:()=>i});var n=r(7836).ee.get("handle");function i(e,t,r,i,s){s?(s.buffer([e],i),s.emit(e,t,r)):(n.buffer([e],i),n.emit(e,t,r))}}},n={};function i(e){var t=n[e];if(void 0!==t)return t.exports;var s=n[e]={exports:{}};return r[e](s,s.exports,i),s.exports}i.m=r,i.d=(e,t)=>{for(var r in t)i.o(t,r)&&!i.o(e,r)&&Object.defineProperty(e,r,{enumerable:!0,get:t[r]})},i.f={},i.e=e=>Promise.all(Object.keys(i.f).reduce((t,r)=>(i.f[r](e,t),t),[])),i.u=e=>"nr-rum-1.313.1.min.js",i.o=(e,t)=>Object.prototype.hasOwnProperty.call(e,t),e={},t="NRBA-1.313.1.PROD:",i.l=(r,n,s,o)=>{if(e[r])e[r].push(n);else{var a,c;if(void 0!==s)for(var u=document.getElementsByTagName("script"),d=0;d<u.length;d++){var l=u[d];if(l.getAttribute("src")==r||l.getAttribute("data-webpack")==t+s){a=l;break}}if(!a){c=!0;var f={296:"sha512-E5cgo9olCDb1hfo75P7xhy70qTRBv8iv81Oo0YOB6CVixq6QiRl0uXoiNuwXFWgcz3w9/S/CpI4Zm4ai5G4h3w=="};(a=document.createElement("script")).charset="utf-8",i.nc&&a.setAttribute("nonce",i.nc),a.setAttribute("data-webpack",t+s),a.src=r,0!==a.src.indexOf(window.location.origin+"/")&&(a.crossOrigin="anonymous"),f[o]&&(a.integrity=f[o])}e[r]=[n];var g=(t,n)=>{a.onerror=a.onload=null,clearTimeout(p);var i=e[r];if(delete e[r],a.parentNode&&a.parentNode.removeChild(a),i&&i.forEach(e=>e(n)),t)return t(n)},p=setTimeout(g.bind(null,void 0,{type:"timeout",target:a}),12e4);a.onerror=g.bind(null,a.onerror),a.onload=g.bind(null,a.onload),c&&document.head.appendChild(a)}},i.r=e=>{"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},i.p="https://js-agent.newrelic.com/",(()=>{var e={374:0,840:0};i.f.j=(t,r)=>{var n=i.o(e,t)?e[t]:void 0;if(0!==n)if(n)r.push(n[2]);else{var s=new Promise((r,i)=>n=e[t]=[r,i]);r.push(n[2]=s);var o=i.p+i.u(t),a=new Error;i.l(o,r=>{if(i.o(e,t)&&(0!==(n=e[t])&&(e[t]=void 0),n)){var s=r&&("load"===r.type?"missing":r.type),o=r&&r.target&&r.target.src;a.message="Loading chunk "+t+" failed: ("+s+": "+o+")",a.name="ChunkLoadError",a.type=s,a.request=o,n[1](a)}},"chunk-"+t,t)}};var t=(t,r)=>{var n,s,[o,a,c]=r,u=0;if(o.some(t=>0!==e[t])){for(n in a)i.o(a,n)&&(i.m[n]=a[n]);if(c)c(i)}for(t&&t(r);u<o.length;u++)s=o[u],i.o(e,s)&&e[s]&&e[s][0](),e[s]=0},r=self["webpackChunk:NRBA-1.313.1.PROD"]=self["webpackChunk:NRBA-1.313.1.PROD"]||[];r.forEach(t.bind(null,0)),r.push=t.bind(null,r.push.bind(r))})(),(()=>{"use strict";i(8374);var e=i(8362),t=i(860);const r=Object.values(t.K7);var n=i(163);var s=i(9908),o=i(1863),a=i(4261),c=i(1738);var u=i(1687),d=i(4234),l=i(5289),f=i(6154),g=i(944),p=i(384);const m=e=>f.RI&&!0===e?.privacy.cookies_enabled;function h(e){return!!(0,p.dV)().o.MO&&m(e)&&!0===e?.session_trace.enabled}var v=i(6389),b=i(7699);class y extends d.W{constructor(e,t){super(e,t),this.abortHandler=void 0,this.featAggregate=void 0,this.loadedSuccessfully=void 0,this.onAggregateImported=new Promise(e=>{this.loadedSuccessfully=e}),this.deferred=Promise.resolve(),!1===e.init[this.featureName].autoStart?this.deferred=new Promise((t,r)=>{this.ee.on("manual-start-all",(0,v.J)(()=>{(0,u.Ak)(e,this.featureName),t()}))}):(0,u.Ak)(e,t)}importAggregator(e,t,r={}){if(this.featAggregate)return;const n=async()=>{let n;await this.deferred;try{if(m(e.init)){const{setupAgentSession:t}=await i.e(296).then(i.bind(i,2612));n=t(e)}}catch(e){(0,g.R)(20,e),this.ee.emit("internal-error",[e]),(0,s.p)(b.qh,[e],void 0,this.featureName,this.ee)}try{if(!this.#t(this.featureName,n,e.init))return(0,u.Ze)(this.agentRef,this.featureName),void this.loadedSuccessfully(!1);const{Aggregate:i}=await t();this.featAggregate=new i(e,r),e.runtime.harvester.initializedAggregates.push(this.featAggregate),this.loadedSuccessfully(!0)}catch(e){(0,g.R)(34,e),this.abortHandler?.(),(0,u.Ze)(this.agentRef,this.featureName,!0),this.loadedSuccessfully(!1),this.ee&&this.ee.abort()}};f.RI?(0,l.GG)(()=>n(),!0):n()}#t(e,r,n){if(this.blocked)return!1;switch(e){case t.K7.sessionReplay:return h(n)&&!!r;case t.K7.sessionTrace:return!!r;default:return!0}}}var _=i(6630),w=i(2614),x=i(3241);class R extends y{static featureName=_.T;constructor(e){var t;super(e,_.T),this.setupInspectionEvents(),t=e,(0,c.Y)(a.Fw,function(e,r){"string"==typeof e&&("/"!==e.charAt(0)&&(e="/"+e),t.runtime.customTransaction=(r||"http://custom.transaction")+e,(0,s.p)(a.Pl+a.Fw,[(0,o.t)()],void 0,void 0,t.ee))},t),this.importAggregator(e,()=>i.e(296).then(i.bind(i,146)))}setupInspectionEvents(){const e=(e,t)=>{e&&(0,x.W)({timeStamp:e.timeStamp,loaded:"complete"===e.target.readyState,type:"window",name:t,data:e.target.location+""})};(0,l.sB)(t=>{e(t,"DOMContentLoaded")}),(0,l.GG)(t=>{e(t,"load")}),(0,l.Qr)(t=>{e(t,"navigate")}),this.ee.on(w.tS.UPDATE,(e,t)=>{(0,x.W)({type:"lifecycle",name:"session",data:t})})}}class k extends e.d{constructor(e){var t;(super(),f.gm)?(this.features={},(0,p.bQ)(this.agentIdentifier,this),this.desiredFeatures=new Set(e.features||[]),this.desiredFeatures.add(R),(0,n.j)(this,e,e.loaderType||"agent"),t=this,(0,c.Y)(a.cD,function(e,r,n=!1){if("string"==typeof e){if(["string","number","boolean"].includes(typeof r)||null===r)return(0,c.U)(t,e,r,a.cD,n);(0,g.R)(40,typeof r)}else(0,g.R)(39,typeof e)},t),function(e){(0,c.Y)(a.Dl,function(t,r=!1){if("string"!=typeof t&&null!==t)return void(0,g.R)(41,typeof t);const n=e.info.jsAttributes["enduser.id"];r&&null!=n&&n!==t?(0,s.p)(a.Pl+"setUserIdAndResetSession",[t],void 0,"session",e.ee):(0,c.U)(e,"enduser.id",t,a.Dl,!0)},e)}(this),function(e){(0,c.Y)(a.nb,function(t){if("string"==typeof t||null===t)return(0,c.U)(e,"application.version",t,a.nb,!1);(0,g.R)(42,typeof t)},e)}(this),function(e){(0,c.Y)(a.d3,function(){e.ee.emit("manual-start-all")},e)}(this),function(e){(0,c.Y)(a.Pv,function(t=!0){if("boolean"==typeof t){if((0,s.p)(a.Pl+a.Pv,[t],void 0,"session",e.ee),e.runtime.consented=t,t){const t=e.features.page_view_event;t.onAggregateImported.then(e=>{const r=t.featAggregate;e&&!r.sentRum&&r.sendRum()})}}else(0,g.R)(65,typeof t)},e)}(this),this.run()):(0,g.R)(21)}get config(){return{info:this.info,init:this.init,loader_config:this.loader_config,runtime:this.runtime}}get api(){return this}run(){try{const e=function(e){const t={};return r.forEach(r=>{t[r]=!!e[r]?.enabled}),t}(this.init),n=[...this.desiredFeatures];n.sort((e,r)=>t.P3[e.featureName]-t.P3[r.featureName]),n.forEach(r=>{if(!e[r.featureName]&&r.featureName!==t.K7.pageViewEvent)return;const n=function(e){switch(e){case t.K7.ajax:return[t.K7.jserrors];case t.K7.sessionTrace:return[t.K7.ajax,t.K7.pageViewEvent];case t.K7.sessionReplay:return[t.K7.sessionTrace];case t.K7.pageViewTiming:return[t.K7.pageViewEvent];default:return[]}}(r.featureName).filter(e=>!(e in this.features));n.length>0&&(0,g.R)(36,{targetFeature:r.featureName,missingDependencies:n}),this.features[r.featureName]=new r(this)})}catch(e){(0,g.R)(22,e);for(const e in this.features)this.features[e].abortHandler?.();const t=(0,p.Zm)();delete t.initializedAgents[this.agentIdentifier]?.features,delete this.sharedAggregator;return t.ee.get(this.agentIdentifier).abort(),!1}}}var A=i(2843),T=i(782);class E extends y{static featureName=T.T;constructor(e){super(e,T.T),f.RI&&((0,A.u)(()=>(0,s.p)("docHidden",[(0,o.t)()],void 0,T.T,this.ee),!0),(0,A.G)(()=>(0,s.p)("winPagehide",[(0,o.t)()],void 0,T.T,this.ee)),this.importAggregator(e,()=>i.e(296).then(i.bind(i,2117))))}}var S=i(3969);class j extends y{static featureName=S.TZ;constructor(e){super(e,S.TZ),this.importAggregator(e,()=>i.e(296).then(i.bind(i,9623)))}}new k({features:[R,E,j],loaderType:"lite"})})()})();</script>
+  <script>
+    const BiggerThanDesignWidth = 1920;
+    const designWidth = 1200;
+    const desktop = 1440;
+    const tablet = 992;
+    const mobile = 600;
+    const sMobile = 375;
+
+    function fixContainer() {
+      const resizeHandler = function () {
+        if (window.innerWidth >= BiggerThanDesignWidth) {
+          document.documentElement.style.fontSize = `${10}px`;
+          // document.documentElement.style.fontSize = `${9 * window.innerWidth / desktop}px`;
+        } else if (window.innerWidth < BiggerThanDesignWidth && window.innerWidth >= desktop) {
+          document.documentElement.style.fontSize = `${10 * window.innerWidth / desktop}px`;
+        } else if (window.innerWidth < desktop && window.innerWidth >= tablet) {
+          document.documentElement.style.fontSize = `${10 * window.innerWidth / designWidth}px`;
+        } else if (window.innerWidth < tablet && window.innerWidth >= mobile) {
+          document.documentElement.style.fontSize = `${10 * window.innerWidth / tablet}px`;
+        } else if (window.innerWidth < mobile && window.innerWidth >= sMobile) {
+          document.documentElement.style.fontSize = `${10}px`;
+        } else {
+          document.documentElement.style.fontSize = `${10 * window.innerWidth / sMobile}px`;
+        }
+      };
+      resizeHandler();
+      window.addEventListener('resize', resizeHandler);
+    }
+
+    //fixContainer();
+  </script>
+  <style>
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9fBBc4.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto Condensed';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/robotocondensed/v25/ieVi2ZhZI2eCN5jzbjEETS9weq8-32meGCQYbw.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9fBBc4.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'PT Serif';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/ptserif/v17/EJRSQgYoZZY2vCFuvAnt66qSVys.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'PT Serif';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/ptserif/v17/EJRVQgYoZZY2vCFuvAFWzr8.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
+
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var gtm4wp_datalayer_name = "dataLayer";
+	var dataLayer = dataLayer || [];
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com -->
+	<!-- This site is optimized with the Yoast SEO Premium plugin v24.4 (Yoast SEO v27.5) - https://yoast.com/product/yoast-seo-premium-wordpress/ -->
+	<title>$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC - AdvisorHub</title>
+	<meta name="description" content="Team produced $18.6 million in annual revenue, according to a Wells spokesperson." />
+	<link rel="canonical" href="https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/" />
+	<meta property="og:locale" content="en_US" />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content="$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC" />
+	<meta property="og:description" content="Team produced $18.6 million in annual revenue, according to a Wells spokesperson." />
+	<meta property="og:url" content="https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/" />
+	<meta property="og:site_name" content="AdvisorHub" />
+	<meta property="article:published_time" content="2026-05-01T16:34:08+00:00" />
+	<meta property="article:modified_time" content="2026-05-01T16:34:14+00:00" />
+	<meta property="og:image" content="https://www.advisorhub.com/wp-content/uploads/2026/05/TheTaylorGroupofWellsFargoAdvisors.jpg" />
+	<meta property="og:image:width" content="772" />
+	<meta property="og:image:height" content="485" />
+	<meta property="og:image:type" content="image/jpeg" />
+	<meta name="author" content="Karmen Alexander" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:label1" content="Written by" />
+	<meta name="twitter:data1" content="Karmen Alexander" />
+	<meta name="twitter:label2" content="Est. reading time" />
+	<meta name="twitter:data2" content="3 minutes" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https:\/\/schema.org","@graph":[{"@type":"Article","@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#article","isPartOf":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/"},"author":[{"@id":"https:\/\/www.advisorhub.com\/#\/schema\/person\/babfd5e9528b601de3228b10c74785ad"}],"headline":"$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC","datePublished":"2026-05-01T16:34:08+00:00","dateModified":"2026-05-01T16:34:14+00:00","mainEntityOfPage":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/"},"wordCount":523,"commentCount":2,"image":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#primaryimage"},"thumbnailUrl":"https:\/\/www.advisorhub.com\/wp-content\/uploads\/2026\/05\/TheTaylorGroupofWellsFargoAdvisors.jpg","keywords":["Advisor Moves","Morgan Stanley","New York City","Wells Fargo"],"articleSection":["Advisor Moves","News"],"inLanguage":"en-US","potentialAction":[{"@type":"CommentAction","name":"Comment","target":["https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#respond"]}],"copyrightYear":"2026","copyrightHolder":{"@id":"https:\/\/www.advisorhub.com\/#organization"}},{"@type":"WebPage","@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/","url":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/","name":"$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC - AdvisorHub","isPartOf":{"@id":"https:\/\/www.advisorhub.com\/#website"},"primaryImageOfPage":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#primaryimage"},"image":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#primaryimage"},"thumbnailUrl":"https:\/\/www.advisorhub.com\/wp-content\/uploads\/2026\/05\/TheTaylorGroupofWellsFargoAdvisors.jpg","datePublished":"2026-05-01T16:34:08+00:00","dateModified":"2026-05-01T16:34:14+00:00","author":{"@id":"https:\/\/www.advisorhub.com\/#\/schema\/person\/f419b6086a6d310c782f0d86f8ecbbd7"},"description":"Team produced $18.6 million in annual revenue, according to a Wells spokesperson.","breadcrumb":{"@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#breadcrumb"},"inLanguage":"en-US","potentialAction":[{"@type":"ReadAction","target":["https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/"]}]},{"@type":"ImageObject","inLanguage":"en-US","@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#primaryimage","url":"https:\/\/www.advisorhub.com\/wp-content\/uploads\/2026\/05\/TheTaylorGroupofWellsFargoAdvisors.jpg","contentUrl":"https:\/\/www.advisorhub.com\/wp-content\/uploads\/2026\/05\/TheTaylorGroupofWellsFargoAdvisors.jpg","width":772,"height":485,"caption":"The Taylor Group, which joined Wells Fargo from Morgan Stanley on May 1."},{"@type":"BreadcrumbList","@id":"https:\/\/www.advisorhub.com\/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc\/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https:\/\/www.advisorhub.com\/"},{"@type":"ListItem","position":2,"name":"News","item":"https:\/\/www.advisorhub.com\/news-old\/"},{"@type":"ListItem","position":3,"name":"$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC"}]},{"@type":"WebSite","@id":"https:\/\/www.advisorhub.com\/#website","url":"https:\/\/www.advisorhub.com\/","name":"AdvisorHub","description":"Deal Structures for Financial Advisors When Switching Firms","potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https:\/\/www.advisorhub.com\/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"en-US"},{"@type":"Person","@id":"https:\/\/www.advisorhub.com\/#\/schema\/person\/babfd5e9528b601de3228b10c74785ad","name":"Karmen Alexander"}]}</script>
+	<!-- / Yoast SEO Premium plugin. -->
+
+
+<link rel='dns-prefetch' href='//static.addtoany.com' />
+<link rel='dns-prefetch' href='//maxcdn.bootstrapcdn.com' />
+<link rel='dns-prefetch' href='//oss.maxcdn.com' />
+<link rel='dns-prefetch' href='//use.fontawesome.com' />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://www.advisorhub.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://www.advisorhub.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F&#038;format=xml" />
+<style id='wp-img-auto-sizes-contain-inline-css' type='text/css'>
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<link rel='stylesheet' id='wp-block-library-css' href='https://www.advisorhub.com/wp-includes/css/dist/block-library/style.min.css?ver=6.9.4' type='text/css' media='all' />
+
+<style id='wp-block-paragraph-inline-css' type='text/css'>
+.is-small-text{font-size:.875em}.is-regular-text{font-size:1em}.is-large-text{font-size:2.25em}.is-larger-text{font-size:3em}.has-drop-cap:not(:focus):first-letter{float:left;font-size:8.4em;font-style:normal;font-weight:100;line-height:.68;margin:.05em .1em 0 0;text-transform:uppercase}body.rtl .has-drop-cap:not(:focus):first-letter{float:none;margin-left:.1em}p.has-drop-cap.has-background{overflow:hidden}:root :where(p.has-background){padding:1.25em 2.375em}:where(p.has-text-color:not(.has-link-color)) a{color:inherit}p.has-text-align-left[style*="writing-mode:vertical-lr"],p.has-text-align-right[style*="writing-mode:vertical-rl"]{rotate:180deg}
+/*# sourceURL=https://www.advisorhub.com/wp-includes/blocks/paragraph/style.min.css */
+</style>
+
+<link rel='stylesheet' id='borderedblocksAdminStyle-css' href='https://www.advisorhub.com/wp-content/plugins/bordered-blocks/assets/css/bordered-blocks.css?ver=1.2' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-components-css' href='https://www.advisorhub.com/wp-includes/css/dist/components/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-preferences-css' href='https://www.advisorhub.com/wp-includes/css/dist/preferences/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-block-editor-css' href='https://www.advisorhub.com/wp-includes/css/dist/block-editor/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-reusable-blocks-css' href='https://www.advisorhub.com/wp-includes/css/dist/reusable-blocks/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-patterns-css' href='https://www.advisorhub.com/wp-includes/css/dist/patterns/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-editor-css' href='https://www.advisorhub.com/wp-includes/css/dist/editor/style.min.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='block-robo-gallery-style-css-css' href='https://www.advisorhub.com/wp-content/plugins/robo-gallery/includes/extensions/block/dist/blocks.style.build.css?ver=5.1.4' type='text/css' media='all' />
+<style id='global-styles-inline-css' type='text/css'>
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--primary: #111;--wp--preset--color--secondary: #fefefe;--wp--preset--color--tertiary: #383838;--wp--preset--color--quaternary: #00838f;--wp--preset--color--quinary: #4fb3bf;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--gradient--quinary-to-secondary: linear-gradient(135deg, var(--wp--preset--color--quinary), var(--wp--preset--color--secondary));--wp--preset--font-size--small: 1.125rem;--wp--preset--font-size--medium: 1.25rem;--wp--preset--font-size--large: 1.5rem;--wp--preset--font-size--x-large: 42px;--wp--preset--font-size--extra-small: 1rem;--wp--preset--font-size--extra-large: 2.5rem;--wp--preset--font-family--system-fonts: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;--wp--preset--font-family--geneva-verdana: Geneva, Tahoma, Verdana, sans-serif;--wp--preset--font-family--cambria-georgia: Cambria, Georgia, serif;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}:root { --wp--style--global--content-size: 144rem;--wp--style--global--wide-size: 144rem; }:where(body) { margin: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}.is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}a:where(:not(.wp-element-button)){text-decoration: underline;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-color{color: var(--wp--preset--color--primary) !important;}.has-secondary-color{color: var(--wp--preset--color--secondary) !important;}.has-tertiary-color{color: var(--wp--preset--color--tertiary) !important;}.has-quaternary-color{color: var(--wp--preset--color--quaternary) !important;}.has-quinary-color{color: var(--wp--preset--color--quinary) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-background-color{background-color: var(--wp--preset--color--primary) !important;}.has-secondary-background-color{background-color: var(--wp--preset--color--secondary) !important;}.has-tertiary-background-color{background-color: var(--wp--preset--color--tertiary) !important;}.has-quaternary-background-color{background-color: var(--wp--preset--color--quaternary) !important;}.has-quinary-background-color{background-color: var(--wp--preset--color--quinary) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-primary-border-color{border-color: var(--wp--preset--color--primary) !important;}.has-secondary-border-color{border-color: var(--wp--preset--color--secondary) !important;}.has-tertiary-border-color{border-color: var(--wp--preset--color--tertiary) !important;}.has-quaternary-border-color{border-color: var(--wp--preset--color--quaternary) !important;}.has-quinary-border-color{border-color: var(--wp--preset--color--quinary) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-quinary-to-secondary-gradient-background{background: var(--wp--preset--gradient--quinary-to-secondary) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}.has-extra-small-font-size{font-size: var(--wp--preset--font-size--extra-small) !important;}.has-extra-large-font-size{font-size: var(--wp--preset--font-size--extra-large) !important;}.has-system-fonts-font-family{font-family: var(--wp--preset--font-family--system-fonts) !important;}.has-geneva-verdana-font-family{font-family: var(--wp--preset--font-family--geneva-verdana) !important;}.has-cambria-georgia-font-family{font-family: var(--wp--preset--font-family--cambria-georgia) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link rel='stylesheet' id='esg-plugin-settings-css' href='https://www.advisorhub.com/wp-content/plugins/essential-grid/public/assets/css/settings.css?ver=3.0.15' type='text/css' media='all' />
+<link rel='stylesheet' id='tp-fontello-css' href='https://www.advisorhub.com/wp-content/plugins/essential-grid/public/assets/font/fontello/css/fontello.css?ver=3.0.15' type='text/css' media='all' />
+<link rel='stylesheet' id='tp-font-awesome-css' href='https://www.advisorhub.com/wp-content/plugins/essential-grid/public/assets/font/font-awesome/css/font-awesome.css?ver=3.0.15' type='text/css' media='all' />
+<link rel='stylesheet' id='tp-stroke-7-css' href='https://www.advisorhub.com/wp-content/plugins/essential-grid/public/assets/font/pe-icon-7-stroke/css/pe-icon-7-stroke.css?ver=3.0.15' type='text/css' media='all' />
+<link rel='stylesheet' id='forms-for-campaign-monitor-custom_cm_monitor_css-css' href='https://www.advisorhub.com/wp-content/plugins/forms-for-campaign-monitor/forms/views/public/css/app.css?ver=1.0.0' type='text/css' media='all' />
+<link rel='stylesheet' id='oms-style-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/style.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='oms-layout-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/css/layout.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='oms-default-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/css/default.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='oms-custom-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/css/custom.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='oms-support-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/css/support.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='addtoany-css' href='https://www.advisorhub.com/wp-content/plugins/add-to-any/addtoany.min.css?ver=1.16' type='text/css' media='all' />
+<style id='addtoany-inline-css' type='text/css'>
+.addtoany_shortcode {
+  text-align: right;
+  margin-bottom: -10px;
+}
+
+@media only screen and (max-width: 600px) {
+  .addtoany_shortcode {
+    padding-top: 5px;	
+  }
+}
+/*# sourceURL=addtoany-inline-css */
+</style>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js"></script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js"></script>
+<script type="text/javascript" id="file_uploads_nfpluginsettings-js-extra">
+/* <![CDATA[ */
+var params = {"clearLogRestUrl":"https://www.advisorhub.com/wp-json/nf-file-uploads/debug-log/delete-all","clearLogButtonId":"file_uploads_clear_debug_logger","downloadLogRestUrl":"https://www.advisorhub.com/wp-json/nf-file-uploads/debug-log/get-all","downloadLogButtonId":"file_uploads_download_debug_logger"};
+//# sourceURL=file_uploads_nfpluginsettings-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/plugins/ninja-forms-uploads/assets/js/nfpluginsettings.js?ver=3.3.28" id="file_uploads_nfpluginsettings-js"></script>
+<script type="text/javascript" id="addtoany-core-js-before">
+/* <![CDATA[ */
+window.a2a_config=window.a2a_config||{};a2a_config.callbacks=[];a2a_config.overlays=[];a2a_config.templates={};
+
+//# sourceURL=addtoany-core-js-before
+/* ]]> */
+</script>
+<script type="text/javascript" defer src="https://static.addtoany.com/menu/page.js" id="addtoany-core-js"></script>
+<script type="text/javascript" defer src="https://www.advisorhub.com/wp-content/plugins/add-to-any/addtoany.min.js?ver=1.1" id="addtoany-jquery-js"></script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/themes/advisorhub/js/jquery.solarBox.js?ver=6.9.4" id="solarBox-js"></script>
+<script type="text/javascript" src="//use.fontawesome.com/832cc93df7.js?ver=6.9.4" id="font-awesome-js"></script>
+<link rel="https://api.w.org/" href="https://www.advisorhub.com/wp-json/" /><link rel="alternate" title="JSON" type="application/json" href="https://www.advisorhub.com/wp-json/wp/v2/posts/252451" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://www.advisorhub.com/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 6.9.4" />
+<link rel='shortlink' href='https://www.advisorhub.com/?p=252451' />
+            <script type="text/javascript"><!--
+                                function powerpress_pinw(pinw_url){window.open(pinw_url, 'PowerPressPlayer','toolbar=0,status=0,resizable=1,width=460,height=320');	return false;}
+                //-->
+
+                // tabnab protection
+                window.addEventListener('load', function () {
+                    // make all links have rel="noopener noreferrer"
+                    document.querySelectorAll('a[target="_blank"]').forEach(link => {
+                        link.setAttribute('rel', 'noopener noreferrer');
+                    });
+                });
+            </script>
+            
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<!-- GTM Container placement set to manual -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var dataLayer_content = {"pagePostType":"post","pagePostType2":"single-post","pageCategory":["advisor-moves","news"],"pageAttributes":["advisor-moves","morgan-stanley","new-york-city","wells-fargo"],"pagePostAuthor":"Beth Alegret","pagePostTerms":{"category":["Advisor Moves","News"],"post_tag":["Advisor Moves","Morgan Stanley","New York City","Wells Fargo"],"author":["kalexander"],"meta":{"classic-editor-remember":"block-editor","hide_bottom_ad":0,"ad_custom_head_script":0,"override_sidebar":0,"choose_your_media":"image","table":"","disable_share_buttons":0,"inline_post_code":"","inline_post_code_2":"","inline_post_code_3":"","header_large_ad_code":"","header_ad_code":"","static_display":0,"oao_header_code":"","oao_interstitial":"","oao_leaderboard":"","oao_mid1":"","oao_mid2":"","oao_bottom":"","oao_sticky_footer":"","header_ad_code_mobile":"","external_link_text":"","external_link_url":"","page_blocks_join":"","eg_sources_html5_mp4":"","eg_sources_youtube":"","eg_sources_vimeo":"","eg_sources_wistia":"","eg_sources_image":"","eg_sources_iframe":"","eg_sources_soundcloud":"","eg_vimeo_ratio":1,"eg_youtube_ratio":1,"eg_wistia_ratio":1,"eg_html5_ratio":1,"eg_soundcloud_ratio":1,"eg_sources_essgrid":"","eg_featured_grid":"","eg_settings_custom_meta_skin":"","eg_settings_custom_meta_element":"","eg_settings_custom_meta_setting":"","eg_settings_custom_meta_style":"","eg_custom_meta_216":"true","eg_votes_count":0}}};
+	dataLayer.push( dataLayer_content );
+</script>
+<script data-cfasync="false" data-pagespeed-no-defer>
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-T3HWMVQ');
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com --><link rel="apple-touch-icon" sizes="60x60" href="/wp-content/uploads/fbrfg/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/wp-content/uploads/fbrfg/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/wp-content/uploads/fbrfg/favicon-16x16.png">
+<link rel="manifest" href="/wp-content/uploads/fbrfg/site.webmanifest">
+<link rel="mask-icon" href="/wp-content/uploads/fbrfg/safari-pinned-tab.svg" color="#5bbad5">
+<link rel="shortcut icon" href="/wp-content/uploads/fbrfg/favicon.ico">
+<meta name="msapplication-TileColor" content="#da532c">
+<meta name="msapplication-config" content="/wp-content/uploads/fbrfg/browserconfig.xml">
+<meta name="theme-color" content="#ffffff">		<style type="text/css" id="wp-custom-css">
+			/*SPECIAL HEADING SIZING ON HOMEPAGE TO ACCOMMODATE SPONSORED LOGO ON ADVISORS TO WATCH TO ALIGN WITH MAGAZINE COLUMN*/
+.special-title-spacing {min-height: 85px;}
+
+/*SPECIAL HEADING SIZING ON HOMEPAGE TO ACCOMMODATE SPONSORED LOGO ON ADVISORS TO WATCH TO ALIGN WITH MAGAZINE COLUMN*/
+figure.wp-block-image.aligncenter.size-medium.special-title-spacing {
+  margin: 0 auto !important;
+  text-align: center; 
+  display: block;
+}
+
+/*SPECIAL HEADING SIZING ON HOMEPAGE TO ACCOMMODATE SPONSORED LOGO ON ADVISORS TO WATCH TO ALIGN WITH MAGAZINE COLUMN*/
+figure.wp-block-image.aligncenter.size-medium.special-title-spacing img {
+  display: block;
+  margin: 0 auto !important;
+}
+
+
+/*CUSTOM FLUID SIZING FOR YOUTUBE VIDEOS*/
+.video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*HOMEPAGE RUMMAGE ROTATING FORMS SECTION
+
+font-weight: 400;
+  font-style: normal;
+}
+*/
+
+/* FORM FIELDS */
+.nf-form-cont .first {
+  min-height: 100px;
+}
+
+.label-above .nf-field-element {
+  font-size: 2.5rem !important;
+  font-family: 'Raleway', sans-serif;
+}
+.nf-form-content .nf-field-container .nf-field-element .ninja-forms-field {
+  border-radius: 0px;
+}
+
+button.rummage{
+  min-width: 260px;
+}
+/* Stack Ninja Forms fields full-width only in rotating column forms */
+.form-wrapper .nf-form-cont .nf-row,
+.form-wrapper .nf-form-cont .nf-cell,
+.form-wrapper .nf-form-cont .nf-field-container {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  float: none;
+  clear: both;
+}
+
+/* Make the actual input fields stretch edge-to-edge */
+.form-wrapper .nf-form-cont input,
+.form-wrapper .nf-form-cont select,
+.form-wrapper .nf-form-cont textarea {
+  width: 100%;
+}
+
+/* Force Ninja Forms columns to stack on mobile */
+@media (max-width: 768px) {
+  .nf-form-cont .nf-row .nf-cell {
+    width: 100%;
+    display: block;
+  }
+}
+
+/* Force Ninja Forms columns to stack on mobile */
+@media (max-width: 768px) {
+  .nf-form-cont .nf-row,
+  .nf-form-cont .nf-field-container {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    float: none;
+    clear: both;
+  }
+}
+
+/* Target only Ninja Forms inside the rotation container */
+#form-rotation .nf-form-content .nf-field-container.first.one-third {
+  width: 100%;
+  float: none;
+  clear: both;
+}
+/* END FORM STYLING */
+
+/*ANIMATED COLUMN*/
+.form-column {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeSlideIn .9s ease-out forwards;
+}
+
+@keyframes fadeSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/*PAUSES FORMS*/
+#form-rotation .form-wrapper.paused { display: none !important; }
+
+/*END HOMEPAGE RUMMAGE ROTATING FORMS SECTION*/
+		</style>
+		      <script async="async" src="https://securepubads.g.doubleclick.net/tag/js/gpt.js">
+  </script>
+  <script>
+    window.googletag = window.googletag || {cmd: []};
+    var url_string = window.location.href;
+    var url = new URL(url_string);
+    var testurl = url.searchParams.get("test");
+    if (testurl) {
+      var test = testurl;
+    } else {
+      var test = "";
+    }
+  </script>
+
+  <script>
+    var networkCode = 21877298400;
+    var topLevelAdUnit = "advisorhub";
+    var s1 = "news";
+     var s2 = "news";      var s3 = "6b-morgan-stanley-team-jumps-to-wells-fa";     var adUnit = topLevelAdUnit + "/" + s1 + "/" + s2;
+    var slotName = "/" + networkCode + "/" + adUnit;
+     var pid = "post_252451";     var ptype = "article";
+    googletag.cmd.push(function () {
+      googletag.pubads().setTargeting("s1", s1);
+      googletag.pubads().setTargeting("s2", s2);
+      googletag.pubads().setTargeting("s3", s3);
+                        googletag.pubads().setTargeting("pid", pid);
+      googletag.pubads().setTargeting("ptype", ptype);
+      googletag.pubads().setTargeting("test", test);
+      googletag.pubads().enableSingleRequest();!
+      googletag.pubads().collapseEmptyDivs();
+      setInterval(function () {
+        googletag.pubads().refresh();
+      }, 180000);
+      googletag.pubads().enableLazyLoad({
+        fetchMarginPercent: 100, // Fetch slots within 1 viewport
+        renderMarginPercent: 25, // Render slots within .25 viewport
+        mobileScaling: 1.5      // 1.5 of above values on mobile, where viewports are smaller and users tend to scroll faster
+      });
+      googletag.enableServices();
+    });
+  </script>
+  <link rel='stylesheet' id='theme-custom-css-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/new-css/custom-css.css?ver=305859310' type='text/css' media='all' />
+<link rel='stylesheet' id='theme-main-css' href='https://www.advisorhub.com/wp-content/themes/advisorhub/assets/main.css?ver=305859310' type='text/css' media='all' />
+
+</head>
+
+<!--preloader style-->
+<style>
+  body:not(.loaded) {
+    opacity: 0;
+  }
+
+  body:not(.loaded) * {
+    transition: none !important;
+  }
+
+  body {
+    transition: opacity .5s;
+  }
+
+  [modal-content] {
+    display: none !important;
+  }
+
+  /*  region image image-placeholder*/
+  @keyframes placeHolderShimmer {
+    0% {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      background-position: -468px 0
+    }
+    to {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      background-position: 468px 0
+    }
+  }
+
+  .image-placeholder {
+    max-width: 100%;
+    max-height: 100%;
+    background: #e6e6e6;
+    display: block;
+    transition: opacity 300ms ease, height 300ms ease;
+    will-change: transform;
+    animation: placeHolderShimmer 1s linear infinite forwards;
+    -webkit-backface-visibility: hidden;
+    background: linear-gradient(90deg, #eee 8%, #ddd 18%, #eee 33%);
+    background-size: 800px 104px;
+    margin: 0 auto;
+  }
+
+  .image-placeholder.image-placeholder-aspect-ratio {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .image-placeholder.image-placeholder-hidden {
+    opacity: 0;
+    height: 0 !important;
+  }
+
+  /*  endregion image image-placeholder*/
+
+</style>
+<!--end preloader style-->
+<!-- ACF Fields -->
+  <style>
+    @media screen and (min-width: 1680px) {
+      .container {
+        max-width: 144rem !important;
+      }
+    }
+  </style>
+
+<!-- END ACF -->
+<style>
+  body {
+    background:  !important;
+  }
+</style>
+<body class="wp-singular post-template-default single single-post postid-252451 single-format-standard wp-theme-advisorhub Styling"  data-barba="wrapper"
+>
+
+<!-- GTM Container placement set to manual -->
+<!-- Google Tag Manager (noscript) -->
+				<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T3HWMVQ" height="0" width="0" style="display:none;visibility:hidden" aria-hidden="true"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) --><!--region to ad -->
+
+              <div class="container-gray header-ad-code">
+                  <div class="container">
+                      <div class="center_oao_ad"><script>
+ googletag.cmd.push(function () {
+       var leaderboardMapping = googletag.sizeMapping()
+      .addSize([1024, 0], [[970, 250], [970, 90], [728, 90]])
+      .addSize([768, 0], [728, 90])
+      .addSize([320, 0], [320, 50]).build();
+    googletag.defineSlot(slotName, [[970, 250], [970, 90], [728, 90], [320, 50]], "div-id-for-top-leaderboard")
+      .defineSizeMapping(leaderboardMapping)
+      .addService(googletag.pubads())
+      .setTargeting("pos", "top");
+  });
+</script>
+<div id="div-id-for-top-leaderboard">
+</div>   </div>
+                  </div>
+              </div><!--endregion to ad -->
+<!-- region advisorhub's header -->
+<header>
+  <div class="new-header-section ">
+          <a href="https://www.advisorhub.com" class="second-logo-wrapper">
+        <img src="https://www.advisorhub.com/wp-content/uploads/2026/01/TenthAnniversaryLogo.gif" alt="Advisor Hub Tenth Anniversary Logo"/>      </a>
+      </div>
+  <div class="header-wrapper">
+    <div class="logo-and-text">
+      <!--     logo-->
+                </div>
+    <!--          burger menu and cross-->
+    <button aria-label="burger" class="burger-menu" id="burger-menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <!--     links  -->
+    <nav class="ah-navbar">
+      <div class="navbar-wrapper">
+                  <ul class="primary-menu">
+            <li class="menu-mobile-only menu-item">
+              <a href="https://www.advisorhub.com">Home</a>
+            </li>
+            
+              <li
+                class="menu-item  menu-item-has-children">
+                                                      <div class="text-of-dropdown">News                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </div>
+                                                                    <ul class="sub-menu">
+                                                                  <li class="menu-item-in-sub-menu">
+                          <a href="/category/news/"
+                             target="">
+                            All News                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/category/advisor-moves/"
+                             target="">
+                            Advisor Moves                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/category/enforcement/"
+                             target="">
+                            Enforcement                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/category/markets/"
+                             target="">
+                            Markets                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/category/opinion/"
+                             target="">
+                            Opinion                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/category/from-the-publisher/"
+                             target="">
+                            From the Publisher                          </a>
+                        </li>
+                                                            </ul>
+                              </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/deals-and-comps/"
+                       target="">
+                      Deals & Comp                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/resources"
+                       target="">
+                      Viewpoints                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/breakaway-center/"
+                       target="">
+                      Breakaway Center                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/ria"
+                       target="">
+                      RIA                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/asset-manager/"
+                       target="">
+                      Asset Management                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="https://www.advisorhub.events/"
+                       target="">
+                      Events                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/videos/"
+                       target="">
+                      Video                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/digital-magazine/"
+                       target="">
+                      Magazine                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/financial-podcasts/"
+                       target="">
+                      Podcasts                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  ">
+                                                      <a href="/recruiting-wire/"
+                       target="">
+                      Recruiting Wire                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none"
+                             xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </a>
+                                                                </li>
+            
+              <li
+                class="menu-item  menu-item-has-children">
+                                                      <div class="text-of-dropdown">Advisors to Watch                      <div class="arrow">
+                        <svg width="10" height="5" viewBox="0 0 10 5"
+                             fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                            fill="white"/>
+                        </svg>
+
+                      </div>
+                    </div>
+                                                                    <ul class="sub-menu">
+                                                                  <li class="menu-item-in-sub-menu">
+                          <a href="/advisors-to-watch-rankings/"
+                             target="">
+                            Advisors to Watch Rankings                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="/resources/rankings/"
+                             target="">
+                            2025 Advisors to Watch: What Sets This Year’s Top Advisors Apart - Tony Sirianni                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/advisors-to-watch-over-1b-2025/"
+                             target="">
+                            200 Advisors To Watch - Over $1B                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/advisors-to-watch-under-1b-2025/"
+                             target="">
+                            250 Advisors To Watch - Under $1B                          </a>
+                        </li>
+                                                                                                                                  <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/advisors-to-watch-ria-2025/"
+                             target="">
+                            250 RIAs To Watch                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/women-advisors-to-watch-2025/"
+                             target="">
+                            100 Women Advisors To Watch                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/advisors-to-watch-solo-2025/"
+                             target="">
+                            100 Solo Advisors To Watch                          </a>
+                        </li>
+                                                                                        <li class="menu-item-in-sub-menu">
+                          <a href="https://www.advisorhub.com/advisors-to-watch-next-gen-2025/"
+                             target="">
+                            100 Next Gen Advisors To Watch                          </a>
+                        </li>
+                                                            </ul>
+                              </li>
+                        <li class="menu-item search-icon">
+              <svg class="svg-icon open-input-search" width="13" height="13"
+                   viewBox="0 0 13 13" fill="none"
+                   xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12.4725 11.5391L9.33189 8.39844C10.0116 7.57812 10.3866 6.52344 10.3866 5.375C10.3866 2.70312 8.18345 0.5 5.51157 0.5C2.81626 0.5 0.660011 2.70312 0.660011 5.375C0.660011 8.07031 2.8397 10.25 5.51157 10.25C6.63657 10.25 7.69126 9.875 8.53501 9.19531L11.6756 12.3359C11.7928 12.4531 11.9334 12.5 12.0975 12.5C12.2381 12.5 12.3788 12.4531 12.4725 12.3359C12.7069 12.125 12.7069 11.7734 12.4725 11.5391ZM1.78501 5.375C1.78501 3.3125 3.44907 1.625 5.53501 1.625C7.59751 1.625 9.28501 3.3125 9.28501 5.375C9.28501 7.46094 7.59751 9.125 5.53501 9.125C3.44907 9.125 1.78501 7.46094 1.78501 5.375Z"
+                  fill="white"/>
+              </svg>
+              <svg class="close-icon" width="9" height="9" viewBox="0 0 9 9"
+                   fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M8.22251 7.28906C8.43345 7.52344 8.43345 7.875 8.22251 8.08594C7.98814 8.32031 7.63657 8.32031 7.42564 8.08594L4.66001 5.29688L1.87095 8.08594C1.63657 8.32031 1.28501 8.32031 1.07407 8.08594C0.839698 7.875 0.839698 7.52344 1.07407 7.28906L3.86314 4.5L1.07407 1.71094C0.839698 1.47656 0.839698 1.125 1.07407 0.914062C1.28501 0.679688 1.63657 0.679688 1.84751 0.914062L4.66001 3.72656L7.44907 0.9375C7.66001 0.703125 8.01157 0.703125 8.22251 0.9375C8.45689 1.14844 8.45689 1.5 8.22251 1.73438L5.43345 4.5L8.22251 7.28906Z"
+                  fill="white"/>
+              </svg>
+              <div class="search-content-wrapper">
+                <div
+                  class="search-title"> Search</div>
+                <form class="search-box-wrapper" id="header-search-form"
+                      action="https://www.advisorhub.com/">
+                  <input class="input-search input-text" type="search"
+                         name="s"
+                         id="s"
+                         value=""
+                         placeholder=" Enter search terms">
+                  <svg class="search-icon-in-mobile" width="13" height="13"
+                       viewBox="0 0 13 13" fill="none"
+                       xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M12.4725 11.5391L9.33189 8.39844C10.0116 7.57812 10.3866 6.52344 10.3866 5.375C10.3866 2.70312 8.18345 0.5 5.51157 0.5C2.81626 0.5 0.660011 2.70312 0.660011 5.375C0.660011 8.07031 2.8397 10.25 5.51157 10.25C6.63657 10.25 7.69126 9.875 8.53501 9.19531L11.6756 12.3359C11.7928 12.4531 11.9334 12.5 12.0975 12.5C12.2381 12.5 12.3788 12.4531 12.4725 12.3359C12.7069 12.125 12.7069 11.7734 12.4725 11.5391ZM1.78501 5.375C1.78501 3.3125 3.44907 1.625 5.53501 1.625C7.59751 1.625 9.28501 3.3125 9.28501 5.375C9.28501 7.46094 7.59751 9.125 5.53501 9.125C3.44907 9.125 1.78501 7.46094 1.78501 5.375Z"
+                      fill="white"/>
+                  </svg>
+                </form>
+              </div>
+
+            </li>
+                      </ul>
+              </div>
+    </nav>
+    <div class="submit-a-tip">
+      <a href="/submittip/" target="">Submit a Tip</a>
+    </div>
+  </div>
+</header>
+<!-- endregion advisorhub's Block -->
+<!--region to interstitial -->
+<script>
+ googletag.cmd.push(function () {
+         googletag.defineOutOfPageSlot(slotName, "div-id-for-interstitial")
+      .addService(googletag.pubads())
+      .setTargeting("pos", "interstitial");
+ });
+
+</script>
+<div id="div-id-for-interstitial">
+</div><!--endregion to interstitial -->
+
+
+    <div class="single-post-page">
+    <div class="container">
+      <div class="category-content-ads">
+        <div class="left-category-content ">
+          <section class="card_single_block"
+                   data-section-class="card_single_block">
+            <div
+                class="ah-post-card ah-post-card-video has-image only-vertical-card has-date reverse">
+              <div
+                  class="small-sub-title small-sub-title-12">News</div>
+              <div class="card-content">
+                <h1
+                    class="post-title post-title-size-4">$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC</h1>
+                                  <div class="author-date">
+                    <div
+                        class="author paragraph paragraph-14">
+                      by                      <a href="https://www.advisorhub.com/team/karmen-alexander/">Karmen Alexander</a>                    </div>
+                    <div class="date">May 1, 2026</div>
+                  </div>
+                                <div class="addtoany_shortcode"><div class="a2a_kit a2a_kit_size_28 addtoany_list" data-a2a-url="https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/" data-a2a-title="$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC"><a class="a2a_button_x" href="https://www.addtoany.com/add_to/x?linkurl=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F&amp;linkname=%246B%20Morgan%20Stanley%20Team%20Jumps%20to%20Wells%20Fargo%20Advisors%20in%20NYC" title="X" rel="nofollow noopener" target="_blank"><img src="https://www.advisorhub.com/wp-content/themes/advisorhub/share-icons/x.png" width="28" height="28" alt="X"></a><a class="a2a_button_facebook" href="https://www.addtoany.com/add_to/facebook?linkurl=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F&amp;linkname=%246B%20Morgan%20Stanley%20Team%20Jumps%20to%20Wells%20Fargo%20Advisors%20in%20NYC" title="Facebook" rel="nofollow noopener" target="_blank"><img src="https://www.advisorhub.com/wp-content/themes/advisorhub/share-icons/facebook.png" width="28" height="28" alt="Facebook"></a><a class="a2a_button_email" href="https://www.addtoany.com/add_to/email?linkurl=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F&amp;linkname=%246B%20Morgan%20Stanley%20Team%20Jumps%20to%20Wells%20Fargo%20Advisors%20in%20NYC" title="Email" rel="nofollow noopener" target="_blank"><img src="https://www.advisorhub.com/wp-content/themes/advisorhub/share-icons/email.png" width="28" height="28" alt="Email"></a><a class="a2a_button_linkedin" href="https://www.addtoany.com/add_to/linkedin?linkurl=https%3A%2F%2Fwww.advisorhub.com%2F6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc%2F&amp;linkname=%246B%20Morgan%20Stanley%20Team%20Jumps%20to%20Wells%20Fargo%20Advisors%20in%20NYC" title="LinkedIn" rel="nofollow noopener" target="_blank"><img src="https://www.advisorhub.com/wp-content/themes/advisorhub/share-icons/linkedin.png" width="28" height="28" alt="LinkedIn"></a></div></div>              </div>
+
+                                            <script>
+                  setTimeout(() => {
+                    if (jQuery('.blog-content-wrapper > p:nth-of-type(1) img').length) {
+                      jQuery('.post-featured-img').hide();
+                    }
+                  }, 100)
+                </script>
+                <!--                get alt for featured image -->
+                              <div class="image-wrapper post-featured-img">
+                  <picture class="aspect-ratio">
+                    <img src="https://www.advisorhub.com/wp-content/uploads/2026/05/TheTaylorGroupofWellsFargoAdvisors-600x390.jpg"
+                         alt="The Taylor Group, which joined Wells Fargo from Morgan Stanley on May 1.">
+                 
+                  </picture>
+                <div class="paragraph paragraph-12 photo-title">The Taylor Group, which joined Wells Fargo from Morgan Stanley on May 1.</div>
+                </div>
+                                        </div>
+          </section>
+          <div class="blog-content-wrapper">
+            
+<p>A fast-growing Morgan Stanley team that managed $5.94 billion in assets jumped to Wells Fargo Advisors in New York City, according to a spokesperson for the hiring firm.</p>
+
+
+
+<p>The Taylor Group at Morgan Stanley, which is led by 16-year broker C. James Taylor, produced $18.6 million in annual revenue, the Wells spokesperson said. The team reports to Michael Freiheit, branch manager at Wells’ Midtown Manhattan office in the GM building, and Patrick Baumann, New York City market leader.&nbsp;</p>
+
+
+
+<p>“This is a highly driven team that operates with precision and purpose,” Baumann said in a statement. “They’re keen to take advantage of Wells Fargo’s full balance sheet, which gives them a clear runway to serve their clients holistically.”</p><div class='mobile-hide'><style>
+#div-id-for-midarticle {
+ width: 640px;
+ height: auto;
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  #div-id-for-midarticle {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #div-id-for-midarticle {
+    width: 300px;
+  }
+}
+</style>
+
+<script>
+googletag.cmd.push(function () {
+var midarticleMapping = googletag.sizeMapping().
+addSize([900, 0], [640, 480]).
+addSize([768, 0], []). // No ads in Tablet breakpoint
+addSize([320, 0], [300, 250]).
+build();
+googletag.defineSlot(slotName, [[640, 480], [300, 250]], "div-id-for-midarticle")
+.defineSizeMapping(midarticleMapping)
+.addService(googletag.pubads())
+.setTargeting("pos", "midarticle");
+});
+ </script>
+<div id="div-id-for-midarticle"></div>
+</div><div class='desktop-hide'><script>
+googletag.cmd.push(function () {
+  googletag.pubads().collapseEmptyDivs();
+  var mobileAdSlotMapping = googletag.sizeMapping().
+    addSize([1024, 0], []). // No ads in Desktop breakpoint
+    addSize([768, 0], []). // No ads in Tablet breakpoint
+    addSize([330, 0], [300, 250]). // Phone
+    build();
+
+  googletag.defineSlot(slotName, [[300, 250]], "div-id-for-mobilead1")
+    .defineSizeMapping(mobileAdSlotMapping)
+    .addService(googletag.pubads())
+    .setTargeting("pos", "mobilead1");
+});
+</script>
+<div id="div-id-for-mobilead1"></div></div>
+
+
+
+<p>The 19-person team includes advisors Shane Drumm, Michaella Irvine, Cameron Irvine, Marcus Briscoe, Jamison Embury, Roger McGlynn, Hunter Embury and Kyle Drumm as well as 10 support staff.&nbsp;</p>
+
+
+
+<p>Their practice had ballooned in recent years as the group managed $1.2 billion in 2023, according to a Barron’s <a href="https://www.barrons.com/advisor/articles/morgan-stanley-james-taylor-advisor-new-york-succeed-7391cc2c">profile</a> that year.&nbsp;</p>
+
+
+
+<p>A source at a competing firm called the team “high quality” and said that their growth in assets was driven in part by their concentration of clients who are employees and executives at Nvidia. The chipmaker’s stock has surged more than 1,200% over the past five years.&nbsp;</p><div class='desktop-hide'><script>
+googletag.cmd.push(function () {
+  googletag.pubads().collapseEmptyDivs();
+  var mobileAdSlotMapping = googletag.sizeMapping().
+    addSize([1024, 0], []). // No ads in Desktop breakpoint
+    addSize([768, 0], []). // No ads in Tablet breakpoint
+    addSize([330, 0], [300, 250]). // Phone
+    build();
+
+  googletag.defineSlot(slotName, [[300, 250]], "div-id-for-mobilead2")
+    .defineSizeMapping(mobileAdSlotMapping)
+    .addService(googletag.pubads())
+    .setTargeting("pos", "mobilead2");
+});
+</script>
+<div id="div-id-for-mobilead2"></div></div>
+
+
+
+<p>Taylor first registered with Hennion &amp; Walsh in 2009 and worked at Merrill Lynch for nine years before moving to Morgan Stanley in 2020, according to BrokerCheck. He did not respond to a request for comment.&nbsp;</p>
+
+
+
+<p>A Wells spokesperson also did not return a request for comment regarding the team’s client base.&nbsp;</p>
+
+
+
+<p>A Morgan Stanley spokesperson did not immediately provide a comment. The firm has been leaning into its workplace business, including servicing the corporate stock plans for Fortune 500 companies, as a way to funnel clients to its advisors.&nbsp;</p>
+
+
+
+<p>Meanwhile, Wells has been aggressively pricing deals for large, high-growth teams, recruiters have said. Its offers for a group like Taylor’s could include 275% of trailing-12 revenue in upfront cash, which would put it at or near the top of the market not including back-end bonuses, the source said.&nbsp;</p>
+
+
+
+<p>Wells Fargo executives earlier this month attributed the bank’s <a href="https://www.advisorhub.com/wells-fargo-touts-success-of-multi-channel-approach/">recruiting success</a> to its multi-channel approach, including its FiNet independent brokerage and RIA custody unit launching later this year. Roger Gershman, an industry recruiter who was not involved in the move but was familiar with the team, claimed they narrowed their search to three firms but wanted a place that would provide a long-term path to independence.<br></p>
+
+
+
+<p>“We’ve talked a lot about the momentum that we’re building there,” Chief Financial Officer Mike Santomassimo said earlier in April about the wealth division, which is led by <a href="https://www.youtube.com/watch?v=msT0FyOML28">Barry Sommers</a>. “That business just grows through improving just naturally the net flows we’re getting [and] the recruiting we’re seeing.”</p>
+
+
+
+<p>The wirehouse earlier this week reeled in a UBS Wealth Management USA team managing <a href="https://www.advisorhub.com/wells-snags-466m-ubs-team-in-florida/">$466 million</a> in Florida. In April, a UBS team with <a href="https://www.advisorhub.com/ubs-team-producing-14-million-skips-to-wells-fargo-finet/">$2.1 billion</a> joined Wells’ independent Financial Network.&nbsp;</p>
+
+
+
+<p><em>–Mason Braswell contributed to this story.</em></p>
+</p><div class='desktop-hide'><script>
+googletag.cmd.push(function () {
+  googletag.pubads().collapseEmptyDivs();
+  var mobileAdSlotMapping = googletag.sizeMapping().
+    addSize([1024, 0], []). // No ads in Desktop breakpoint
+    addSize([768, 0], []). // No ads in Tablet breakpoint
+    addSize([330, 0], [300, 600]). // Phone
+    build();
+
+  googletag.defineSlot(slotName, [[300, 600]], "div-id-for-mobilead3")
+    .defineSizeMapping(mobileAdSlotMapping)
+    .addService(googletag.pubads())
+    .setTargeting("pos", "mobilead3");
+});
+</script>
+<div id="div-id-for-mobilead3"></div></div>
+                          <div class="tags">
+                <h5 class="tag-name">tags:</h5>
+                <a class="tag-inner" href="https://www.advisorhub.com/tag/advisor-moves/">Advisor Moves</a><a class="tag-inner" href="https://www.advisorhub.com/tag/morgan-stanley/">Morgan Stanley</a><a class="tag-inner" href="https://www.advisorhub.com/tag/new-york-city/">New York City</a><a class="tag-inner" href="https://www.advisorhub.com/tag/wells-fargo/">Wells Fargo</a>              </div>
+                                      <div class="bottom_signup">
+                <div class="shareWrapper shareWrapperBottom">
+                  <h4>Like this article? Let AdvisorHub come to you!  <a class="button" href="https://advisorhub.com/newsletter-sign-up/">Sign up</a></h4>
+                  <div class="clear"></div><!-- .clear -->
+                </div>
+              </div>
+                      </div>
+          
+              <div class="container-gray">
+                  <div class="container-fluid">
+                      <div class="center_oao_ad"><script>
+ googletag.cmd.push(function () {
+         var bottomMapping = googletag.sizeMapping()
+      .addSize([768, 0], [[970, 250], [728, 90]])
+      .addSize([320, 0], [320, 50]).build();
+    googletag.defineSlot(slotName, [[970, 250], [728, 90], [320, 50]], "div-id-for-bottom")
+      .defineSizeMapping(bottomMapping)
+      .addService(googletag.pubads())
+      .setTargeting("pos", "bottom");
+ });
+</script>
+<div id="div-id-for-bottom">
+</div>   </div>
+                  </div>
+              </div>                      <div class="comments-template">
+              <div class="comment-count">
+  Comments (2)</div>
+
+<div id="comments">
+      <ul class="comment-list">
+      
+				<li class="comment even thread-even depth-1" id="comment-55121">
+				<div id="div-comment-55121" class="comment-body">
+				<div class="comment-wrap">
+			<div class="row">
+
+				<div class="comment-left-column">
+									</div>
+
+	    		<div class="comment-right-column">
+	                <div class="comment-meta commentmetadata">
+	        		    	on May 1 2026,
+	        		    	<a href="https://www.advisorhub.com/author/"><cite class="fn">Mikey Lawrence</cite></a> says:
+	        		</div>
+		    		
+					<p>Great  and growing platform and offering for clients.  Big payday for the team.  And then independence. Nice.</p>
+
+					<div class="reply"><a rel="nofollow" class="comment-reply-link" href="#comment-55121" data-commentid="55121" data-postid="252451" data-belowelement="div-comment-55121" data-respondelement="respond" data-replyto="Reply to Mikey Lawrence" aria-label="Reply to Mikey Lawrence">Reply to Mikey Lawrence</a></div>
+					
+					
+				</div><!-- .comment-left-column -->
+			</div> <!-- .row -->
+
+				</div>
+		</div>
+</li><!-- #comment-## -->
+
+				<li class="comment odd alt thread-odd thread-alt depth-1" id="comment-55122">
+				<div id="div-comment-55122" class="comment-body">
+				<div class="comment-wrap">
+			<div class="row">
+
+				<div class="comment-left-column">
+									</div>
+
+	    		<div class="comment-right-column">
+	                <div class="comment-meta commentmetadata">
+	        		    	on May 1 2026,
+	        		    	<a href="https://www.advisorhub.com/author/"><cite class="fn">Chuck conners</cite></a> says:
+	        		</div>
+		    		
+					<p>Wells is rolling …..</p>
+
+					<div class="reply"><a rel="nofollow" class="comment-reply-link" href="#comment-55122" data-commentid="55122" data-postid="252451" data-belowelement="div-comment-55122" data-respondelement="respond" data-replyto="Reply to Chuck conners" aria-label="Reply to Chuck conners">Reply to Chuck conners</a></div>
+					
+					
+				</div><!-- .comment-left-column -->
+			</div> <!-- .row -->
+
+				</div>
+		</div>
+</li><!-- #comment-## -->
+    </ul><!--.comment-list -->
+  </div><!-- #comments -->
+	<div id="respond" class="comment-respond">
+		<h3 id="reply-title" class="comment-reply-title">Leave a reply <small><a rel="nofollow" id="cancel-comment-reply-link" href="/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/#respond" style="display:none;">Cancel reply</a></small></h3><form action="https://www.advisorhub.com/wp-comments-post.php" method="post" id="commentform" class="comment-form"><p class="comment-notes"><span id="email-notes">Your email address will not be published.</span> <span class="required-field-message">Required fields are marked <span class="required">*</span></span></p><p class="comment-form-comment"></label><textarea id="comment" name="comment" cols="45" rows="8" aria-required="true"></textarea></p><p class="comment-form-author"><label for="author">Name <span class="required">*</span></label> <input id="author" name="author" type="text" value="" size="30" maxlength="245" autocomplete="name" required="required" /></p>
+<p class="comment-form-email"><label for="email">Email <span class="required">*</span></label> <input id="email" name="email" type="text" value="" size="30" maxlength="100" aria-describedby="email-notes" autocomplete="email" required="required" /></p>
+<p class="comment-form-url"><label for="url">Website</label> <input id="url" name="url" type="text" value="" size="30" maxlength="200" autocomplete="url" /></p>
+	<script>document.addEventListener("DOMContentLoaded", function() { setTimeout(function(){ var e=document.getElementById("cf-turnstile-c-3258222752"); if(e&&!e.innerHTML.trim()){turnstile.render(e, {sitekey:"0x4AAAAAAC21Hs9IoNhuJq_-"});} }, 200); });</script>
+	<p class="form-submit"><span id="cf-turnstile-c-3258222752" class="cf-turnstile cf-turnstile-comments" data-action="wordpress-comment" data-callback="" data-sitekey="0x4AAAAAAC21Hs9IoNhuJq_-" data-theme="light" data-language="auto" data-appearance="always" data-size="normal" data-retry="auto" data-retry-interval="1000"></span><br class="cf-turnstile-br cf-turnstile-br-comments"><input name="submit" type="submit" id="submit" class="submit" value="Post Comment" /><script type="text/javascript">document.addEventListener("DOMContentLoaded", function() { document.body.addEventListener("click", function(event) { if (event.target.matches(".comment-reply-link, #cancel-comment-reply-link")) { turnstile.reset(".comment-form .cf-turnstile"); } }); });</script> <input type='hidden' name='comment_post_ID' value='252451' id='comment_post_ID' />
+<input type='hidden' name='comment_parent' id='comment_parent' value='0' />
+</p></form>	</div><!-- #respond -->
+	            </div><!-- .comments-template -->
+                    <!-- Related Posts-->
+                                <div class="block-wrapper wide-horizontal-card related-top">
+              <div
+                  class="large-sub-title border-related-top">Related News</div>
+              <!--fwp-loop-->
+                                  <div
+                      class="ah-post-card ah-post-card-horizontal has-date has-image has-description">
+                    <div class="image-wrapper">
+                      <a class="aspect-ratio post-image"
+                         href="https://www.advisorhub.com/rockefeller-scoops-2b-ubs-team-in-california/"
+                         rel="bookmark"
+                         title="Rockefeller Scoops $2B UBS Team in California"><img width="600" height="390" src="https://www.advisorhub.com/wp-content/uploads/2026/04/gannon-group-600x390.jpg" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" alt="(L to R) Russel Lew, Vanessa Anderson, Jean Gannon and Katherine Latypov of Anderson Gannon Wealth Partners." decoding="async" fetchpriority="high" /></a>
+                    </div>
+                    <div class="card-content">
+                      <a class=" post-title post-title-size-4"
+                         href="https://www.advisorhub.com/rockefeller-scoops-2b-ubs-team-in-california/"
+                         title="Rockefeller Scoops $2B UBS Team in California">Rockefeller Scoops $2B UBS Team in California</a>
+                      <div
+                          class="ah-post-card-description  paragraph paragraph-12">
+                        <p>Team produced $10 million in annual revenue, according to a source familiar with the move.</p>
+                      </div>
+                      <div class="date">
+                        Apr 29, 2026                      </div>
+                    </div>
+                  
+                  </div>
+                                                                  <div class="ah-post-card ah-post-card-horizontal has-date">
+                    <div class="card-content">
+                      <div class="card-content">
+                        <a class=" post-title post-title-size-2"
+                           href="https://www.advisorhub.com/ubs-posts-asset-inflows-despite-continued-advisor-exits/"
+                           title="UBS Posts Asset Inflows Despite Continued Advisor Exits">UBS Posts Asset Inflows Despite Continued Advisor Exits</a>
+                      </div>
+                      <div class="date">
+                        Apr 29, 2026                      </div>
+                    </div>
+                  </div>
+                
+                                                                  <div class="ah-post-card ah-post-card-horizontal has-date">
+                    <div class="card-content">
+                      <div class="card-content">
+                        <a class=" post-title post-title-size-2"
+                           href="https://www.advisorhub.com/wells-snags-466m-ubs-team-in-florida/"
+                           title="Wells Snags $466M UBS Team in Florida">Wells Snags $466M UBS Team in Florida</a>
+                      </div>
+                      <div class="date">
+                        Apr 28, 2026                      </div>
+                    </div>
+                  </div>
+                
+                                                                  <div class="ah-post-card ah-post-card-horizontal has-date">
+                    <div class="card-content">
+                      <div class="card-content">
+                        <a class=" post-title post-title-size-2"
+                           href="https://www.advisorhub.com/carson-group-buys-affiliated-wisconsin-practice-with-nearly-400m/"
+                           title="Carson Group Buys Affiliated Wisconsin Practice With Nearly $400M">Carson Group Buys Affiliated Wisconsin Practice With Nearly $400M</a>
+                      </div>
+                      <div class="date">
+                        Apr 28, 2026                      </div>
+                    </div>
+                  </div>
+                
+                                                                  <div class="ah-post-card ah-post-card-horizontal has-date">
+                    <div class="card-content">
+                      <div class="card-content">
+                        <a class=" post-title post-title-size-2"
+                           href="https://www.advisorhub.com/rockefeller-lassoes-14m-merrill-private-wealth-team-in-houston/"
+                           title="Rockefeller Lassoes $14M Merrill Private Wealth Team in Houston">Rockefeller Lassoes $14M Merrill Private Wealth Team in Houston</a>
+                      </div>
+                      <div class="date">
+                        Apr 24, 2026                      </div>
+                    </div>
+                  </div>
+                
+                                            </div>
+                  </div>
+        <div class="right-category-content old mobile-hide">
+            
+          <script>
+ googletag.cmd.push(function () {
+     googletag.defineSlot(slotName, [[300, 600], [300, 250]], "div-id-for-right1")
+      .addService(googletag.pubads())
+      .setTargeting("pos", "right1");
+ });
+</script>
+<div id="div-id-for-right1">
+
+</div>      <div class="sidebar-spacer" style="height: 3rem"></div>
+    
+    
+    
+    
+    
+    
+  
+    
+    
+          <div class="wysiwyg-block">
+        <div style="max-width: 300px; border: 1px solid #aab8bf; padding: 10px;">
+<a href="https://www.advisorhub.com/resources/ceteras-tom-halloran-scale-flexibility-key-to-winning-advisors/"></p>
+<h4>Cetera’s Tom Halloran: Scale, Flexibility Key to Winning Advisors</h4>
+<p></a></p>
+<div style="position:relative;overflow:hidden;padding-bottom:56.25%"><iframe loading="lazy" src="https://cdn.jwplayer.com/players/Vo9owqjG-PWc2Osmo.html" width="100%" height="100%" frameborder="0" scrolling="auto" title="Cetera’s Tom Halloran: Scale, Flexibility Key to Winning Advisors" style="position:absolute;" allowfullscreen></iframe></div>
+</div>
+      </div>
+      <div class="sidebar-spacer" style="height: 3rem"></div>
+    
+    
+    
+    
+  
+          <script>
+ googletag.cmd.push(function () {
+     googletag.defineSlot(slotName, [[300, 600], [300, 250]], "div-id-for-right2")
+      .addService(googletag.pubads())
+      .setTargeting("pos", "right2");
+ });
+</script>
+<div id="div-id-for-right2">
+
+</div>      <div class="sidebar-spacer" style="height: 3rem"></div>
+    
+    
+    
+    
+    
+    
+          </div>
+      </div>
+    </div>
+  </div>
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/advisorhub/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<style>
+.headline-1 a, .wysiwyg-block h1 a, .blog-content-wrapper h1 a,
+.headline-2 a, .wysiwyg-block h2 a, .blog-content-wrapper h2 a,
+.headline-3 a, .wysiwyg-block h3 a, .blog-content-wrapper h3 a,
+.headline-4 a, .wysiwyg-block h4 a, .blog-content-wrapper h4 a,
+.headline-5 a, .wysiwyg-block h5 a, .blog-content-wrapper h5 a,
+.headline-6 a, .wysiwyg-block h6 a, .blog-content-wrapper h6 a{
+  font-family: "Roboto Condensed"!important;
+}
+</style><style>
+	body:not(.single-deals_and_comps) .nf-form-cont input[type=email]{
+		    max-width: 30rem!important;
+	}
+</style>
+<!-- font handler -->
+    <script type="text/javascript" src="https://www.advisorhub.com/wp-includes/js/comment-reply.min.js?ver=6.9.4" id="comment-reply-js" async="async" data-wp-strategy="async" fetchpriority="low"></script>
+<script type="text/javascript" id="borderedblocksLoader-js-extra">
+/* <![CDATA[ */
+var borderedblocks_loader = {"version":"1.2","bordershow":"","bordercolor":"#c0c0c0","borderstyle":"dotted","borderwidth":"1","paddingtop":"25","paddingright":"10","paddingbottom":"10","paddingleft":"10","labelcolor":"#ffffff","labelbackground":"#000000","labelopacity":"3","labelsize":"12"};
+//# sourceURL=borderedblocksLoader-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/plugins/bordered-blocks/assets/js/bordered-blocks.js?ver=1.2" id="borderedblocksLoader-js"></script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/plugins/duracelltomi-google-tag-manager/dist/js/gtm4wp-form-move-tracker.js?ver=1.22.3" id="gtm4wp-form-move-tracker-js"></script>
+<script type="text/javascript" id="forms-for-campaign-monitor-ajax-script-public-js-extra">
+/* <![CDATA[ */
+var ajax_request = {"ajax_url":"https://www.advisorhub.com/wp-admin/admin-ajax.php"};
+//# sourceURL=forms-for-campaign-monitor-ajax-script-public-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/plugins/forms-for-campaign-monitor/forms/views/public/js/app.js?ver=6.9.4" id="forms-for-campaign-monitor-ajax-script-public-js"></script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/themes/advisorhub/js/jquery.mobile.custom.min.js?ver=1" id="jquerymobile-js"></script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/themes/advisorhub/js/jquery.nova.js?ver=1" id="nova-js"></script>
+<script type="text/javascript" id="orbitJS-js-extra">
+/* <![CDATA[ */
+var oms = {"ajaxurl":"https://www.advisorhub.com/wp-admin/admin-ajax.php","nonce":"9e37f0b391"};
+//# sourceURL=orbitJS-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.advisorhub.com/wp-content/themes/advisorhub/js/custom.js?ver=3" id="orbitJS-js"></script>
+<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js?ver=1" id="bootstrap-js"></script>
+<script type="text/javascript" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=auto" id="cfturnstile-js" defer="defer" data-wp-strategy="defer"></script>
+<script type="text/javascript" id="theme-main-js-extra">
+/* <![CDATA[ */
+var theme_ajax_object = {"ajax_url":"https://www.advisorhub.com/wp-admin/admin-ajax.php","_ajax_nonce":"a20b926b15"};
+//# sourceURL=theme-main-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" defer="defer" src="https://www.advisorhub.com/wp-content/themes/advisorhub/assets/main.js?ver=305859310" id="theme-main-js"></script>
+<!--region footer-->
+<footer>
+  <div class="container">
+    <div class="footer-content-wrapper">
+      <div class="small-logo-wrapper">
+        <div class="logo-and-submit">
+                      <a href="https://www.advisorhub.com" class="main-logo">
+                              <img src="https://www.advisorhub.com/wp-content/uploads/2022/08/advisorhub-logo.png" alt=""/>
+                          </a>
+                  </div>
+
+        <ul class="svg_and_text icon-large">
+                      <li class="menu-item submit">
+              <a href="/submittip/" target="" class="submit-item">
+                Submit a Tip                <svg class="message-dots" width="18" height="18"
+                     viewBox="0 0 18 18" fill="none"
+                     xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M15.8418 0.125H3.0918C1.89648 0.125 0.966797 1.08789 0.966797 2.25V11.7793C0.966797 12.9414 1.89648 13.8711 3.0918 13.8711H6.2793V16.627C6.2793 16.959 6.64453 17.125 6.91016 16.959L11.0605 13.8379H15.8418C17.0039 13.8379 17.9668 12.875 17.9668 11.7461V2.25C17.9668 1.08789 17.0371 0.125 15.8418 0.125ZM5.2168 8.09375C4.61914 8.09375 4.1543 7.5957 4.1543 7.03125C4.1543 6.5 4.61914 6.00195 5.2168 6.00195C5.78125 6.00195 6.2793 6.5 6.2793 7.03125C6.2793 7.5957 5.81445 8.09375 5.2168 8.09375ZM9.4668 8.09375C8.86914 8.09375 8.4043 7.5957 8.4043 7.03125C8.4043 6.5 8.86914 6.00195 9.4668 6.00195C10.0312 6.00195 10.5293 6.5 10.5293 7.03125C10.5293 7.5957 10.0645 8.09375 9.4668 8.09375ZM13.7168 8.09375C13.1191 8.09375 12.6543 7.5957 12.6543 7.03125C12.6543 6.5 13.1191 6.00195 13.7168 6.00195C14.2812 6.00195 14.7793 6.5 14.7793 7.03125C14.7793 7.5957 14.3145 8.09375 13.7168 8.09375Z"
+                    fill="white"/>
+                </svg>
+              </a>
+            </li>
+                  </ul>
+      </div>
+      <div class="list-wrapper">
+        <!--  first column -->
+        <ul class="primary-menu">
+                                                      <li class="menu-item menu-item-has-children">
+                                      <div class="footer-text"> Topics                                              <div class="arrow">
+                          <svg width="10" height="5" viewBox="0 0 10 5" fill="none"
+                               xmlns="http://www.w3.org/2000/svg">
+                            <path
+                              d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                              fill="white"/>
+                          </svg>
+                        </div>
+                                          </div>
+                                                                              <ul class="sub-menu">
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/category/advisor-moves/" target=""> Advisor Moves</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/category/enforcement/" target=""> Enforcement</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/category/markets/" target=""> Markets</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/category/opinion/" target=""> Opinions</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/fintech/" target=""> Fin Tech</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/category/from-the-publisher/" target=""> From the Publisher</a>
+                          </li>
+                                              </ul>
+
+                                                      </li>
+                              <li class="menu-item ">
+                                      <a class="footer-text" href="/deals-comps/" target="">Deals & Comp                                          </a>
+                                                    </li>
+                              <li class="menu-item ">
+                                      <a class="footer-text" href="/breakaway-center/" target="">Breakaway Center                                          </a>
+                                                    </li>
+                                              </ul>
+        <!--  second column -->
+        <ul class="primary-menu">
+                                                      <li class="menu-item ">
+                                      <a class="footer-text" href="/resource_type/ria-resource-center/" target="">AdvisorHub RIA                                          </a>
+                  
+                                  </li>
+                              <li class="menu-item menu-item-has-children">
+                                      <div class="footer-text"> More                                              <div class="arrow">
+                          <svg width="10" height="5" viewBox="0 0 10 5" fill="none"
+                               xmlns="http://www.w3.org/2000/svg">
+                            <path
+                              d="M4.89394 5C4.71799 5 4.56158 4.94135 4.44428 4.82405L0.690616 1.07038C0.436461 0.835777 0.436461 0.42522 0.690616 0.190616C0.92522 -0.0635386 1.33578 -0.0635386 1.57038 0.190616L4.89394 3.49462L8.19795 0.190616C8.43255 -0.0635386 8.84311 -0.0635386 9.07771 0.190616C9.33187 0.42522 9.33187 0.835777 9.07771 1.07038L5.32405 4.82405C5.20675 4.94135 5.05034 5 4.89394 5Z"
+                              fill="white"/>
+                          </svg>
+
+                        </div>
+                                          </div>
+                  
+                                                            <ul class="sub-menu">
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/recruiting-wire/" target=""> Recruiting Wire</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/magazine/" target=""> Magazine</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/videos/" target=""> Video</a>
+                          </li>
+                                                  <li class="menu-item-in-sub-menu">
+                            <a href="/podcasts/" target=""> Podcast</a>
+                          </li>
+                                              </ul>
+
+                                                      </li>
+                              <li class="menu-item ">
+                                      <a class="footer-text" href="/about-us/" target="">About Us                                          </a>
+                  
+                                  </li>
+                                              </ul>
+        <!--  third column -->
+        <ul class="primary-menu">
+                                                      <li class="menu-item ">
+                                      <a class="footer-text" href="/careers/" target="">Careers                                          </a>
+                                                    </li>
+                              <li class="menu-item ">
+                                      <a class="footer-text" href="/advertise-2nd-level/" target="">Advertise                                          </a>
+                                                    </li>
+                                              </ul>
+        <!--fourth column -->
+        <ul class="primary-menu">
+                                                      <li class="menu-item ">
+                                      <a class="footer-text" href="/contact-us/" target="">Contact Us                                          </a>
+                                                    </li>
+                              <li class="menu-item ">
+                                      <a class="footer-text" href="https://www.advisorhub.com/advisorhub-advisory-council/" target="">Advisory Council                                          </a>
+                                                    </li>
+                                              </ul>
+      </div>
+      <div class="search-content-wrapper">
+        <form class="search-box-wrapper" id="footer-search-form" action="https://www.advisorhub.com/">
+          <input class="input-search input-text" type="search"
+                 name="s"
+                 value=""
+                 placeholder="Search AdvisorHub">
+
+          <!--            <div class="info-text input-text">-->
+          <!--            </div>-->
+          <button class="search-icon-in-mobile" type="submit">
+            <svg width="13" height="13"
+                 viewBox="0 0 13 13" fill="none"
+                 xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12.4725 11.5391L9.33189 8.39844C10.0116 7.57812 10.3866 6.52344 10.3866 5.375C10.3866 2.70312 8.18345 0.5 5.51157 0.5C2.81626 0.5 0.660011 2.70312 0.660011 5.375C0.660011 8.07031 2.8397 10.25 5.51157 10.25C6.63657 10.25 7.69126 9.875 8.53501 9.19531L11.6756 12.3359C11.7928 12.4531 11.9334 12.5 12.0975 12.5C12.2381 12.5 12.3788 12.4531 12.4725 12.3359C12.7069 12.125 12.7069 11.7734 12.4725 11.5391ZM1.78501 5.375C1.78501 3.3125 3.44907 1.625 5.53501 1.625C7.59751 1.625 9.28501 3.3125 9.28501 5.375C9.28501 7.46094 7.59751 9.125 5.53501 9.125C3.44907 9.125 1.78501 7.46094 1.78501 5.375Z"
+                fill="white"/>
+            </svg>
+          </button>
+
+        </form>
+        <ul class="svg_and_text icon-small">
+                      <li class="menu-item submit">
+              <a href="/submittip/" target="" class="submit-item footer-text">
+                Submit a Tip                <svg class="message-dots" width="18" height="18"
+                     viewBox="0 0 18 18" fill="none"
+                     xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M15.8418 0.125H3.0918C1.89648 0.125 0.966797 1.08789 0.966797 2.25V11.7793C0.966797 12.9414 1.89648 13.8711 3.0918 13.8711H6.2793V16.627C6.2793 16.959 6.64453 17.125 6.91016 16.959L11.0605 13.8379H15.8418C17.0039 13.8379 17.9668 12.875 17.9668 11.7461V2.25C17.9668 1.08789 17.0371 0.125 15.8418 0.125ZM5.2168 8.09375C4.61914 8.09375 4.1543 7.5957 4.1543 7.03125C4.1543 6.5 4.61914 6.00195 5.2168 6.00195C5.78125 6.00195 6.2793 6.5 6.2793 7.03125C6.2793 7.5957 5.81445 8.09375 5.2168 8.09375ZM9.4668 8.09375C8.86914 8.09375 8.4043 7.5957 8.4043 7.03125C8.4043 6.5 8.86914 6.00195 9.4668 6.00195C10.0312 6.00195 10.5293 6.5 10.5293 7.03125C10.5293 7.5957 10.0645 8.09375 9.4668 8.09375ZM13.7168 8.09375C13.1191 8.09375 12.6543 7.5957 12.6543 7.03125C12.6543 6.5 13.1191 6.00195 13.7168 6.00195C14.2812 6.00195 14.7793 6.5 14.7793 7.03125C14.7793 7.5957 14.3145 8.09375 13.7168 8.09375Z"
+                    fill="white"/>
+                </svg>
+              </a>
+            </li>
+                  </ul>
+      </div>
+      <div class="menu-item submit last-inner last">
+        <a class="take-off-logo" href="https://www.takeoffnyc.com/" target="_blank">
+          <svg width="109" height="17" viewBox="0 0 109 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g opacity="0.8">
+              <path d="M68.4486 7.39658H67.9878C67.7083 7.39658 67.5623 7.24298 67.5623 6.95728V6.78371C67.5541 6.72448 67.5595 6.66414 67.5784 6.60739C67.5972 6.55063 67.6289 6.49898 67.671 6.45648C67.713 6.41397 67.7643 6.38174 67.8209 6.3623C67.8775 6.34286 67.9377 6.33674 67.997 6.34441H68.4763V4.86523C68.4677 4.80528 68.4733 4.74415 68.4925 4.68673C68.5118 4.6293 68.5442 4.57717 68.5871 4.5345C68.6301 4.49182 68.6825 4.45978 68.74 4.44093C68.7976 4.42208 68.8588 4.41695 68.9186 4.42593H69.3057C69.3654 4.41748 69.4262 4.42301 69.4833 4.4421C69.5405 4.46119 69.5924 4.4933 69.635 4.53591C69.6777 4.57852 69.7098 4.63045 69.7289 4.68761C69.7479 4.74476 69.7535 4.80557 69.745 4.86523V6.34441H70.9155C70.9751 6.33595 71.0359 6.34149 71.0931 6.36057C71.1502 6.37966 71.2022 6.41178 71.2448 6.45439C71.2874 6.49699 71.3195 6.54893 71.3386 6.60608C71.3577 6.66324 71.3632 6.72405 71.3548 6.78371V6.95728C71.3548 7.24912 71.2012 7.39658 70.9293 7.39658H69.7435V10.3933C69.7435 11.3395 70.1695 11.8454 71.0214 11.9109C71.3809 11.9508 71.4822 12.0445 71.4822 12.3517V12.6313C71.4822 12.9231 71.3087 13.0706 70.9493 13.0706C69.51 13.0706 68.4456 12.2043 68.4456 10.593L68.4486 7.39658Z" fill="#C7D0D5"/>
+              <path d="M75.0027 6.11731C74.2368 6.11152 73.483 6.30924 72.8185 6.69024C72.5789 6.82388 72.5252 7.02356 72.6649 7.28929L72.7709 7.47668C72.7987 7.52764 72.8366 7.57234 72.8824 7.60799C72.9282 7.64364 72.9808 7.66948 73.037 7.68389C73.0932 7.6983 73.1518 7.70098 73.2091 7.69176C73.2663 7.68253 73.3211 7.66161 73.37 7.63028C73.8316 7.36056 74.3545 7.21355 74.8891 7.20327C75.8614 7.20327 76.3544 7.69633 76.3544 8.68245L76.3667 10.0003C76.3702 10.5387 76.1867 11.0615 75.8475 11.4795C75.7002 11.6881 75.5044 11.8578 75.277 11.9739C75.0495 12.09 74.7973 12.1491 74.5419 12.1462C73.757 12.1462 73.2901 11.6531 73.2901 11.0709C73.2901 10.2354 74.0581 9.78684 75.6141 9.72233C75.6967 9.71992 75.775 9.68532 75.8324 9.6259C75.8898 9.56649 75.9217 9.48698 75.9213 9.40437C75.9213 9.33064 75.9213 9.25077 75.9213 9.17704C75.9203 9.13569 75.9111 9.09494 75.8944 9.05711C75.8776 9.01929 75.8536 8.98514 75.8236 8.95661C75.7937 8.92808 75.7584 8.90573 75.7198 8.89085C75.6812 8.87596 75.6401 8.86882 75.5987 8.86984C75.0609 8.88075 74.5263 8.95499 74.0059 9.09103C73.6529 9.16819 73.3122 9.2938 72.9936 9.46428C72.6882 9.63443 72.4339 9.88332 72.2572 10.1851C72.0806 10.4868 71.988 10.8304 71.9891 11.18C71.9808 11.457 72.0366 11.7321 72.1523 11.9839C72.2679 12.2357 72.4402 12.4573 72.6557 12.6315C73.1071 12.9972 73.6739 13.1905 74.2547 13.1768C74.616 13.1802 74.9731 13.0985 75.297 12.9384C75.6209 12.7783 75.9026 12.5443 76.1194 12.2552C76.2533 12.1078 76.365 11.9417 76.4512 11.7621H76.4788L76.4435 12.1784V12.5778C76.4435 12.6355 76.4549 12.6926 76.477 12.7459C76.499 12.7992 76.5314 12.8476 76.5722 12.8884C76.613 12.9292 76.6614 12.9616 76.7147 12.9836C76.768 13.0057 76.8251 13.0171 76.8828 13.0171H77.2115C77.2692 13.0171 77.3263 13.0057 77.3796 12.9836C77.4329 12.9616 77.4814 12.9292 77.5222 12.8884C77.5629 12.8476 77.5953 12.7992 77.6174 12.7459C77.6395 12.6926 77.6508 12.6355 77.6508 12.5778V8.75464C77.6539 7.04967 76.6954 6.11731 75.0027 6.11731Z" fill="#C7D0D5"/>
+              <path d="M79.2109 4.05301C79.2024 3.99335 79.208 3.93254 79.227 3.87538C79.2461 3.81823 79.2782 3.76629 79.3209 3.72368C79.3635 3.68108 79.4154 3.64896 79.4725 3.62987C79.5297 3.61079 79.5905 3.60525 79.6502 3.61371H80.0634C80.3429 3.61371 80.4904 3.75963 80.4904 4.05301V8.74244H81.4627L83.097 6.5567C83.1508 6.4681 83.2273 6.39548 83.3186 6.34633C83.4098 6.29719 83.5126 6.2733 83.6162 6.27715H84.1092C84.4686 6.27715 84.59 6.53059 84.3765 6.81015L82.5118 9.24779V9.2739L84.6622 12.4842C84.8619 12.7914 84.7282 13.0172 84.3688 13.0172H83.8358C83.7293 13.019 83.6244 12.9912 83.5328 12.937C83.4411 12.8827 83.3663 12.8042 83.3166 12.71L81.4734 9.85912H80.475V12.5779C80.475 12.8712 80.3214 13.0172 80.048 13.0172H79.6348C79.5763 13.023 79.5173 13.0156 79.4621 12.9954C79.4069 12.9751 79.3571 12.9426 79.3163 12.9004C79.2755 12.8581 79.2448 12.8071 79.2265 12.7512C79.2083 12.6954 79.2029 12.6361 79.2109 12.5779V4.05301Z" fill="#C7D0D5"/>
+              <path d="M91.2679 9.32765C91.2679 8.36918 91.0144 7.59656 90.4999 7.00981C89.9853 6.42305 89.288 6.11739 88.3694 6.11739C87.9199 6.103 87.4723 6.18198 87.0548 6.34933C86.6374 6.51668 86.2592 6.76877 85.9441 7.08968C85.3189 7.74249 84.9994 8.59497 84.9994 9.64714C84.9862 10.1146 85.0679 10.5799 85.2395 11.015C85.4111 11.4501 85.6691 11.8459 85.9978 12.1785C86.6645 12.8451 87.5169 13.1769 88.5691 13.1769C89.3848 13.1841 90.1818 12.9324 90.8455 12.458C91.0866 12.3044 91.1266 12.1247 90.9791 11.8728L90.8547 11.6731C90.7211 11.4335 90.5214 11.3798 90.2557 11.5272C89.7929 11.8793 89.2258 12.0669 88.6444 12.0602C88.05 12.0737 87.473 11.8594 87.0316 11.4612C86.5923 11.0516 86.3526 10.4919 86.3127 9.78231C86.3127 9.78231 86.3035 9.58262 86.3127 9.29693L86.368 8.92982C86.5416 7.81161 87.3403 7.13115 88.3387 7.13115C89.2603 7.13115 89.9377 7.77167 89.9776 8.92982H87.1299C87.0477 8.9298 86.9687 8.96192 86.9099 9.01932C86.851 9.07672 86.817 9.15485 86.815 9.23702V9.45974C86.817 9.54192 86.851 9.62005 86.9099 9.67745C86.9687 9.73485 87.0477 9.76697 87.1299 9.76695H90.8163C90.875 9.76838 90.9333 9.75808 90.9879 9.73667C91.0426 9.71525 91.0924 9.68314 91.1344 9.64223C91.1765 9.60131 91.21 9.55241 91.2329 9.49839C91.2558 9.44438 91.2677 9.38633 91.2679 9.32765V9.32765Z" fill="#C7D0D5"/>
+              <path d="M98.2833 7.11702C98.6271 7.43792 98.8986 7.82847 99.0795 8.26259C99.2604 8.69672 99.3466 9.16444 99.3324 9.63454C99.3422 10.1074 99.2524 10.577 99.0687 11.0129C98.885 11.4488 98.6117 11.8411 98.2664 12.1643C97.5686 12.815 96.65 13.1768 95.6959 13.1768C94.7418 13.1768 93.8232 12.815 93.1254 12.1643C92.7815 11.8407 92.5099 11.448 92.3283 11.012C92.1467 10.576 92.0593 10.1066 92.0717 9.63454C92.0581 9.16409 92.145 8.69616 92.3267 8.26201C92.5085 7.82787 92.7807 7.4375 93.1254 7.11702C93.8294 6.47383 94.7485 6.11719 95.7021 6.11719C96.6556 6.11719 97.5747 6.47383 98.2787 7.11702H98.2833ZM97.3356 11.3779C97.5604 11.1481 97.7364 10.8752 97.8531 10.5756C97.9698 10.276 98.0247 9.95588 98.0145 9.63454C98.0246 9.31688 97.9696 9.00051 97.8529 8.70491C97.7361 8.40931 97.5601 8.14074 97.3356 7.91574C97.1249 7.69454 96.8702 7.51986 96.5879 7.40294C96.3057 7.28602 96.0021 7.22943 95.6967 7.23683C95.3918 7.23189 95.0892 7.2896 94.8075 7.40638C94.5259 7.52316 94.2712 7.69653 94.0593 7.91574C93.8346 8.14067 93.6583 8.40918 93.5413 8.70478C93.4243 9.00037 93.369 9.31678 93.3788 9.63454C93.3707 9.9542 93.427 10.2722 93.5444 10.5696C93.6619 10.8671 93.838 11.1378 94.0624 11.3656C94.2758 11.5831 94.5303 11.756 94.811 11.8745C95.0918 11.9929 95.3932 12.0545 95.698 12.0556C96.0027 12.0568 96.3046 11.9975 96.5862 11.8811C96.8678 11.7648 97.1236 11.5938 97.3387 11.3779H97.3356Z" fill="#C7D0D5"/>
+              <path d="M46.8251 10.0575C46.7212 10.0225 46.6319 9.95379 46.5714 9.86222C46.511 9.77064 46.483 9.66149 46.4918 9.55214V9.39854C46.483 9.28747 46.5109 9.17659 46.5711 9.08283C46.6313 8.98908 46.7205 8.91762 46.8251 8.87937L52.1751 6.50163C52.4823 6.38182 52.6942 6.50163 52.6942 6.82112V7.08685C52.695 7.19645 52.6623 7.30368 52.6006 7.39424C52.5388 7.4848 52.4509 7.55439 52.3486 7.59373L47.9295 9.45845V9.48456L52.3532 11.3662C52.4585 11.4011 52.5493 11.4696 52.6118 11.5612C52.6742 11.6528 52.7048 11.7624 52.6988 11.8731V12.125C52.6988 12.4552 52.4823 12.595 52.1751 12.4552L46.8251 10.0575Z" fill="#C7D0D5"/>
+              <path d="M58.6927 11.8701C58.6847 11.7613 58.7129 11.6529 58.7729 11.5618C58.8329 11.4707 58.9214 11.402 59.0245 11.3663L63.4467 9.4878V9.46169L59.0245 7.5939C58.9238 7.55381 58.8379 7.48363 58.7785 7.39291C58.7191 7.3022 58.6892 7.19538 58.6927 7.08702V6.82129C58.6927 6.48797 58.8924 6.36816 59.1981 6.48797L64.5741 8.88568C64.6765 8.92716 64.7636 8.99936 64.8232 9.09233C64.8829 9.1853 64.9123 9.29448 64.9074 9.40485V9.55845C64.916 9.66776 64.8878 9.77678 64.8275 9.8683C64.7671 9.95982 64.678 10.0286 64.5741 10.0638L59.1981 12.4554C58.8909 12.5752 58.6927 12.4554 58.6927 12.1221V11.8701Z" fill="#C7D0D5"/>
+              <path d="M55.1034 12.8065L55.77 10.7421C55.7856 10.6938 55.7894 10.6425 55.7813 10.5925C55.7732 10.5424 55.7534 10.495 55.7234 10.4541C55.6934 10.4131 55.6542 10.3799 55.6089 10.3571C55.5636 10.3343 55.5136 10.3225 55.4628 10.3228H54.9882C54.92 10.3224 54.8534 10.3438 54.7982 10.3839C54.7429 10.4239 54.7019 10.4805 54.681 10.5455L54.0175 12.6099C54.0019 12.6581 53.998 12.7093 54.0061 12.7593C54.0142 12.8093 54.034 12.8567 54.064 12.8975C54.0941 12.9383 54.1333 12.9714 54.1786 12.994C54.224 13.0166 54.274 13.0282 54.3247 13.0277H54.8024C54.8694 13.0271 54.9346 13.0054 54.9886 12.9657C55.0426 12.926 55.0828 12.8703 55.1034 12.8065V12.8065Z" fill="#C7D0D5"/>
+              <path d="M56.3139 5.5034L55.1542 9.09459C55.1386 9.14278 55.1347 9.194 55.1428 9.244C55.1509 9.294 55.1708 9.34136 55.2008 9.38217C55.2308 9.42298 55.2701 9.45607 55.3154 9.47871C55.3607 9.50135 55.4107 9.51289 55.4614 9.51238H55.9391C56.0073 9.51272 56.0739 9.49131 56.1291 9.45127C56.1843 9.41122 56.2254 9.35461 56.2463 9.28966L57.3553 5.83671C57.3799 5.75958 57.387 5.67796 57.3763 5.59773C57.3655 5.5175 57.337 5.44067 57.2929 5.37277C57.2488 5.30488 57.1902 5.24762 57.1213 5.20513C57.0524 5.16264 56.9749 5.13598 56.8945 5.12707V5.12707C56.7692 5.11383 56.6432 5.14398 56.5376 5.21247C56.4319 5.28097 56.3529 5.38367 56.3139 5.5034Z" fill="#C7D0D5"/>
+              <path d="M54.0197 13.8401C53.9039 13.8403 53.7912 13.8771 53.6977 13.9453C53.6042 14.0134 53.5346 14.1094 53.4989 14.2195L53.3576 14.6588C53.2517 14.9383 53.4053 15.1518 53.7125 15.1518H53.9582C54.0708 15.1578 54.1822 15.1255 54.2742 15.0603C54.3661 14.995 54.4334 14.9007 54.4651 14.7924L54.651 14.2164C54.6647 14.1731 54.6681 14.1272 54.6608 14.0824C54.6535 14.0376 54.6357 13.9952 54.6089 13.9585C54.5822 13.9218 54.5471 13.892 54.5066 13.8714C54.4662 13.8509 54.4214 13.8401 54.376 13.8401H54.0197Z" fill="#C7D0D5"/>
+              <path d="M58.6926 3.29729C59.1903 1.74439 58.9599 0.707581 58.814 0.285178C58.8056 0.256796 58.7906 0.230839 58.7701 0.209499C58.7496 0.18816 58.7243 0.172065 58.6962 0.162574C58.6682 0.153084 58.6383 0.150477 58.6091 0.154974C58.5799 0.159471 58.5521 0.170939 58.5283 0.18841C58.1642 0.435707 57.3501 1.12538 56.811 2.66753C56.7925 2.7248 56.7544 2.77373 56.7035 2.80577L56.1398 3.14523C56.1059 3.16675 56.0773 3.19558 56.056 3.2296C56.0348 3.26362 56.0214 3.30197 56.0169 3.34184L55.8848 4.41705C55.8756 4.45396 55.8772 4.49275 55.8895 4.52877C55.9017 4.5648 55.9241 4.59653 55.9539 4.62018C55.9837 4.64383 56.0197 4.6584 56.0575 4.66214C56.0954 4.66589 56.1336 4.65865 56.1674 4.6413L56.768 4.32488L56.9354 4.27112C57.0695 4.22306 57.2161 4.22306 57.3501 4.27112V4.27112C57.47 4.3185 57.5725 4.40162 57.6435 4.50921L57.7326 4.64284L58.0229 5.25724C58.0398 5.29105 58.066 5.31932 58.0985 5.33872C58.131 5.35811 58.1683 5.36781 58.2061 5.36668C58.2438 5.36555 58.2805 5.35363 58.3118 5.33234C58.343 5.31104 58.3675 5.28125 58.3823 5.24649L58.9246 4.30952C58.9449 4.27479 58.9573 4.23594 58.9608 4.19582C58.9642 4.15569 58.9587 4.11529 58.9445 4.07759L58.6988 3.46318C58.6788 3.41 58.6767 3.3518 58.6926 3.29729V3.29729Z" fill="#C7D0D5"/>
+              <path d="M103.65 6.53179C103.65 6.46417 103.623 6.39931 103.576 6.35149C103.528 6.30368 103.463 6.27681 103.395 6.27681H102.053V6.07713C102.053 5.49191 102.225 5.07872 102.504 4.91898C102.75 4.76313 103.034 4.68004 103.325 4.67936C103.644 4.65171 103.804 4.50579 103.804 4.24006V3.99277C103.804 3.87626 103.758 3.76452 103.675 3.68213C103.593 3.59975 103.481 3.55347 103.365 3.55347H103.192C102.526 3.55347 100.769 3.89907 100.769 6.03105V6.28296H100.342C100.225 6.28336 100.113 6.32999 100.031 6.41262C99.9486 6.49524 99.9023 6.60714 99.9023 6.72379V6.87739C99.9021 6.93521 99.9134 6.9925 99.9353 7.04598C99.9573 7.09945 99.9897 7.14806 100.03 7.18902C100.071 7.22997 100.12 7.26247 100.173 7.28464C100.227 7.30681 100.284 7.31823 100.342 7.31823H100.769V12.5775C100.769 12.694 100.815 12.8058 100.897 12.8882C100.98 12.9705 101.091 13.0168 101.208 13.0168H101.621C101.738 13.0164 101.849 12.97 101.931 12.8877C102.014 12.8054 102.06 12.6939 102.06 12.5775V7.31669H103.403C103.469 7.31471 103.531 7.2874 103.577 7.24045C103.623 7.19351 103.649 7.13057 103.65 7.06479V6.53179Z" fill="#C7D0D5"/>
+              <path d="M107.633 3.54737H107.48C106.773 3.54737 105.056 3.89297 105.056 6.02495V6.27686H104.431C104.363 6.27726 104.299 6.30425 104.251 6.35198C104.203 6.39971 104.176 6.46433 104.176 6.53183V7.06483C104.176 7.13233 104.203 7.19695 104.251 7.24468C104.299 7.29241 104.363 7.3194 104.431 7.31981H105.056V12.5776C105.056 12.8709 105.202 13.0169 105.481 13.0169H105.908C106.188 13.0169 106.334 12.8633 106.334 12.5776V7.31673H107.533C107.799 7.31673 107.933 7.16313 107.933 6.87744V6.71615C107.933 6.59965 107.887 6.48791 107.804 6.40552C107.722 6.32314 107.61 6.27686 107.494 6.27686H106.334V6.07717C106.334 5.49195 106.507 5.07877 106.787 4.91902C107.035 4.76456 107.321 4.68164 107.613 4.67941C107.921 4.65176 108.074 4.50584 108.074 4.24011V3.99281C108.075 3.93447 108.064 3.87656 108.042 3.82245C108.021 3.76834 107.988 3.71912 107.947 3.67765C107.906 3.63618 107.857 3.60331 107.803 3.58094C107.749 3.55857 107.692 3.54716 107.633 3.54737V3.54737Z" fill="#C7D0D5"/>
+            </g>
+            <path opacity="0.8" d="M6.02734 10.9966C6.02734 10.7974 5.99609 10.6216 5.93359 10.4692C5.875 10.313 5.76953 10.1724 5.61719 10.0474C5.46875 9.92236 5.26172 9.80322 4.99609 9.68994C4.73438 9.57666 4.40234 9.46143 4 9.34424C3.57812 9.21924 3.19727 9.08057 2.85742 8.92822C2.51758 8.77197 2.22656 8.59424 1.98438 8.39502C1.74219 8.1958 1.55664 7.96729 1.42773 7.70947C1.29883 7.45166 1.23438 7.15674 1.23438 6.82471C1.23438 6.49268 1.30273 6.18604 1.43945 5.90479C1.57617 5.62354 1.77148 5.37939 2.02539 5.17236C2.2832 4.96143 2.58984 4.79736 2.94531 4.68018C3.30078 4.56299 3.69727 4.50439 4.13477 4.50439C4.77539 4.50439 5.31836 4.62744 5.76367 4.87354C6.21289 5.11572 6.55469 5.43408 6.78906 5.82861C7.02344 6.21924 7.14062 6.63721 7.14062 7.08252H6.01562C6.01562 6.76221 5.94727 6.479 5.81055 6.23291C5.67383 5.98291 5.4668 5.7876 5.18945 5.64697C4.91211 5.50244 4.56055 5.43018 4.13477 5.43018C3.73242 5.43018 3.40039 5.49072 3.13867 5.61182C2.87695 5.73291 2.68164 5.89697 2.55273 6.104C2.42773 6.31104 2.36523 6.54736 2.36523 6.81299C2.36523 6.99268 2.40234 7.15674 2.47656 7.30518C2.55469 7.44971 2.67383 7.58447 2.83398 7.70947C2.99805 7.83447 3.20508 7.94971 3.45508 8.05518C3.70898 8.16064 4.01172 8.26221 4.36328 8.35986C4.84766 8.49658 5.26562 8.64893 5.61719 8.81689C5.96875 8.98486 6.25781 9.17432 6.48438 9.38525C6.71484 9.59229 6.88477 9.82861 6.99414 10.0942C7.10742 10.356 7.16406 10.6528 7.16406 10.9849C7.16406 11.3325 7.09375 11.647 6.95312 11.9282C6.8125 12.2095 6.61133 12.4497 6.34961 12.6489C6.08789 12.8481 5.77344 13.0024 5.40625 13.1118C5.04297 13.2173 4.63672 13.27 4.1875 13.27C3.79297 13.27 3.4043 13.2153 3.02148 13.106C2.64258 12.9966 2.29688 12.8325 1.98438 12.6138C1.67578 12.395 1.42773 12.1255 1.24023 11.8052C1.05664 11.481 0.964844 11.106 0.964844 10.6802H2.08984C2.08984 10.9731 2.14648 11.2251 2.25977 11.436C2.37305 11.6431 2.52734 11.8149 2.72266 11.9517C2.92188 12.0884 3.14648 12.1899 3.39648 12.2563C3.65039 12.3188 3.91406 12.3501 4.1875 12.3501C4.58203 12.3501 4.91602 12.2954 5.18945 12.186C5.46289 12.0767 5.66992 11.9204 5.81055 11.7173C5.95508 11.5142 6.02734 11.2739 6.02734 10.9966ZM9.61914 6.81299V13.1528H8.5293V6.81299H9.61914ZM8.44727 5.13135C8.44727 4.95557 8.5 4.80713 8.60547 4.68604C8.71484 4.56494 8.875 4.50439 9.08594 4.50439C9.29297 4.50439 9.45117 4.56494 9.56055 4.68604C9.67383 4.80713 9.73047 4.95557 9.73047 5.13135C9.73047 5.29932 9.67383 5.44385 9.56055 5.56494C9.45117 5.68213 9.29297 5.74072 9.08594 5.74072C8.875 5.74072 8.71484 5.68213 8.60547 5.56494C8.5 5.44385 8.44727 5.29932 8.44727 5.13135ZM14.0137 6.81299V7.64502H10.5859V6.81299H14.0137ZM11.7461 5.27197H12.8301V11.5825C12.8301 11.7974 12.8633 11.9595 12.9297 12.0688C12.9961 12.1782 13.082 12.2505 13.1875 12.2856C13.293 12.3208 13.4062 12.3384 13.5273 12.3384C13.6172 12.3384 13.7109 12.3306 13.8086 12.3149C13.9102 12.2954 13.9863 12.2798 14.0371 12.2681L14.043 13.1528C13.957 13.1802 13.8438 13.2056 13.7031 13.229C13.5664 13.2563 13.4004 13.27 13.2051 13.27C12.9395 13.27 12.6953 13.2173 12.4727 13.1118C12.25 13.0063 12.0723 12.8306 11.9395 12.5845C11.8105 12.3345 11.7461 11.9985 11.7461 11.5767V5.27197ZM17.916 13.27C17.4746 13.27 17.0742 13.1958 16.7148 13.0474C16.3594 12.895 16.0527 12.6821 15.7949 12.4087C15.541 12.1353 15.3457 11.811 15.209 11.436C15.0723 11.061 15.0039 10.6509 15.0039 10.2056V9.95947C15.0039 9.44385 15.0801 8.98486 15.2324 8.58252C15.3848 8.17627 15.5918 7.83252 15.8535 7.55127C16.1152 7.27002 16.4121 7.05713 16.7441 6.9126C17.0762 6.76807 17.4199 6.6958 17.7754 6.6958C18.2285 6.6958 18.6191 6.77393 18.9473 6.93018C19.2793 7.08643 19.5508 7.30518 19.7617 7.58643C19.9727 7.86377 20.1289 8.19189 20.2305 8.5708C20.332 8.9458 20.3828 9.35596 20.3828 9.80127V10.2876H15.6484V9.40283H19.2988V9.3208C19.2832 9.03955 19.2246 8.76611 19.123 8.50049C19.0254 8.23486 18.8691 8.01611 18.6543 7.84424C18.4395 7.67236 18.1465 7.58643 17.7754 7.58643C17.5293 7.58643 17.3027 7.63916 17.0957 7.74463C16.8887 7.84619 16.7109 7.99854 16.5625 8.20166C16.4141 8.40479 16.2988 8.65283 16.2168 8.9458C16.1348 9.23877 16.0938 9.57666 16.0938 9.95947V10.2056C16.0938 10.5063 16.1348 10.7896 16.2168 11.0552C16.3027 11.3169 16.4258 11.5474 16.5859 11.7466C16.75 11.9458 16.9473 12.1021 17.1777 12.2153C17.4121 12.3286 17.6777 12.3853 17.9746 12.3853C18.3574 12.3853 18.6816 12.3071 18.9473 12.1509C19.2129 11.9946 19.4453 11.7856 19.6445 11.5239L20.3008 12.0454C20.1641 12.2524 19.9902 12.4497 19.7793 12.6372C19.5684 12.8247 19.3086 12.9771 19 13.0942C18.6953 13.2114 18.334 13.27 17.916 13.27ZM24.6191 4.15283H25.709V11.9224L25.6152 13.1528H24.6191V4.15283ZM29.9922 9.93018V10.0532C29.9922 10.5142 29.9375 10.9419 29.8281 11.3364C29.7188 11.7271 29.5586 12.0669 29.3477 12.356C29.1367 12.645 28.8789 12.8696 28.5742 13.0298C28.2695 13.1899 27.9199 13.27 27.5254 13.27C27.123 13.27 26.7695 13.2017 26.4648 13.0649C26.1641 12.9243 25.9102 12.7231 25.7031 12.4614C25.4961 12.1997 25.3301 11.8833 25.2051 11.5122C25.084 11.1411 25 10.7231 24.9531 10.2583V9.71924C25 9.25049 25.084 8.83057 25.2051 8.45947C25.3301 8.08838 25.4961 7.77197 25.7031 7.51025C25.9102 7.24463 26.1641 7.04346 26.4648 6.90674C26.7656 6.76611 27.1152 6.6958 27.5137 6.6958C27.9121 6.6958 28.2656 6.77393 28.5742 6.93018C28.8828 7.08252 29.1406 7.30127 29.3477 7.58643C29.5586 7.87158 29.7188 8.21338 29.8281 8.61182C29.9375 9.00635 29.9922 9.4458 29.9922 9.93018ZM28.9023 10.0532V9.93018C28.9023 9.61377 28.873 9.31689 28.8145 9.03955C28.7559 8.7583 28.6621 8.51221 28.5332 8.30127C28.4043 8.08643 28.2344 7.91846 28.0234 7.79736C27.8125 7.67236 27.5527 7.60986 27.2441 7.60986C26.9707 7.60986 26.7324 7.65674 26.5293 7.75049C26.3301 7.84424 26.1602 7.97119 26.0195 8.13135C25.8789 8.2876 25.7637 8.46729 25.6738 8.67041C25.5879 8.86963 25.5234 9.07666 25.4805 9.2915V10.7036C25.543 10.9771 25.6445 11.2407 25.7852 11.4946C25.9297 11.7446 26.1211 11.9497 26.3594 12.1099C26.6016 12.27 26.9004 12.3501 27.2559 12.3501C27.5488 12.3501 27.7988 12.2915 28.0059 12.1743C28.2168 12.0532 28.3867 11.8872 28.5156 11.6763C28.6484 11.4653 28.7461 11.2212 28.8086 10.9438C28.8711 10.6665 28.9023 10.3696 28.9023 10.0532ZM33.0742 12.4966L34.8379 6.81299H35.998L33.4551 14.1313C33.3965 14.2876 33.3184 14.4556 33.2207 14.6353C33.127 14.8188 33.0059 14.9927 32.8574 15.1567C32.709 15.3208 32.5293 15.4536 32.3184 15.5552C32.1113 15.6606 31.8633 15.7134 31.5742 15.7134C31.4883 15.7134 31.3789 15.7017 31.2461 15.6782C31.1133 15.6548 31.0195 15.6353 30.9648 15.6196L30.959 14.7407C30.9902 14.7446 31.0391 14.7485 31.1055 14.7524C31.1758 14.7603 31.2246 14.7642 31.252 14.7642C31.498 14.7642 31.707 14.731 31.8789 14.6646C32.0508 14.6021 32.1953 14.4946 32.3125 14.3423C32.4336 14.1938 32.5371 13.9888 32.623 13.7271L33.0742 12.4966ZM31.7793 6.81299L33.4258 11.7349L33.707 12.8774L32.9277 13.2759L30.5957 6.81299H31.7793Z" fill="#C7D0D5"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+      <div id="footerStickyAdId" class="footerStickyAd">
+      <a href="#" class="footerStickyAdClose js-footerStickyAdClose">
+        <i class="fa fa-times"></i>
+      </a>
+      <script>
+ googletag.cmd.push(function () {
+  var footerstickyMapping = googletag.sizeMapping().
+      addSize([1425, 0], [[1440, 88],[970, 90]]).      
+      addSize([1024, 0], [970, 90]).
+      addSize([768, 0], [728, 90]). 
+      addSize([330, 0], [320, 50]).
+      build();
+googletag.defineSlot(slotName, [[1440, 88], [970, 90], [728,90], [320, 50]], "footersticky")
+          .defineSizeMapping(footerstickyMapping)
+          .addService(googletag.pubads())
+          .setTargeting("pos", "footersticky");
+ });
+</script>
+<div id="footersticky">
+</div>    </div>
+  </footer>
+<!--get current query string-->
+<script>
+  jQuery(document).ready(function ($) {
+    $('footer #footer-search-form,header #header-search-form')?.on('submit', function (e) {
+      let val = $(this)?.find('input[name="s"]')?.val();
+      let currentVl = '';
+      if (val === '' || val == currentVl) {
+        e.preventDefault();
+      }
+    })
+    $('.dropdown-toggle').on("click", function () {
+      $(this).parents('li').toggleClass('open');
+    });
+  });
+</script>
+<script src="https://use.typekit.net/kye8fqk.js"></script>
+<script>try {
+    Typekit.load({async: true});
+  } catch (e) {
+  }</script>
+<script>
+  googletag.cmd.push(function () {
+    document.getElementById("div-id-for-interstitial") && googletag.display("div-id-for-interstitial");
+    document.getElementById("div-id-for-top-leaderboard") && googletag.display("div-id-for-top-leaderboard");
+    document.getElementById("footersticky") && googletag.display("footersticky");
+    document.getElementById("div-id-for-right1") && googletag.display("div-id-for-right1");
+    document.getElementById("div-id-for-right2") && googletag.display("div-id-for-right2");
+    document.getElementById("div-id-for-right3") && googletag.display("div-id-for-right3");
+    document.getElementById("div-id-for-right4") && googletag.display("div-id-for-right4");
+    document.getElementById("div-id-for-mobilead1") && googletag.display("div-id-for-mobilead1");
+    document.getElementById("div-id-for-mobilead2") && googletag.display("div-id-for-mobilead2");
+    document.getElementById("div-id-for-mobilead3") && googletag.display("div-id-for-mobilead3");
+
+    document.getElementById("div-id-for-mid") && googletag.display("div-id-for-mid");
+    document.getElementById("div-id-for-mid1") && googletag.display("div-id-for-mid1");
+    document.getElementById("div-id-for-mid2") && googletag.display("div-id-for-mid2");
+    document.getElementById("div-id-for-mid3") && googletag.display("div-id-for-mid3");
+    document.getElementById("div-id-for-mid4") && googletag.display("div-id-for-mid4");
+
+    document.getElementById("articleslot2") && googletag.display("articleslot2");
+    document.getElementById("articleslot3") && googletag.display("articleslot3");
+
+    document.getElementById("div-id-for-bottom") && googletag.display("div-id-for-bottom");
+
+  });
+</script>
+<script type="text/javascript">window.NREUM||(NREUM={});NREUM.info={"beacon":"bam.nr-data.net","licenseKey":"7f434b1373","applicationID":"37636178","transactionName":"b1xVbRZVDEdYBhdQWlYWdloQXQ1aFhYKV1JUXA==","queueTime":0,"applicationTime":1279,"atts":"QxtWG15PH0k=","errorBeacon":"bam.nr-data.net","agent":""}</script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"7c7f339396124db3a1660e091b32890e","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
