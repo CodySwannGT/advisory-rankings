@@ -3,3 +3,5 @@ package-lock.json
 .harperdb/
 __pycache__/
 *.pyc
+research/extractions/*.json
+research/extractions/.loaded/
