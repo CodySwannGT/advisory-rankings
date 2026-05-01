@@ -2,8 +2,13 @@
 """Verify the seeded data with cross-table SQL queries."""
 import base64, json, subprocess, sys
 
-SOCKET = "/home/user/.harperdb/operations-server"
-AUTH   = base64.b64encode(b"admin:admin-local").decode()
+import os
+HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
+SOCKET   = f"{HDB_ROOT}/operations-server"
+AUTH     = base64.b64encode(
+    f"{os.environ.get('HDB_ADMIN_USERNAME','admin')}:"
+    f"{os.environ.get('HDB_ADMIN_PASSWORD','admin-local')}".encode()
+).decode()
 
 def op(payload):
     res = subprocess.run(
