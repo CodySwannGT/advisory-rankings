@@ -7,11 +7,16 @@ swap the socket for http://127.0.0.1:9925/.
 """
 import base64
 import json
+import os
+import pathlib
 import subprocess
 import sys
-import uuid
 
-import os
+# Reuse the same UUID derivation as scripts/ingest.py so seed-loaded rows
+# and ingest-loaded rows merge under the same primary keys.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
+from _ids import uid, firm_id, article_id  # noqa: E402
+
 HDB_ROOT = os.environ.get("HDB_ROOT") or os.path.expanduser("~/.harperdb")
 SOCKET   = f"{HDB_ROOT}/operations-server"
 AUTH     = base64.b64encode(
@@ -33,61 +38,74 @@ def op(payload):
     return int(status.strip() or 0), body
 
 def insert(table, records):
+    """Idempotent upsert (named `insert` for historical reasons)."""
     code, body = op({
-        "operation": "insert",
+        "operation": "upsert",
         "database":  "data",
         "table":     table,
         "records":   records,
     })
     if code != 200:
-        print(f"FAIL insert {table}: HTTP {code}\n{body}", file=sys.stderr)
+        print(f"FAIL upsert {table}: HTTP {code}\n{body}", file=sys.stderr)
         sys.exit(1)
     res = json.loads(body)
-    print(f"  insert {table}: {len(records)} ok "
-          f"(skipped={len(res.get('skipped_hashes', []))})")
-
-# Stable IDs so cross-table refs work
-def uid(label):
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, "advisorhub:" + label))
+    upserted = res.get("upserted_hashes", []) if isinstance(res, dict) else []
+    print(f"  upsert {table}: {len(records)} ({len(upserted)} touched)")
 
 # ─── FIRMS ───
+# Firm.id is derived from the canonical name via firm_id() so seed-loaded
+# rows and crawler-loaded rows merge under one primary key.
+FIRM_NAMES = {
+    "morgan_stanley": "Morgan Stanley Wealth Management",
+    "wells_fargo":    "Wells Fargo Advisors",
+    "wells_finet":    "Wells Fargo Advisors Financial Network (FiNet)",
+    "merrill_lynch":  "Merrill Lynch",
+    "bofa":           "Bank of America",
+    "hennion_walsh":  "Hennion & Walsh",
+    "ubs":            "UBS Wealth Management USA",
+    "stanford_fin":   "Stanford Financial Group",
+    "chelsea_fin":    "Chelsea Financial Services",
+    "jpmorgan":       "J.P. Morgan Advisors",
+}
+def fid(short): return firm_id(FIRM_NAMES[short])
+
 firms = [
-    {"id": uid("firm:morgan_stanley"), "name": "Morgan Stanley Wealth Management",
+    {"id": fid("morgan_stanley"), "name": FIRM_NAMES["morgan_stanley"],
      "channel": "wirehouse", "subChannel": "Morgan_Stanley_Private_Wealth", "hqCity": "New York", "hqState": "NY", "hqCountry": "US"},
-    {"id": uid("firm:wells_fargo"),    "name": "Wells Fargo Advisors",
+    {"id": fid("wells_fargo"),    "name": FIRM_NAMES["wells_fargo"],
      "channel": "wirehouse", "subChannel": "Wells_Fargo_Advisors", "hqCity": "St. Louis", "hqState": "MO", "hqCountry": "US"},
-    {"id": uid("firm:wells_finet"),    "name": "Wells Fargo Advisors Financial Network (FiNet)",
+    {"id": fid("wells_finet"),    "name": FIRM_NAMES["wells_finet"],
      "channel": "independent_bd", "subChannel": "Wells_FiNet", "hqCity": "St. Louis", "hqState": "MO"},
-    {"id": uid("firm:merrill_lynch"),  "name": "Merrill Lynch",
+    {"id": fid("merrill_lynch"),  "name": FIRM_NAMES["merrill_lynch"],
      "channel": "wirehouse", "hqCity": "New York", "hqState": "NY", "hqCountry": "US",
-     "parentFirmId": uid("firm:bofa")},
-    {"id": uid("firm:bofa"),           "name": "Bank of America",
+     "parentFirmId": fid("bofa")},
+    {"id": fid("bofa"),           "name": FIRM_NAMES["bofa"],
      "channel": "bank", "hqCity": "Charlotte", "hqState": "NC"},
-    {"id": uid("firm:hennion_walsh"),  "name": "Hennion & Walsh",
+    {"id": fid("hennion_walsh"),  "name": FIRM_NAMES["hennion_walsh"],
      "channel": "regional_bd", "hqCity": "Parsippany", "hqState": "NJ"},
-    {"id": uid("firm:ubs"),            "name": "UBS Wealth Management USA",
+    {"id": fid("ubs"),            "name": FIRM_NAMES["ubs"],
      "channel": "wirehouse", "hqCity": "Weehawken", "hqState": "NJ"},
-    {"id": uid("firm:stanford_fin"),   "name": "Stanford Financial Group",
+    {"id": fid("stanford_fin"),   "name": FIRM_NAMES["stanford_fin"],
      "channel": "regional_bd", "foundedYear": 1986, "dissolvedYear": 2009,
      "dissolutionReason": "seized",
      "notes": "Seized by federal regulators in 2009; founder Robert Allen Stanford convicted of running an $8 billion Ponzi scheme."},
-    {"id": uid("firm:chelsea_fin"),    "name": "Chelsea Financial Services",
+    {"id": fid("chelsea_fin"),    "name": FIRM_NAMES["chelsea_fin"],
      "channel": "independent_bd"},
-    {"id": uid("firm:jpmorgan"),       "name": "J.P. Morgan Advisors",
+    {"id": fid("jpmorgan"),       "name": FIRM_NAMES["jpmorgan"],
      "channel": "wirehouse", "hqCity": "New York", "hqState": "NY"},
 ]
 insert("Firm", firms)
 
 # ─── BRANCHES (3-level: market → complex → branch for Wells Fargo NYC) ───
 branches = [
-    {"id": uid("branch:wells_nyc_market"), "firmId": uid("firm:wells_fargo"),
+    {"id": uid("branch:wells_nyc_market"), "firmId": fid("wells_fargo"),
      "level": "market", "name": "Wells Fargo New York City market",
      "city": "New York", "state": "NY"},
-    {"id": uid("branch:wells_nyc_complex"), "firmId": uid("firm:wells_fargo"),
+    {"id": uid("branch:wells_nyc_complex"), "firmId": fid("wells_fargo"),
      "parentBranchId": uid("branch:wells_nyc_market"),
      "level": "complex", "name": "Midtown Manhattan complex",
      "city": "New York", "state": "NY"},
-    {"id": uid("branch:wells_gm_building"), "firmId": uid("firm:wells_fargo"),
+    {"id": uid("branch:wells_gm_building"), "firmId": fid("wells_fargo"),
      "parentBranchId": uid("branch:wells_nyc_complex"),
      "level": "branch", "name": "Wells Fargo Advisors – GM Building",
      "buildingName": "GM building",
@@ -136,7 +154,7 @@ insert("BranchAssignment", [
 # ─── TEAMS ───
 insert("Team", [
     {"id": uid("team:taylor_group"), "name": "The Taylor Group",
-     "currentFirmId": uid("firm:wells_fargo"),
+     "currentFirmId": fid("wells_fargo"),
      "currentBranchId": uid("branch:wells_gm_building"),
      "serviceModel": "uhnw"},
 ])
@@ -177,36 +195,36 @@ insert("TeamMetricSnapshot", [
 insert("EmploymentHistory", [
     # Taylor's career
     {"id": uid("eh:cjt:hennion"), "advisorId": uid("advisor:cjt"),
-     "firmId": uid("firm:hennion_walsh"),
+     "firmId": fid("hennion_walsh"),
      "roleTitle": "Financial Advisor", "roleCategory": "lead_advisor",
      "startDate": "2009-01-01", "endDate": "2011-01-01",
      "reasonForLeaving": "voluntary"},
     {"id": uid("eh:cjt:merrill"), "advisorId": uid("advisor:cjt"),
-     "firmId": uid("firm:merrill_lynch"),
+     "firmId": fid("merrill_lynch"),
      "roleTitle": "Financial Advisor", "roleCategory": "lead_advisor",
      "startDate": "2011-01-01", "endDate": "2020-01-01",
      "reasonForLeaving": "voluntary"},
     {"id": uid("eh:cjt:ms"), "advisorId": uid("advisor:cjt"),
-     "firmId": uid("firm:morgan_stanley"),
+     "firmId": fid("morgan_stanley"),
      "roleTitle": "Managing Director", "roleCategory": "lead_advisor",
      "startDate": "2020-01-01", "endDate": "2026-05-01",
      "reasonForLeaving": "voluntary"},
     {"id": uid("eh:cjt:wells"), "advisorId": uid("advisor:cjt"),
-     "firmId": uid("firm:wells_fargo"),
+     "firmId": fid("wells_fargo"),
      "branchId": uid("branch:wells_gm_building"),
      "roleTitle": "Managing Director", "roleCategory": "lead_advisor",
      "startDate": "2026-05-01"},
     # Cairnes's career
     {"id": uid("eh:cairnes:merrill"), "advisorId": uid("advisor:george_cairnes"),
-     "firmId": uid("firm:merrill_lynch"),
+     "firmId": fid("merrill_lynch"),
      "startDate": "2000-01-01", "endDate": "2008-01-01",
      "reasonForLeaving": "voluntary"},
     {"id": uid("eh:cairnes:stanford"), "advisorId": uid("advisor:george_cairnes"),
-     "firmId": uid("firm:stanford_fin"),
+     "firmId": fid("stanford_fin"),
      "startDate": "2008-01-01", "endDate": "2009-02-01",
      "reasonForLeaving": "other"},
     {"id": uid("eh:cairnes:wells"), "advisorId": uid("advisor:george_cairnes"),
-     "firmId": uid("firm:wells_fargo"),
+     "firmId": fid("wells_fargo"),
      "startDate": "2009-01-01", "endDate": "2023-07-01",
      "reasonForLeaving": "terminated_for_cause",
      "signingBonusPromissoryNote": True,
@@ -218,7 +236,7 @@ insert("EmploymentHistory", [
 insert("RegistrationApplication", [
     {"id": uid("regapp:cairnes:chelsea"),
      "advisorId": uid("advisor:george_cairnes"),
-     "firmId": uid("firm:chelsea_fin"),
+     "firmId": fid("chelsea_fin"),
      "appliedDate": "2023-08-01",
      "status": "withdrawn_by_firm",
      "resolvedDate": "2023-11-01"},
@@ -236,8 +254,8 @@ insert("EmployerConcentration", [
 insert("TransitionEvent", [
     {"id": uid("te:taylor_group_2026"),
      "subjectTeamId": uid("team:taylor_group"),
-     "fromFirmId":    uid("firm:morgan_stanley"),
-     "toFirmId":      uid("firm:wells_fargo"),
+     "fromFirmId":    fid("morgan_stanley"),
+     "toFirmId":      fid("wells_fargo"),
      "toBranchId":    uid("branch:wells_gm_building"),
      "moveDate": "2026-05-01", "announcedDate": "2026-05-01",
      "aumMoved": 5_940_000_000.0,
@@ -249,7 +267,7 @@ insert("TransitionEvent", [
 
 # ─── RECRUITING DEAL QUOTE ───
 insert("RecruitingDealQuote", [
-    {"id": uid("deal:wells:taylor"), "firmId": uid("firm:wells_fargo"),
+    {"id": uid("deal:wells:taylor"), "firmId": fid("wells_fargo"),
      "asOfDate": "2026-05-01", "channelTarget": "wirehouse",
      "producerTier": "top_producer",
      "upfrontPctT12": 2.75,
@@ -267,7 +285,7 @@ insert("DisclosureCluster", [
 # ─── DISCLOSURES (5 parallel events) ───
 disclosures = [
     {"id": uid("disc:cairnes:finra_awc"), "advisorId": uid("advisor:george_cairnes"),
-     "firmIdAtTime": uid("firm:wells_fargo"),
+     "firmIdAtTime": fid("wells_fargo"),
      "clusterId": uid("disc_cluster:cairnes_oba"),
      "disclosureType": "regulatory",
      "regulator": "FINRA", "forum": "regulator_AWC",
@@ -283,7 +301,7 @@ disclosures = [
      "dateResolved": "2025-10-01",
      "isFirmLevel": False},
     {"id": uid("disc:cairnes:u5"), "advisorId": uid("advisor:george_cairnes"),
-     "firmIdAtTime": uid("firm:wells_fargo"),
+     "firmIdAtTime": fid("wells_fargo"),
      "clusterId": uid("disc_cluster:cairnes_oba"),
      "disclosureType": "employment_separation",
      "regulator": "firm_internal",
@@ -302,7 +320,7 @@ disclosures = [
      "status": "consented", "admitDeny": "consented_no_admission",
      "dateResolved": "2024-04-01"},
     {"id": uid("disc:cairnes:promissory"), "advisorId": uid("advisor:george_cairnes"),
-     "firmIdAtTime": uid("firm:wells_fargo"),
+     "firmIdAtTime": fid("wells_fargo"),
      "clusterId": uid("disc_cluster:cairnes_oba"),
      "disclosureType": "civil_judicial",
      "regulator": "FINRA", "forum": "FINRA_arbitration",
@@ -312,7 +330,7 @@ disclosures = [
      "awardAmount": 180_000.0,
      "isFirmLevel": False},
     {"id": uid("disc:cairnes:cust_dispute"), "advisorId": uid("advisor:george_cairnes"),
-     "firmIdAtTime": uid("firm:wells_fargo"),
+     "firmIdAtTime": fid("wells_fargo"),
      "clusterId": uid("disc_cluster:cairnes_oba"),
      "disclosureType": "customer_dispute",
      "regulator": "firm_internal",
@@ -351,10 +369,15 @@ insert("OutsideBusinessActivity", [
 ])
 
 # ─── ARTICLES ───
+# Article.id is derived from the URL via article_id() so seed and ingest
+# refer to the same article under one PK.
+URL_TAYLOR  = "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/"
+URL_CAIRNES = "https://www.advisorhub.com/finra-fines-suspends-texas-broker-over-unapproved-real-estate-oba/"
+
 articles = [
-    {"id": uid("article:taylor_2026"), "wpId": 252451,
+    {"id": article_id(URL_TAYLOR), "wpId": 252451,
      "wpPostType": "post",
-     "url": "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/",
+     "url": URL_TAYLOR,
      "slug": "6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc",
      "headline": "$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC",
      "publishedDate": "2026-05-01",
@@ -362,9 +385,9 @@ articles = [
      "authors": ["AdvisorHub Staff", "Mason Braswell"],
      "category": "advisor_moves",
      "wpCategories": [7, 79], "wpTags": [1133, 272, 1477, 978]},
-    {"id": uid("article:cairnes_2025"), "wpId": 239679,
+    {"id": article_id(URL_CAIRNES), "wpId": 239679,
      "wpPostType": "post",
-     "url": "https://www.advisorhub.com/finra-fines-suspends-texas-broker-over-unapproved-real-estate-oba/",
+     "url": URL_CAIRNES,
      "slug": "finra-fines-suspends-texas-broker-over-unapproved-real-estate-oba",
      "headline": "Finra Fines, Suspends Texas Broker Over Unapproved Real Estate OBA",
      "publishedDate": "2025-10-03",
@@ -375,8 +398,8 @@ articles = [
 insert("Article", articles)
 
 # ─── ARTICLE MENTIONS (per-target tables) ───
-A_TAYLOR = uid("article:taylor_2026")
-A_CAIRNES = uid("article:cairnes_2025")
+A_TAYLOR  = article_id(URL_TAYLOR)
+A_CAIRNES = article_id(URL_CAIRNES)
 
 insert("ArticleAdvisorMention", [
     {"id": uid(f"aam:{A_TAYLOR}:{slug}"), "articleId": A_TAYLOR,
@@ -388,11 +411,13 @@ insert("ArticleAdvisorMention", [
 ])
 
 insert("ArticleFirmMention", [
-    {"id": uid(f"afm:{A_TAYLOR}:{f}"), "articleId": A_TAYLOR, "firmId": uid(f"firm:{f}")}
+    {"id": uid(f"afm:{A_TAYLOR}:{fid(f)}"),
+     "articleId": A_TAYLOR, "firmId": fid(f)}
     for f in ["morgan_stanley", "wells_fargo", "wells_finet", "merrill_lynch",
               "hennion_walsh", "ubs", "jpmorgan"]
 ] + [
-    {"id": uid(f"afm:{A_CAIRNES}:{f}"), "articleId": A_CAIRNES, "firmId": uid(f"firm:{f}")}
+    {"id": uid(f"afm:{A_CAIRNES}:{fid(f)}"),
+     "articleId": A_CAIRNES, "firmId": fid(f)}
     for f in ["wells_fargo", "stanford_fin", "merrill_lynch", "chelsea_fin"]
 ])
 
