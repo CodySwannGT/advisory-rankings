@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 /**
- * Deploy the local harper-app/ component to the Fabric cluster.
+ * SANDBOX-ONLY deploy path. Use this when the cluster's ops API on
+ * :9925 is unreachable (this project's sandbox runner — see
+ * fabric-runbook §5). On any normal network — including GitHub-hosted
+ * runners — use the documented `harperdb deploy_component` CLI
+ * directly; that's what `.github/workflows/deploy.yml` does.
  *
  *   - Control-plane call (deploy_component) → Studio :443 proxy with
- *     a session cookie. That's the only Fabric-exposed path: the
- *     cluster's ops API at :9925 is firewalled from datacenter egress
- *     (see fabric-runbook §5), and the cluster's own :443 returns 404
- *     for ops calls. Fabric does not expose long-lived API tokens.
- *   - Data-plane verification (post-restart /Firm/, /Feed) → native
- *     Harper JWT bearer minted via `create_authentication_tokens`.
- *     That's the documented Harper auth flow for REST routes.
+ *     a session cookie. The Studio proxy is the only Fabric-exposed
+ *     path that doesn't require :9925 reachability. Fabric does not
+ *     expose long-lived API tokens (verified by probing /User/tokens,
+ *     /APIKey, /APIToken — all 404).
+ *   - Data-plane verification (post-restart /Feed) → public route, no
+ *     auth needed. Mirror of the wait step in the CI workflow.
  *
- * See scripts/_auth.mjs for the helpers and the rationale.
+ * See scripts/_auth.mjs for the Studio-session helper.
  *
  * Usage:
  *   npm run deploy                     # ./harper-app

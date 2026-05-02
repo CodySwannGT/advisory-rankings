@@ -33,18 +33,24 @@ npm run reset         # nuke ~/.harperdb and rebuild from scratch
 
 ## Deploying
 
-Push-deploy to the Fabric cluster from anywhere — uses Studio's
-`:443` proxy, not the firewalled `:9925`:
+Auto-deploy on merge to `main` runs the documented `harperdb
+deploy_component` CLI from `harper-app/` against the cluster's ops
+API on `:9925`, then gates the merge on the Playwright smoke against
+the live cluster URL — see `.github/workflows/deploy.yml`.
 
-```bash
-npm run deploy        # tar harper-app/ → POST deploy_component → restart
-```
+Two repo secrets, both Harper's documented pattern (no token, no
+deploy key — those don't exist on Fabric):
 
-Reads `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from
-`~/.harper-fabric-credentials` (chmod 600) or env. Auto-deploy on
-merge to `main` runs the same script via
-`.github/workflows/deploy.yml` and gates the merge on the Playwright
-smoke against the live cluster URL.
+| Secret | Source |
+|---|---|
+| `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
+| `HARPER_ADMIN_PASSWORD` | from `~/.harper-fabric-credentials` |
+
+From a residential network you can run the same CLI by hand
+(`docs/fabric-runbook.md` §6 → "From the CLI by hand"). From this
+project's sandbox runner, where `:9925` is firewalled (runbook §5),
+fall back to `npm run deploy`, which detours through Studio's `:443`
+proxy and reads the same two env vars.
 
 For ad-hoc data-plane calls, use the Harper-native JWT:
 

@@ -1,13 +1,19 @@
 name: Deploy to Fabric
 
-# When `main` advances we package up `harper-app/` and push it to the
-# Fabric cluster via Studio's operations proxy.  Same code path that
-# `npm run deploy` uses locally — see scripts/deploy.mjs and the
-# fabric-runbook §6 for why we go through Studio's :443 instead of the
-# cluster's :9925 (firewalled from datacenter egress).
+# When `main` advances we deploy `harper-app/` to the Fabric cluster
+# using the documented `harperdb deploy_component` CLI. The CLI hits
+# the cluster's ops API on :9925 directly — reachable from GitHub-
+# hosted runners; firewalled from this project's sandbox runner
+# (fabric-runbook §5), which is why local dev uses scripts/deploy.mjs
+# (Studio :443 proxy) instead.
 #
-# After deploy, we run the Playwright smoke suite against the live
-# cluster URL with basic-auth.  If any check fails the workflow fails.
+# Auth is the documented Harper pattern: username + password as repo
+# secrets, passed straight to the CLI. There is no API/deploy-token
+# mechanism on Fabric — Harper themselves dogfood username+password
+# in their Studio CI.
+#
+# After deploy, we wait for the Harper service restart to finish,
+# then run the Playwright smoke suite against the live cluster URL.
 
 on:
   push:
@@ -20,9 +26,8 @@ jobs:
     timeout-minutes: 15
 
     env:
-      HARPER_STUDIO_URL: https://fabric.harper.fast
       HARPER_CLUSTER_URL: https://advisory-rankings-de.cody-swann-org.harperfabric.com
-      HARPER_CLUSTER_ID: clu-nzeaqmqh1c5zrp9w
+      HARPER_TARGET_URL: https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/
       HARPER_ADMIN_USERNAME: ${{ secrets.HARPER_ADMIN_USERNAME }}
       HARPER_ADMIN_PASSWORD: ${{ secrets.HARPER_ADMIN_PASSWORD }}
 
@@ -40,12 +45,39 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy harper-app/ to Fabric (deploy_component + restart)
-        run: node scripts/deploy.mjs
+      - name: Deploy harper-app/ via harperdb CLI
+        # `harperdb deploy_component` with no `package=` arg tarballs
+        # the current working directory (skipping node_modules) and
+        # POSTs deploy_component to the target's ops API. Project name
+        # defaults to the cwd basename — pinned explicitly here to
+        # match the existing component on the cluster.
+        working-directory: harper-app
+        run: |
+          npx --yes harperdb@^4.7 deploy_component \
+            target="${HARPER_TARGET_URL}" \
+            username="${HARPER_ADMIN_USERNAME}" \
+            password="${HARPER_ADMIN_PASSWORD}" \
+            project=advisor-app \
+            restart=true \
+            replicated=true
+
+      - name: Wait for cluster to come back up after restart
+        # restart=true triggers an async Harper service restart, so
+        # the CLI returns before /Feed is back. Poll for up to 60s.
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS -m 5 "${HARPER_CLUSTER_URL}/Feed" -H 'Accept: application/json' >/dev/null; then
+              echo "/Feed back up after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::/Feed never came back up after deploy" >&2
+          curl -sS -m 5 "${HARPER_CLUSTER_URL}/Feed" || true
+          exit 1
 
       - name: Install Playwright Chromium
-        run: |
-          npx --yes playwright@1.56.1 install --with-deps chromium
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
 
       - name: Smoke-test the deployed UI
         env:

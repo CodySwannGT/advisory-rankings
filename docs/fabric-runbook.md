@@ -229,7 +229,7 @@ What this means in practice:
 
 | Tool | Port it wants | Works from sandbox? | Workaround |
 |---|---|---|---|
-| `harperdb deploy_component` CLI | 9925 | ❌ | Use Fabric Studio UI (§6) |
+| `harperdb deploy_component` CLI | 9925 | ❌ | From CI runners and residential networks: works directly (§6 → CI). From sandbox: `npm run deploy` (§6 → push-deploy via Studio proxy). |
 | `harper-app/seed.py` (operations API for `upsert`) | 9925 | ❌ | `scripts/seed_via_rest.py` (§7) |
 | `harper-app/verify.py` (operations API for `sql`) | 9925 | ❌ | `scripts/verify_via_rest.py` (§7) |
 | Any Studio UI page that triggers admin ops (e.g. the Finish-Setup wizard's direct-connect login probe) | 9925 | ❌ | Drive Studio from a non-datacenter network |
@@ -390,21 +390,31 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `scripts/deploy.mjs` | control + data | session cookie for `deploy_component`, then JWT for the post-restart `/Firm/`,`/Feed` checks |
-| `scripts/get_token.mjs` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
-| `tests/web_smoke.mjs` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
+| `.github/workflows/deploy.yml` (CI) | control | `harperdb deploy_component` CLI hits `:9925` directly with `username=` / `password=` — Harper's documented pattern. No JWT step; the smoke test runs against the public `/Feed` route anonymously. |
+| `scripts/deploy.mjs` (sandbox) | control | session cookie for `deploy_component` via Studio's `:443` proxy. Used only when `:9925` is unreachable. |
+| `scripts/get_token.mjs` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` against admin-only routes |
+| `tests/web_smoke.mjs` | data | anonymous by default (the public `/Feed` works without auth); opts into a JWT bearer if `AUTH=jwt` is set |
 
-CI gets the same: `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`
-are repo secrets, the workflow mints a fresh JWT per run, and the
-30-day refresh token isn't stored anywhere.
+CI gets just two repo secrets, both literally `username` and
+`password`: `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`.
+Same values that live in `~/.harper-fabric-credentials` for local
+use. There is no token-based deploy mechanism on Fabric (verified —
+Harper themselves dogfood username+password in their Studio CI), so
+trying to invent one would diverge from the documented pattern with
+no upside.
 
-### Push-deploy from anywhere (`npm run deploy` → Studio proxy)
+### Push-deploy from the sandbox (`npm run deploy` → Studio proxy)
 
-`scripts/deploy.mjs` packages `harper-app/` into a tarball, base64-
-encodes it, logs into Studio over `:443`, and POSTs `deploy_component`
-through Studio's operations proxy. Same effect as the CLI below, but
-works from datacenter networks where `:9925` is firewalled (this
-sandbox, every cloud CI runner I've tried).
+`scripts/deploy.mjs` is the **fallback path for this project's
+sandbox runner only**, where `:9925` is firewalled (§5). It packages
+`harper-app/` into a tarball, base64-encodes it, logs into Studio
+over `:443`, and POSTs `deploy_component` through Studio's operations
+proxy.
+
+For everything else — local dev on a residential network, GitHub-
+hosted CI runners — use the documented `harperdb deploy_component`
+CLI directly (see "Auto-deploy on merge" below). The Studio detour
+only exists because :9925 is unreachable from this sandbox.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from
@@ -453,41 +463,98 @@ fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
 
 ### Auto-deploy on merge to `main` (CI)
 
-`.github/workflows/deploy.yml` runs `npm run deploy` followed by the
+`.github/workflows/deploy.yml` runs the documented
+`harperdb deploy_component` CLI from inside `harper-app/`, then waits
+for the cluster to come back up after the restart, then runs the
 Playwright smoke (`tests/web_smoke.mjs`) against the live cluster
-URL. Required repo secrets:
+URL.
+
+```yaml
+- working-directory: harper-app
+  run: |
+    npx --yes harperdb@^4.7 deploy_component \
+      target="${HARPER_TARGET_URL}" \
+      username="${HARPER_ADMIN_USERNAME}" \
+      password="${HARPER_ADMIN_PASSWORD}" \
+      project=advisor-app \
+      restart=true \
+      replicated=true
+```
+
+With no `package=` argument the CLI tarballs the current working
+directory (skipping `node_modules`) and POSTs `deploy_component` to
+the target's ops API on `:9925` — same wire shape as
+`scripts/deploy.mjs`, but direct to the cluster instead of detoured
+through Studio. GitHub-hosted runners can reach `:9925`; this
+project's sandbox runner cannot, which is the only reason
+`scripts/deploy.mjs` exists.
+
+Required repo secrets — exactly what Harper documents and what
+Harper's own Studio CI uses:
 
 | Secret | Source |
 |---|---|
 | `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
 | `HARPER_ADMIN_PASSWORD` | from `~/.harper-fabric-credentials` |
 
-If the smoke fails, CI uploads `tests/screenshots/` as a
-build artifact. The workflow also runs on `workflow_dispatch` so
-you can re-deploy without a commit.
+There is no token mechanism for Fabric deploys (no API key, no
+deploy token, no bearer): verified by probing `/User/tokens`,
+`/APIKey`, `/APIToken`, `/Token`, `/AccessToken` — all 404 on Studio
+— and by reading the `harperdb` CLI source, which only consumes
+`username=` / `password=`.
 
-### From the CLI (only works on a network with :9925 access)
+If the smoke fails, CI uploads `tests/screenshots/` as a build
+artifact. The workflow also runs on `workflow_dispatch` so you can
+re-deploy without a commit.
 
-If you're on a residential network that can reach `:9925` directly,
-the upstream Harper CLI still works:
+### From the CLI by hand (residential network)
+
+Same invocation as CI, runnable from any machine that can reach
+`:9925` directly:
+
+```bash
+cd harper-app
+./node_modules/.bin/harperdb deploy_component \
+  target=https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/ \
+  username=cody.swann@gmail.com \
+  password=<HARPER_ADMIN_PASSWORD> \
+  project=advisor-app \
+  restart=true \
+  replicated=true
+```
+
+To pull-deploy from git instead of push-deploying the local cwd
+(useful when iterating on the `fabric-deploy` branch directly), add
+a `package=` argument with the git URL. The cluster's deploy key
+(§4) handles SSH:
 
 ```bash
 ./node_modules/.bin/harperdb deploy_component \
-  project=advisor-app \
   package='git@advisory-rankings.github.com:CodySwannGT/advisory-rankings.git#fabric-deploy' \
   target=https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/ \
   username=cody.swann@gmail.com \
   password=<HARPER_ADMIN_PASSWORD> \
+  project=advisor-app \
   restart=true \
   replicated=true
 ```
 
 ### What we tried first that did not work
 
-- **Direct `:9925` ops API** from this sandbox / GH Actions runners —
-  the cluster firewall returns no response (`curl` exits with code
-  000). Use `npm run deploy` (Studio proxy) or operate from a
-  residential network. See §5.
+- **Direct `:9925` ops API from this sandbox runner** — the
+  datacenter egress firewall returns no response (`curl` exits with
+  code 000). Use `npm run deploy` (Studio proxy) from the sandbox.
+  GitHub-hosted runners and residential networks reach `:9925` fine
+  and use the documented `harperdb deploy_component` CLI directly.
+  See §5.
+- **Fabric API / deploy tokens** — none exist. Studio exposes no
+  `/User/tokens`, `/APIKey`, `/APIToken`, `/Token`, or `/AccessToken`
+  routes (all 404), and the `harperdb` CLI only consumes
+  `username=` / `password=`. `create_authentication_tokens` is a
+  data-plane concern (REST bearer JWTs) that the deploy CLI does not
+  consume. The documented Harper pattern is plain
+  username + password as repo secrets, which is what
+  `.github/workflows/deploy.yml` uses.
 - **`@harperdb/static` published to npm** — referenced by some web
   guides but not actually published. Use the bundled `static`
   extension that ships inside the `harperdb` package (already
