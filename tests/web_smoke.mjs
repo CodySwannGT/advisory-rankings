@@ -35,14 +35,14 @@ const BASE = process.env.BASE_URL || 'http://127.0.0.1:9926';
 const SHOTS = resolve('tests/screenshots');
 const isLocalDev = /^http:\/\/(127\.0\.0\.1|localhost)/.test(BASE);
 
-// Auth strategy:
-//   - Local dev_server has no auth.
-//   - Prod cluster :443 takes a native Harper JWT bearer (the
-//     documented auth path). Mint via create_authentication_tokens.
-//     We could also send basic auth — Harper accepts both — but
-//     bearer matches what every other script in this repo does.
+// Auth strategy: hit the deployed cluster *as a real anonymous
+// visitor would* — no Authorization header. The point of this UI
+// is a public-facing news feed; if the routes 401, the user sees
+// a sad error card. The custom resources override `allowRead` to
+// allow anonymous reads (see resources.js). Set AUTH=jwt to opt
+// into a JWT bearer — useful when probing admin-only routes.
 let extraHeaders = undefined;
-if (!isLocalDev) {
+if (!isLocalDev && process.env.AUTH === 'jwt') {
 	const creds = loadCreds();
 	if (creds.username && creds.password) {
 		const { operation_token } = await createAuthTokens(creds);
@@ -67,7 +67,7 @@ async function main() {
 		ignoreHTTPSErrors: true,
 		extraHTTPHeaders: extraHeaders,
 	});
-	console.log('▶ smoke against', BASE, extraHeaders ? '(JWT bearer)' : '(no auth)');
+	console.log('▶ smoke against', BASE, extraHeaders ? '(JWT bearer)' : '(anonymous, as a real visitor)');
 	const page = await context.newPage();
 
 	const consoleErrors = [];

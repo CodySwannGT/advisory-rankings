@@ -319,7 +319,15 @@ function feedItem(article, db) {
 
 // ─── /Feed ────────────────────────────────────────────────────────
 
+// All five resources override `allowRead` to return true so the
+// public Facebook-style UI doesn't make the visitor log in just to
+// see a published article feed. The data we expose here is sourced
+// from public AdvisorHub coverage; nothing private leaves the
+// cluster through these routes. Mutating ops (PUT/DELETE/POST) on
+// the underlying tables still require auth — that's enforced by
+// Harper's table-level allowUpdate/allowCreate defaults.
 export class Feed extends Resource {
+	allowRead() { return true; }
 	async get() {
 		const db = await loadAll();
 		const items = db.articles
@@ -337,6 +345,7 @@ export class Feed extends Resource {
 // ─── /ArticleView/<id> ────────────────────────────────────────────
 
 export class ArticleView extends Resource {
+	allowRead() { return true; }
 	async get(target) {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing article id' };
@@ -365,6 +374,7 @@ export class ArticleView extends Resource {
 // ─── /FirmProfile/<id> ────────────────────────────────────────────
 
 export class FirmProfile extends Resource {
+	allowRead() { return true; }
 	async get(target) {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing firm id' };
@@ -501,6 +511,7 @@ function articleStub(a) {
 // ─── /AdvisorProfile/<id> ─────────────────────────────────────────
 
 export class AdvisorProfile extends Resource {
+	allowRead() { return true; }
 	async get(target) {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing advisor id' };
@@ -580,6 +591,7 @@ export class AdvisorProfile extends Resource {
 // ─── /TeamProfile/<id> ────────────────────────────────────────────
 
 export class TeamProfile extends Resource {
+	allowRead() { return true; }
 	async get(target) {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing team id' };
@@ -639,5 +651,47 @@ export class TeamProfile extends Resource {
 			transitions,
 			articles,
 		};
+	}
+}
+
+// ─── public directory endpoints ───────────────────────────────────
+// The /firms.html, /advisors.html, /teams.html pages used to call
+// the auto-export `/Firm/`, `/Advisor/`, `/Team/` routes directly.
+// Those still require auth (the auto-export endpoints inherit Harper's
+// table-level allowRead, which expects an authenticated user). The
+// resources below mirror the same payload but are explicitly public
+// — same data, friendlier for the unauthenticated visitor that the
+// feed UI is built for.
+
+export class PublicFirms extends Resource {
+	allowRead() { return true; }
+	async get() {
+		const rows = await all(tables.Firm);
+		rows.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+		return rows;
+	}
+}
+
+export class PublicAdvisors extends Resource {
+	allowRead() { return true; }
+	async get() {
+		const rows = await all(tables.Advisor);
+		rows.sort((a, b) => (a.lastName || a.legalName || '').localeCompare(b.lastName || b.legalName || ''));
+		return rows;
+	}
+}
+
+export class PublicTeams extends Resource {
+	allowRead() { return true; }
+	async get() {
+		const [teams, firms] = await Promise.all([all(tables.Team), all(tables.Firm)]);
+		const byFirm = new Map(firms.map((f) => [f.id, f]));
+		teams.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+		// Inline the current firm's name so the directory page doesn't
+		// need a second auth'd /Firm/ fetch to render the subtitle.
+		return teams.map((t) => ({
+			...t,
+			currentFirmName: t.currentFirmId ? byFirm.get(t.currentFirmId)?.name ?? null : null,
+		}));
 	}
 }

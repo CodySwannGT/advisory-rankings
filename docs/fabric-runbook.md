@@ -311,6 +311,24 @@ runtime deps); avoid adding any unless absolutely necessary, and
 specifically avoid `harperdb` itself since it's already on the
 cluster.
 
+### Public vs. authenticated routes
+
+The point of the Facebook-style UI is a public-facing news feed, so
+the data-plane routes that back it return 200 to anonymous visitors.
+Everything else still requires auth.
+
+| Route | Anonymous | Why |
+|---|---|---|
+| `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
+| `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
+| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
+| `PUT/POST/DELETE` anywhere | ❌ 401 | Same. The custom resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. |
+
+If a future change needs to lock the public routes back down, drop
+the `allowRead() { return true; }` overrides — they're flagged in a
+single comment block at the top of `Feed` in `resources.js`.
+
 ### Auth model (data plane vs. Fabric control plane)
 
 Harper has two distinct auth surfaces and we use both — neither is a

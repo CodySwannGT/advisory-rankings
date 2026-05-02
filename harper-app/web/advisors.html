@@ -14,8 +14,7 @@
 			build(layout) {
 				const center = el('section', { class: 'center', style: 'grid-column: 1 / -1;' });
 				layout.appendChild(center);
-				api('/Advisor/').then((rows) => {
-					rows.sort((a, b) => (a.lastName || a.legalName || '').localeCompare(b.lastName || b.legalName || ''));
+				api('/PublicAdvisors').then((rows) => {
 					center.appendChild(el('div', { class: 'card' },
 						el('div', { class: 'card-body' },
 							el('h2', { class: 'card-title' }, `All advisors (${rows.length})`),

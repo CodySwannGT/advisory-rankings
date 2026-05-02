@@ -152,10 +152,11 @@ async function handle(req, res) {
 	const url = new URL(req.url, 'http://x');
 	const p = url.pathname;
 	try {
-		// Custom JS resources.
-		if (p === '/Feed') {
+		// Custom JS resources without an id segment.
+		const noArgMatch = p.match(/^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams)$/);
+		if (noArgMatch) {
 			const r = await loadResources();
-			return sendJson(res, 200, await new r.Feed().get());
+			return sendJson(res, 200, await new r[noArgMatch[1]]().get());
 		}
 		const profileMatch = p.match(/^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile)\/(.+)$/);
 		if (profileMatch) {

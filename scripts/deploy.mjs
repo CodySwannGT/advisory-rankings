@@ -21,7 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadCreds, StudioSession, createAuthTokens, bearerHeaders } from './_auth.mjs';
+import { loadCreds, StudioSession } from './_auth.mjs';
 
 const PROJECT = process.env.PROJECT || 'advisor-app';
 const DIR = process.env.DIR || 'harper-app';
@@ -83,30 +83,25 @@ async function main() {
 		return;
 	}
 
-	// Mint a bearer JWT for the data-plane checks. This is the
-	// documented Harper auth path; cleaner than basic-auth here.
-	console.log('▶ create_authentication_tokens (Harper JWT)');
-	const { operation_token } = await createAuthTokens(creds);
-	const auth = bearerHeaders(operation_token);
-
-	console.log(`▶ waiting for ${creds.clusterUrl}/Firm/ to respond …`);
+	// Verify as an anonymous visitor would: /Feed is public (the
+	// resource overrides allowRead). If a future change locks /Feed
+	// down again, this catches it. For admin-only routes use a JWT
+	// minted with `npm run token`.
+	console.log(`▶ waiting for ${creds.clusterUrl}/Feed to respond …`);
+	let feed;
 	for (let i = 0; i < 30; i++) {
 		await new Promise((r) => setTimeout(r, 2000));
-		const r = await fetch(`${creds.clusterUrl}/Firm/`, { headers: auth }).catch(() => null);
-		if (r && r.ok) { console.log(`  back up after ${i * 2 + 2}s`); break; }
+		feed = await fetch(`${creds.clusterUrl}/Feed`, { headers: { Accept: 'application/json' } }).catch(() => null);
+		if (feed && feed.ok) { console.log(`  back up after ${i * 2 + 2}s`); break; }
 		process.stdout.write('.');
 	}
 	console.log();
-
-	const feed = await fetch(`${creds.clusterUrl}/Feed`, { headers: auth });
-	console.log(`▶ ${creds.clusterUrl}/Feed → HTTP ${feed.status}`);
-	if (feed.ok) {
-		const j = await feed.json();
-		console.log(`  count=${j.count}, items=${j.items?.length ?? 0}`);
-	} else {
-		console.log('  body:', (await feed.text()).slice(0, 300));
+	if (!feed || !feed.ok) {
+		console.log('  /Feed never came back up:', feed?.status, (await feed?.text())?.slice(0, 300));
 		process.exit(1);
 	}
+	const j = await feed.json();
+	console.log(`▶ ${creds.clusterUrl}/Feed → HTTP 200, count=${j.count}, items=${j.items?.length ?? 0}`);
 }
 
 main().catch((err) => { console.error(err.stack || err.message || err); process.exit(1); });
