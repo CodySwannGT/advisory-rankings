@@ -187,6 +187,32 @@ scripts/
   extract_fields.py          regex-based field extractor
   preview_feed.mjs           offline render of /Feed et al via the
                              ops-API Unix socket (sandbox-friendly)
+  fetch_brokercheck.py       polite, idempotent FINRA BrokerCheck
+                             scraper (modes: --crd, --firm-id,
+                             --enrich, --firm-roster, --search-name,
+                             --from-fixture). See
+                             docs/brokercheck-spike.md for the
+                             rationale and the ToU constraints.
+  _brokercheck.py            HTTP client (rate-limited, exponential
+                             backoff, jitter) for
+                             api.brokercheck.finra.org.
+  _brokercheck_parse.py      pure parser: BrokerCheck JSON →
+                             our schema's record shapes. Unit-tested
+                             against fixtures.
+  _brokercheck_load.py       resolver + REST PUT-by-id loader.
+                             Idempotent on natural keys.
+
+tests/
+  web_smoke.mjs              end-to-end Playwright smoke (feed,
+                             firm, advisor, team, article, login,
+                             mobile drawer).
+  brokercheck_web_smoke.mjs  targeted Playwright smoke for the
+                             BrokerCheck UI (CRD badge, attribution
+                             footer, ToU link, regulatory record
+                             card). Runs against the deployed cluster.
+  brokercheck_parse_test.py  parser + loader idempotency tests.
+                             Pure-Python, no network.
+  parity_compare.mjs         deployed-cluster vs local-dev parity.
 ```
 
 ## What's in the database after `npm run seed`

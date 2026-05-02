@@ -102,6 +102,11 @@ function firmShort(name) {
 // runs on.  If the dataset grows, switch the hot paths (Feed, profiles)
 // to indexed `search({conditions:[...]})` queries.
 async function loadAll() {
+	// `safeAll` guards tables that may not exist yet at runtime — we
+	// added `BrokerCheckSnapshot` to schema.graphql but the running
+	// component will throw a TypeError on `tables.BrokerCheckSnapshot`
+	// until it has been redeployed-and-reloaded.
+	const safeAll = async (t) => (t ? all(t) : []);
 	const [
 		articles,
 		advisors, firms, teams, branches,
@@ -112,6 +117,7 @@ async function loadAll() {
 		regApps, branchAssignments,
 		mAdv, mFirm, mTeam, mTE, mDisc,
 		fieldAssertions,
+		bcSnaps,
 	] = await Promise.all([
 		all(tables.Article),
 		all(tables.Advisor),
@@ -136,6 +142,7 @@ async function loadAll() {
 		all(tables.ArticleTransitionEventMention),
 		all(tables.ArticleDisclosureMention),
 		all(tables.FieldAssertion),
+		safeAll(tables.BrokerCheckSnapshot),
 	]);
 	return {
 		articles, advisors, firms, teams, branches,
@@ -146,6 +153,7 @@ async function loadAll() {
 		regApps, branchAssignments,
 		mAdv, mFirm, mTeam, mTE, mDisc,
 		fieldAssertions,
+		bcSnaps,
 		byAdvisor: indexBy(advisors, 'id'),
 		byFirm: indexBy(firms, 'id'),
 		byTeam: indexBy(teams, 'id'),
@@ -155,6 +163,8 @@ async function loadAll() {
 		byDeal: indexBy(deals, 'id'),
 		byDisclosure: indexBy(disclosures, 'id'),
 		byCluster: indexBy(clusters, 'id'),
+		bcSnapByAdvisor: indexBy((bcSnaps || []).filter((s) => s.subjectKind === 'individual'), 'subjectAdvisorId'),
+		bcSnapByFirm: indexBy((bcSnaps || []).filter((s) => s.subjectKind === 'firm'), 'subjectFirmId'),
 	};
 }
 
@@ -429,6 +439,8 @@ export class FirmProfile extends Resource {
 			.filter((d) => d.firmIdAtTime === id)
 			.map((d) => disclosureRow(d, db));
 
+		const bcSnap = db.bcSnapByFirm.get(id) || null;
+
 		return {
 			firm: {
 				...firm,
@@ -442,6 +454,14 @@ export class FirmProfile extends Resource {
 			branches: branchesHere,
 			disclosuresAtThisFirm: firmDisclosures,
 			articles,
+			brokerCheckSnapshot: bcSnap && {
+				fetchedAt: bcSnap.fetchedAt,
+				subjectCrd: bcSnap.subjectCrd,
+				bcScope: bcSnap.bcScope,
+				iaScope: bcSnap.iaScope,
+				disclosureCount: bcSnap.disclosureCount,
+				registeredStateCount: bcSnap.registeredStateCount,
+			},
 		};
 	}
 }
@@ -574,6 +594,8 @@ export class AdvisorProfile extends Resource {
 			.filter((t) => t.subjectAdvisorId === id)
 			.map((t) => transitionRow(t, db));
 
+		const bcSnap = db.bcSnapByAdvisor.get(id) || null;
+
 		return {
 			advisor,
 			displayName: advisorDisplayName(advisor),
@@ -584,6 +606,15 @@ export class AdvisorProfile extends Resource {
 			registrationApplications: regAppsHere,
 			transitions,
 			articles,
+			brokerCheckSnapshot: bcSnap && {
+				fetchedAt: bcSnap.fetchedAt,
+				subjectCrd: bcSnap.subjectCrd,
+				bcScope: bcSnap.bcScope,
+				iaScope: bcSnap.iaScope,
+				disclosureCount: bcSnap.disclosureCount,
+				employmentCount: bcSnap.employmentCount,
+				examCount: bcSnap.examCount,
+			},
 		};
 	}
 }

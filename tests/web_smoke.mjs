@@ -190,31 +190,56 @@ async function main() {
 	const advTitle = await page.locator('.profile-head h1').textContent();
 	/Cairnes/.test(advTitle) ? ok(`advisor.html: header "${advTitle.trim()}"`) : fail(`advisor.html: header "${advTitle}"`);
 
-	// Career timeline with 3 firms.
+	// Career timeline. After the BrokerCheck enrichment lands, this is
+	// 5 firms (Merrill → Stanford → Wells Fargo Investments → Wells
+	// Fargo Clearing → Chelsea); pre-enrichment it was 3. Accept ≥ 3.
 	const steps = await page.locator('.timeline .step').count();
 	steps >= 3
 		? ok(`advisor.html: career timeline has ${steps} steps`)
 		: fail(`advisor.html: career timeline only ${steps} steps`);
 
-	// At least one disclosure rendered with sanction pills.
+	// At least one disclosure rendered with sanction pills. BrokerCheck
+	// adds 1 over the AdvisorHub-extracted set (FINRA AWC + Texas state
+	// + U5 + 3 customer disputes = 6), so ≥ 5 is the floor.
 	const advDiscCount = await page.locator('.event-card.disclosure').count();
 	advDiscCount >= 5
 		? ok(`advisor.html: ${advDiscCount} disclosure events`)
-		: fail(`advisor.html: only ${advDiscCount} disclosure events (expected 5)`);
+		: fail(`advisor.html: only ${advDiscCount} disclosure events (expected ≥ 5)`);
 
 	const advSanctionCount = await page.locator('.sanction-pill').count();
 	advSanctionCount >= 3
-		? ok(`advisor.html: ${advSanctionCount} sanction pills (3 expected: fine, suspension, TX bar)`)
+		? ok(`advisor.html: ${advSanctionCount} sanction pills`)
 		: fail(`advisor.html: only ${advSanctionCount} sanction pills`);
 
-	// Status tag is "suspended" (danger).
-	const statusTag = await page.locator('.profile-head .tag.danger').first().textContent().catch(() => '');
-	// Case-insensitive: the humanizer in bc41466 capitalizes enum
-	// labels, so "suspended" now renders as "Suspended". The semantic
-	// check is "the danger tag contains the suspended status."
-	/suspended/i.test(statusTag)
-		? ok('advisor.html: career status "suspended" flagged red')
+	// Status tag (danger). After BrokerCheck enrichment Cairnes shows
+	// "Withdrawn" (registration lapsed) rather than "Suspended" (which
+	// is what AdvisorHub reported at article time). Accept either.
+	const statusTag = await page.locator('.profile-head .tag.danger, .profile-head .tag.warn').first().textContent().catch(() => '');
+	/suspended|withdrawn/i.test(statusTag)
+		? ok(`advisor.html: career status flagged ("${statusTag.trim()}")`)
 		: fail(`advisor.html: status tag was "${statusTag}"`);
+
+	// FINRA CRD badge surfaced in the profile-head tags.
+	const crdBadge = await page.locator('.profile-head .tag').filter({ hasText: /CRD/i }).count();
+	crdBadge >= 1
+		? ok(`advisor.html: FINRA CRD badge present`)
+		: fail(`advisor.html: missing CRD badge in profile head`);
+
+	// BrokerCheck attribution footer — required by the BrokerCheck ToU
+	// whenever we surface regulator-of-record facts. The career and
+	// disclosures sections each render one.
+	const sourceAttrs = await page.locator('.ab-source-attr').count();
+	sourceAttrs >= 1
+		? ok(`advisor.html: ${sourceAttrs} BrokerCheck attribution footer(s)`)
+		: fail(`advisor.html: missing BrokerCheck attribution footer (ToU requirement)`);
+	const sourceAttrText = await page.locator('.ab-source-attr').first().textContent().catch(() => '');
+	/FINRA BrokerCheck/i.test(sourceAttrText) && /as of/i.test(sourceAttrText)
+		? ok('advisor.html: attribution names FINRA BrokerCheck and shows "as of <date>"')
+		: fail(`advisor.html: attribution malformed: "${sourceAttrText.slice(0, 120)}"`);
+	const tosLink = await page.locator('.ab-source-attr a[href*="brokercheck.finra.org/terms"]').count();
+	tosLink >= 1
+		? ok('advisor.html: attribution links to BrokerCheck ToU (required by ToU)')
+		: fail('advisor.html: attribution missing ToU link');
 
 	await shot('03-advisor-cairnes');
 	flushPageErrors('advisor.html');

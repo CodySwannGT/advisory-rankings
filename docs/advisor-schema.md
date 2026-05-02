@@ -303,6 +303,8 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `u5_filed?` | bool | |
 | `u5_filing_date?` | date | |
 | `termination_disclosure_id?` | id | → `Disclosure` |
+| `source_type?` | enum (`brokercheck`, `advisorhub_article`, `form_adv`, ...) | populated by the BrokerCheck loader (`scripts/fetch_brokercheck.py`); `null` for hand-seeded rows |
+| `source_ref?` | str | when `source_type=brokercheck`, points at the `BrokerCheckSnapshot.id` that wrote this row |
 
 ### 4.8 `RegistrationApplication`
 
@@ -418,7 +420,10 @@ Time-series version of the metric fields on `Team`. One row per assertion.
 | `settlement_amount?` | decimal | |
 | `award_amount?` | decimal | |
 | `is_firm_level` | bool | |
+| `docket_number?` | str | FINRA AWC docket (`2023079356701`), court docket, etc. — used as a stable disambiguator when keying disclosures |
 | `cross_disclosure_ids?` | [id] | Links parallel events (FINRA AWC ↔ state board order ↔ U5 ↔ pending customer dispute) |
+| `source_type?` | enum (`brokercheck`, `advisorhub_article`, ...) | provenance — see §6.1 |
+| `source_ref?` | str | snapshot or article ID — see §6.1 |
 
 ### 4.15 `Sanction`
 
@@ -527,6 +532,30 @@ Mirror of the AdvisorHub wp-json record.
 | `mentioned_team_ids` | [id] | |
 | `mentioned_firm_ids` | [id] | |
 | `mentioned_disclosure_ids` | [id] | |
+
+### 4.21a `BrokerCheckSnapshot` (provenance, FINRA-side)
+
+One row per CRD per fetch from `api.brokercheck.finra.org`. Anchors
+the per-section "Source: FINRA BrokerCheck (as of <date>)" footer
+the BrokerCheck ToU requires, and lets the scraper decide whether to
+re-fetch. Idempotent on `id = uuid5(NS, "bcsnap:<kind>:<crd>")` so
+re-fetching the same CRD updates the row in place.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | id | deterministic from `(subject_kind, subject_crd)` |
+| `subject_kind` | enum (`individual`, `firm`) | |
+| `subject_crd` | str | FINRA CRD (individual) or `firmId` (firm) |
+| `subject_advisor_id?` | id | resolved when `subject_kind=individual` |
+| `subject_firm_id?` | id | resolved when `subject_kind=firm` |
+| `fetched_at` | datetime | drives the UI "as of" line |
+| `bc_scope` / `ia_scope` | str | `ACTIVE` / `InActive` / `NotInScope` |
+| `disclosure_count` | int | |
+| `employment_count` | int | |
+| `exam_count` | int | |
+| `registered_state_count` | int | |
+| `raw_hash` | str | sha256 of the normalized response — change detection |
+| `raw_json` | text | the full BrokerCheck response, JSON-encoded |
 
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 

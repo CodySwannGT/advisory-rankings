@@ -92,6 +92,44 @@ export function Icon({ char, attrs = {} } = {}) {
 	return el('span', { ...attrs, class: cls }, String(char ?? ''));
 }
 
+// ─── SourceAttribution ────────────────────────────────────────
+// Footer line crediting an external data source. Appears under
+// any section whose facts came from outside our own extraction
+// (e.g. FINRA BrokerCheck — which has a hard ToU requirement that
+// publishers identify the source, link to the ToU, and disclose
+// when the data was compiled).
+//
+// Usage:
+//   SourceAttribution({
+//     source: 'FINRA BrokerCheck',
+//     url: 'https://brokercheck.finra.org',
+//     termsUrl: 'https://brokercheck.finra.org/terms',
+//     fetchedAt: '2026-05-02T12:30:00Z',
+//   })
+//
+// Renders as:
+//   Source: FINRA BrokerCheck (as of May 2, 2026). Terms of use.
+export function SourceAttribution({ source, url, termsUrl, fetchedAt, attrs = {} } = {}) {
+	const cls = `ab-source-attr ${attrs.class || ''}`.trim();
+	const children = ['Source: '];
+	if (url) {
+		children.push(el('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, source || ''));
+	} else {
+		children.push(source || '');
+	}
+	if (fetchedAt) {
+		const d = new Date(fetchedAt);
+		const asOf = isNaN(d) ? null : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+		if (asOf) children.push(' (as of ' + asOf + ')');
+	}
+	children.push('. ');
+	if (termsUrl) {
+		children.push(el('a', { href: termsUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Terms of use'));
+		children.push('.');
+	}
+	return el('div', { ...attrs, class: cls }, ...children);
+}
+
 // ─── Internal helper ──────────────────────────────────────────
 function arrify(x) {
 	if (x == null) return [];

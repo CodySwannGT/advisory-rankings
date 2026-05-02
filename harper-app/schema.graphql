@@ -162,6 +162,8 @@ type EmploymentHistory @table @export {
   u5Filed: Boolean
   u5FilingDate: Date
   terminationDisclosureId: ID
+  sourceType: String @indexed       # brokercheck, advisorhub_article, form_adv, ...
+  sourceRef: String                 # CRD-keyed snapshot id, article id, etc.
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -286,6 +288,9 @@ type Disclosure @table @export {
   settlementAmount: Float
   awardAmount: Float
   isFirmLevel: Boolean
+  docketNumber: String              # FINRA AWC docket, court docket, etc.
+  sourceType: String @indexed       # brokercheck, advisorhub_article, form_adv, ...
+  sourceRef: String                 # CRD-keyed snapshot id, article id, etc.
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -417,6 +422,30 @@ type ArticleDisclosureMention @table @export {
   id: ID @primaryKey
   articleId: ID! @indexed
   disclosureId: ID! @indexed
+}
+
+# BrokerCheck snapshots: one row per (CRD, fetch) so the UI can show
+# "as of <date>" per the FINRA BrokerCheck Terms of Use, and the
+# scraper can decide whether to re-fetch. Idempotent on `id`, which
+# is derived as uuid5(NS, "bcsnap:<kind>:<crd>") — re-fetching the
+# same CRD updates `fetchedAt` and `rawHash` rather than inserting.
+type BrokerCheckSnapshot @table @export {
+  id: ID @primaryKey
+  subjectKind: String! @indexed       # individual | firm
+  subjectCrd: String! @indexed        # FINRA CRD (or firmId for firms)
+  subjectAdvisorId: ID @indexed       # resolved when subjectKind=individual
+  subjectFirmId: ID @indexed          # resolved when subjectKind=firm
+  fetchedAt: Date! @indexed
+  bcScope: String                     # ACTIVE / InActive / NotInScope
+  iaScope: String
+  disclosureCount: Int
+  employmentCount: Int
+  examCount: Int
+  registeredStateCount: Int
+  rawHash: String                     # sha256 of the normalized response
+  rawJson: String                     # the raw response, JSON-encoded
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
 }
 
 # Append-only provenance log: one row per fact asserted by an article.

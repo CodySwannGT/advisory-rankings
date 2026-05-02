@@ -1,6 +1,32 @@
 # BrokerCheck as a complementary source — feasibility spike
 
-Status: research, 2026-05-02. Not yet implemented.
+Status: **shipped 2026-05-02** (advisory-rankings-dev). Spike →
+implementation in one day. Captured below for historical context;
+operational details have moved to §7.
+
+This started as a feasibility study; the recommendation is now
+implemented end-to-end:
+
+- `harper-app/schema.graphql` — `BrokerCheckSnapshot` table,
+  `sourceType` / `sourceRef` columns on `Disclosure` and
+  `EmploymentHistory`, `docketNumber` on `Disclosure`. Deployed.
+- `scripts/fetch_brokercheck.py` — polite, idempotent scraper (≤ 0.7
+  req/sec, exponential backoff). Five modes: `--crd`, `--firm-id`,
+  `--enrich`, `--firm-roster`, `--search-name`, plus
+  `--from-fixture` for offline replay.
+- `tests/brokercheck_parse_test.py` — 53 assertions covering the
+  parser, the loader's idempotency contract, and the regression
+  that bit us mid-spike (case-insensitive `McGlynn` ↔ `Mcglynn`).
+- `harper-app/web/design-system/atoms.js` — `SourceAttribution` atom
+  satisfies the ToU's "identify source, link to ToU, disclose 'as
+  of' date" requirements; wired into `advisor.js` and `firm.js`.
+- `tests/brokercheck_web_smoke.mjs` — Playwright smoke against the
+  deployed cluster verifying every UI promise. 18/18 passing on
+  `advisory-rankings-de.cody-swann-org.harperfabric.com`.
+
+Live state at ship: 13/17 advisors enriched, 14 BrokerCheckSnapshots,
+6 disclosures sourced from BrokerCheck (the Cairnes set), all firms
+the seed knew about now have CRDs.
 
 We carry per-advisor / per-firm CRD numbers (`Advisor.finraCrd`,
 `Firm.finraCrd`) but populate them only when an AdvisorHub article
@@ -201,35 +227,67 @@ Implementation implications:
   necessary — the SEC publishes Form ADV bulk CSVs and a free IAPD
   endpoint directly.
 
-## 7. Recommended path forward
+## 7. As-built — operating the scraper
 
-Build it as **per-CRD on-demand enrichment**, not a crawl.
+### Modes
 
-1. **One-time backfill of CRDs.** For every existing `Advisor` row
-   without `finraCrd`, hit
-   `/search/individual?query=<legalName>&state=<lastKnownState>` and
-   match on (firstName, lastName, employer overlap with
-   `EmploymentHistory`). This is the same matching shape
-   `scripts/load_extractions.py` already uses — extend it.
-2. **Snapshot fetcher.** A new `scripts/fetch_brokercheck.py` that
-   takes a list of CRDs and writes a `BrokerCheckSnapshot` row plus
-   refreshed `EmploymentHistory`, `Disclosure`, `Sanction`,
-   `License`. Idempotent on `(advisorId, sourceType, sourceRef)`.
-   Polite rate-limit (≤ 1 req/sec, exponential backoff on any 4xx).
-3. **Refresh cadence.** Daily for any CRD with a *pending*
-   disclosure or recent U5; monthly for everyone else. Track this
-   on `BrokerCheckSnapshot.fetchedAt`.
-4. **SEC IAPD as the IA-side complement.** Form ADV bulk CSVs feed
-   `Firm` (RIA side), IAPD individual-rep records feed
-   `Advisor.secIard`. Separate ingest, no ToU friction, run weekly.
-5. **UI footer.** Add the BrokerCheck attribution + "compiled as of"
-   line wherever a regulator-sourced fact appears (employment dates,
-   disclosure rows, sanctions, exams). Per `docs/design-system.md`,
-   that's an atom — `<SourceAttribution>` — to add to the
-   design-system tier. Also update `docs/design-system.md` per
-   `CLAUDE.md`.
-6. **Don't bulk-crawl** `api.brokercheck.finra.org`. If we ever want
-   to do that, get a commercial licence from FINRA first.
+| Command | Effect |
+|---|---|
+| `python3 scripts/fetch_brokercheck.py --crd 4068906` | One CRD. Backstop for "I have a CRD, fetch this." |
+| `python3 scripts/fetch_brokercheck.py --firm-id 19616` | One firm-level snapshot (enables the firm-page Regulatory record card). |
+| `python3 scripts/fetch_brokercheck.py --enrich --max 20` | Iterates every `Advisor` row in the live DB without a `finraCrd`, searches BrokerCheck by legal name, and — when exactly one (firstName, lastName) candidate matches — fetches the full report and merges into the existing row. Skips ambiguous names; they need manual disambiguation. |
+| `python3 scripts/fetch_brokercheck.py --firm-roster 47770 --max 50` | Walks `/search/individual?firm=<id>&query=` (empty query, paginated) to discover advisors we don't yet know about. Polite — pages of 50, 1.5 s ± 0.5 s gap. |
+| `python3 scripts/fetch_brokercheck.py --search-name 'Cody Swann' --max 5` | Plain name search. |
+| `python3 scripts/fetch_brokercheck.py --from-fixture <file>` | Offline replay against a recorded JSON response under `research/brokercheck-samples/`. |
+
+Add `--dry-run` to parse-without-write. Add `--force` to ignore the
+7-day "recently fetched" skip. `BC_RATE_SECONDS=3 …` for an even
+slower crawl.
+
+### Idempotency
+
+Every entity ID is a deterministic UUIDv5 derived from a stable
+natural key (advisor: `crd:<crd>`; disclosure: `(advisorId, type,
+date, docket)`; employment: `(advisorId, firmId, startDate)`;
+sanction: `(disclosureId, type, amount, duration)`; snapshot:
+`bcsnap:<kind>:<crd>`). Re-running the scraper writes the *same*
+UUIDs back as upserts. Verified: a fresh `--enrich --force` run
+after a clean run produced 0 row count delta and `advisor_minted=0`
+in the resolver stats.
+
+### Resumability
+
+`research/brokercheck-state.json` records `(crd → fetchedAt, counts)`.
+Ctrl-C and re-run picks up where it stopped. Skips any CRD fetched
+in the last 7 days unless `--force`.
+
+### ToU compliance
+
+- Per-section `SourceAttribution` footer on advisor & firm profile
+  pages — see `docs/design-system.md` §4.
+- "Source: FINRA BrokerCheck (as of <date>). Terms of use." with a
+  link to the ToU and to the specific BrokerCheck individual / firm
+  page. Required by the ToU.
+- We do not republish data for unsolicited marketing, do not modify
+  factual content, and do not bypass rate limits. The scraper's
+  `User-Agent` advertises the project so FINRA's ops team can reach
+  the owner.
+- We will revisit a paid licence with FINRA before any commercial
+  redistribution.
+
+### Known follow-ups
+
+- **Ambiguous-name disambiguation.** 4 of our 12 seed advisors don't
+  auto-resolve (Kyle Drumm, C. James Taylor, Cameron Irvine, Patrick
+  Baumann — all return ≥ 2 BrokerCheck hits). Solve by carrying a
+  `last_known_state` hint into the search, or build an admin UI for
+  manual CRD-to-advisor binding.
+- **SEC IAPD / Form ADV.** The complementary RIA-side feed remains
+  TODO. No ToU friction; `Firm.finraCrd` already populated lets us
+  cross-reference.
+- **Roster crawl scale.** Defaults capped at `--max 50`. A full
+  Wells Fargo roster is ~20k advisors; budget that as a multi-day
+  background job (and seriously, ask FINRA for a licence first).
 
 ## 8. Open questions for the next session
 

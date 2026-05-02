@@ -6,7 +6,7 @@ import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
 	DetailsCard, ArticleListBlock, Tag, Heading,
-	TransitionEventCard, DisclosureEventCard,
+	TransitionEventCard, DisclosureEventCard, SourceAttribution,
 } from './design-system/index.js';
 
 mountThreeColumnPage({
@@ -122,6 +122,26 @@ function render(d, center, right) {
 		],
 	}));
 
+	if (d.brokerCheckSnapshot) {
+		right.appendChild(SectionCard({
+			body: [
+				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: 'Regulatory record' }),
+				el('div', { class: 'kv-list' },
+					_kvRow('FINRA scope (BD)', d.brokerCheckSnapshot.bcScope),
+					_kvRow('IA scope', d.brokerCheckSnapshot.iaScope),
+					_kvRow('Disclosures', d.brokerCheckSnapshot.disclosureCount ?? '—'),
+					_kvRow('State registrations', d.brokerCheckSnapshot.registeredStateCount ?? '—'),
+				),
+				SourceAttribution({
+					source: 'FINRA BrokerCheck',
+					url: `https://brokercheck.finra.org/firm/summary/${encodeURIComponent(d.brokerCheckSnapshot.subjectCrd)}`,
+					termsUrl: 'https://brokercheck.finra.org/terms',
+					fetchedAt: d.brokerCheckSnapshot.fetchedAt,
+				}),
+			],
+		}));
+	}
+
 	if (d.branches.length) {
 		right.appendChild(SectionCard({
 			body: [
@@ -136,6 +156,14 @@ function render(d, center, right) {
 			],
 		}));
 	}
+}
+
+function _kvRow(k, v) {
+	if (v === null || v === undefined || v === '') return el('span');
+	return el('div', { class: 'kv-row' },
+		el('span', { class: 'kv-key' }, k),
+		el('span', { class: 'kv-val' }, String(v)),
+	);
 }
 
 function advisorListBlock(rows, { showStart = false, showEnd = false } = {}) {

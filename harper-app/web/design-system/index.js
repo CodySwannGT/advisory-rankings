@@ -16,7 +16,7 @@ export { el, $, clear } from './dom.js';
 
 export {
 	Button, Avatar, Tag, Skeleton, EmptyText, Heading,
-	TextInput, FormLabel, Icon,
+	TextInput, FormLabel, Icon, SourceAttribution,
 } from './atoms.js';
 
 export {
