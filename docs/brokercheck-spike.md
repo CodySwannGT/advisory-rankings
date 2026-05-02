@@ -244,6 +244,28 @@ Add `--dry-run` to parse-without-write. Add `--force` to ignore the
 7-day "recently fetched" skip. `BC_RATE_SECONDS=3 …` for an even
 slower crawl.
 
+### The wave-1 orchestrator
+
+`scripts/brokercheck_crawl_all.py` chains the modes above in a
+sensible order and is the recommended driver for "scrape as much
+as you reasonably can without a license":
+
+| Phase | Effect |
+|---|---|
+| 1. Firm CRD lookup | Searches BrokerCheck for every Firm row that lacks `finraCrd`; patches the row when there's exactly one match. |
+| 2. Firm snapshots | Calls `--firm-id` for every Firm with a CRD. Enables the per-firm "Regulatory record" card. |
+| 3. Roster walks | Walks rosters smallest-first (so we make progress before a wirehouse hogs the budget), capping each firm at `--max-per-firm` advisors per run. |
+
+```bash
+python3 scripts/brokercheck_crawl_all.py --max-per-firm 200
+tail -f research/brokercheck-crawl.log
+```
+
+State + log files (`research/brokercheck-state.json` and
+`research/brokercheck-crawl.log`) are gitignored — they're runtime
+output, not source-of-truth data. To bump the cap and continue the
+walk later, just re-run with a higher `--max-per-firm`.
+
 ### Idempotency
 
 Every entity ID is a deterministic UUIDv5 derived from a stable

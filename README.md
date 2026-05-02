@@ -193,6 +193,12 @@ scripts/
                              --from-fixture). See
                              docs/brokercheck-spike.md for the
                              rationale and the ToU constraints.
+  brokercheck_crawl_all.py   wave-1 orchestrator: looks up CRDs for
+                             every firm we know about, fetches firm
+                             snapshots, then walks rosters smallest-
+                             first capped at --max-per-firm. Writes
+                             a tail-able log to
+                             research/brokercheck-crawl.log.
   _brokercheck.py            HTTP client (rate-limited, exponential
                              backoff, jitter) for
                              api.brokercheck.finra.org.

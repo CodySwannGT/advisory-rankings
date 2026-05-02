@@ -37,8 +37,9 @@ project documents, update the matching doc in the same change.**
   relevant runbook section (most likely §7 if it's a data path) and
   in the repo-layout block in `README.md`.
 
-- **Edit any of `scripts/_brokercheck*.py` or
-  `scripts/fetch_brokercheck.py`** → update
+- **Edit any of `scripts/_brokercheck*.py`,
+  `scripts/fetch_brokercheck.py`, or
+  `scripts/brokercheck_crawl_all.py`** → update
   `docs/brokercheck-spike.md` (§3 mapping table or §7 operating
   notes, depending on the change). The spike doc is the executable
   contract for the BrokerCheck integration; if a parser mapping
