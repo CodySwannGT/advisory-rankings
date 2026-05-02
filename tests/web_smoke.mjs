@@ -20,9 +20,12 @@ import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { loadCreds, createAuthTokens } from '../scripts/_auth.mjs';
 
-// Resolve playwright in both local-sandbox (global at /opt/node22) and
-// CI-runner (./node_modules) layouts. Falls back to a hard-coded path
-// only after the standard resolution fails.
+// Resolve playwright in both layouts:
+//   - CI runner — `npm install` populates `./node_modules/playwright`,
+//     reachable from the standard resolver chain.
+//   - Local sandbox — Playwright is installed globally at
+//     `/opt/node22/lib/node_modules` and not reachable from the
+//     standard chain unless symlinked. We fall back to that path.
 const require = createRequire(import.meta.url);
 let chromium;
 try {
@@ -206,7 +209,10 @@ async function main() {
 
 	// Status tag is "suspended" (danger).
 	const statusTag = await page.locator('.profile-head .tag.danger').first().textContent().catch(() => '');
-	/suspended/.test(statusTag)
+	// Case-insensitive: the humanizer in bc41466 capitalizes enum
+	// labels, so "suspended" now renders as "Suspended". The semantic
+	// check is "the danger tag contains the suspended status."
+	/suspended/i.test(statusTag)
 		? ok('advisor.html: career status "suspended" flagged red')
 		: fail(`advisor.html: status tag was "${statusTag}"`);
 
