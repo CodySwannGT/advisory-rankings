@@ -1,13 +1,23 @@
 # Harper component config — declares this directory as a Harper application.
-# Docs: https://docs.harperdb.io/docs/developers/components
+# This file lives at the repo root so Fabric's pull-deploy (which clones
+# the repo's root and runs `harperdb start` against it) finds it.
+# See docs/fabric-runbook.md §3 for the rationale.
 
+# Auto-export tables defined in schema.graphql at REST routes.
 graphqlSchema:
   files: '*.graphql'
 
+# HTTP REST interface (port 9926 by default) for every @export-ed table
+# and for the custom resources below.
 rest: true
 
-# Static UI under web/ — served at the cluster's app URL root.
-# REST routes (/Firm/, /Advisor/…) live under capitalized table names
-# so they don't collide with the lowercase static asset paths.
+# Custom JS resources (Feed, ArticleView, FirmProfile, AdvisorProfile,
+# TeamProfile) backing the web UI. See resources.js.
+jsResource:
+  files: 'resources.js'
+
+# Facebook-style web UI under /. Same origin as REST so the browser
+# can `fetch('/Feed')` without CORS. REST routes (/Firm/, /Advisor/, …)
+# are capitalized and don't collide with the lowercase static paths.
 static:
   files: 'web/*'
