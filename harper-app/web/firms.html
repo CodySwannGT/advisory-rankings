@@ -3,43 +3,41 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Firms — AdvisoryRankings</title>
+	<title>Firms — AdvisorBook</title>
 	<link rel="stylesheet" href="app.css" />
 </head>
 <body>
 	<script type="module">
-		import { api, el, mountPage, initials } from './app.js';
-		mountPage({
+		// Directory page: every firm in the DB. UI from the design system.
+		import { api, refreshMe, logout, initials } from './app.js';
+		import {
+			mountFullWidthPage, SectionCard, EmptyCard,
+			EntityList, EntityRow,
+		} from './design-system/index.js';
+
+		mountFullWidthPage({
 			active: 'firms',
-			build(layout) {
-				const center = el('section', { class: 'center', style: 'grid-column: 1 / -1;' });
-				layout.appendChild(center);
+			refreshMe,
+			logout,
+			build({ center }) {
 				api('/PublicFirms').then((rows) => {
-					center.appendChild(el('div', { class: 'card' },
-						el('div', { class: 'card-body' },
-							el('h2', { class: 'card-title' }, `All firms (${rows.length})`),
-							el('div', { class: 'entity-list' },
-								...rows.map((f) =>
-									el('a', { href: `firm.html?id=${encodeURIComponent(f.id)}`, style: 'text-decoration:none;color:inherit;' },
-										el('div', { class: 'row' },
-											el('div', { class: 'avatar' }, initials(f.name)),
-											el('div', { class: 'body' },
-												el('div', { class: 'name' }, f.name),
-												el('div', { class: 'sub' }, [
-													f.channel,
-													[f.hqCity, f.hqState].filter(Boolean).join(', '),
-													f.dissolvedYear ? `dissolved ${f.dissolvedYear}` : null,
-												].filter(Boolean).join(' · ')),
-											),
-										))),
-							),
-						),
-					));
+					center.appendChild(SectionCard({
+						title: `All firms (${rows.length})`,
+						body: EntityList({
+							rows: rows.map((f) => EntityRow({
+								avatar: initials(f.name),
+								name: f.name,
+								sub: [
+									f.channel,
+									[f.hqCity, f.hqState].filter(Boolean).join(', '),
+									f.dissolvedYear ? `dissolved ${f.dissolvedYear}` : null,
+								].filter(Boolean).join(' · '),
+								href: `firm.html?id=${encodeURIComponent(f.id)}`,
+							})),
+						}),
+					}));
 				}).catch((err) => {
-					center.appendChild(el('div', { class: 'card' },
-						el('div', { class: 'card-body' },
-							el('h2', { class: 'card-title' }, 'Could not load firms'),
-							el('div', { class: 'empty' }, String(err.message || err)))));
+					center.appendChild(EmptyCard({ title: 'Could not load firms', body: String(err.message || err) }));
 				});
 			},
 		});

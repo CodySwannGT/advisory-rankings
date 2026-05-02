@@ -1,34 +1,30 @@
+// Firm profile page.
+// All UI comes from the design system — see docs/design-system.md.
+
+import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, initials, getQueryParam } from './app.js';
 import {
-	api, el, mountPage, getQueryParam, fmtDate, fmtMoney, initials,
-	profileHead, sectionCard, articleListBlock, transitionRow, disclosureRow,
-} from './app.js';
+	mountThreeColumnPage, el,
+	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
+	DetailsCard, ArticleListBlock, Tag, Heading,
+	TransitionEventCard, DisclosureEventCard,
+} from './design-system/index.js';
 
-mountPage({
+mountThreeColumnPage({
 	active: 'firms',
-	build(layout) {
-		const left = el('aside', { class: 'left rail' });
-		const center = el('section', { class: 'center' });
-		const right = el('aside', { class: 'right rail' });
-		layout.append(left, center, right);
-
+	refreshMe,
+	logout,
+	build({ center, right }) {
 		const id = getQueryParam('id');
 		if (!id) {
-			center.appendChild(emptyCard('No firm selected', 'Open a firm from the feed.'));
+			center.appendChild(EmptyCard({ title: 'No firm selected', body: 'Open a firm from the feed.' }));
 			return;
 		}
 
 		api(`/FirmProfile/${encodeURIComponent(id)}`)
 			.then((d) => render(d, center, right))
-			.catch((err) => center.appendChild(emptyCard('Error', String(err.message || err))));
+			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
 	},
 });
-
-function emptyCard(title, body) {
-	return el('div', { class: 'card' },
-		el('div', { class: 'card-body' },
-			el('h2', { class: 'card-title' }, title),
-			el('div', { class: 'empty' }, body)));
-}
 
 function render(d, center, right) {
 	const f = d.firm;
@@ -43,7 +39,7 @@ function render(d, center, right) {
 	if (f.foundedYear) subtitleParts.push(`founded ${f.foundedYear}`);
 	if (f.finraCrd) subtitleParts.push(`FINRA CRD ${f.finraCrd}`);
 
-	center.appendChild(profileHead({
+	center.appendChild(ProfileHead({
 		initialsText: initials(f.name),
 		title: f.name,
 		subtitle: subtitleParts.join(' · '),
@@ -51,136 +47,115 @@ function render(d, center, right) {
 	}));
 
 	if (f.notes) {
-		center.appendChild(sectionCard('About', el('div', {}, f.notes)));
+		center.appendChild(SectionCard({ title: 'About', body: el('div', {}, f.notes) }));
 	}
 
 	// Current advisors — the sticky core: a firm's roster.
-	center.appendChild(sectionCard(
-		`Current advisors (${d.currentAdvisors.length})`,
-		d.currentAdvisors.length
+	center.appendChild(SectionCard({
+		title: `Current advisors (${d.currentAdvisors.length})`,
+		body: d.currentAdvisors.length
 			? advisorListBlock(d.currentAdvisors, { showStart: true })
-			: el('div', { class: 'empty' }, 'No current advisors on file.'),
-	));
+			: EmptyText({ children: 'No current advisors on file.' }),
+	}));
 
-	// Past advisors.
 	if (d.pastAdvisors.length) {
-		center.appendChild(sectionCard(
-			`Past advisors (${d.pastAdvisors.length})`,
-			advisorListBlock(d.pastAdvisors, { showEnd: true }),
-		));
+		center.appendChild(SectionCard({
+			title: `Past advisors (${d.pastAdvisors.length})`,
+			body: advisorListBlock(d.pastAdvisors, { showEnd: true }),
+		}));
 	}
 
-	// Teams currently here.
 	if (d.currentTeams.length) {
-		center.appendChild(sectionCard(
-			`Teams currently at this firm (${d.currentTeams.length})`,
-			el('div', { class: 'entity-list' },
-				...d.currentTeams.map((t) =>
-					el('a', { href: `team.html?id=${encodeURIComponent(t.id)}`, style: 'text-decoration:none;color:inherit;' },
-						el('div', { class: 'row' },
-							el('div', { class: 'avatar' }, initials(t.name)),
-							el('div', { class: 'body' },
-								el('div', { class: 'name' }, t.name),
-								el('div', { class: 'sub' }, [
-									t.serviceModel ? `${t.serviceModel} clients` : null,
-									t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
-									t.teamSize ? `${t.teamSize} members` : null,
-								].filter(Boolean).join(' · ')),
-							),
-						))),
-			),
-		));
+		center.appendChild(SectionCard({
+			title: `Teams currently at this firm (${d.currentTeams.length})`,
+			body: EntityList({
+				rows: d.currentTeams.map((t) => EntityRow({
+					avatar: initials(t.name),
+					name: t.name,
+					sub: [
+						t.serviceModel ? `${t.serviceModel} clients` : null,
+						t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
+						t.teamSize ? `${t.teamSize} members` : null,
+					].filter(Boolean).join(' · '),
+					href: `team.html?id=${encodeURIComponent(t.id)}`,
+				})),
+			}),
+		}));
 	}
 
-	// Transitions in (recruits) and out (departures).
 	if (d.transitionsIn.length) {
-		center.appendChild(sectionCard(
-			`Recent moves to ${f.short || f.name} (${d.transitionsIn.length})`,
-			el('div', {}, ...d.transitionsIn.map(transitionRow)),
-		));
+		center.appendChild(SectionCard({
+			title: `Recent moves to ${f.short || f.name} (${d.transitionsIn.length})`,
+			body: el('div', {}, ...d.transitionsIn.map((t) => TransitionEventCard(t, fmts))),
+		}));
 	}
 	if (d.transitionsOut.length) {
-		center.appendChild(sectionCard(
-			`Recent moves away from ${f.short || f.name} (${d.transitionsOut.length})`,
-			el('div', {}, ...d.transitionsOut.map(transitionRow)),
-		));
+		center.appendChild(SectionCard({
+			title: `Recent moves away from ${f.short || f.name} (${d.transitionsOut.length})`,
+			body: el('div', {}, ...d.transitionsOut.map((t) => TransitionEventCard(t, fmts))),
+		}));
 	}
 
-	// Disclosures recorded while the advisor was at this firm.
 	if (d.disclosuresAtThisFirm.length) {
-		center.appendChild(sectionCard(
-			`Disclosures filed while advisors were at ${f.short || f.name}`,
-			el('div', {}, ...d.disclosuresAtThisFirm.map(disclosureRow)),
-		));
+		center.appendChild(SectionCard({
+			title: `Disclosures filed while advisors were at ${f.short || f.name}`,
+			body: el('div', {}, ...d.disclosuresAtThisFirm.map((dis) => DisclosureEventCard(dis, fmts))),
+		}));
 	}
 
-	// Articles mentioning the firm.
-	center.appendChild(sectionCard(
-		`Coverage (${d.articles.length})`,
-		articleListBlock(d.articles),
-	));
+	center.appendChild(SectionCard({
+		title: `Coverage (${d.articles.length})`,
+		body: ArticleListBlock({ articles: d.articles, fmtDate }),
+	}));
 
-	// Right rail: HQ, branches, identifiers.
-	right.appendChild(el('div', { class: 'card' },
-		el('div', { class: 'card-body' },
-			el('h3', { class: 'card-subtitle' }, 'Firm details'),
-			el('dl', { class: 'kvs' },
-				...kv('Channel', f.channel),
-				...kv('Sub-channel', f.subChannel),
-				...kv('Headquarters', [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(', ')),
-				...kv('Founded', f.foundedYear),
-				...kv('Dissolved', f.dissolvedYear ? `${f.dissolvedYear} (${f.dissolutionReason || 'unknown'})` : null),
-				...kv('FINRA CRD', f.finraCrd),
-				...kv('SEC filer ID', f.secFilerId),
-				...kv('Website', f.website ? el('a', { href: f.website, target: '_blank', rel: 'noreferrer' }, f.website) : null),
-			),
-		),
-	));
+	right.appendChild(DetailsCard({
+		title: 'Firm details',
+		pairs: [
+			['Channel',      f.channel],
+			['Sub-channel',  f.subChannel],
+			['Headquarters', [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(', ')],
+			['Founded',      f.foundedYear],
+			['Dissolved',    f.dissolvedYear ? `${f.dissolvedYear} (${f.dissolutionReason || 'unknown'})` : null],
+			['FINRA CRD',    f.finraCrd],
+			['SEC filer ID', f.secFilerId],
+			['Website',      f.website ? el('a', { href: f.website, target: '_blank', rel: 'noreferrer' }, f.website) : null],
+		],
+	}));
 
 	if (d.branches.length) {
-		right.appendChild(el('div', { class: 'card' },
-			el('div', { class: 'card-body' },
-				el('h3', { class: 'card-subtitle' }, `Branches (${d.branches.length})`),
-				el('div', { class: 'entity-list' },
-					...d.branches.map((b) =>
-						el('div', { class: 'row' },
-							el('div', { class: 'avatar' }, b.level === 'market' ? 'M' : b.level === 'complex' ? 'C' : 'B'),
-							el('div', { class: 'body' },
-								el('div', { class: 'name' }, b.name || b.buildingName || '(unnamed)'),
-								el('div', { class: 'sub' }, [b.level, [b.city, b.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')),
-							),
-						))),
-			),
-		));
+		right.appendChild(SectionCard({
+			body: [
+				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: `Branches (${d.branches.length})` }),
+				EntityList({
+					rows: d.branches.map((b) => EntityRow({
+						avatar: b.level === 'market' ? 'M' : b.level === 'complex' ? 'C' : 'B',
+						name: b.name || b.buildingName || '(unnamed)',
+						sub: [b.level, [b.city, b.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '),
+					})),
+				}),
+			],
+		}));
 	}
 }
 
 function advisorListBlock(rows, { showStart = false, showEnd = false } = {}) {
-	return el('div', { class: 'entity-list' },
-		...rows.map((r) => {
+	return EntityList({
+		rows: rows.map((r) => {
 			const a = r.advisor;
 			const sub = [r.roleTitle, r.roleCategory].filter(Boolean).join(' · ');
 			let tail = '';
 			if (showStart && r.startDate) tail = `since ${fmtDate(r.startDate, { mode: 'short' })}`;
 			else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
 			else if (r.startDate) tail = fmtDate(r.startDate, { mode: 'short' });
-			return el('a', { href: `advisor.html?id=${encodeURIComponent(a.id)}`, style: 'text-decoration:none;color:inherit;' },
-				el('div', { class: 'row' },
-					el('div', { class: 'avatar' }, initials(a.name)),
-					el('div', { class: 'body' },
-						el('div', { class: 'name' }, a.name),
-						sub ? el('div', { class: 'sub' }, sub) : null,
-					),
-					el('div', { class: 'tail' },
-						tail,
-						r.reasonForLeaving === 'terminated_for_cause' ? el('div', { class: 'tag danger', style: 'margin-top:2px;' }, 'terminated') : null,
-					),
-				));
+			return EntityRow({
+				avatar: initials(a.name),
+				name: a.name,
+				sub,
+				tail: r.reasonForLeaving === 'terminated_for_cause'
+					? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
+					: tail,
+				href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+			});
 		}),
-	);
-}
-
-function kv(label, value) {
-	if (value == null || value === '' || value === false) return [];
-	return [el('dt', {}, label), el('dd', {}, typeof value === 'object' ? value : String(value))];
+	});
 }

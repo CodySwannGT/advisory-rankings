@@ -1,0 +1,158 @@
+/* ───────────────────────────────────────────────────────────────
+   AdvisorBook design system — component CSS
+   ───────────────────────────────────────────────────────────────
+   Styles for the new prefixed classes emitted by atoms.js (.ab-*).
+   The legacy classes (.card, .nav, .post-header, etc.) still live
+   in app.css; we are not double-styling them. New components and
+   refactors should prefer .ab-* class names from this file.
+
+   File is loaded after tokens.css so it can reference --ab-*
+   custom properties.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ── ATOMS ─────────────────────────────────────────────────── */
+
+/* Button */
+.ab-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	cursor: pointer;
+	font-weight: var(--ab-font-weight-semi);
+	font-size: var(--ab-font-size-md);
+	border-radius: var(--ab-radius-pill);
+	padding: 6px 12px;
+	font-family: inherit;
+	line-height: 1.2;
+}
+.ab-btn:hover { text-decoration: none; }
+.ab-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ab-btn--primary {
+	background: var(--ab-color-brand);
+	color: #fff;
+	padding: 10px 14px;
+	font-size: var(--ab-font-size-body);
+	width: 100%;
+}
+.ab-btn--primary:hover { background: var(--ab-color-brand-dark); }
+
+.ab-btn--neutral {
+	background: var(--ab-color-bg);
+	color: var(--ab-color-text);
+}
+.ab-btn--neutral:hover { background: var(--ab-color-border); }
+
+.ab-btn--ghost {
+	background: transparent;
+	color: var(--ab-color-text);
+}
+.ab-btn--ghost:hover { background: var(--ab-color-bg); }
+
+/* Avatar (sizes + tones) */
+.ab-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	font-weight: var(--ab-font-weight-bold);
+	flex-shrink: 0;
+}
+.ab-avatar--sm { width: 32px; height: 32px; font-size: var(--ab-font-size-sm); }
+.ab-avatar--md { width: 40px; height: 40px; font-size: var(--ab-font-size-base); }
+.ab-avatar--lg {
+	width: 104px;
+	height: 104px;
+	border: 5px solid var(--ab-color-surface);
+	box-shadow: var(--ab-shadow-sm);
+	font-size: 36px;
+	font-weight: var(--ab-font-weight-black);
+}
+.ab-avatar--brand { background: var(--ab-color-brand); color: #fff; }
+.ab-avatar--advisor { background: var(--ab-color-chip-advisor-bg); color: var(--ab-color-text); }
+.ab-avatar--neutral { background: var(--ab-color-chip-advisor-bg); color: var(--ab-color-text); }
+.ab-avatar--profile {
+	background: var(--ab-color-surface);
+	color: var(--ab-color-brand);
+}
+
+/* Tag */
+.ab-tag {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: var(--ab-radius-sm);
+	background: var(--ab-color-bg);
+	font-size: var(--ab-font-size-xs);
+	font-weight: var(--ab-font-weight-semi);
+	color: var(--ab-color-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+.ab-tag--default { /* base */ }
+.ab-tag--danger  { background: var(--ab-color-tag-danger-bg); color: var(--ab-color-danger); }
+.ab-tag--warn    { background: var(--ab-color-tag-warn-bg);   color: var(--ab-color-warning); }
+.ab-tag--ok      { background: var(--ab-color-tag-ok-bg);     color: var(--ab-color-success); }
+
+/* Skeleton */
+.ab-skeleton {
+	background: linear-gradient(90deg, #eaecef 0%, #f5f6f7 50%, #eaecef 100%);
+	background-size: 200% 100%;
+	animation: ab-sk 1.2s infinite;
+	border-radius: var(--ab-radius-md);
+	height: 14px;
+	margin: 6px 0;
+}
+@keyframes ab-sk {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+/* EmptyText */
+.ab-empty {
+	color: var(--ab-color-text-muted);
+	font-style: italic;
+	padding: var(--ab-space-2) 0;
+}
+
+/* Headings */
+.ab-heading { margin: 0; }
+.ab-heading-1 { font-size: var(--ab-font-size-3xl); font-weight: var(--ab-font-weight-black); }
+.ab-heading-2 { font-size: var(--ab-font-size-lg);  font-weight: var(--ab-font-weight-bold); margin: 0 0 10px; }
+.ab-heading-3 {
+	font-size: var(--ab-font-size-md);
+	font-weight: var(--ab-font-weight-semi);
+	color: var(--ab-color-text-muted);
+	margin: 0 0 var(--ab-space-2);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+/* Text input */
+.ab-input {
+	width: 100%;
+	padding: 10px 12px;
+	font-size: var(--ab-font-size-body);
+	border: 1px solid var(--ab-color-border);
+	border-radius: var(--ab-radius-md);
+	margin-top: var(--ab-space-1);
+	box-sizing: border-box;
+	font-family: inherit;
+}
+.ab-input:focus {
+	outline: 2px solid var(--ab-color-brand);
+	outline-offset: -1px;
+	border-color: var(--ab-color-brand);
+}
+
+/* Form label (block, with stacked control) */
+.ab-form-label {
+	display: block;
+	margin-bottom: var(--ab-space-3);
+	font-size: var(--ab-font-size-md);
+	font-weight: var(--ab-font-weight-semi);
+	color: var(--ab-color-text-muted);
+}
+
+/* Icon glyph (used as an avatar substitute) */
+.ab-icon { display: inline-block; line-height: 1; }

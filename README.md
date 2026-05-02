@@ -59,12 +59,13 @@ curl -H "Authorization: Bearer $TOKEN" \
 session cookie for the Fabric control plane. The auth split is in
 `scripts/_auth.mjs`.
 
-## Web UI (Facebook-style activity feed)
+## Web UI — AdvisorBook (Facebook-style activity feed)
 
-The Harper component now ships a small static web app under
-`harper-app/web/` plus aggregating JS resources in
-`harper-app/resources.js`. Together they render an AdvisorHub
-activity feed where each post embeds the entities it documents:
+The Harper component ships a small static web app branded
+**AdvisorBook** under `harper-app/web/`, plus aggregating JS
+resources in `harper-app/resources.js`. Together they render an
+AdvisorHub activity feed where each post embeds the entities it
+documents:
 
 - Home feed (`index.html`) — every article as a Facebook-style card.
   Transition articles render an inline "from-firm → to-firm · AUM ·
@@ -91,6 +92,14 @@ Fabric cluster's REST domain). On a kernel that can't bind the
 the same JSON the UI would consume. See the runbook §6 for the
 deployed-cluster URL.
 
+The UI is built as an **Atomic Design system** (tokens → atoms →
+molecules → organisms → templates) under
+`harper-app/web/design-system/`. Every page is composed from
+that library; nothing inlines markup. Read `docs/design-system.md`
+before touching any UI — `CLAUDE.md` requires you to look up
+existing components first and to add new ones to the library
+rather than to a page file.
+
 ## Repo layout
 
 ```
@@ -101,6 +110,12 @@ docs/
                                provenance log, …)
   deploy-to-harper-fabric.md   account creation, cluster setup, push/pull
                                deployment, prod checklist
+  design-system.md             AdvisorBook UI design system (Atomic
+                               Design — tokens, atoms, molecules,
+                               organisms, templates). Read before
+                               touching anything visual.
+  fabric-runbook.md            ops log: cluster, schema reloads, every
+                               workaround, every failed alternative
 
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
@@ -113,14 +128,40 @@ harper-app/
   seed.py                    inserts 99 records from research/articles/
   verify.py                  cross-table SQL queries that exercise
                              the relationships
-  web/                       static Facebook-style web UI served at /:
+  web/                       static AdvisorBook UI served at /:
                                index.html / index.js   feed home
                                article.html / .js      article detail
                                firm.html / .js         firm profile
                                advisor.html / .js      advisor profile
                                team.html / .js         team profile
                                firms/advisors/teams.html  directories
-                               app.css / app.js        shared CSS + JS
+                               login.html / .js        sign-in form
+                               app.css                 page styles
+                               app.js                  network, auth,
+                                                       formatters, +
+                                                       back-compat
+                                                       re-exports
+                               design-system/          Atomic Design
+                                 tokens.css            colors, spacing,
+                                                       radius, type
+                                 components.css        atom CSS (.ab-*)
+                                 dom.js                el / $ / clear
+                                 atoms.js              Button, Avatar,
+                                                       Tag, Skeleton, …
+                                 molecules.js          EntityChip,
+                                                       EntityRow, KvList,
+                                                       PostHeader, …
+                                 organisms.js          Card, SectionCard,
+                                                       Navbar, ProfileHead,
+                                                       FeedPostCard,
+                                                       TransitionEventCard,
+                                                       DisclosureEventCard,
+                                                       CareerTimeline, …
+                                 templates.js          mountThreeColumnPage,
+                                                       mountFullWidthPage,
+                                                       mountCenteredNarrowPage
+                                 index.js              barrel export —
+                                                       pages import here
   README.md                  Harper-specific notes (incl. sandbox
                              SO_REUSEPORT workaround)
 

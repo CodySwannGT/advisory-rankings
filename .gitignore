@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 research/extractions/*.json
 research/extractions/.loaded/
+tests/screenshots/
+tests/parity/

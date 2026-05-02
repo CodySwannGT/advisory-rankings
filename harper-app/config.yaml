@@ -14,7 +14,8 @@ rest: true
 jsResource:
   files: 'resources.js'
 
-# Facebook-style web UI.  Served at the same origin as REST so the
+# AdvisorBook web UI.  Served at the same origin as REST so the
 # browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
+# `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
-  files: 'web/*'
+  files: 'web/**'
