@@ -44,8 +44,20 @@ Reads `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from
 `~/.harper-fabric-credentials` (chmod 600) or env. Auto-deploy on
 merge to `main` runs the same script via
 `.github/workflows/deploy.yml` and gates the merge on the Playwright
-smoke against the live cluster URL. See `docs/fabric-runbook.md` §6
-for the full request shape and §1 for cluster IDs / URLs.
+smoke against the live cluster URL.
+
+For ad-hoc data-plane calls, use the Harper-native JWT:
+
+```bash
+TOKEN=$(node scripts/get_token.mjs)
+curl -H "Authorization: Bearer $TOKEN" \
+     https://advisory-rankings-de.cody-swann-org.harperfabric.com/Feed
+```
+
+`docs/fabric-runbook.md` §6 has the full auth model: native JWT
+(`create_authentication_tokens`) for the data plane and Studio
+session cookie for the Fabric control plane. The auth split is in
+`scripts/_auth.mjs`.
 
 ## Web UI (Facebook-style activity feed)
 

@@ -15,10 +15,10 @@
  * Screenshots land in tests/screenshots/.
  */
 
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { homedir } from 'node:os';
 import { createRequire } from 'node:module';
+import { loadCreds, createAuthTokens } from '../scripts/_auth.mjs';
 
 // Resolve playwright in both local-sandbox (global at /opt/node22) and
 // CI-runner (./node_modules) layouts. Falls back to a hard-coded path
@@ -31,24 +31,24 @@ try {
 	({ chromium } = require('/opt/node22/lib/node_modules/playwright'));
 }
 
-// Pull cluster basic-auth creds out of ~/.harper-fabric-credentials
-// when targeting prod. Local dev (the dev_server) needs no auth.
-const CRED = await (async () => {
-	try {
-		return Object.fromEntries(
-			(await readFile(`${homedir()}/.harper-fabric-credentials`, 'utf8'))
-				.split('\n').filter(Boolean)
-				.map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1)]; }),
-		);
-	} catch { return {}; }
-})();
-
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:9926';
 const SHOTS = resolve('tests/screenshots');
-const httpCredentials = process.env.HARPER_ADMIN_USERNAME || CRED.HARPER_ADMIN_USERNAME
-	? { username: process.env.HARPER_ADMIN_USERNAME || CRED.HARPER_ADMIN_USERNAME,
-	    password: process.env.HARPER_ADMIN_PASSWORD || CRED.HARPER_ADMIN_PASSWORD }
-	: undefined;
+const isLocalDev = /^http:\/\/(127\.0\.0\.1|localhost)/.test(BASE);
+
+// Auth strategy:
+//   - Local dev_server has no auth.
+//   - Prod cluster :443 takes a native Harper JWT bearer (the
+//     documented auth path). Mint via create_authentication_tokens.
+//     We could also send basic auth — Harper accepts both — but
+//     bearer matches what every other script in this repo does.
+let extraHeaders = undefined;
+if (!isLocalDev) {
+	const creds = loadCreds();
+	if (creds.username && creds.password) {
+		const { operation_token } = await createAuthTokens(creds);
+		extraHeaders = { Authorization: `Bearer ${operation_token}` };
+	}
+}
 
 const failures = [];
 const checks = [];
@@ -65,9 +65,9 @@ async function main() {
 	const context = await browser.newContext({
 		viewport: { width: 1280, height: 900 },
 		ignoreHTTPSErrors: true,
-		httpCredentials,
+		extraHTTPHeaders: extraHeaders,
 	});
-	console.log('▶ smoke against', BASE, httpCredentials ? `(auth: ${httpCredentials.username})` : '');
+	console.log('▶ smoke against', BASE, extraHeaders ? '(JWT bearer)' : '(no auth)');
 	const page = await context.newPage();
 
 	const consoleErrors = [];

@@ -311,6 +311,30 @@ runtime deps); avoid adding any unless absolutely necessary, and
 specifically avoid `harperdb` itself since it's already on the
 cluster.
 
+### Auth model (data plane vs. Fabric control plane)
+
+Harper has two distinct auth surfaces and we use both — neither is a
+hack:
+
+| Plane | Surface | Auth |
+|---|---|---|
+| **Data plane** — REST routes on the cluster (`/<TableName>/`, `/Feed`, `/FirmProfile/<id>`, …) | `https://<cluster>/` (`:443`) | **Native Harper JWT bearer.** Mint with the `create_authentication_tokens` operation: returns `operation_token` (sub:`operation`, ~24h) and `refresh_token` (sub:`refresh`, ~30d). Pass the op token as `Authorization: Bearer <jwt>`. Basic auth also works but bearer is the documented convention. |
+| **Control plane on Fabric** — `deploy_component`, `restart_service`, `get_components`, `list_users`, … | `https://fabric.harper.fast/Cluster/<id>/operation/` | **Studio session cookie.** `POST /Login/` with email + password → cookie. Fabric does not expose a long-lived API token (verified: `/User/tokens`, `/APIKey`, `/APIToken`, `/Token`, `/AccessToken` all 404). The cluster's own ops API at `:9925` accepts the same Bearer JWTs but is firewalled (§5); the cluster's `:443` returns 404 for ops calls. |
+
+`scripts/_auth.mjs` exposes both: `createAuthTokens(creds)` for the
+JWT pair and `StudioSession` for the cookie-backed control-plane
+calls. Every other script in this repo routes through it:
+
+| Caller | Plane | Auth |
+|---|---|---|
+| `scripts/deploy.mjs` | control + data | session cookie for `deploy_component`, then JWT for the post-restart `/Firm/`,`/Feed` checks |
+| `scripts/get_token.mjs` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
+| `tests/web_smoke.mjs` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
+
+CI gets the same: `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`
+are repo secrets, the workflow mints a fresh JWT per run, and the
+30-day refresh token isn't stored anywhere.
+
 ### Push-deploy from anywhere (`npm run deploy` → Studio proxy)
 
 `scripts/deploy.mjs` packages `harper-app/` into a tarball, base64-

@@ -1,93 +1,34 @@
 #!/usr/bin/env node
 /**
- * Deploy the local harper-app/ component to the Fabric cluster
- * through Studio's operations proxy.
+ * Deploy the local harper-app/ component to the Fabric cluster.
  *
- * Why this script and not `harperdb deploy_component` from the
- * runbook §3?
- *   - Studio's :443 proxy is reachable from this sandbox.  Direct
- *     :9925 ops API isn't (datacenter-egress firewall, see
- *     fabric-runbook §5).  Studio is reachable from anywhere a
- *     browser can sign in.
- *   - Studio's session-cookie auth covers any cluster operation, so
- *     we don't need a separate credential surface.
+ *   - Control-plane call (deploy_component) → Studio :443 proxy with
+ *     a session cookie. That's the only Fabric-exposed path: the
+ *     cluster's ops API at :9925 is firewalled from datacenter egress
+ *     (see fabric-runbook §5), and the cluster's own :443 returns 404
+ *     for ops calls. Fabric does not expose long-lived API tokens.
+ *   - Data-plane verification (post-restart /Firm/, /Feed) → native
+ *     Harper JWT bearer minted via `create_authentication_tokens`.
+ *     That's the documented Harper auth flow for REST routes.
  *
- * Flow:
- *   1. POST /Login/ with email + password → session cookie.
- *   2. tar+gzip the component dir, base64-encode the bytes.
- *   3. POST /Cluster/<id>/operation/ with body
- *        { operation:"deploy_component", project, payload, restart, replicated }.
- *      The cluster writes the bundle into its components dir,
- *      restarts the http worker (because restart:true), and broadcasts
- *      to peers (replicated:true).
- *   4. Poll /Cluster/<id> until http listener is back up.
+ * See scripts/_auth.mjs for the helpers and the rationale.
  *
  * Usage:
- *   npm run deploy                     # deploys ./harper-app
+ *   npm run deploy                     # ./harper-app
  *   PROJECT=advisor-app DIR=./harper-app node scripts/deploy.mjs
- *
- * Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env or
- * ~/.harper-fabric-credentials.
  */
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir, homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { loadCreds, StudioSession, createAuthTokens, bearerHeaders } from './_auth.mjs';
 
-const CRED = (() => {
-	try {
-		return Object.fromEntries(
-			readFileSync(`${homedir()}/.harper-fabric-credentials`, 'utf8')
-				.split('\n').filter(Boolean)
-				.map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1)]; })
-		);
-	} catch { return {}; }
-})();
-const env = (k, d) => process.env[k] ?? CRED[k] ?? d;
-const STUDIO = env('HARPER_STUDIO_URL', 'https://fabric.harper.fast');
-const CLUSTER_ID = env('HARPER_CLUSTER_ID', 'clu-nzeaqmqh1c5zrp9w');
-const USER = env('HARPER_ADMIN_USERNAME');
-const PASS = env('HARPER_ADMIN_PASSWORD');
 const PROJECT = process.env.PROJECT || 'advisor-app';
 const DIR = process.env.DIR || 'harper-app';
-
-if (!USER || !PASS) {
+const creds = loadCreds();
+if (!creds.username || !creds.password) {
 	console.error('missing HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD (env or ~/.harper-fabric-credentials)');
 	process.exit(2);
-}
-
-let cookieJar = '';
-async function call(url, init = {}) {
-	const r = await fetch(url, {
-		...init,
-		headers: { 'Content-Type': 'application/json', ...(init.headers || {}), ...(cookieJar ? { Cookie: cookieJar } : {}) },
-		redirect: 'manual',
-	});
-	const sc = r.headers.getSetCookie?.() || [];
-	for (const s of sc) {
-		const [pair] = s.split(';');
-		const [name] = pair.split('=');
-		const existing = cookieJar.split('; ').filter(Boolean).filter((p) => !p.startsWith(name + '='));
-		cookieJar = [...existing, pair].join('; ');
-	}
-	return r;
-}
-
-async function login() {
-	const r = await call(`${STUDIO}/Login/`, { method: 'POST', body: JSON.stringify({ email: USER, password: PASS }) });
-	if (r.status !== 200) {
-		const t = await r.text();
-		throw new Error(`login failed: ${r.status} ${t.slice(0, 200)}`);
-	}
-}
-
-async function op(operation, extra = {}) {
-	const r = await call(`${STUDIO}/Cluster/${CLUSTER_ID}/operation/`, {
-		method: 'POST',
-		body: JSON.stringify({ operation, ...extra }),
-	});
-	const body = await r.json().catch(() => null);
-	return { status: r.status, body };
 }
 
 function buildTarball(dir) {
@@ -118,8 +59,8 @@ function fmtBytes(n) {
 }
 
 async function main() {
-	console.log(`▶ login as ${USER}`);
-	await login();
+	console.log(`▶ Studio login as ${creds.username}`);
+	const studio = await new StudioSession(creds).login();
 
 	console.log(`▶ packaging ${DIR}/`);
 	const tgz = buildTarball(DIR);
@@ -127,7 +68,7 @@ async function main() {
 	console.log(`  package: ${fmtBytes(tgz.length)} → ${fmtBytes(payload.length)} base64`);
 
 	console.log(`▶ deploy_component project=${PROJECT}`);
-	const dep = await op('deploy_component', {
+	const dep = await studio.clusterOp(creds.clusterId, 'deploy_component', {
 		project: PROJECT,
 		payload,
 		restart: true,
@@ -137,28 +78,34 @@ async function main() {
 	console.log(`  body:   ${JSON.stringify(dep.body).slice(0, 300)}`);
 	if (dep.status !== 200) process.exit(1);
 
-	// 2. Wait for the http worker to come back. /Firm/ as a heartbeat.
-	const cluster = CRED.HARPER_CLUSTER_URL || env('HARPER_CLUSTER_URL');
-	if (cluster) {
-		console.log(`▶ waiting for ${cluster}/Firm/ to respond …`);
-		const auth = 'Basic ' + Buffer.from(`${USER}:${PASS}`).toString('base64');
-		for (let i = 0; i < 30; i++) {
-			await new Promise((r) => setTimeout(r, 2000));
-			const r = await fetch(`${cluster}/Firm/`, { headers: { Authorization: auth, Accept: 'application/json' } }).catch(() => null);
-			if (r && r.ok) { console.log(`  back up after ${i * 2 + 2}s`); break; }
-			process.stdout.write('.');
-		}
-		console.log();
+	if (!creds.clusterUrl) {
+		console.log('  (HARPER_CLUSTER_URL not set; skipping post-deploy verification)');
+		return;
+	}
 
-		// 3. Verify our resources.js made it.
-		const feed = await fetch(`${cluster}/Feed`, { headers: { Authorization: auth, Accept: 'application/json' } });
-		console.log(`▶ ${cluster}/Feed → HTTP ${feed.status}`);
-		if (feed.ok) {
-			const j = await feed.json();
-			console.log(`  count=${j.count}, items=${j.items?.length ?? 0}`);
-		} else {
-			console.log('  body:', (await feed.text()).slice(0, 300));
-		}
+	// Mint a bearer JWT for the data-plane checks. This is the
+	// documented Harper auth path; cleaner than basic-auth here.
+	console.log('▶ create_authentication_tokens (Harper JWT)');
+	const { operation_token } = await createAuthTokens(creds);
+	const auth = bearerHeaders(operation_token);
+
+	console.log(`▶ waiting for ${creds.clusterUrl}/Firm/ to respond …`);
+	for (let i = 0; i < 30; i++) {
+		await new Promise((r) => setTimeout(r, 2000));
+		const r = await fetch(`${creds.clusterUrl}/Firm/`, { headers: auth }).catch(() => null);
+		if (r && r.ok) { console.log(`  back up after ${i * 2 + 2}s`); break; }
+		process.stdout.write('.');
+	}
+	console.log();
+
+	const feed = await fetch(`${creds.clusterUrl}/Feed`, { headers: auth });
+	console.log(`▶ ${creds.clusterUrl}/Feed → HTTP ${feed.status}`);
+	if (feed.ok) {
+		const j = await feed.json();
+		console.log(`  count=${j.count}, items=${j.items?.length ?? 0}`);
+	} else {
+		console.log('  body:', (await feed.text()).slice(0, 300));
+		process.exit(1);
 	}
 }
 
