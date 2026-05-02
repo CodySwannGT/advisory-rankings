@@ -5,3 +5,8 @@ graphqlSchema:
   files: '*.graphql'
 
 rest: true
+
+# Static UI under web/ — served at /index.html, /style.css, /app.js.
+# REST routes (/Firm/, /Advisor/…) live under capitalized table names
+# so they don't collide with the lowercase static asset paths.
+files: 'web/**'

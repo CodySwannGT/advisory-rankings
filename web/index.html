@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Advisory Rankings — Harper Fabric</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1>Advisory Rankings</h1>
+        <p>Wealth-management advisor data, live from Harper Fabric.</p>
+      </div>
+      <div class="meta" id="meta">
+        <span id="cluster"></span>
+        <span id="totals"></span>
+      </div>
+    </header>
+
+    <main>
+      <aside>
+        <div class="aside-section">
+          <h2>Tables</h2>
+          <nav id="tables"></nav>
+        </div>
+
+        <div class="aside-section">
+          <h2>Highlights</h2>
+          <ul id="highlights"></ul>
+        </div>
+      </aside>
+
+      <section id="content">
+        <div class="empty" id="empty">
+          <p>Pick a table on the left, or jump to a highlight.</p>
+        </div>
+
+        <article id="table-view" hidden>
+          <h2 id="table-name"></h2>
+          <p id="table-summary"></p>
+          <div class="table-wrap">
+            <table id="rows">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="record-view" hidden>
+          <button id="back" class="back">&larr; back</button>
+          <h2 id="record-title"></h2>
+          <dl id="record-fields"></dl>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>Schema: 34 entity types &middot; REST endpoints under <code>/&lt;TableName&gt;/</code></span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
