@@ -27,6 +27,33 @@
 
 // ─── helpers ──────────────────────────────────────────────────────
 
+// Robust date comparator. Harper returns dates as Date instances when
+// queried via `tables.X.search({})` (production path), but as ISO-8601
+// strings when read through the operations-API SQL endpoint (the path
+// scripts/dev_server uses locally). The first cluster deploy fell over
+// because Date.localeCompare doesn't exist; coerce to ms-since-epoch
+// instead so sort handles both shapes.
+// `target` for /FirmProfile/<id> arrives differently per transport:
+//   - Local dev_server passes the raw id (string).
+//   - Production Harper passes a RequestTarget whose toString() yields
+//     the matched path slice — sometimes "<id>", sometimes "/<id>".
+// Strip a single leading slash so both shapes resolve.
+function normalizeId(target) {
+	if (target == null) return '';
+	const s = typeof target === 'string' ? target : (target.toString?.() ?? '');
+	return s.startsWith('/') ? s.slice(1) : s;
+}
+
+function dateMs(v) {
+	if (v == null) return 0;
+	if (v instanceof Date) return v.getTime();
+	if (typeof v === 'number') return v;
+	const n = Date.parse(String(v));
+	return Number.isFinite(n) ? n : 0;
+}
+const cmpAsc = (key) => (a, b) => dateMs(a[key]) - dateMs(b[key]);
+const cmpDesc = (key) => (a, b) => dateMs(b[key]) - dateMs(a[key]);
+
 async function collect(iter) {
 	const out = [];
 	for await (const row of iter) out.push(row);
@@ -136,7 +163,7 @@ function advisorChip(a, db) {
 	if (!a) return null;
 	const eh = (db.employments || [])
 		.filter((e) => e.advisorId === a.id && !e.endDate)
-		.sort((x, y) => (y.startDate ?? '').localeCompare(x.startDate ?? ''))[0];
+		.sort(cmpDesc('startDate'))[0];
 	const firm = eh ? db.byFirm.get(eh.firmId) : null;
 	return {
 		id: a.id,
@@ -166,7 +193,7 @@ function teamChip(t, db) {
 	const firm = t.currentFirmId ? db.byFirm.get(t.currentFirmId) : null;
 	const latestSnap = (db.teamSnaps || [])
 		.filter((s) => s.teamId === t.id)
-		.sort((x, y) => (y.asOf ?? '').localeCompare(x.asOf ?? ''))[0];
+		.sort(cmpDesc('asOf'))[0];
 	return {
 		id: t.id,
 		kind: 'team',
@@ -297,7 +324,7 @@ export class Feed extends Resource {
 		const db = await loadAll();
 		const items = db.articles
 			.slice()
-			.sort((a, b) => (b.publishedDate ?? '').localeCompare(a.publishedDate ?? ''))
+			.sort(cmpDesc('publishedDate'))
 			.map((a) => feedItem(a, db));
 		return {
 			generatedAt: new Date().toISOString(),
@@ -311,7 +338,7 @@ export class Feed extends Resource {
 
 export class ArticleView extends Resource {
 	async get(target) {
-		const id = typeof target === 'string' ? target : target?.toString?.();
+		const id = normalizeId(target);
 		if (!id) return { error: 'missing article id' };
 		const db = await loadAll();
 		const article = db.byArticle.get(id);
@@ -339,7 +366,7 @@ export class ArticleView extends Resource {
 
 export class FirmProfile extends Resource {
 	async get(target) {
-		const id = typeof target === 'string' ? target : target?.toString?.();
+		const id = normalizeId(target);
 		if (!id) return { error: 'missing firm id' };
 		const db = await loadAll();
 		const firm = db.byFirm.get(id);
@@ -363,8 +390,8 @@ export class FirmProfile extends Resource {
 			};
 			(e.endDate ? pastAdvisors : currentAdvisors).push(row);
 		}
-		currentAdvisors.sort((x, y) => (y.startDate ?? '').localeCompare(x.startDate ?? ''));
-		pastAdvisors.sort((x, y) => (y.endDate ?? '').localeCompare(x.endDate ?? ''));
+		currentAdvisors.sort(cmpDesc('startDate'));
+		pastAdvisors.sort(cmpDesc('endDate'));
 
 		const teamsHere = db.teams
 			.filter((t) => t.currentFirmId === id)
@@ -372,18 +399,18 @@ export class FirmProfile extends Resource {
 
 		const transitionsIn = db.transitions
 			.filter((t) => t.toFirmId === id)
-			.sort((x, y) => (y.moveDate ?? '').localeCompare(x.moveDate ?? ''))
+			.sort(cmpDesc('moveDate'))
 			.map((t) => transitionRow(t, db));
 		const transitionsOut = db.transitions
 			.filter((t) => t.fromFirmId === id)
-			.sort((x, y) => (y.moveDate ?? '').localeCompare(x.moveDate ?? ''))
+			.sort(cmpDesc('moveDate'))
 			.map((t) => transitionRow(t, db));
 
 		const articleIds = new Set(db.mFirm.filter((m) => m.firmId === id).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid))
 			.filter(Boolean)
-			.sort((a, b) => (b.publishedDate ?? '').localeCompare(a.publishedDate ?? ''))
+			.sort(cmpDesc('publishedDate'))
 			.map((a) => articleStub(a));
 
 		const branchesHere = db.branches.filter((b) => b.firmId === id);
@@ -475,7 +502,7 @@ function articleStub(a) {
 
 export class AdvisorProfile extends Resource {
 	async get(target) {
-		const id = typeof target === 'string' ? target : target?.toString?.();
+		const id = normalizeId(target);
 		if (!id) return { error: 'missing advisor id' };
 		const db = await loadAll();
 		const advisor = db.byAdvisor.get(id);
@@ -483,7 +510,7 @@ export class AdvisorProfile extends Resource {
 
 		const career = db.employments
 			.filter((e) => e.advisorId === id)
-			.sort((x, y) => (x.startDate ?? '').localeCompare(y.startDate ?? ''))
+			.sort(cmpAsc('startDate'))
 			.map((e) => {
 				const firm = db.byFirm.get(e.firmId);
 				const branch = e.branchId ? db.byBranch.get(e.branchId) : null;
@@ -517,7 +544,7 @@ export class AdvisorProfile extends Resource {
 
 		const disclosures = db.disclosures
 			.filter((d) => d.advisorId === id)
-			.sort((x, y) => (x.dateInitiated ?? x.dateResolved ?? '').localeCompare(y.dateInitiated ?? y.dateResolved ?? ''))
+			.sort((x, y) => dateMs(x.dateInitiated ?? x.dateResolved) - dateMs(y.dateInitiated ?? y.dateResolved))
 			.map((d) => disclosureRow(d, db));
 
 		const obasHere = db.obas.filter((o) => o.advisorId === id);
@@ -529,7 +556,7 @@ export class AdvisorProfile extends Resource {
 		const articleIds = new Set(db.mAdv.filter((m) => m.advisorId === id).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid)).filter(Boolean)
-			.sort((a, b) => (b.publishedDate ?? '').localeCompare(a.publishedDate ?? ''))
+			.sort(cmpDesc('publishedDate'))
 			.map(articleStub);
 
 		const transitions = db.transitions
@@ -554,7 +581,7 @@ export class AdvisorProfile extends Resource {
 
 export class TeamProfile extends Resource {
 	async get(target) {
-		const id = typeof target === 'string' ? target : target?.toString?.();
+		const id = normalizeId(target);
 		if (!id) return { error: 'missing team id' };
 		const db = await loadAll();
 		const team = db.byTeam.get(id);
@@ -580,14 +607,14 @@ export class TeamProfile extends Resource {
 			arr.sort((x, y) => {
 				const r = (ROLE_ORDER[x.role] ?? 99) - (ROLE_ORDER[y.role] ?? 99);
 				if (r) return r;
-				return (x.startDate ?? '').localeCompare(y.startDate ?? '');
+				return dateMs(x.startDate) - dateMs(y.startDate);
 			});
 		sortMembers(currentMembers);
 		sortMembers(pastMembers);
 
 		const snaps = db.teamSnaps
 			.filter((s) => s.teamId === id)
-			.sort((x, y) => (x.asOf ?? '').localeCompare(y.asOf ?? ''));
+			.sort(cmpAsc('asOf'));
 
 		const transitions = db.transitions
 			.filter((t) => t.subjectTeamId === id)
@@ -596,7 +623,7 @@ export class TeamProfile extends Resource {
 		const articleIds = new Set(db.mTeam.filter((m) => m.teamId === id).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid)).filter(Boolean)
-			.sort((a, b) => (b.publishedDate ?? '').localeCompare(a.publishedDate ?? ''))
+			.sort(cmpDesc('publishedDate'))
 			.map(articleStub);
 
 		const firm = team.currentFirmId ? db.byFirm.get(team.currentFirmId) : null;

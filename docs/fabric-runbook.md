@@ -22,7 +22,7 @@ operating it.
 | Cluster URL (app) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com/` |
 | Cluster URL (ops API) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/` |
 | Cluster admin username | `cody.swann@gmail.com` *(set via the Fabric Finish-Setup wizard; `HDB_ADMIN` is also present internally but our app-level ops use the email user)* |
-| Cluster admin password | rotate me — see §9 |
+| Cluster admin password | aligned with the Studio password (§9). Stored in `~/.harper-fabric-credentials`. Rotate before anything sensitive lives on this cluster. |
 | Plan | `fabric-block-level-0` (free tier, 6-month license, expires **2026-11-02**) |
 | Instances | 2 — `us-east1-b-1` + `us-west1-a-1`, replicated |
 | Component | `advisor-app`, deployed from `fabric-deploy` branch |
@@ -311,7 +311,79 @@ runtime deps); avoid adding any unless absolutely necessary, and
 specifically avoid `harperdb` itself since it's already on the
 cluster.
 
+### Push-deploy from anywhere (`npm run deploy` → Studio proxy)
+
+`scripts/deploy.mjs` packages `harper-app/` into a tarball, base64-
+encodes it, logs into Studio over `:443`, and POSTs `deploy_component`
+through Studio's operations proxy. Same effect as the CLI below, but
+works from datacenter networks where `:9925` is firewalled (this
+sandbox, every cloud CI runner I've tried).
+
+```bash
+# Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from
+# ~/.harper-fabric-credentials or env. Tarball excludes node_modules,
+# .git, .harperdb, tests/screenshots.
+npm run deploy
+```
+
+Output on success — restart finishes in ~2 s and `/Feed` is back up:
+
+```
+▶ login as cody.swann@gmail.com
+▶ packaging harper-app/
+  package: 31.5KB → 42.0KB base64
+▶ deploy_component project=advisor-app
+  status: 200
+  body:   {"message":"Successfully deployed: advisor-app, restarting Harper", …}
+▶ waiting for https://…/Firm/ to respond …
+  back up after 2s
+▶ https://…/Feed → HTTP 200
+  count=2, items=2
+```
+
+Under the hood (handy if you want to replay it by hand):
+
+```js
+// 1. session login → cookie jar
+fetch('https://fabric.harper.fast/Login/', {
+  method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({email: '<USER>', password: '<PASS>'}),
+});
+
+// 2. deploy_component via Studio's cluster-ops proxy
+fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
+  method: 'POST', credentials: 'include',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    operation: 'deploy_component',
+    project: 'advisor-app',
+    payload: '<base64 of tar -czf - -C harper-app .>',
+    restart: true,
+    replicated: true,
+  }),
+});
+```
+
+### Auto-deploy on merge to `main` (CI)
+
+`.github/workflows/deploy.yml` runs `npm run deploy` followed by the
+Playwright smoke (`tests/web_smoke.mjs`) against the live cluster
+URL. Required repo secrets:
+
+| Secret | Source |
+|---|---|
+| `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
+| `HARPER_ADMIN_PASSWORD` | from `~/.harper-fabric-credentials` |
+
+If the smoke fails, CI uploads `tests/screenshots/` as a
+build artifact. The workflow also runs on `workflow_dispatch` so
+you can re-deploy without a commit.
+
 ### From the CLI (only works on a network with :9925 access)
+
+If you're on a residential network that can reach `:9925` directly,
+the upstream Harper CLI still works:
+
 ```bash
 ./node_modules/.bin/harperdb deploy_component \
   project=advisor-app \
@@ -322,6 +394,30 @@ cluster.
   restart=true \
   replicated=true
 ```
+
+### What we tried first that did not work
+
+- **Direct `:9925` ops API** from this sandbox / GH Actions runners —
+  the cluster firewall returns no response (`curl` exits with code
+  000). Use `npm run deploy` (Studio proxy) or operate from a
+  residential network. See §5.
+- **`@harperdb/static` published to npm** — referenced by some web
+  guides but not actually published. Use the bundled `static`
+  extension that ships inside the `harperdb` package (already
+  configured in `harper-app/config.yaml`). See §6 › Static UI.
+- **Sorting dates with `String#localeCompare`** in `resources.js`.
+  `tables.X.search({})` returns `Date` objects in production but ISO
+  strings via the dev-server's SQL passthrough; one path silently
+  works, the other throws `localeCompare is not a function`. Always
+  coerce dates to ms via the `dateMs()` helper at the top of the
+  file before comparing.
+- **Bare id matching in custom resource `get(target)` handlers** —
+  Harper passes `target` as `<id>` from the dev server but `/<id>`
+  from the cluster's HTTP layer. Use the `normalizeId()` helper.
+- **Bundling `node_modules/` in the tarball.** `bootstrap.sh`
+  symlinks `harper-app/node_modules/harperdb` to the local install,
+  which `tar` happily preserves and the cluster then rejects with
+  *"is not a valid symlink"*. `scripts/deploy.mjs` excludes it.
 
 ### Drop and redeploy (when a deploy left the component in a bad state)
 The first deploy attempt left files on disk but failed to register

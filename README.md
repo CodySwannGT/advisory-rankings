@@ -21,6 +21,8 @@ npm run bootstrap     # install deps, install Harper, link the component, start
 npm run seed          # load 99 records from the two scraped articles
 npm run verify        # run cross-table SQL queries
 npm run preview       # render the /Feed JSON locally (sandbox-friendly)
+npm run dev:server    # serve harper-app/web/ + custom resources locally
+npm run smoke         # Playwright suite (BASE_URL=… for prod)
 
 npm run stop          # stop Harper
 npm run status        # check if it's running
@@ -28,6 +30,22 @@ npm run reset         # nuke ~/.harperdb and rebuild from scratch
 ```
 
 `bootstrap` is idempotent — re-run anytime.
+
+## Deploying
+
+Push-deploy to the Fabric cluster from anywhere — uses Studio's
+`:443` proxy, not the firewalled `:9925`:
+
+```bash
+npm run deploy        # tar harper-app/ → POST deploy_component → restart
+```
+
+Reads `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from
+`~/.harper-fabric-credentials` (chmod 600) or env. Auto-deploy on
+merge to `main` runs the same script via
+`.github/workflows/deploy.yml` and gates the merge on the Playwright
+smoke against the live cluster URL. See `docs/fabric-runbook.md` §6
+for the full request shape and §1 for cluster IDs / URLs.
 
 ## Web UI (Facebook-style activity feed)
 
