@@ -53,6 +53,14 @@ DEFAULT_JITTER_SECONDS = 0.5
 DEFAULT_TIMEOUT = 20
 BACKOFF_LADDER_SECONDS = (5, 15, 45)
 
+# Hard backoff for rate-limit / forbidden responses. These are the
+# signals FINRA uses when our access pattern starts to look bulky;
+# treat them very conservatively. After this many consecutive 429/403
+# responses across the whole client lifetime, raise BrokerCheckBlocked
+# so the orchestrator can stop the crawl rather than keep poking.
+RATE_LIMIT_BACKOFF_SECONDS = (60, 300, 900)  # 1 min → 5 min → 15 min
+RATE_LIMIT_STOP_AFTER_CONSECUTIVE = 5
+
 DEFAULT_UA = (
     "advisory-rankings-research/0.1 "
     "(+https://github.com/CodySwannGT/advisory-rankings; "
@@ -62,6 +70,13 @@ DEFAULT_UA = (
 
 class BrokerCheckError(RuntimeError):
     """Wraps any non-recoverable HTTP / parse failure."""
+
+
+class BrokerCheckBlocked(BrokerCheckError):
+    """Raised when FINRA returns sustained 429/403 responses,
+    indicating we're being throttled or blocked. Catch this in the
+    orchestrator and stop the crawl rather than continue and risk a
+    harder block."""
 
 
 # ── Module-level rate-limit clock (single process, single host) ────
@@ -103,6 +118,10 @@ class BrokerCheckClient:
         self.ua = ua or DEFAULT_UA
         self.verbose = verbose
         self.request_count = 0
+        # Track consecutive rate-limit / forbidden responses so we
+        # can stop the crawl rather than keep poking once FINRA has
+        # started to push back.
+        self.consecutive_rate_limits = 0
 
     # ── transport ──────────────────────────────────────────────────
 
@@ -125,12 +144,40 @@ class BrokerCheckClient:
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     body = resp.read().decode("utf-8")
+                    self.consecutive_rate_limits = 0
                     return json.loads(body)
             except urllib.error.HTTPError as e:
                 # 404 from a known-bad CRD is a real answer, not a retry.
                 if e.code == 404:
+                    self.consecutive_rate_limits = 0
                     raise BrokerCheckError(f"404 for {url}")
-                # 429 / 5xx — retry per ladder
+                # 429 / 403 → throttling / forbidden. Apply a *much*
+                # longer backoff than for transient 5xx, and stop the
+                # client outright if it persists. Better to bail
+                # voluntarily than wear out FINRA's patience.
+                if e.code in (429, 403):
+                    self.consecutive_rate_limits += 1
+                    rl_attempt = min(
+                        self.consecutive_rate_limits - 1,
+                        len(RATE_LIMIT_BACKOFF_SECONDS) - 1,
+                    )
+                    long_backoff = RATE_LIMIT_BACKOFF_SECONDS[rl_attempt]
+                    if self.verbose:
+                        print(
+                            f"  [bc] HTTP {e.code} (rate-limited) — "
+                            f"long backoff {long_backoff}s "
+                            f"({self.consecutive_rate_limits} consecutive)",
+                            file=sys.stderr,
+                        )
+                    if self.consecutive_rate_limits >= RATE_LIMIT_STOP_AFTER_CONSECUTIVE:
+                        raise BrokerCheckBlocked(
+                            f"HTTP {e.code} {self.consecutive_rate_limits} times "
+                            f"in a row — stopping to avoid a harder block"
+                        )
+                    time.sleep(long_backoff)
+                    last_err = e
+                    continue
+                # other 5xx → normal exponential backoff
                 last_err = e
                 if self.verbose:
                     print(

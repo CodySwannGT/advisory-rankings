@@ -52,7 +52,9 @@ from typing import Optional
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
-from _brokercheck import BrokerCheckClient, BrokerCheckError  # noqa: E402
+from _brokercheck import (  # noqa: E402
+    BrokerCheckClient, BrokerCheckError, BrokerCheckBlocked,
+)
 from _brokercheck_load import HarperREST, Resolver  # noqa: E402
 from fetch_brokercheck import (  # noqa: E402
     fetch_one_crd, fetch_one_firm, load_state, save_state,
@@ -61,6 +63,15 @@ from fetch_brokercheck import (  # noqa: E402
 
 
 LOG_FILE = REPO / "research" / "brokercheck-crawl.log"
+
+# Hard runtime cap for a single crawl invocation. Routines run daily,
+# so a single run that exceeds this should bail and let the next day
+# resume — much better than letting a stuck crawl pile up runs.
+DEFAULT_MAX_RUNTIME_SECONDS = 4 * 3600  # 4 hours
+
+
+class RuntimeBudgetExpired(Exception):
+    """Raised by the deadline monitor when the runtime cap is hit."""
 
 
 def _ts() -> str:
@@ -178,6 +189,7 @@ def fetch_firm_snapshots(rest: HarperREST, client: BrokerCheckClient,
 def walk_firm_rosters(rest: HarperREST, client: BrokerCheckClient,
                       resolver: Resolver, state: dict, *,
                       max_per_firm: int, force: bool, log,
+                      deadline: float,
                       only_firm_id: Optional[str] = None) -> dict:
     log("phase 3: roster walks")
     firms = rest.get("/Firm/") or []
@@ -199,14 +211,23 @@ def walk_firm_rosters(rest: HarperREST, client: BrokerCheckClient,
     with_crd.sort(key=order_key)
 
     log(f"  walking {len(with_crd)} firms (smallest first), cap {max_per_firm} advisors/firm")
-    grand_total = {"fetched": 0, "skipped": 0, "errors": 0}
+    grand_total = {"fetched": 0, "skipped": 0, "errors": 0, "blocked": 0}
     for f in with_crd:
+        if time.monotonic() > deadline:
+            log(f"  ⏱ runtime budget hit before firm {f.get('finraCrd')} — stopping cleanly")
+            break
         crd = str(f["finraCrd"])
         log(f"\n  ─── firm {crd} ({f.get('name')}) ───")
         try:
             s = crawl_firm_roster(client, rest, resolver, state, crd,
                                   dry_run=False, max_advisors=max_per_firm,
                                   force=force, log=log)
+        except BrokerCheckBlocked as e:
+            log(f"  ⛔ FINRA appears to be throttling us: {e}")
+            log(f"  ⛔ stopping the entire crawl to avoid a harder block")
+            grand_total["blocked"] += 1
+            save_state(state)
+            return grand_total
         except Exception as e:
             log(f"  ! firm {crd} crashed: {e}")
             grand_total["errors"] += 1
@@ -225,22 +246,34 @@ def walk_firm_rosters(rest: HarperREST, client: BrokerCheckClient,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--max-per-firm", type=int, default=200,
-                    help="Cap on advisors loaded from each firm roster (default 200)")
+    ap.add_argument("--max-per-firm", type=int, default=0,
+                    help="Cap on advisors loaded from each firm roster "
+                         "(0 = unlimited; the per-CRD 7-day skip in the "
+                         "state file is what keeps subsequent runs cheap)")
+    ap.add_argument("--max-runtime-seconds", type=int,
+                    default=DEFAULT_MAX_RUNTIME_SECONDS,
+                    help="Hard ceiling on total wall-clock for one run. "
+                         "When hit, the crawl stops cleanly between firms "
+                         f"and the next run resumes (default {DEFAULT_MAX_RUNTIME_SECONDS}s)")
     ap.add_argument("--skip-firm-lookup", action="store_true")
     ap.add_argument("--skip-firm-snapshots", action="store_true")
     ap.add_argument("--skip-rosters", action="store_true")
     ap.add_argument("--only-firm-id",
                     help="Limit rosters to this firmId (debugging)")
-    ap.add_argument("--rate-seconds", type=float, default=None)
+    ap.add_argument("--rate-seconds", type=float, default=None,
+                    help="Override request gap (default 1.5s; bump to "
+                         "2.5+ for unattended runs to be extra polite)")
     ap.add_argument("--force", action="store_true",
                     help="Refetch CRDs even if last-fetched < 7 days ago")
     args = ap.parse_args()
 
     log = TeeLog(LOG_FILE)
     log(f"==== brokercheck_crawl_all START "
-        f"(max-per-firm={args.max_per_firm}, force={args.force}) ====")
+        f"(max-per-firm={args.max_per_firm or 'unlimited'}, "
+        f"max-runtime={args.max_runtime_seconds}s, "
+        f"force={args.force}) ====")
     start = time.monotonic()
+    deadline = start + args.max_runtime_seconds
 
     rest = HarperREST(verbose=False)
     resolver = Resolver(rest)
@@ -259,6 +292,7 @@ def main() -> int:
         summaries["rosters"] = walk_firm_rosters(
             rest, client, resolver, state,
             max_per_firm=args.max_per_firm, force=args.force, log=log,
+            deadline=deadline,
             only_firm_id=args.only_firm_id,
         )
 

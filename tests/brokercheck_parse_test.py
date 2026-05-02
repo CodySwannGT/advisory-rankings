@@ -208,6 +208,64 @@ def test_loader_disclosure_provenance(t: _T) -> None:
             all(d.get("sourceRef") for d in discs))
 
 
+def test_client_blocks_after_consecutive_rate_limits(t: _T) -> None:
+    """Hardening: when FINRA serves sustained 429/403 we must stop the
+    crawl rather than keep poking. After
+    RATE_LIMIT_STOP_AFTER_CONSECUTIVE consecutive throttle responses,
+    the client raises BrokerCheckBlocked. Otherwise the orchestrator
+    has no signal to stop, and we'd cheerfully wear out the host's
+    patience for hours."""
+    print("\n[client: stop-the-crawl on sustained 429/403]")
+    import urllib.error, urllib.request
+    from io import BytesIO
+    from _brokercheck import (
+        BrokerCheckClient, BrokerCheckBlocked,
+        RATE_LIMIT_STOP_AFTER_CONSECUTIVE,
+    )
+    import _brokercheck as bc_mod
+
+    # Patch sleeps so the test runs in milliseconds, not minutes.
+    orig_time_sleep = bc_mod.time.sleep
+    bc_mod.time.sleep = lambda *_a, **_kw: None
+    orig_wait = bc_mod._wait_for_quota
+    bc_mod._wait_for_quota = lambda *_a, **_kw: None
+
+    # Always-429 fake transport
+    def fake_urlopen(req, timeout=None):
+        raise urllib.error.HTTPError(
+            req.full_url, 429, "Too Many Requests", {}, BytesIO(b"")
+        )
+    orig_urlopen = urllib.request.urlopen
+    urllib.request.urlopen = fake_urlopen
+
+    try:
+        client = BrokerCheckClient(verbose=False)
+        raised: Optional[Exception] = None
+        for _ in range(RATE_LIMIT_STOP_AFTER_CONSECUTIVE + 2):
+            try:
+                client.get_individual("9999999")
+            except BrokerCheckBlocked as e:
+                raised = e
+                break
+            except Exception:
+                pass  # other errors: keep going
+        t.check(
+            f"BrokerCheckBlocked raised after ≤ {RATE_LIMIT_STOP_AFTER_CONSECUTIVE} attempts",
+            raised is not None,
+        )
+        t.check(
+            f"consecutive_rate_limits counter ≥ {RATE_LIMIT_STOP_AFTER_CONSECUTIVE}",
+            client.consecutive_rate_limits >= RATE_LIMIT_STOP_AFTER_CONSECUTIVE,
+        )
+    finally:
+        urllib.request.urlopen = orig_urlopen
+        bc_mod.time.sleep = orig_time_sleep
+        bc_mod._wait_for_quota = orig_wait
+
+
+# Optional Python 3.10+ for parameterised type alias used in stub
+from typing import Optional  # noqa: E402
+
 def test_resolver_advisor_case_insensitive(t: _T) -> None:
     """Regression: the live cluster had `Roger McGlynn` with capital G,
     BrokerCheck returned `MCGLYNN` which our parser title-cased to
@@ -300,6 +358,7 @@ def main() -> int:
     test_parse_firm_wells(t)
     test_loader_idempotent(t)
     test_loader_disclosure_provenance(t)
+    test_client_blocks_after_consecutive_rate_limits(t)
     test_resolver_advisor_case_insensitive(t)
     test_loader_firm(t)
     return t.report()
