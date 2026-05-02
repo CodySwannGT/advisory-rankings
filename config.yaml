@@ -1,0 +1,7 @@
+# Harper component config — declares this directory as a Harper application.
+# Docs: https://docs.harperdb.io/docs/developers/components
+
+graphqlSchema:
+  files: '*.graphql'
+
+rest: true

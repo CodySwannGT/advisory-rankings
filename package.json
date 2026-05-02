@@ -1,25 +1,6 @@
 {
-  "name": "advisory-rankings",
+  "name": "advisor-app",
   "version": "0.1.0",
-  "description": "Advisor data schema (sourced from AdvisorHub) running on Harper.",
   "private": true,
-  "scripts": {
-    "bootstrap": "bash scripts/bootstrap.sh",
-    "start": "harperdb start",
-    "stop": "harperdb stop",
-    "status": "harperdb status",
-    "seed": "python3 harper-app/seed.py",
-    "verify": "python3 harper-app/verify.py",
-    "reset": "harperdb stop || true; rm -rf $HOME/.harperdb && npm run bootstrap && npm run seed && npm run verify"
-  },
-  "repository": {
-    "type": "git",
-    "url": "http://local_proxy@127.0.0.1:44395/git/CodySwannGT/advisory-rankings"
-  },
-  "dependencies": {
-    "harperdb": "^4.7.29"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "description": "Advisor schema component for Harper Fabric (deployed from CodySwannGT/advisory-rankings#fabric-deploy)."
 }
