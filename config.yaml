@@ -9,6 +9,5 @@ rest: true
 # Static UI under web/ — served at the cluster's app URL root.
 # REST routes (/Firm/, /Advisor/…) live under capitalized table names
 # so they don't collide with the lowercase static asset paths.
-'@harperdb/static-server':
-  files: 'web/**'
-  routePrefix: /
+static:
+  files: 'web/*'
