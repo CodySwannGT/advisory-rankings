@@ -286,14 +286,28 @@ git push origin fabric-deploy
 Then **Reload** in Studio (same as schema). The `static:` extension
 re-reads files on reload; no special handling.
 
-> The UI is split across one page per entity kind
+> The UI is the **AdvisorBook** SPA: one page per entity kind
 > (`index.html` = feed, `firm.html`, `advisor.html`, `team.html`,
-> `article.html`). Each page is a thin shell that imports a
-> per-page JS module which calls the matching custom resource
-> (`/Feed`, `/FirmProfile/<id>`, etc.) for one round-trip of
-> already-joined data. Shared chrome and DOM helpers live in
-> `web/app.js`. All requests are same-origin so the basic-auth
-> session covers both static and JSON.
+> `article.html`) plus directories (`firms.html` / `advisors.html` /
+> `teams.html`) and `login.html`. Each page is a thin shell that
+> imports a per-page JS module, which calls the matching custom
+> resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
+> round-trip of already-joined data. UI components are organized
+> as an Atomic Design library under `web/design-system/` (tokens
+> / atoms / molecules / organisms / templates) — see
+> `docs/design-system.md`. `web/app.js` holds non-UI utilities
+> (network, auth, formatters). All requests are same-origin so
+> the basic-auth session covers both static and JSON.
+
+> **`config.yaml` static glob caveat — symptom: deployed
+> `/design-system/*` returns 404.** Root cause: a non-recursive
+> glob like `static.files: 'web/*'` only matches the immediate
+> children of `web/`, so anything in a subdirectory ships
+> nowhere. Fix: use `web/**` (the current value). Hit while
+> deploying the Atomic Design refactor on 2026-05-02 — the first
+> deploy succeeded HTTP-wise but every `web/design-system/`
+> asset 404'd until the glob was changed and the component
+> redeployed.
 
 ### Custom JS resources (`resources.js`)
 Edit `resources.js` at the root of `fabric-deploy` and push. After
@@ -427,6 +441,12 @@ Output on success — restart finishes in ~2 s and `/Feed` is back up:
 ▶ https://…/Feed → HTTP 200
   count=2, items=2
 ```
+
+#### Deploy log
+
+| Date | What | Result |
+|---|---|---|
+| 2026-05-02 | AdvisorBook rebrand + Atomic Design refactor (commits `11f13da`, `cd7409c`). First deploy left `/design-system/*` returning 404 because `static.files: 'web/*'` was non-recursive; changed to `web/**` and redeployed. Verified with `tests/parity_compare.mjs`: 9 pages × 18 selector counts = 215 matches, 0 mismatches against local. | OK |
 
 Under the hood (handy if you want to replay it by hand):
 
@@ -591,14 +611,40 @@ node scripts/preview_feed.mjs article <id>
 This is purely a local dev aid; the deployed Fabric cluster serves
 the same JSON over HTTPS at `/Feed`, `/FirmProfile/<id>`, etc.
 
+### Parity-comparing the deployed cluster to a local dev server
+
+`tests/parity_compare.mjs` (Playwright) fingerprints both bases on
+the same set of pages — `/`, `/firms.html`, `/advisors.html`,
+`/teams.html`, `/login.html`, plus four profile pages whose IDs
+are pulled from `/Feed` — and reports any drift in `<title>`,
+navbar logo, count-of-every-meaningful-selector, card title /
+subtitle text, or console errors. Brand swaps (logo
+`AdvisoryRankings` → `AdvisorBook`) are flagged separately as
+allowed deltas; everything else is a mismatch.
+
+```bash
+BASELINE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+NEW_URL=http://127.0.0.1:8765 \
+  node tests/parity_compare.mjs
+```
+
+Used to gate the AdvisorBook + Atomic Design refactor deploy on
+2026-05-02 — pre-deploy report flagged 5 brand-rebrand deltas
+across the 5 static pages and 0 other mismatches; post-deploy
+report flagged 0 deltas across 9 pages (5 static + 4 profile)
+and 0 mismatches.
+
 ---
 
 ## 8. Web UI (`web/`)
 
 Plain HTML + vanilla JS + CSS, served by Harper's built-in `static:`
-extension. No build step. No framework. The UI is structured as a
-**Facebook-style activity feed**: a centered column of article
-cards, with chrome rails and entity rollups on either side.
+extension. No build step. No framework. The UI is structured as
+the **AdvisorBook** Facebook-style activity feed: a centered
+column of article cards, with chrome rails and entity rollups on
+either side. Components are organized as an Atomic Design library
+under `web/design-system/` (tokens / atoms / molecules /
+organisms / templates) — see `docs/design-system.md`.
 
 ### Pages
 

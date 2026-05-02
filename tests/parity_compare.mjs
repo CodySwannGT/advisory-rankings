@@ -40,16 +40,33 @@ const BASELINE = process.env.BASELINE_URL || 'https://advisory-rankings-de.cody-
 const NEW = process.env.NEW_URL || 'http://127.0.0.1:8765';
 const OUT = resolve('tests/parity');
 
-// Pages to capture. id is used in the screenshot filename + report.
-// goto = path under the base URL. waitFor = selector that proves the
-// page rendered (or null to skip waiting).
-const PAGES = [
+// Static pages (same path on every base). id is used in the
+// screenshot filename + report. goto = path. waitFor = selector
+// that proves the page rendered (or null to skip waiting).
+const STATIC_PAGES = [
 	{ id: 'feed',       goto: '/',                 waitFor: 'article.card .post-headline' },
 	{ id: 'firms',      goto: '/firms.html',       waitFor: '.entity-list .row' },
 	{ id: 'advisors',   goto: '/advisors.html',    waitFor: '.entity-list .row' },
 	{ id: 'teams',      goto: '/teams.html',       waitFor: '.entity-list .row' },
 	{ id: 'login',      goto: '/login.html',       waitFor: 'input[name="email"]' },
 ];
+
+// Profile pages also need an id from the feed. We resolve those
+// once per base via /Feed and stuff them into the page list.
+async function profilePagesFor(base) {
+	const res = await fetch(`${base}/Feed`).then((r) => r.json());
+	const taylor = res.items.find((i) => i.firms.some((f) => /Wells Fargo/i.test(f.name))) || res.items[0];
+	const cairnes = res.items.find((i) => i.advisors.some((a) => /Cairnes/i.test(a.name))) || res.items[0];
+	const wellsFargo = taylor.firms.find((f) => /^Wells Fargo Advisors$/i.test(f.name)) || taylor.firms[0];
+	const teamObj = taylor.teams[0];
+	const advisor = cairnes.advisors.find((a) => /Cairnes/i.test(a.name)) || cairnes.advisors[0];
+	return [
+		{ id: 'firm-wells-fargo',  goto: `/firm.html?id=${encodeURIComponent(wellsFargo.id)}`, waitFor: '.profile-head h1' },
+		{ id: 'team-taylor',       goto: `/team.html?id=${encodeURIComponent(teamObj.id)}`,    waitFor: '.profile-head h1' },
+		{ id: 'advisor-cairnes',   goto: `/advisor.html?id=${encodeURIComponent(advisor.id)}`, waitFor: '.profile-head h1' },
+		{ id: 'article-taylor',    goto: `/article.html?id=${encodeURIComponent(taylor.article.id)}`, waitFor: '.post-headline' },
+	];
+}
 
 // Counts to read on each page (selector list). We use these as
 // content fingerprints — same counts before & after = no data was
@@ -100,6 +117,8 @@ async function capture(base, label) {
 
 	const dir = resolve(OUT, label);
 	await mkdir(dir, { recursive: true });
+
+	const PAGES = [...STATIC_PAGES, ...(await profilePagesFor(base))];
 
 	const result = { base, label, pages: {} };
 
