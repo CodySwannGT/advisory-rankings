@@ -1,0 +1,35 @@
+name: Add Harper Fabric deploy key
+
+on:
+  push:
+    paths:
+      - .github/workflows/add-fabric-deploy-key.yml
+      - .github/fabric-deploy-key.pub
+  workflow_dispatch:
+
+permissions:
+  administration: write
+  contents: read
+
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add deploy key
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          KEY=$(cat .github/fabric-deploy-key.pub)
+          TITLE='Harper Fabric (advisory-rankings-dev)'
+          echo "Adding key (title=$TITLE)"
+          if gh api "repos/${{ github.repository }}/keys" --jq '.[].title' | grep -Fxq "$TITLE"; then
+            echo "Deploy key already present, nothing to do."
+          else
+            gh api --method POST "repos/${{ github.repository }}/keys" \
+              -f title="$TITLE" \
+              -f key="$KEY" \
+              -F read_only=true
+            echo "Deploy key added."
+          fi
