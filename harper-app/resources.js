@@ -695,3 +695,74 @@ export class PublicTeams extends Resource {
 		}));
 	}
 }
+
+// ─── Auth: cookie-session login/logout/me ─────────────────────────
+// Why session cookies and not JWT-in-localStorage:
+//   - This is a browser app. enableSessions: true is on in
+//     harperdb-config.yaml so Harper already manages a Set-Cookie
+//     session for us; we just call context.login() and it sticks.
+//   - No client-side header juggling: same-origin fetches
+//     automatically include the cookie.
+//   - Logout is an explicit server-side delete instead of "hope the
+//     client clears localStorage".
+//   - Crucially, this avoids the WWW-Authenticate: Basic prompt
+//     trap. Browsers cache basic-auth credentials per origin and
+//     replay them on every request — the cause of the "Login failed"
+//     error a real anonymous visit was hitting.
+
+export class Login extends Resource {
+	allowCreate() { return true; } // anonymous can attempt login
+	async post(...args) {
+		// Harper's Resource.post signature varies depending on whether
+		// the request URL had a trailing id segment. For our URL
+		// (POST /Login, no id), the JSON body lands at args[0]. For
+		// a POST /Login/<id> shape it would land at args[1]. Find it
+		// either way.
+		const body = args.find((a) => a && typeof a === 'object' && (a.email || a.username || a.password)) || {};
+		const ctx = this.getContext();
+		const username = body.email || body.username;
+		const password = body.password;
+		if (!username || !password) {
+			const e = new Error('email and password required');
+			e.status = 400;
+			throw e;
+		}
+		try {
+			await ctx.login(username, password);
+		} catch (err) {
+			const e = new Error('Invalid credentials');
+			e.status = 401;
+			throw e;
+		}
+		return { ok: true, username };
+	}
+}
+
+// Logout: clear the session by issuing an empty session via
+// session.update(). Harper's session middleware re-issues a Set-Cookie
+// whenever the session state mutates; an empty session means the next
+// request's cookie maps to no user → /Me returns authenticated:false.
+// session.delete() alone removes the server-side session row but
+// doesn't trigger a clearing Set-Cookie, so the cookie stays sticky.
+export class Logout extends Resource {
+	allowCreate() { return true; }
+	async post() {
+		const ctx = this.getContext();
+		try { ctx.session?.update?.({}); } catch {}
+		try { await ctx.session?.delete?.(ctx.session.id); } catch {}
+		return { ok: true };
+	}
+}
+
+export class Me extends Resource {
+	allowRead() { return true; }
+	async get() {
+		const user = this.getCurrentUser();
+		if (!user) return { authenticated: false };
+		return {
+			authenticated: true,
+			username: user.username,
+			role: user.role?.role || null,
+		};
+	}
+}

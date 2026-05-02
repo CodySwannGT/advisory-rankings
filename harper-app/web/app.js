@@ -31,14 +31,54 @@ export function el(tag, attrs = {}, ...children) {
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
 // ─── REST client ──────────────────────────────────────────────────
+// Same-origin fetches send the Harper session cookie automatically
+// when the user is logged in, and nothing at all when they aren't.
+// Anonymous and authenticated paths share the same call sites.
 
-export async function api(path) {
-	const res = await fetch(path, { headers: { Accept: 'application/json' } });
+export async function api(path, init = {}) {
+	const res = await fetch(path, {
+		credentials: 'same-origin',
+		...init,
+		headers: { Accept: 'application/json', ...(init.headers || {}) },
+	});
 	if (!res.ok) {
 		const text = await res.text().catch(() => '');
-		throw new Error(`GET ${path} → ${res.status} ${text.slice(0, 200)}`);
+		throw new Error(`${init.method || 'GET'} ${path} → ${res.status} ${text.slice(0, 200)}`);
 	}
-	return res.json();
+	return res.status === 204 ? null : res.json();
+}
+
+export function postJson(path, body) {
+	return api(path, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body || {}),
+	});
+}
+
+// ─── auth state (shared module singleton) ─────────────────────────
+
+let _meCache = null;          // last /Me result
+let _mePromise = null;        // dedupe in-flight calls
+export function getCurrentUser() { return _meCache; }
+export async function refreshMe() {
+	if (!_mePromise) {
+		_mePromise = api('/Me')
+			.catch(() => ({ authenticated: false }))
+			.then((m) => { _meCache = m; _mePromise = null; return m; });
+	}
+	return _mePromise;
+}
+export async function logout() {
+	try { await postJson('/Logout'); } catch {}
+	_meCache = { authenticated: false };
+	// Use replace+reload so we end up on a freshly-rendered home
+	// (otherwise setting href to the current page is a no-op).
+	if (location.pathname.endsWith('/index.html') || location.pathname === '/') {
+		location.reload();
+	} else {
+		location.href = 'index.html';
+	}
 }
 
 // ─── formatting ───────────────────────────────────────────────────
@@ -117,17 +157,62 @@ export function entityChip(entity) {
 export function navbar({ active } = {}) {
 	const link = (href, label) =>
 		el('a', { href, class: active === label.toLowerCase() ? 'active' : null }, label);
+
+	// The "Me" pill on the right shows current user + logout, or
+	// "Sign in" when anonymous. Refresh it after the page mounts.
+	const meSpot = el('div', { class: 'me-spot' }, el('span', { class: 'me-loading' }));
+	refreshMe().then(renderMe);
+	function renderMe(me) {
+		clear(meSpot);
+		if (me?.authenticated) {
+			meSpot.appendChild(el('span', { class: 'me-user', title: me.username }, me.username.split('@')[0]));
+			meSpot.appendChild(el('button', {
+				class: 'me-action',
+				onClick: (e) => { e.preventDefault(); logout(); },
+			}, 'Sign out'));
+		} else {
+			meSpot.appendChild(el('a', { class: 'me-action', href: 'login.html' }, 'Sign in'));
+		}
+	}
+
+	const links = el('div', { class: 'nav-links' },
+		link('index.html', 'Home'),
+		link('firms.html', 'Firms'),
+		link('advisors.html', 'Advisors'),
+		link('teams.html', 'Teams'),
+	);
+
+	// Mobile drawer: hamburger toggles a `drawer-open` class on <body>.
+	// On wide screens the drawer's contents (links + me-spot) sit inline
+	// in the navbar; on narrow screens they collapse into a sliding
+	// right-side panel. Closing happens on link click or scrim click.
+	const burger = el('button', {
+		class: 'nav-burger',
+		'aria-label': 'Open menu',
+		'aria-expanded': 'false',
+		onClick: () => toggleDrawer(),
+	}, el('span'), el('span'), el('span'));
+
+	function toggleDrawer(force) {
+		const open = force ?? !document.body.classList.contains('drawer-open');
+		document.body.classList.toggle('drawer-open', open);
+		burger.setAttribute('aria-expanded', String(open));
+	}
+	links.addEventListener('click', (e) => {
+		if (e.target.tagName === 'A' || e.target.closest('a')) toggleDrawer(false);
+	});
+
+	const drawer = el('div', { class: 'nav-drawer' }, links, meSpot);
+	const scrim = el('div', { class: 'nav-scrim', onClick: () => toggleDrawer(false) });
+
 	return el('nav', { class: 'nav' },
+		burger,
 		el('div', { class: 'logo' }, el('a', { href: 'index.html' }, 'AdvisoryRankings')),
 		el('label', { class: 'search' },
 			el('input', { type: 'search', placeholder: 'Search advisors, firms, teams', id: 'global-search', autocomplete: 'off' }),
 		),
-		el('div', { class: 'nav-links' },
-			link('index.html', 'Home'),
-			link('firms.html', 'Firms'),
-			link('advisors.html', 'Advisors'),
-			link('teams.html', 'Teams'),
-		),
+		drawer,
+		scrim,
 	);
 }
 

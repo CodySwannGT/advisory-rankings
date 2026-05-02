@@ -148,10 +148,54 @@ function sendJson(res, code, body) {
 	res.end(buf);
 }
 
+// Tiny in-memory session store so /Login /Logout /Me work locally.
+// On the deployed cluster this is all handled by Harper's own
+// session middleware (enableSessions: true in harperdb-config.yaml).
+const sessions = new Map(); // sid → { username }
+function readCookie(req, name) {
+	const raw = req.headers['cookie'] || '';
+	const m = raw.split(/;\s*/).find((c) => c.startsWith(name + '='));
+	return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
+function newSid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+async function readBody(req) {
+	const chunks = [];
+	for await (const c of req) chunks.push(c);
+	if (!chunks.length) return null;
+	const text = Buffer.concat(chunks).toString('utf8');
+	try { return JSON.parse(text); } catch { return null; }
+}
+
 async function handle(req, res) {
 	const url = new URL(req.url, 'http://x');
 	const p = url.pathname;
 	try {
+		// Auth surface (mirrors the deployed cluster's Login/Logout/Me).
+		if (p === '/Login' && req.method === 'POST') {
+			const body = await readBody(req);
+			const u = body?.email || body?.username;
+			if (!u || !body?.password) return sendJson(res, 400, { error: 'email and password required' });
+			// Trust any non-empty credentials in dev — the deployed
+			// cluster does the real validation via context.login().
+			const sid = newSid();
+			sessions.set(sid, { username: u });
+			res.setHeader('Set-Cookie', `dev_sid=${sid}; Path=/; HttpOnly; SameSite=Lax`);
+			return sendJson(res, 200, { ok: true, username: u });
+		}
+		if (p === '/Logout' && req.method === 'POST') {
+			const sid = readCookie(req, 'dev_sid');
+			if (sid) sessions.delete(sid);
+			res.setHeader('Set-Cookie', 'dev_sid=; Path=/; Max-Age=0');
+			return sendJson(res, 200, { ok: true });
+		}
+		if (p === '/Me') {
+			const sid = readCookie(req, 'dev_sid');
+			const sess = sid ? sessions.get(sid) : null;
+			return sendJson(res, 200, sess
+				? { authenticated: true, username: sess.username, role: 'super_user' }
+				: { authenticated: false });
+		}
 		// Custom JS resources without an id segment.
 		const noArgMatch = p.match(/^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams)$/);
 		if (noArgMatch) {

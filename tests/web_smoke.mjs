@@ -268,6 +268,76 @@ async function main() {
 		flushPageErrors(page2);
 	}
 
+	// ── auth flow: anonymous → sign in → /Me reflects → sign out ──
+	await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
+	const meSpotInitial = await page.locator('.me-spot .me-action').first().textContent().catch(() => '');
+	/Sign in/i.test(meSpotInitial)
+		? ok('navbar: anonymous shows "Sign in"')
+		: fail(`navbar: expected "Sign in", got "${meSpotInitial}"`);
+
+	await page.locator('.me-spot a:has-text("Sign in")').first().click();
+	await page.waitForSelector('input[name="email"]', { timeout: 8000 });
+	const creds = isLocalDev
+		? { email: 'test@example.com', password: 'anything' }
+		: { email: process.env.HARPER_ADMIN_USERNAME || 'cody.swann@gmail.com', password: process.env.HARPER_ADMIN_PASSWORD || 'Har2026!!' };
+	await page.locator('input[name="email"]').fill(creds.email);
+	await page.locator('input[name="password"]').fill(creds.password);
+	await page.locator('button[type="submit"]').click();
+	await page.waitForURL(/index\.html/, { timeout: 10000 });
+	await page.waitForSelector('article.card', { timeout: 10000 });
+	const meSpotSignedIn = await page.locator('.me-spot').first().textContent();
+	new RegExp(creds.email.split('@')[0], 'i').test(meSpotSignedIn)
+		? ok(`navbar: signed-in shows username ("${meSpotSignedIn.trim()}")`)
+		: fail(`navbar: expected username, got "${meSpotSignedIn.trim()}"`);
+	await shot('07-signed-in');
+	flushPageErrors('signed in');
+
+	await page.locator('.me-spot button:has-text("Sign out")').click();
+	await page.waitForFunction(() => !document.querySelector('.me-spot .me-user'), null, { timeout: 8000 }).catch(() => {});
+	await page.waitForSelector('.me-spot a:has-text("Sign in")', { timeout: 8000 });
+	ok('navbar: sign-out returns to anonymous');
+
+	// ── mobile drawer: at iPhone-width the burger toggles a drawer ──
+	const mobile = await browser.newContext({
+		viewport: { width: 390, height: 844 }, // iPhone 14 portrait
+		ignoreHTTPSErrors: true,
+		extraHTTPHeaders: extraHeaders,
+	});
+	const mPage = await mobile.newPage();
+	await mPage.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+	await mPage.waitForSelector('article.card', { timeout: 10000 });
+
+	// On mobile the inline links should be hidden; the burger visible.
+	const burgerVisible = await mPage.locator('.nav-burger').isVisible();
+	const linksHiddenInline = await mPage.locator('.nav-drawer').evaluate((el) => {
+		// drawer is fixed-position translateX(100%) when closed
+		const t = getComputedStyle(el).transform;
+		return t === 'matrix(1, 0, 0, 1, 300, 0)' || t.includes('matrix(1, 0, 0, 1,');
+	}).catch(() => false);
+	burgerVisible ? ok('mobile: hamburger visible') : fail('mobile: hamburger not visible');
+	linksHiddenInline ? ok('mobile: drawer is offscreen (translateX)') : fail('mobile: drawer not in expected closed state');
+	await mPage.screenshot({ path: `${SHOTS}/08-mobile-closed.png` });
+
+	await mPage.locator('.nav-burger').click();
+	await mPage.waitForFunction(() => document.body.classList.contains('drawer-open'), null, { timeout: 3000 });
+	await mPage.waitForTimeout(300); // animation
+	const drawerOpen = await mPage.locator('.nav-drawer').isVisible();
+	const homeLinkInDrawer = await mPage.locator('.nav-drawer .nav-links a:has-text("Home")').isVisible();
+	drawerOpen && homeLinkInDrawer
+		? ok('mobile: drawer opens, nav links visible inside')
+		: fail(`mobile: drawer state wrong (open=${drawerOpen}, link=${homeLinkInDrawer})`);
+	await mPage.screenshot({ path: `${SHOTS}/09-mobile-drawer-open.png` });
+
+	// Tap Firms in the drawer; should navigate and the drawer should close.
+	await mPage.locator('.nav-drawer .nav-links a:has-text("Firms")').click();
+	await mPage.waitForURL(/firms\.html/, { timeout: 8000 });
+	await mPage.waitForTimeout(300);
+	const drawerClosedAfterClick = await mPage.evaluate(() => !document.body.classList.contains('drawer-open'));
+	drawerClosedAfterClick ? ok('mobile: drawer closes after clicking a link') : fail('mobile: drawer stayed open after click');
+
+	await mobile.close();
+
 	await browser.close();
 
 	console.log('\n──────── SMOKE TEST RESULTS ────────');

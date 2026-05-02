@@ -311,6 +311,51 @@ runtime deps); avoid adding any unless absolutely necessary, and
 specifically avoid `harperdb` itself since it's already on the
 cluster.
 
+### Login / logout for browser users
+
+The web UI uses **Harper session cookies** (`enableSessions: true` is
+on in `harperdb-config.yaml`) for the authenticated experience —
+not basic auth, and not bearer tokens in `localStorage`.
+
+Why session cookies over the alternatives:
+
+- **Basic auth was the bug we hit on mobile.** Safari caches it per
+  origin and replays stale credentials on every request, even after
+  the route became public. There is no clean logout.
+- **Bearer tokens in localStorage** would also work but require
+  manual header injection, manual token refresh, and the cluster
+  exposes no token-minting op on `:443` (the cluster's `:9925` is
+  firewalled — see §5).
+- **Session cookies** are issued automatically by Harper's middleware
+  on `context.login()`, sent on every same-origin request without
+  the page having to manage them, and don't trigger Safari's basic-
+  auth prompt.
+
+Endpoints (all in `harper-app/resources.js`):
+
+| Route | Method | Auth | Behavior |
+|---|---|---|---|
+| `/Login` | POST | `allowCreate=true` (anonymous) | Body `{email, password}`. Calls `context.login()`. On success, Harper issues a Set-Cookie session for that user. Returns `{ok:true, username}`. 401 on bad creds. |
+| `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. |
+| `/Me` | GET | `allowRead=true` | Returns `{authenticated, username, role}` if `getCurrentUser()` resolves a user, otherwise `{authenticated:false}`. The frontend hits this on every page load to render the navbar's sign-in/sign-out affordance. |
+
+Browser flow:
+
+1. `web/login.html` posts `{email, password}` to `/Login`.
+2. Harper sets `Set-Cookie: <domain>-hdb-session=<uuid>; HttpOnly; Secure; SameSite=None; …`.
+3. Subsequent same-origin fetches automatically include it.
+4. The "Sign out" button calls `/Logout`, which clears the server-
+   side session. The cookie itself stays on the browser, but the
+   next request maps to "no user" and `/Me` returns
+   `authenticated:false`.
+
+There's one gotcha: `ctx.session.delete()` alone removes the row
+but does not trigger a Set-Cookie clearing-header on the response,
+so the cookie itself remains. We rely on the server-side state being
+gone — the cookie just becomes dead weight. If you ever care about
+*the cookie value itself* being scrubbed (e.g. for compliance), add
+explicit response-header manipulation here.
+
 ### Public vs. authenticated routes
 
 The point of the Facebook-style UI is a public-facing news feed, so

@@ -75,10 +75,15 @@ a:hover { text-decoration: underline; }
 	font-size: 14px;
 	color: var(--text);
 }
+.nav-drawer {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-left: auto;
+}
 .nav .nav-links {
 	display: flex;
 	gap: 4px;
-	margin-left: auto;
 }
 .nav .nav-links a {
 	color: var(--text-muted);
@@ -88,6 +93,107 @@ a:hover { text-decoration: underline; }
 }
 .nav .nav-links a:hover { background: var(--bg); text-decoration: none; }
 .nav .nav-links a.active { color: var(--brand); }
+
+/* "Me" pill: signed-in name + sign-out button, or "Sign in" link. */
+.nav .me-spot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.nav .me-spot .me-user { font-weight: 600; color: var(--text); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav .me-spot .me-action {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: var(--bg);
+	color: var(--text);
+	font-weight: 600;
+	font-size: 13px;
+	border: 0;
+	cursor: pointer;
+}
+.nav .me-spot .me-action:hover { background: var(--border); text-decoration: none; }
+.nav .me-spot .me-loading { width: 60px; height: 14px; background: var(--bg); border-radius: 8px; }
+
+/* Hamburger button + scrim — hidden on desktop, visible on mobile. */
+.nav .nav-burger {
+	display: none;
+	width: 36px;
+	height: 36px;
+	background: transparent;
+	border: 0;
+	border-radius: 8px;
+	cursor: pointer;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+	margin-right: -4px;
+}
+.nav .nav-burger:hover { background: var(--bg); }
+.nav .nav-burger span {
+	display: block;
+	width: 18px;
+	height: 2px;
+	background: var(--text);
+	border-radius: 2px;
+	transition: transform 0.18s ease, opacity 0.18s ease;
+}
+body.drawer-open .nav .nav-burger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+body.drawer-open .nav .nav-burger span:nth-child(2) { opacity: 0; }
+body.drawer-open .nav .nav-burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+.nav .nav-scrim {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	z-index: 49;
+}
+body.drawer-open .nav .nav-scrim { display: block; }
+
+/* Mobile breakpoint (≤700px): the entire .nav-drawer (links + me-spot)
+   collapses into a right-side sliding panel. The navbar shows just
+   hamburger + logo + search. */
+@media (max-width: 700px) {
+	.nav { gap: 8px; padding: 8px 12px; }
+	.nav .search { max-width: none; }
+	.nav .nav-burger { display: flex; }
+	.nav-drawer {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(82vw, 300px);
+		background: var(--card);
+		box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
+		z-index: 60;
+		transform: translateX(100%);
+		transition: transform 0.22s ease;
+		padding: 64px 16px 16px;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 4px;
+		overflow-y: auto;
+	}
+	.nav-drawer .nav-links {
+		flex-direction: column;
+		gap: 2px;
+	}
+	.nav-drawer .nav-links a {
+		font-size: 16px;
+		padding: 12px 14px;
+	}
+	.nav-drawer .me-spot {
+		margin-top: auto;
+		padding-top: 12px;
+		border-top: 1px solid var(--border);
+		justify-content: space-between;
+	}
+	body.drawer-open .nav-drawer { transform: translateX(0); }
+}
 
 /* ── Three-column layout ────────────────────────────────────── */
 
