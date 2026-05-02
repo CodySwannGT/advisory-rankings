@@ -2,8 +2,5 @@
   "name": "advisor-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Advisor schema component for Harper Fabric (deployed from CodySwannGT/advisory-rankings#fabric-deploy).",
-  "dependencies": {
-    "@harperdb/static-server": "*"
-  }
+  "description": "Advisor schema component for Harper Fabric (deployed from CodySwannGT/advisory-rankings#fabric-deploy)."
 }
