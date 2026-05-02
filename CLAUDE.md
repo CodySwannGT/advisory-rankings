@@ -103,6 +103,50 @@ library.
    the value isn't tokenized, add it to
    `design-system/tokens.css` first.
 
+### Verifying UI changes with Playwright
+
+**Every UI change must be visually verified with Playwright
+before reporting the task as done.** Type checks and unit tests
+verify code correctness, not feature correctness. The Harper REST
+endpoints aren't reachable from a static server, so use the
+deployed dev backend as the data source and serve the *local*
+`harper-app/web/` files on top of it.
+
+The repeatable recipe — adapt the URL / viewport / assertions
+per task, but the wiring is the same every time:
+
+1. Serve `harper-app/web/` locally:
+   `python3 -m http.server 8765 --bind 127.0.0.1 --directory harper-app/web &`
+2. Use Playwright with `context.route('**/*', …)` to intercept
+   every request:
+   - If the path is a static file under `web/` (HTML, CSS, JS,
+     anything in `design-system/`) → fulfil from disk.
+   - Otherwise (`/Feed`, `/ArticleView/<id>`, `/AdvisorProfile/<id>`,
+     `/Me`, `/PublicAdvisors`, …) → proxy to
+     `https://advisory-rankings-de.cody-swann-org.harperfabric.com`.
+3. Pick a real article / advisor / firm / team ID by hitting the
+   live `/Feed` first. For mobile-specific checks use
+   `devices['iPhone 13']` (390×844) so layout regressions show
+   up.
+4. Assert *both* on the DOM (`page.evaluate` to pull text,
+   classes, `scrollWidth` vs `clientWidth` for overflow checks)
+   *and* on a `page.screenshot({ fullPage: true })`. Eyeball the
+   PNG — don't trust DOM assertions alone for visual changes.
+5. Cover the golden path *and* the regression you might have
+   introduced (e.g. when humanizing labels, also confirm
+   acronyms like FINRA / TX / LLC are still uppercase).
+
+The browser is preinstalled at
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; pass it as
+`executablePath` when launching. The `playwright` package is in
+`/opt/node22/lib/node_modules` — symlink it as `node_modules` in
+your scratch directory so `import { chromium } from 'playwright'`
+resolves.
+
+If a UI change ships without a Playwright run, treat it as
+unfinished. Saying "the CSS pattern is standard, should work"
+isn't verification.
+
 The legacy lower-case exports from `app.js` (`navbar`,
 `siteFooter`, `mountPage`, `profileHead`, `sectionCard`,
 `articleListBlock`, `transitionRow`, `disclosureRow`,

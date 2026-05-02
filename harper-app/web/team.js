@@ -1,7 +1,7 @@
 // Team profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, initials, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -29,7 +29,7 @@ function render(d, center, right) {
 	const t = d.team;
 	const latest = d.metricSnapshots[d.metricSnapshots.length - 1];
 	const tags = [];
-	if (t.serviceModel) tags.push({ label: t.serviceModel.replace(/_/g, ' ') + ' clients' });
+	if (t.serviceModel) tags.push({ label: `${humanize(t.serviceModel)} clients` });
 	if (t.firmProgram) tags.push({ label: t.firmProgram });
 	if (latest?.aum) tags.push({ kind: 'ok', label: `${fmtMoney(latest.aum)} AUM` });
 	if (latest?.teamSize) tags.push({ label: `${latest.teamSize} members` });
@@ -71,7 +71,7 @@ function render(d, center, right) {
 	if (d.metricSnapshots.length) {
 		center.appendChild(SectionCard({
 			title: `Metric history (${d.metricSnapshots.length} snapshot${d.metricSnapshots.length === 1 ? '' : 's'})`,
-			body: SnapshotTable({ snaps: d.metricSnapshots, fmtMoney }),
+			body: SnapshotTable({ snaps: d.metricSnapshots, fmtMoney, humanize }),
 		}));
 	}
 
@@ -84,7 +84,7 @@ function render(d, center, right) {
 		title: 'Team details',
 		pairs: [
 			['Name',          t.name],
-			['Service model', t.serviceModel],
+			['Service model', humanize(t.serviceModel)],
 			['Firm program',  t.firmProgram],
 			['Founded',       t.foundedYear],
 			['Dissolved',     t.dissolvedYear],
@@ -102,7 +102,7 @@ function render(d, center, right) {
 				['Annual revenue', latest.annualRevenue != null ? fmtMoney(latest.annualRevenue) : null],
 				['Households',     latest.householdCount],
 				['Team size',      latest.teamSize],
-				['Source',         latest.sourceType],
+				['Source',         humanize(latest.sourceType)],
 			],
 		}));
 	}
@@ -118,7 +118,7 @@ function memberList(members, { showStart = false, showRange = false } = {}) {
 			return EntityRow({
 				avatar: initials(a.name),
 				name: a.name,
-				sub: m.role || a.careerStatus || '',
+				sub: humanize(m.role || a.careerStatus) || '',
 				tail,
 				href: `advisor.html?id=${encodeURIComponent(a.id)}`,
 			});

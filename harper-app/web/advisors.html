@@ -9,7 +9,7 @@
 <body>
 	<script type="module">
 		// Directory page: every advisor in the DB. UI from the design system.
-		import { api, refreshMe, logout, initials } from './app.js';
+		import { api, refreshMe, logout, humanize, initials } from './app.js';
 		import {
 			mountFullWidthPage, SectionCard, EmptyCard,
 			EntityList, EntityRow,
@@ -32,7 +32,7 @@
 									avatar: initials(name),
 									name,
 									sub: [
-										a.careerStatus,
+										humanize(a.careerStatus),
 										a.yearsExperience ? `${a.yearsExperience}y` : null,
 										a.finraCrd ? `CRD ${a.finraCrd}` : null,
 									].filter(Boolean).join(' · '),

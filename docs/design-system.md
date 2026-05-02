@@ -78,6 +78,7 @@ harper-app/web/
                                 DisclosureEventCard,
                                 ArticleListBlock, FeedPostCard,
                                 CareerTimeline, SnapshotTable,
+                                ScrollableTable,
                                 SkeletonCard, BrowseCard,
                                 RollupCard, DetailsCard
     templates.js                mountThreeColumnPage,
@@ -193,15 +194,24 @@ Self-contained UI sections.
 | `ArticleListBlock({ articles, fmtDate })` | "Coverage" list on every profile page. |
 | `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. |
 | `CareerTimeline({ career, fmtDate })` | Vertical timeline on advisor profile. |
-| `SnapshotTable({ snaps, fmtMoney })` | Team metric history. |
+| `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
+| `ScrollableTable(table)` | Wraps a wide `<table>` (e.g. provenance, snapshots) in a horizontally-scrollable container so it doesn't blow out a card on mobile. |
 | `SkeletonCard()` | Loading placeholder. |
 | `BrowseCard({ items })` | Left-rail Browse navigation. |
 | `RollupCard({ title, rows, renderRow })` | Small rail card listing items. |
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
 
-`fmts = { fmtMoney, fmtPct, fmtDate }` is exported from `app.js`
-and threaded through to organisms that need to format numbers /
-dates. This keeps organisms locale- and project-agnostic.
+`fmts = { fmtMoney, fmtPct, fmtDate, humanize }` is exported from
+`app.js` and threaded through to organisms that need to format
+values. This keeps organisms locale- and project-agnostic.
+
+`humanize(s)` turns a raw enum identifier (`firm_internal`,
+`closed_no_action`, `vehicleType`, `OutsideBusinessActivity`)
+into a sentence-cased, space-separated label. All-uppercase
+tokens (FINRA, SEC, LLC, TX) and already-spaced strings pass
+through unchanged so we don't mangle acronyms. Use it anywhere
+the UI would otherwise render a snake_case / camelCase /
+PascalCase value straight from the database.
 
 ---
 

@@ -4,7 +4,7 @@
 // fetch /Feed → render the three rails. See docs/design-system.md
 // before adding any new visual element here.
 
-import { api, refreshMe, logout, fmts, fmtMoney, initials } from './app.js';
+import { api, refreshMe, logout, fmts, fmtMoney, humanize, initials } from './app.js';
 import {
 	mountThreeColumnPage, clear,
 	SkeletonCard, EmptyCard, FeedPostCard, BrowseCard, RollupCard,
@@ -87,7 +87,7 @@ function renderRight(root, items) {
 				rows: topFirms.map(({ firm, count }) => EntityRow({
 					avatar: initials(firm.name),
 					name: firm.short || firm.name,
-					sub: [firm.channel, firm.hq].filter(Boolean).join(' · '),
+					sub: [humanize(firm.channel), firm.hq].filter(Boolean).join(' · '),
 					tail: `${count} mention${count === 1 ? '' : 's'}`,
 					href: `firm.html?id=${encodeURIComponent(firm.id)}`,
 				})),
@@ -107,7 +107,7 @@ function renderRight(root, items) {
 					rows: recentDisc.map((d) => EntityRow({
 						avatar: '⚠',
 						name: d.advisor?.name || 'Disclosure',
-						sub: [d.regulator, d.disclosureType].filter(Boolean).join(' · '),
+						sub: [humanize(d.regulator), humanize(d.disclosureType)].filter(Boolean).join(' · '),
 						href: d.advisor ? `advisor.html?id=${encodeURIComponent(d.advisor.id)}` : '#',
 					})),
 				}),

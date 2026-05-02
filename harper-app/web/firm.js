@@ -1,7 +1,7 @@
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, initials, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -29,8 +29,8 @@ mountThreeColumnPage({
 function render(d, center, right) {
 	const f = d.firm;
 	const tags = [];
-	if (f.channel) tags.push({ label: f.channel.replace(/_/g, ' ') });
-	if (f.subChannel) tags.push({ label: f.subChannel.replace(/_/g, ' ') });
+	if (f.channel) tags.push({ label: humanize(f.channel) });
+	if (f.subChannel) tags.push({ label: humanize(f.subChannel) });
 	if (f.dissolvedYear) tags.push({ kind: 'danger', label: `dissolved ${f.dissolvedYear}` });
 	if (f.parentFirmId) tags.push({ kind: 'warn', label: 'subsidiary' });
 
@@ -73,7 +73,7 @@ function render(d, center, right) {
 					avatar: initials(t.name),
 					name: t.name,
 					sub: [
-						t.serviceModel ? `${t.serviceModel} clients` : null,
+						t.serviceModel ? `${humanize(t.serviceModel)} clients` : null,
 						t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
 						t.teamSize ? `${t.teamSize} members` : null,
 					].filter(Boolean).join(' · '),
@@ -111,11 +111,11 @@ function render(d, center, right) {
 	right.appendChild(DetailsCard({
 		title: 'Firm details',
 		pairs: [
-			['Channel',      f.channel],
-			['Sub-channel',  f.subChannel],
+			['Channel',      humanize(f.channel)],
+			['Sub-channel',  humanize(f.subChannel)],
 			['Headquarters', [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(', ')],
 			['Founded',      f.foundedYear],
-			['Dissolved',    f.dissolvedYear ? `${f.dissolvedYear} (${f.dissolutionReason || 'unknown'})` : null],
+			['Dissolved',    f.dissolvedYear ? `${f.dissolvedYear} (${humanize(f.dissolutionReason) || 'unknown'})` : null],
 			['FINRA CRD',    f.finraCrd],
 			['SEC filer ID', f.secFilerId],
 			['Website',      f.website ? el('a', { href: f.website, target: '_blank', rel: 'noreferrer' }, f.website) : null],
@@ -142,7 +142,7 @@ function advisorListBlock(rows, { showStart = false, showEnd = false } = {}) {
 	return EntityList({
 		rows: rows.map((r) => {
 			const a = r.advisor;
-			const sub = [r.roleTitle, r.roleCategory].filter(Boolean).join(' · ');
+			const sub = [r.roleTitle, humanize(r.roleCategory)].filter(Boolean).join(' · ');
 			let tail = '';
 			if (showStart && r.startDate) tail = `since ${fmtDate(r.startDate, { mode: 'short' })}`;
 			else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
