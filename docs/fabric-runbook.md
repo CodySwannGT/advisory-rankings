@@ -447,6 +447,7 @@ Output on success — restart finishes in ~2 s and `/Feed` is back up:
 | Date | What | Result |
 |---|---|---|
 | 2026-05-02 | AdvisorBook rebrand + Atomic Design refactor (commits `11f13da`, `cd7409c`). First deploy left `/design-system/*` returning 404 because `static.files: 'web/*'` was non-recursive; changed to `web/**` and redeployed. Verified with `tests/parity_compare.mjs`: 9 pages × 18 selector counts = 215 matches, 0 mismatches against local. | OK |
+| 2026-05-02 | Re-deploy of `harper-app/` at branch tip (no code delta vs. origin/main). `npm run deploy` from sandbox via Studio proxy. Package 45.7 KB → 60.9 KB base64. Replicated to `oju-us-west1-a-1`. `/Feed` back after 2 s, HTTP 200, count=2. | OK |
 
 Under the hood (handy if you want to replay it by hand):
 
@@ -473,9 +474,10 @@ fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
 
 ### Auto-deploy on merge to `main` (CI)
 
-`.github/workflows/deploy.yml` runs `npm run deploy` followed by the
-Playwright smoke (`tests/web_smoke.mjs`) against the live cluster
-URL. Required repo secrets:
+`.github/workflows/deploy.yml` runs `npm install` → `npm run deploy`
+→ `npx playwright install --with-deps chromium` → Playwright smoke
+(`tests/web_smoke.mjs`) against the live cluster URL. Required repo
+secrets:
 
 | Secret | Source |
 |---|---|
@@ -485,6 +487,15 @@ URL. Required repo secrets:
 If the smoke fails, CI uploads `tests/screenshots/` as a
 build artifact. The workflow also runs on `workflow_dispatch` so
 you can re-deploy without a commit.
+
+> **Don't drop the `npm install` step — symptom: smoke fails with
+> `Cannot find module '/opt/node22/lib/node_modules/playwright'`.**
+> Root cause: `tests/web_smoke.mjs` `require()`s the `playwright` JS
+> module, and `npx playwright install` only fetches the browser
+> binary, not the JS package. The CI runner has neither
+> `./node_modules/playwright` nor the sandbox's
+> `/opt/node22/lib/node_modules/playwright`. Fix: run `npm install`
+> before either step. Hit on 2026-05-02 — see `.github/workflows/deploy.yml`.
 
 ### From the CLI (only works on a network with :9925 access)
 
