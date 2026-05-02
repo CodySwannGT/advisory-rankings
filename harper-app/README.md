@@ -6,8 +6,10 @@ The advisor schema running on Harper (formerly HarperDB).
 
 | File | Purpose |
 |---|---|
-| `config.yaml` | Component config — declares this dir as a Harper application, points at `*.graphql` for schema, enables REST. |
+| `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, and serves `web/*` as a static site. |
 | `schema.graphql` | 34 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
+| `resources.js` | Custom JS resources that join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`. |
+| `web/` | Facebook-style static SPA (vanilla JS modules — no build step). Pages: home feed (`index.html`), article detail (`article.html`), and per-entity profiles (`firm.html`, `advisor.html`, `team.html`). Shared building blocks live in `app.css` + `app.js`. |
 | `seed.py` | Loads sample data from the two scraped articles (`research/articles/`) — 99 records across 23 tables. |
 | `verify.py` | Cross-table SQL queries that exercise the relationships (career walks, disclosure clusters, sanction stacks, provenance log). |
 
@@ -31,9 +33,14 @@ python3 harper-app/seed.py
 python3 harper-app/verify.py
 ```
 
-Once the server is up, REST endpoints are auto-generated for every
-`@export`-ed type at `http://127.0.0.1:9926/<TableName>` (port 9926 by
-default).
+Once the server is up:
+
+- **REST** routes auto-generated for every `@export`-ed type at
+  `http://127.0.0.1:9926/<TableName>/`.
+- **Custom resources** at `http://127.0.0.1:9926/Feed`,
+  `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`,
+  `/TeamProfile/<id>` (registered by `resources.js`).
+- **Web UI** served at `http://127.0.0.1:9926/` from `web/index.html`.
 
 ## Sandbox / container caveat
 
@@ -52,6 +59,16 @@ Workaround applied here:
    creates at `/home/user/.harperdb/operations-server`. It exposes the
    same JSON API as port 9925; `seed.py` and `verify.py` use
    `curl --unix-socket` for this.
+
+The HTTP listener for REST + the static web UI (port 9926) has **no
+Unix-socket fallback** in 4.7.x — the listener simply doesn't bind
+on this kernel. To exercise the `Feed` / `*Profile` resources
+locally without TCP, run `npm run preview` (a.k.a.
+`node scripts/preview_feed.mjs`) — it pulls every `@export` table
+out via the ops-API socket, stubs `globalThis.tables`, and runs
+the resource methods directly. Browser preview of `web/index.html`
+requires a host where TCP 9926 binds (any normal VM, or the Fabric
+cluster's :443 endpoint).
 
 On a normal host or VM the TCP ports work fine and the workaround is
 unnecessary.

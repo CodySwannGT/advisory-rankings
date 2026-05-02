@@ -22,7 +22,7 @@ operating it.
 | Cluster URL (app) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com/` |
 | Cluster URL (ops API) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/` |
 | Cluster admin username | `cody.swann@gmail.com` *(set via the Fabric Finish-Setup wizard; `HDB_ADMIN` is also present internally but our app-level ops use the email user)* |
-| Cluster admin password | rotate me — see §9 |
+| Cluster admin password | aligned with the Studio password (§9). Stored in `~/.harper-fabric-credentials`. Rotate before anything sensitive lives on this cluster. |
 | Plan | `fabric-block-level-0` (free tier, 6-month license, expires **2026-11-02**) |
 | Instances | 2 — `us-east1-b-1` + `us-west1-a-1`, replicated |
 | Component | `advisor-app`, deployed from `fabric-deploy` branch |
@@ -70,6 +70,8 @@ The app component declares its URL surface in `config.yaml` at the
 graphqlSchema:
   files: '*.graphql'
 rest: true
+jsResource:
+  files: 'resources.js'
 static:
   files: 'web/*'
 ```
@@ -77,7 +79,12 @@ static:
 That gives us, on `:443`:
 - One auto-generated REST resource per `@table @export` type (~34 of
   them; 23 currently have rows).
-- A static UI under `/` (HTML + CSS + JS in `web/`).
+- Five custom resources from `resources.js` that pre-join across
+  tables for the UI: `/Feed`, `/ArticleView/<id>`,
+  `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`.
+  Doing the joins server-side keeps the page-load to one round-trip.
+- A Facebook-style activity-feed UI under `/` (HTML + CSS + JS in
+  `web/`).
 - HTTP-basic auth required on every route under the same realm; one
   prompt covers both static assets and REST.
 
@@ -108,13 +115,20 @@ still works.
 
 ```
 fabric-deploy branch layout (commit a03f495):
-  config.yaml           ← lifted from harper-app/, plus `static: { files: 'web/*' }`
+  config.yaml           ← lifted from harper-app/, includes
+                          graphqlSchema + rest + jsResource +
+                          static: { files: 'web/*' }
   schema.graphql        ← lifted from harper-app/
+  resources.js          ← lifted from harper-app/ — Feed/Profile resources
   package.json          ← minimal: { "name": "advisor-app", "version": "0.1.0" }
-  web/                  ← static UI for browsing the data
-    index.html
-    app.js
-    style.css
+  web/                  ← Facebook-style UI (see §8); copy whole dir
+    index.html / index.js     home feed
+    article.html / article.js article detail
+    firm.html / firm.js       firm profile
+    advisor.html / advisor.js advisor profile
+    team.html / team.js       team profile
+    firms.html / advisors.html / teams.html  directory pages
+    app.css / app.js          shared CSS + JS
   (everything else inherited from main)
 ```
 
@@ -265,17 +279,30 @@ dual-write, backfill from `FieldAssertion`, then drop the old).
 ### Static UI (`web/`)
 ```bash
 git checkout fabric-deploy
-# edit web/index.html / web/app.js / web/style.css
+# edit any web/*.{html,js,css}
 git commit -am "web: …"
 git push origin fabric-deploy
 ```
 Then **Reload** in Studio (same as schema). The `static:` extension
 re-reads files on reload; no special handling.
 
-> The current `web/app.js` reads from `/<TableName>/` via the same
-> basic-auth credentials the browser already has cached. Only one
-> auth prompt per session because the static realm and REST realm
-> share Harper's authentication.
+> The UI is split across one page per entity kind
+> (`index.html` = feed, `firm.html`, `advisor.html`, `team.html`,
+> `article.html`). Each page is a thin shell that imports a
+> per-page JS module which calls the matching custom resource
+> (`/Feed`, `/FirmProfile/<id>`, etc.) for one round-trip of
+> already-joined data. Shared chrome and DOM helpers live in
+> `web/app.js`. All requests are same-origin so the basic-auth
+> session covers both static and JSON.
+
+### Custom JS resources (`resources.js`)
+Edit `resources.js` at the root of `fabric-deploy` and push. After
+**Reload** Studio re-executes the file; the `Feed` / `*Profile`
+classes re-register at their REST routes. Their bodies issue
+`tables.X.search({})` calls — fine for the current ~99-row dataset.
+Once the dataset grows past ~10k rows, narrow them to indexed
+`search({ conditions: [...] })` queries on the hot paths
+(article-by-publishedDate, employments-by-firmId, etc.).
 
 ### Component dependencies
 Edit the root `package.json` and push. Fabric runs `npm install` on
@@ -284,7 +311,166 @@ runtime deps); avoid adding any unless absolutely necessary, and
 specifically avoid `harperdb` itself since it's already on the
 cluster.
 
+### Login / logout for browser users
+
+The web UI uses **Harper session cookies** (`enableSessions: true` is
+on in `harperdb-config.yaml`) for the authenticated experience —
+not basic auth, and not bearer tokens in `localStorage`.
+
+Why session cookies over the alternatives:
+
+- **Basic auth was the bug we hit on mobile.** Safari caches it per
+  origin and replays stale credentials on every request, even after
+  the route became public. There is no clean logout.
+- **Bearer tokens in localStorage** would also work but require
+  manual header injection, manual token refresh, and the cluster
+  exposes no token-minting op on `:443` (the cluster's `:9925` is
+  firewalled — see §5).
+- **Session cookies** are issued automatically by Harper's middleware
+  on `context.login()`, sent on every same-origin request without
+  the page having to manage them, and don't trigger Safari's basic-
+  auth prompt.
+
+Endpoints (all in `harper-app/resources.js`):
+
+| Route | Method | Auth | Behavior |
+|---|---|---|---|
+| `/Login` | POST | `allowCreate=true` (anonymous) | Body `{email, password}`. Calls `context.login()`. On success, Harper issues a Set-Cookie session for that user. Returns `{ok:true, username}`. 401 on bad creds. |
+| `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. |
+| `/Me` | GET | `allowRead=true` | Returns `{authenticated, username, role}` if `getCurrentUser()` resolves a user, otherwise `{authenticated:false}`. The frontend hits this on every page load to render the navbar's sign-in/sign-out affordance. |
+
+Browser flow:
+
+1. `web/login.html` posts `{email, password}` to `/Login`.
+2. Harper sets `Set-Cookie: <domain>-hdb-session=<uuid>; HttpOnly; Secure; SameSite=None; …`.
+3. Subsequent same-origin fetches automatically include it.
+4. The "Sign out" button calls `/Logout`, which clears the server-
+   side session. The cookie itself stays on the browser, but the
+   next request maps to "no user" and `/Me` returns
+   `authenticated:false`.
+
+There's one gotcha: `ctx.session.delete()` alone removes the row
+but does not trigger a Set-Cookie clearing-header on the response,
+so the cookie itself remains. We rely on the server-side state being
+gone — the cookie just becomes dead weight. If you ever care about
+*the cookie value itself* being scrubbed (e.g. for compliance), add
+explicit response-header manipulation here.
+
+### Public vs. authenticated routes
+
+The point of the Facebook-style UI is a public-facing news feed, so
+the data-plane routes that back it return 200 to anonymous visitors.
+Everything else still requires auth.
+
+| Route | Anonymous | Why |
+|---|---|---|
+| `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
+| `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
+| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
+| `PUT/POST/DELETE` anywhere | ❌ 401 | Same. The custom resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. |
+
+If a future change needs to lock the public routes back down, drop
+the `allowRead() { return true; }` overrides — they're flagged in a
+single comment block at the top of `Feed` in `resources.js`.
+
+### Auth model (data plane vs. Fabric control plane)
+
+Harper has two distinct auth surfaces and we use both — neither is a
+hack:
+
+| Plane | Surface | Auth |
+|---|---|---|
+| **Data plane** — REST routes on the cluster (`/<TableName>/`, `/Feed`, `/FirmProfile/<id>`, …) | `https://<cluster>/` (`:443`) | **Native Harper JWT bearer.** Mint with the `create_authentication_tokens` operation: returns `operation_token` (sub:`operation`, ~24h) and `refresh_token` (sub:`refresh`, ~30d). Pass the op token as `Authorization: Bearer <jwt>`. Basic auth also works but bearer is the documented convention. |
+| **Control plane on Fabric** — `deploy_component`, `restart_service`, `get_components`, `list_users`, … | `https://fabric.harper.fast/Cluster/<id>/operation/` | **Studio session cookie.** `POST /Login/` with email + password → cookie. Fabric does not expose a long-lived API token (verified: `/User/tokens`, `/APIKey`, `/APIToken`, `/Token`, `/AccessToken` all 404). The cluster's own ops API at `:9925` accepts the same Bearer JWTs but is firewalled (§5); the cluster's `:443` returns 404 for ops calls. |
+
+`scripts/_auth.mjs` exposes both: `createAuthTokens(creds)` for the
+JWT pair and `StudioSession` for the cookie-backed control-plane
+calls. Every other script in this repo routes through it:
+
+| Caller | Plane | Auth |
+|---|---|---|
+| `scripts/deploy.mjs` | control + data | session cookie for `deploy_component`, then JWT for the post-restart `/Firm/`,`/Feed` checks |
+| `scripts/get_token.mjs` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
+| `tests/web_smoke.mjs` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
+
+CI gets the same: `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`
+are repo secrets, the workflow mints a fresh JWT per run, and the
+30-day refresh token isn't stored anywhere.
+
+### Push-deploy from anywhere (`npm run deploy` → Studio proxy)
+
+`scripts/deploy.mjs` packages `harper-app/` into a tarball, base64-
+encodes it, logs into Studio over `:443`, and POSTs `deploy_component`
+through Studio's operations proxy. Same effect as the CLI below, but
+works from datacenter networks where `:9925` is firewalled (this
+sandbox, every cloud CI runner I've tried).
+
+```bash
+# Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from
+# ~/.harper-fabric-credentials or env. Tarball excludes node_modules,
+# .git, .harperdb, tests/screenshots.
+npm run deploy
+```
+
+Output on success — restart finishes in ~2 s and `/Feed` is back up:
+
+```
+▶ login as cody.swann@gmail.com
+▶ packaging harper-app/
+  package: 31.5KB → 42.0KB base64
+▶ deploy_component project=advisor-app
+  status: 200
+  body:   {"message":"Successfully deployed: advisor-app, restarting Harper", …}
+▶ waiting for https://…/Firm/ to respond …
+  back up after 2s
+▶ https://…/Feed → HTTP 200
+  count=2, items=2
+```
+
+Under the hood (handy if you want to replay it by hand):
+
+```js
+// 1. session login → cookie jar
+fetch('https://fabric.harper.fast/Login/', {
+  method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({email: '<USER>', password: '<PASS>'}),
+});
+
+// 2. deploy_component via Studio's cluster-ops proxy
+fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
+  method: 'POST', credentials: 'include',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    operation: 'deploy_component',
+    project: 'advisor-app',
+    payload: '<base64 of tar -czf - -C harper-app .>',
+    restart: true,
+    replicated: true,
+  }),
+});
+```
+
+### Auto-deploy on merge to `main` (CI)
+
+`.github/workflows/deploy.yml` runs `npm run deploy` followed by the
+Playwright smoke (`tests/web_smoke.mjs`) against the live cluster
+URL. Required repo secrets:
+
+| Secret | Source |
+|---|---|
+| `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
+| `HARPER_ADMIN_PASSWORD` | from `~/.harper-fabric-credentials` |
+
+If the smoke fails, CI uploads `tests/screenshots/` as a
+build artifact. The workflow also runs on `workflow_dispatch` so
+you can re-deploy without a commit.
+
 ### From the CLI (only works on a network with :9925 access)
+
+If you're on a residential network that can reach `:9925` directly,
+the upstream Harper CLI still works:
+
 ```bash
 ./node_modules/.bin/harperdb deploy_component \
   project=advisor-app \
@@ -295,6 +481,30 @@ cluster.
   restart=true \
   replicated=true
 ```
+
+### What we tried first that did not work
+
+- **Direct `:9925` ops API** from this sandbox / GH Actions runners —
+  the cluster firewall returns no response (`curl` exits with code
+  000). Use `npm run deploy` (Studio proxy) or operate from a
+  residential network. See §5.
+- **`@harperdb/static` published to npm** — referenced by some web
+  guides but not actually published. Use the bundled `static`
+  extension that ships inside the `harperdb` package (already
+  configured in `harper-app/config.yaml`). See §6 › Static UI.
+- **Sorting dates with `String#localeCompare`** in `resources.js`.
+  `tables.X.search({})` returns `Date` objects in production but ISO
+  strings via the dev-server's SQL passthrough; one path silently
+  works, the other throws `localeCompare is not a function`. Always
+  coerce dates to ms via the `dateMs()` helper at the top of the
+  file before comparing.
+- **Bare id matching in custom resource `get(target)` handlers** —
+  Harper passes `target` as `<id>` from the dev server but `/<id>`
+  from the cluster's HTTP layer. Use the `normalizeId()` helper.
+- **Bundling `node_modules/` in the tarball.** `bootstrap.sh`
+  symlinks `harper-app/node_modules/harperdb` to the local install,
+  which `tar` happily preserves and the cluster then rejects with
+  *"is not a valid symlink"*. `scripts/deploy.mjs` excludes it.
 
 ### Drop and redeploy (when a deploy left the component in a bad state)
 The first deploy attempt left files on disk but failed to register
@@ -360,33 +570,99 @@ When operating from a residential network, prefer the original
 `npm run seed` / `npm run verify` — they're simpler and run server-
 side SQL.
 
+### Smoke-testing the custom JS resources locally
+
+`scripts/preview_feed.mjs` (a.k.a. `npm run preview`) renders the
+`Feed` / `*Profile` resources defined in `harper-app/resources.js`
+against a locally-running Harper, even when port 9926 isn't
+reachable. It pulls every `@export` table out via the ops-API
+Unix socket (`~/.harperdb/operations-server`), stubs
+`globalThis.tables` and `globalThis.Resource`, then imports
+`resources.js` and prints the JSON each resource returns.
+
+```bash
+npm run preview                        # /Feed
+node scripts/preview_feed.mjs firm    <id>
+node scripts/preview_feed.mjs advisor <id>
+node scripts/preview_feed.mjs team    <id>
+node scripts/preview_feed.mjs article <id>
+```
+
+This is purely a local dev aid; the deployed Fabric cluster serves
+the same JSON over HTTPS at `/Feed`, `/FirmProfile/<id>`, etc.
+
 ---
 
 ## 8. Web UI (`web/`)
 
 Plain HTML + vanilla JS + CSS, served by Harper's built-in `static:`
-extension. No build step. No framework. Reads exclusively from
-`/<TableName>/` REST endpoints.
+extension. No build step. No framework. The UI is structured as a
+**Facebook-style activity feed**: a centered column of article
+cards, with chrome rails and entity rollups on either side.
 
-Features:
-- Sidebar with one entry per `@export` table, dim if empty, count if
-  not.
-- Highlights bar with four hand-curated entry points (Taylor move,
-  Cairnes cluster, sanctions, provenance).
-- Per-table list view with column auto-detection (shows the most
-  populous fields first).
-- FK columns rendered as labels (e.g. `George J. Cairnes` instead of
-  the UUID), clickable to navigate to the related record.
-- Per-record view with `dl/dt/dd` rows; FK fields are clickable.
+### Pages
 
-Auth: relies on the browser's stored basic-auth — visit `/` once,
-enter `cody.swann@gmail.com` + the admin password, and every
-subsequent fetch reuses the cached credential.
+| URL | What it shows |
+|---|---|
+| `/` (`index.html`) | Activity feed of every `Article` ordered by `publishedDate desc`, each card hydrated with the entities it documents. Transition articles render an inline event block (`from-firm → to-firm · AUM · T-12 · headcount · upfront % of T-12`); regulatory articles render a stacked-sanctions block (regulator + each sanction as a pill). |
+| `/firm.html?id=…` | Firm profile: current advisors, past advisors with reason-for-leaving, current teams, transitions in / out, branches (market → complex → branch), disclosures filed at the firm, coverage. This is the "sticky" view the user asked for — open Wells Fargo and you get the live roster, alumni, and the two teams that came / went. |
+| `/advisor.html?id=…` | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
+| `/team.html?id=…` | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
+| `/article.html?id=…` | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
+| `/firms.html`, `/advisors.html`, `/teams.html` | Plain directory pages (alphabetical), driven by the auto-generated `/<TableName>/` REST routes. |
 
-To build a richer UI later, this exact pattern still applies —
-Harper's REST is the API surface. If the UI gets large enough to
-warrant a build step, drop a `web/dist/` and update `static.files` to
-match.
+### How the joins happen
+
+The richer pages would otherwise require ~10 client-side fetches
+each. Instead, the browser hits **one** custom resource per page,
+defined in `resources.js`:
+
+| Browser fetches | Resource | Joins it does server-side |
+|---|---|---|
+| `GET /Feed` | `Feed` | Articles + per-target mention tables + `TransitionEvent` (with deal) + `Disclosure` (with sanctions) + advisor / firm / team chips. |
+| `GET /ArticleView/<id>` | `ArticleView` | Same as `/Feed` for one article, plus body + `FieldAssertion` rows. |
+| `GET /FirmProfile/<id>` | `FirmProfile` | Employments → advisors, current vs. past; teams; transitions in / out; branches; disclosures at firm; mention articles. |
+| `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
+| `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
+
+The classes in `resources.js` extend Harper's globally-injected
+`Resource` and use `tables.X.search({})` for the underlying reads.
+Updating any page's data shape means editing the matching method
+**and** the matching `web/<page>.js` renderer in the same change.
+
+### Auth
+
+Same realm covers both `/` and `/<TableName>/` and `/Feed` etc.,
+so a single basic-auth prompt unlocks the entire surface for the
+session.
+
+### Local sandbox caveat
+
+Harper's REST/static HTTP listener (`http.port: 9926`) silently
+fails to bind on container kernels that don't support
+`SO_REUSEPORT` — same family of issue as MQTT in §3 of
+`harper-app/README.md`, but with no Unix-socket fallback. To smoke-
+test the resources without a TCP listener, run
+`npm run preview` (a.k.a. `node scripts/preview_feed.mjs`); it
+pulls every `@export` table out via the ops-API socket, stubs
+`globalThis.tables`, and runs the resource methods directly. On
+Fabric (and any normal VM) TCP 9926 — and therefore `:443` to the
+public REST domain — works fine and the workaround is unnecessary.
+
+### What we tried first that did not work
+
+- **`@harperdb/static` package** — surfaces in some web docs but
+  is not actually published to npm (`npm view @harperdb/static` →
+  E404). Use the bundled `static:` extension; it's part of the
+  `harperdb` package itself.
+- **Browser-side joins via the auto-export endpoints only** —
+  works, and `scripts/verify_via_rest.py` already does this for
+  the Python verifier. But re-implementing the joins in JS for
+  five pages would mean two parallel implementations to keep in
+  sync. Server-side custom resources collapse that to one
+  implementation in one language, at the cost of making the
+  resources.js file the central place to change when the schema
+  changes.
 
 ---
 

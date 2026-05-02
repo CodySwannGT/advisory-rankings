@@ -1,0 +1,61 @@
+name: Deploy to Fabric
+
+# When `main` advances we package up `harper-app/` and push it to the
+# Fabric cluster via Studio's operations proxy.  Same code path that
+# `npm run deploy` uses locally — see scripts/deploy.mjs and the
+# fabric-runbook §6 for why we go through Studio's :443 instead of the
+# cluster's :9925 (firewalled from datacenter egress).
+#
+# After deploy, we run the Playwright smoke suite against the live
+# cluster URL with basic-auth.  If any check fails the workflow fails.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      HARPER_STUDIO_URL: https://fabric.harper.fast
+      HARPER_CLUSTER_URL: https://advisory-rankings-de.cody-swann-org.harperfabric.com
+      HARPER_CLUSTER_ID: clu-nzeaqmqh1c5zrp9w
+      HARPER_ADMIN_USERNAME: ${{ secrets.HARPER_ADMIN_USERNAME }}
+      HARPER_ADMIN_PASSWORD: ${{ secrets.HARPER_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify required secrets are wired
+        run: |
+          if [ -z "${HARPER_ADMIN_USERNAME}" ] || [ -z "${HARPER_ADMIN_PASSWORD}" ]; then
+            echo "::error::HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD secrets are not set on the repo." >&2
+            exit 1
+          fi
+
+      - name: Deploy harper-app/ to Fabric (deploy_component + restart)
+        run: node scripts/deploy.mjs
+
+      - name: Install Playwright Chromium
+        run: |
+          npx --yes playwright@1.56.1 install --with-deps chromium
+
+      - name: Smoke-test the deployed UI
+        env:
+          BASE_URL: ${{ env.HARPER_CLUSTER_URL }}
+        run: node tests/web_smoke.mjs
+
+      - name: Upload smoke screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: tests/screenshots/
+          if-no-files-found: ignore

@@ -1,0 +1,589 @@
+/* Facebook-derivative palette + layout. We aren't trying to clone the
+   exact look — just the *information architecture*: a centered feed of
+   white cards with a sticky top nav and entity rails on either side. */
+
+:root {
+	--bg: #f0f2f5;
+	--card: #ffffff;
+	--border: #e4e6eb;
+	--text: #050505;
+	--text-muted: #65676b;
+	--text-link: #1877f2;
+	--brand: #1877f2;
+	--brand-dark: #166fe5;
+	--accent-green: #2ea44f;
+	--accent-red: #cb3b3b;
+	--accent-amber: #b35900;
+	--chip-bg: #e7f3ff;
+	--chip-bg-firm: #e9f5e9;
+	--chip-bg-team: #f3eafe;
+	--chip-bg-advisor: #fff3e0;
+	--shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	padding: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Top navbar ─────────────────────────────────────────────── */
+
+.nav {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	background: var(--card);
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 8px 16px;
+	box-shadow: var(--shadow);
+}
+.nav .logo {
+	font-weight: 800;
+	font-size: 22px;
+	color: var(--brand);
+	letter-spacing: -0.5px;
+}
+.nav .logo a { color: inherit; }
+.nav .logo a:hover { text-decoration: none; }
+.nav .search {
+	flex: 1;
+	max-width: 320px;
+	background: var(--bg);
+	border-radius: 999px;
+	padding: 8px 14px;
+	font-size: 14px;
+	color: var(--text-muted);
+}
+.nav .search input {
+	background: transparent;
+	border: 0;
+	outline: none;
+	width: 100%;
+	font-size: 14px;
+	color: var(--text);
+}
+.nav-drawer {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-left: auto;
+}
+.nav .nav-links {
+	display: flex;
+	gap: 4px;
+}
+.nav .nav-links a {
+	color: var(--text-muted);
+	padding: 8px 14px;
+	border-radius: 8px;
+	font-weight: 500;
+}
+.nav .nav-links a:hover { background: var(--bg); text-decoration: none; }
+.nav .nav-links a.active { color: var(--brand); }
+
+/* "Me" pill: signed-in name + sign-out button, or "Sign in" link. */
+.nav .me-spot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.nav .me-spot .me-user { font-weight: 600; color: var(--text); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav .me-spot .me-action {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: var(--bg);
+	color: var(--text);
+	font-weight: 600;
+	font-size: 13px;
+	border: 0;
+	cursor: pointer;
+}
+.nav .me-spot .me-action:hover { background: var(--border); text-decoration: none; }
+.nav .me-spot .me-loading { width: 60px; height: 14px; background: var(--bg); border-radius: 8px; }
+
+/* Hamburger button + scrim — hidden on desktop, visible on mobile. */
+.nav .nav-burger {
+	display: none;
+	width: 36px;
+	height: 36px;
+	background: transparent;
+	border: 0;
+	border-radius: 8px;
+	cursor: pointer;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+	margin-right: -4px;
+}
+.nav .nav-burger:hover { background: var(--bg); }
+.nav .nav-burger span {
+	display: block;
+	width: 18px;
+	height: 2px;
+	background: var(--text);
+	border-radius: 2px;
+	transition: transform 0.18s ease, opacity 0.18s ease;
+}
+body.drawer-open .nav .nav-burger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+body.drawer-open .nav .nav-burger span:nth-child(2) { opacity: 0; }
+body.drawer-open .nav .nav-burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+.nav .nav-scrim {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	z-index: 49;
+}
+body.drawer-open .nav .nav-scrim { display: block; }
+
+/* Mobile breakpoint (≤700px): the entire .nav-drawer (links + me-spot)
+   collapses into a right-side sliding panel. The navbar shows just
+   hamburger + logo + search. */
+@media (max-width: 700px) {
+	.nav { gap: 8px; padding: 8px 12px; }
+	.nav .search { max-width: none; }
+	.nav .nav-burger { display: flex; }
+	.nav-drawer {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(82vw, 300px);
+		background: var(--card);
+		box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
+		z-index: 60;
+		transform: translateX(100%);
+		transition: transform 0.22s ease;
+		padding: 64px 16px 16px;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 4px;
+		overflow-y: auto;
+	}
+	.nav-drawer .nav-links {
+		flex-direction: column;
+		gap: 2px;
+	}
+	.nav-drawer .nav-links a {
+		font-size: 16px;
+		padding: 12px 14px;
+	}
+	.nav-drawer .me-spot {
+		margin-top: auto;
+		padding-top: 12px;
+		border-top: 1px solid var(--border);
+		justify-content: space-between;
+	}
+	body.drawer-open .nav-drawer { transform: translateX(0); }
+}
+
+/* ── Three-column layout ────────────────────────────────────── */
+
+.layout {
+	display: grid;
+	grid-template-columns: minmax(260px, 1fr) minmax(0, 590px) minmax(260px, 1fr);
+	gap: 16px;
+	max-width: 1400px;
+	margin: 16px auto;
+	padding: 0 16px;
+	align-items: start;
+}
+@media (max-width: 1100px) {
+	.layout { grid-template-columns: minmax(0, 590px) minmax(220px, 320px); }
+	.layout > .left { display: none; }
+}
+@media (max-width: 800px) {
+	.layout { grid-template-columns: minmax(0, 1fr); }
+	.layout > .right { display: none; }
+}
+
+.layout > .center { min-width: 0; }
+.rail {
+	position: sticky;
+	top: 64px;
+	max-height: calc(100vh - 80px);
+	overflow-y: auto;
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+
+.card {
+	background: var(--card);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: var(--shadow);
+	margin-bottom: 16px;
+	overflow: hidden;
+}
+.card .card-body { padding: 16px; }
+.card .card-section {
+	padding: 14px 16px;
+	border-top: 1px solid var(--border);
+}
+.card h2.card-title {
+	font-size: 17px;
+	font-weight: 700;
+	margin: 0 0 10px;
+}
+.card h3.card-subtitle {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin: 0 0 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+/* ── Feed post (article card) ───────────────────────────────── */
+
+.post-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px 8px;
+}
+.post-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: var(--brand);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 14px;
+	flex-shrink: 0;
+}
+.post-meta { display: flex; flex-direction: column; min-width: 0; }
+.post-meta .src { font-weight: 600; font-size: 14px; }
+.post-meta .when { font-size: 12px; color: var(--text-muted); }
+.post-headline {
+	padding: 0 16px 8px;
+	margin: 0;
+	font-size: 19px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+.post-headline a { color: var(--text); }
+.post-dek {
+	padding: 0 16px 12px;
+	color: var(--text);
+	font-size: 14px;
+}
+.post-footer {
+	display: flex;
+	gap: 12px;
+	padding: 10px 16px;
+	border-top: 1px solid var(--border);
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.post-footer .ext-link { margin-left: auto; }
+
+/* ── Event cards inside a post ──────────────────────────────── */
+
+.event-card {
+	margin: 0 16px 12px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: #fafbfc;
+	padding: 12px 14px;
+}
+.event-card.transition {
+	border-left: 3px solid var(--accent-green);
+}
+.event-card.disclosure {
+	border-left: 3px solid var(--accent-red);
+}
+.event-card .event-title {
+	font-weight: 700;
+	font-size: 14px;
+	margin-bottom: 6px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+.event-card .firm-arrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+}
+.event-card .firm-arrow .arrow {
+	color: var(--text-muted);
+	font-weight: 400;
+}
+.event-card .stats {
+	display: flex;
+	gap: 18px;
+	margin-top: 8px;
+	flex-wrap: wrap;
+}
+.event-card .stat {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+.event-card .stat strong {
+	display: block;
+	font-size: 16px;
+	color: var(--text);
+	font-weight: 700;
+}
+.event-card .deal-strip {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px dashed var(--border);
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.event-card .allegation {
+	margin-top: 6px;
+	font-size: 13px;
+	color: var(--text);
+	font-style: italic;
+}
+.event-card .sanctions-row {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+.sanction-pill {
+	background: #fff0f0;
+	border: 1px solid #f4caca;
+	color: var(--accent-red);
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+/* ── Entity chips (advisors, firms, teams) ──────────────────── */
+
+.chip-row {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	padding: 0 16px 12px;
+}
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text);
+	background: var(--chip-bg);
+	border: 1px solid transparent;
+}
+.chip:hover { text-decoration: none; border-color: var(--border); }
+.chip.firm { background: var(--chip-bg-firm); }
+.chip.team { background: var(--chip-bg-team); }
+.chip.advisor { background: var(--chip-bg-advisor); }
+.chip .chip-kind {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--text-muted);
+	letter-spacing: 0.5px;
+}
+.chip .chip-sub {
+	font-weight: 400;
+	color: var(--text-muted);
+}
+
+/* Even tinier "tag" used in headers / row metadata */
+.tag {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: 4px;
+	background: var(--bg);
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+.tag.danger { background: #fbe6e6; color: var(--accent-red); }
+.tag.warn { background: #fff3df; color: var(--accent-amber); }
+.tag.ok { background: #e3f3e8; color: var(--accent-green); }
+
+/* ── Profile pages ──────────────────────────────────────────── */
+
+.profile-cover {
+	background: linear-gradient(135deg, #1877f2 0%, #5e9bf5 100%);
+	height: 140px;
+	border-radius: 10px 10px 0 0;
+}
+.profile-head {
+	padding: 0 24px 16px;
+	margin-top: -52px;
+	display: flex;
+	align-items: flex-end;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+.profile-avatar {
+	width: 104px;
+	height: 104px;
+	border-radius: 50%;
+	background: var(--card);
+	border: 5px solid var(--card);
+	box-shadow: var(--shadow);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	font-size: 36px;
+	color: var(--brand);
+	flex-shrink: 0;
+}
+.profile-title {
+	flex: 1;
+	min-width: 220px;
+	padding-bottom: 8px;
+}
+.profile-title h1 {
+	margin: 0;
+	font-size: 26px;
+	font-weight: 800;
+}
+.profile-title .subtitle {
+	color: var(--text-muted);
+	font-size: 14px;
+	margin-top: 2px;
+}
+.profile-meta {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	margin-top: 6px;
+}
+
+/* List of advisors / members */
+.entity-list { display: flex; flex-direction: column; }
+.entity-list .row {
+	display: flex;
+	gap: 10px;
+	padding: 10px 0;
+	border-top: 1px solid var(--border);
+	align-items: center;
+}
+.entity-list .row:first-child { border-top: 0; }
+.entity-list .row .avatar {
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	background: var(--chip-bg-advisor);
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 12px;
+	flex-shrink: 0;
+}
+.entity-list .row .body { flex: 1; min-width: 0; }
+.entity-list .row .name { font-weight: 600; }
+.entity-list .row .sub { color: var(--text-muted); font-size: 12px; }
+.entity-list .row .tail { color: var(--text-muted); font-size: 12px; text-align: right; }
+
+/* ── Career timeline (advisor profile) ──────────────────────── */
+
+.timeline { padding: 4px 0 0; }
+.timeline .step {
+	display: flex;
+	gap: 12px;
+	padding: 8px 0;
+}
+.timeline .step .marker {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: var(--brand);
+	margin-top: 6px;
+	flex-shrink: 0;
+	position: relative;
+}
+.timeline .step:not(:last-child) .marker::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 12px;
+	width: 2px;
+	height: 100%;
+	background: var(--border);
+	transform: translateX(-50%);
+}
+.timeline .step .body { flex: 1; }
+.timeline .step .title { font-weight: 600; }
+.timeline .step .when { color: var(--text-muted); font-size: 12px; }
+.timeline .step .role { color: var(--text-muted); font-size: 13px; }
+.timeline .step.current .marker { background: var(--accent-green); }
+.timeline .step.terminated .marker { background: var(--accent-red); }
+
+/* ── Misc ───────────────────────────────────────────────────── */
+
+.empty {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 8px 0;
+}
+.skeleton {
+	background: linear-gradient(90deg, #eaecef 0%, #f5f6f7 50%, #eaecef 100%);
+	background-size: 200% 100%;
+	animation: sk 1.2s infinite;
+	border-radius: 8px;
+	height: 14px;
+	margin: 6px 0;
+}
+@keyframes sk {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+.kvs { display: grid; grid-template-columns: minmax(110px, max-content) 1fr; gap: 4px 14px; font-size: 13px; }
+.kvs dt { color: var(--text-muted); }
+.kvs dd { margin: 0; color: var(--text); }
+
+.snap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.snap-table th, .snap-table td {
+	text-align: left;
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--border);
+}
+.snap-table th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+.snap-table tr:last-child td { border-bottom: 0; }
+.snap-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.rail .card .card-body { padding: 12px 14px; }
+.rail .card h3.card-subtitle { margin-bottom: 10px; }
+
+footer.site-footer {
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 12px;
+	padding: 24px 0 40px;
+}

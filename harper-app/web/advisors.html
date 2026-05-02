@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Advisors — AdvisoryRankings</title>
+	<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+	<script type="module">
+		import { api, el, mountPage, initials } from './app.js';
+		mountPage({
+			active: 'advisors',
+			build(layout) {
+				const center = el('section', { class: 'center', style: 'grid-column: 1 / -1;' });
+				layout.appendChild(center);
+				api('/PublicAdvisors').then((rows) => {
+					center.appendChild(el('div', { class: 'card' },
+						el('div', { class: 'card-body' },
+							el('h2', { class: 'card-title' }, `All advisors (${rows.length})`),
+							el('div', { class: 'entity-list' },
+								...rows.map((a) => {
+									const name = a.preferredName ? `${a.preferredName} ${a.lastName || ''}`.trim() : (a.legalName || a.lastName || a.id);
+									return el('a', { href: `advisor.html?id=${encodeURIComponent(a.id)}`, style: 'text-decoration:none;color:inherit;' },
+										el('div', { class: 'row' },
+											el('div', { class: 'avatar' }, initials(name)),
+											el('div', { class: 'body' },
+												el('div', { class: 'name' }, name),
+												el('div', { class: 'sub' }, [
+													a.careerStatus,
+													a.yearsExperience ? `${a.yearsExperience}y` : null,
+													a.finraCrd ? `CRD ${a.finraCrd}` : null,
+												].filter(Boolean).join(' · ')),
+											),
+										));
+								}),
+							),
+						),
+					));
+				}).catch((err) => {
+					center.appendChild(el('div', { class: 'card' },
+						el('div', { class: 'card-body' },
+							el('h2', { class: 'card-title' }, 'Could not load advisors'),
+							el('div', { class: 'empty' }, String(err.message || err)))));
+				});
+			},
+		});
+	</script>
+</body>
+</html>

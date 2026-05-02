@@ -10,6 +10,11 @@
     "status": "harperdb status",
     "seed": "python3 harper-app/seed.py",
     "verify": "python3 harper-app/verify.py",
+    "preview": "node scripts/preview_feed.mjs",
+    "dev:server": "node scripts/dev_server.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "smoke": "node tests/web_smoke.mjs",
+    "token": "node scripts/get_token.mjs",
     "reset": "harperdb stop || true; rm -rf $HOME/.harperdb && npm run bootstrap && npm run seed && npm run verify"
   },
   "repository": {
@@ -18,6 +23,9 @@
   },
   "dependencies": {
     "harperdb": "^4.7.29"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
   },
   "engines": {
     "node": ">=18"
