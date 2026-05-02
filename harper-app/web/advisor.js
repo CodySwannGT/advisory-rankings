@@ -1,7 +1,7 @@
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, initials, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -33,7 +33,7 @@ function render(d, center, right) {
 			: a.careerStatus === 'barred' || a.careerStatus === 'suspended' ? 'danger'
 			: a.careerStatus === 'retired' || a.careerStatus === 'deceased' ? 'warn'
 			: 'default';
-		tags.push({ kind, label: a.careerStatus });
+		tags.push({ kind, label: humanize(a.careerStatus) });
 	}
 	if (a.yearsExperience) tags.push({ label: `${a.yearsExperience}y experience` });
 	if (a.finraCrd) tags.push({ label: `CRD ${a.finraCrd}` });
@@ -93,9 +93,9 @@ function render(d, center, right) {
 			body: EntityList({
 				rows: d.outsideBusinessActivities.map((o) => EntityRow({
 					avatar: '🏷',
-					name: o.name || o.vehicleType || 'Outside activity',
+					name: o.name || humanize(o.vehicleType) || 'Outside activity',
 					sub: [
-						o.vehicleType,
+						humanize(o.vehicleType),
 						o.withCustomers ? 'with customers' : null,
 						o.disclosedToFirm ? 'disclosed' : 'undisclosed',
 						o.startDate ? `${fmtDate(o.startDate, { mode: 'short' })}–${fmtDate(o.endDate, { mode: 'short' })}` : null,
@@ -127,7 +127,7 @@ function render(d, center, right) {
 			['SEC IARD',         a.secIard],
 			['Industry start',   a.industryStartDate],
 			['Years experience', a.yearsExperience],
-			['Career status',    a.careerStatus],
+			['Career status',    humanize(a.careerStatus)],
 			['Birth year',       a.birthYear],
 			['Gender',           a.gender === 'undisclosed' ? null : a.gender],
 		],
@@ -142,7 +142,7 @@ function render(d, center, right) {
 						avatar: initials(r.firm?.name || '?'),
 						name: r.firm?.name || '?',
 						sub: [
-							r.status,
+							humanize(r.status),
 							r.appliedDate ? `applied ${fmtDate(r.appliedDate, { mode: 'short' })}` : null,
 						].filter(Boolean).join(' · '),
 					})),

@@ -9,7 +9,7 @@
 <body>
 	<script type="module">
 		// Directory page: every firm in the DB. UI from the design system.
-		import { api, refreshMe, logout, initials } from './app.js';
+		import { api, refreshMe, logout, humanize, initials } from './app.js';
 		import {
 			mountFullWidthPage, SectionCard, EmptyCard,
 			EntityList, EntityRow,
@@ -28,7 +28,7 @@
 								avatar: initials(f.name),
 								name: f.name,
 								sub: [
-									f.channel,
+									humanize(f.channel),
 									[f.hqCity, f.hqState].filter(Boolean).join(', '),
 									f.dissolvedYear ? `dissolved ${f.dissolvedYear}` : null,
 								].filter(Boolean).join(' · '),

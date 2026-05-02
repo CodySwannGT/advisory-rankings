@@ -156,3 +156,12 @@
 
 /* Icon glyph (used as an avatar substitute) */
 .ab-icon { display: inline-block; line-height: 1; }
+
+/* Scrollable table wrapper — keeps wide tables (provenance,
+   snapshots) from overflowing the card on narrow viewports. */
+.snap-table-scroll {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	max-width: 100%;
+}
+.snap-table-scroll > table { min-width: max-content; }

@@ -196,20 +196,20 @@ export function TransitionEventCard(t, fmts = {}) {
 // The red-bordered card for a Disclosure. Regulator + status,
 // the allegation quote, and stacked SanctionPills.
 export function DisclosureEventCard(d, fmts = {}) {
-	const { fmtMoney } = fmts;
-	const reg = [d.regulator, d.regulatorState].filter(Boolean).join(' / ');
+	const { fmtMoney, humanize = (x) => x } = fmts;
+	const reg = [humanize(d.regulator), d.regulatorState].filter(Boolean).join(' / ');
 	return el('div', { class: 'event-card disclosure' },
 		el('div', { class: 'event-title' },
-			Tag({ kind: 'danger', children: d.disclosureType || 'disclosure' }),
+			Tag({ kind: 'danger', children: humanize(d.disclosureType) || 'Disclosure' }),
 			reg ? el('span', {}, reg) : null,
-			d.status ? Tag({ kind: 'default', children: d.status }) : null,
+			d.status ? Tag({ kind: 'default', children: humanize(d.status) }) : null,
 			d.advisor ? el('a', { href: `advisor.html?id=${encodeURIComponent(d.advisor.id)}` }, d.advisor.name) : null,
 		),
 		d.allegationText ? el('div', { class: 'allegation' }, '"', d.allegationText, '"') : null,
 		(d.sanctions && d.sanctions.length)
 			? el('div', { class: 'sanctions-row' },
 				...d.sanctions.map((s) => {
-					const bits = [s.sanctionType];
+					const bits = [humanize(s.sanctionType)];
 					if (s.amount && fmtMoney) bits.push(fmtMoney(s.amount));
 					if (s.durationMonths) bits.push(`${s.durationMonths}mo`);
 					if (s.jurisdiction) bits.push(`(${s.jurisdiction})`);
@@ -300,26 +300,35 @@ export function CareerTimeline({ career, fmtDate } = {}) {
 
 // ─── SnapshotTable ────────────────────────────────────────────
 // Table of TeamMetricSnapshot rows on the team profile.
-export function SnapshotTable({ snaps, fmtMoney } = {}) {
-	return el('table', { class: 'snap-table' },
-		el('thead', {}, el('tr', {},
-			el('th', {}, 'As of'),
-			el('th', { class: 'num' }, 'AUM'),
-			el('th', { class: 'num' }, 'Annual rev.'),
-			el('th', { class: 'num' }, 'Households'),
-			el('th', { class: 'num' }, 'Team size'),
-			el('th', {}, 'Source'),
-		)),
-		el('tbody', {}, ...snaps.map((s) =>
-			el('tr', {},
-				el('td', {}, s.asOf || '?'),
-				el('td', { class: 'num' }, s.aum != null ? fmtMoney(s.aum) : '—'),
-				el('td', { class: 'num' }, s.annualRevenue != null ? fmtMoney(s.annualRevenue) : '—'),
-				el('td', { class: 'num' }, s.householdCount ?? '—'),
-				el('td', { class: 'num' }, s.teamSize ?? '—'),
-				el('td', {}, s.sourceType || '—'),
-			))),
+export function SnapshotTable({ snaps, fmtMoney, humanize = (x) => x } = {}) {
+	return ScrollableTable(
+		el('table', { class: 'snap-table' },
+			el('thead', {}, el('tr', {},
+				el('th', {}, 'As of'),
+				el('th', { class: 'num' }, 'AUM'),
+				el('th', { class: 'num' }, 'Annual rev.'),
+				el('th', { class: 'num' }, 'Households'),
+				el('th', { class: 'num' }, 'Team size'),
+				el('th', {}, 'Source'),
+			)),
+			el('tbody', {}, ...snaps.map((s) =>
+				el('tr', {},
+					el('td', {}, s.asOf || '?'),
+					el('td', { class: 'num' }, s.aum != null ? fmtMoney(s.aum) : '—'),
+					el('td', { class: 'num' }, s.annualRevenue != null ? fmtMoney(s.annualRevenue) : '—'),
+					el('td', { class: 'num' }, s.householdCount ?? '—'),
+					el('td', { class: 'num' }, s.teamSize ?? '—'),
+					el('td', {}, s.sourceType ? humanize(s.sourceType) : '—'),
+				))),
+		),
 	);
+}
+
+// ─── ScrollableTable ──────────────────────────────────────────
+// Wraps a wide table in a horizontally-scrollable container so it
+// doesn't blow out the layout on narrow viewports.
+export function ScrollableTable(table) {
+	return el('div', { class: 'snap-table-scroll' }, table);
 }
 
 // ─── SkeletonCard ─────────────────────────────────────────────

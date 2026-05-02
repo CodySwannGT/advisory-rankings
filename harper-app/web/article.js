@@ -1,11 +1,11 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtDate, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtDate, humanize, getQueryParam } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
-	TransitionEventCard, DisclosureEventCard,
+	TransitionEventCard, DisclosureEventCard, ScrollableTable,
 } from './design-system/index.js';
 
 mountThreeColumnPage({
@@ -64,22 +64,24 @@ function render(d, center, right) {
 	if (d.provenance && d.provenance.length) {
 		center.appendChild(SectionCard({
 			title: `Field-assertion provenance (${d.provenance.length})`,
-			body: el('table', { class: 'snap-table' },
-				el('thead', {}, el('tr', {},
-					el('th', {}, 'Target'),
-					el('th', {}, 'Field'),
-					el('th', {}, 'Value'),
-					el('th', {}, 'Quote'),
-					el('th', {}, 'Confidence'),
-				)),
-				el('tbody', {}, ...d.provenance.map((p) =>
-					el('tr', {},
-						el('td', {}, `${p.targetTable}`),
-						el('td', {}, p.fieldName),
-						el('td', {}, p.assertedValue || ''),
-						el('td', {}, p.quotePhrase ? `"${p.quotePhrase}"` : ''),
-						el('td', {}, p.confidence || ''),
-					))),
+			body: ScrollableTable(
+				el('table', { class: 'snap-table' },
+					el('thead', {}, el('tr', {},
+						el('th', {}, 'Target'),
+						el('th', {}, 'Field'),
+						el('th', {}, 'Value'),
+						el('th', {}, 'Quote'),
+						el('th', {}, 'Confidence'),
+					)),
+					el('tbody', {}, ...d.provenance.map((p) =>
+						el('tr', {},
+							el('td', {}, humanize(p.targetTable)),
+							el('td', {}, humanize(p.fieldName)),
+							el('td', {}, p.assertedValue || ''),
+							el('td', {}, p.quotePhrase ? `"${p.quotePhrase}"` : ''),
+							el('td', {}, humanize(p.confidence) || ''),
+						))),
+				),
 			),
 		}));
 	}

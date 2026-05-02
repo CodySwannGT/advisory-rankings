@@ -113,6 +113,25 @@ export function fmtDate(d, { mode = 'long' } = {}) {
 	return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// Convert a snake_case / camelCase / PascalCase identifier into
+// a sentence-cased, space-separated label. All-uppercase tokens
+// (FINRA, SEC, LLC, …) and already-spaced strings pass through
+// unchanged so we don't mangle acronyms.
+export function humanize(s) {
+	if (s == null) return s;
+	const str = String(s);
+	if (!str) return str;
+	if (str.includes(' ')) return str;
+	if (/[A-Z]/.test(str) && str === str.toUpperCase()) return str;
+	const spaced = str
+		.replace(/_+/g, ' ')
+		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
+	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 export function initials(name) {
 	if (!name) return '?';
 	const parts = String(name).trim().split(/\s+/).filter(Boolean);
@@ -127,7 +146,7 @@ export function getQueryParam(name) {
 
 // Convenience bag of formatters to thread through to organisms
 // (FeedPostCard, TransitionEventCard, …) without rewiring imports.
-export const fmts = { fmtMoney, fmtPct, fmtDate };
+export const fmts = { fmtMoney, fmtPct, fmtDate, humanize };
 
 // ─── mountPage — convenience shim around the template ─────────
 //

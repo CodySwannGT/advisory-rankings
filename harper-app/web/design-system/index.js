@@ -28,7 +28,7 @@ export {
 	Card, SectionCard, EmptyCard, ChipRow, EntityList,
 	ProfileHead, Navbar, SiteFooter,
 	TransitionEventCard, DisclosureEventCard, ArticleListBlock,
-	FeedPostCard, CareerTimeline, SnapshotTable,
+	FeedPostCard, CareerTimeline, SnapshotTable, ScrollableTable,
 	SkeletonCard, BrowseCard, RollupCard, DetailsCard,
 } from './organisms.js';
 

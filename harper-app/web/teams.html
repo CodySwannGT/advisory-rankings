@@ -9,7 +9,7 @@
 <body>
 	<script type="module">
 		// Directory page: every team in the DB. UI from the design system.
-		import { api, refreshMe, logout, initials } from './app.js';
+		import { api, refreshMe, logout, humanize, initials } from './app.js';
 		import {
 			mountFullWidthPage, SectionCard, EmptyCard,
 			EntityList, EntityRow,
@@ -27,7 +27,7 @@
 							rows: teams.map((t) => EntityRow({
 								avatar: initials(t.name),
 								name: t.name,
-								sub: [t.currentFirmName, t.serviceModel].filter(Boolean).join(' · '),
+								sub: [t.currentFirmName, humanize(t.serviceModel)].filter(Boolean).join(' · '),
 								href: `team.html?id=${encodeURIComponent(t.id)}`,
 							})),
 						}),
