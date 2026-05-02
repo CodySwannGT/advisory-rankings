@@ -3,10 +3,14 @@
 A data schema for US wealth-management financial advisors, sourced
 from AdvisorHub.com coverage and running on Harper.
 
-> **Deploying to production?** See
-> [`docs/deploy-to-harper-fabric.md`](docs/deploy-to-harper-fabric.md)
-> for the Harper Fabric (managed cloud) signup, cluster creation, and
-> deployment flow.
+> **Deploying to Harper Fabric?**
+> - [`docs/deploy-to-harper-fabric.md`](docs/deploy-to-harper-fabric.md)
+>   — the *plan*: signup, cluster creation, push/pull deploy in theory.
+> - [`docs/fabric-runbook.md`](docs/fabric-runbook.md) — the *log*:
+>   what actually happened deploying `advisory-rankings-dev`,
+>   including every workaround (SSH deploy keys, the `fabric-deploy`
+>   branch, the `:9925` firewall escape hatch via REST PUT/GET).
+>   Read this if you need to operate the running cluster.
 
 ## Quick start
 

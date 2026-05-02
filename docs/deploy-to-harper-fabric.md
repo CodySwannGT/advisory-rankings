@@ -4,6 +4,15 @@ This project runs locally via `npm run bootstrap`. To deploy it to
 Harper Fabric (Harper's managed cloud — formerly Harper Cloud), follow
 the steps below.
 
+> **This is the planning doc.** It describes the deploy flow as Harper
+> documents it. The *operating* doc — what we actually had to do for
+> the live `advisory-rankings-dev` cluster, including every workaround
+> we hit (SSH deploy keys for private repos, root-level `config.yaml`
+> on a `fabric-deploy` branch because Fabric's import form has no
+> "component path" field, REST PUT/GET wrappers for seed/verify
+> because port 9925 is firewalled from datacenter networks) — is in
+> [`docs/fabric-runbook.md`](fabric-runbook.md). Read both.
+
 > Sources for this guide: <https://www.harper.fast/start>,
 > <https://docs.harperdb.io/fabric>,
 > <https://docs.harperdb.io/docs/developers/applications>.
