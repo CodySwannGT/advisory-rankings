@@ -1,19 +1,27 @@
-import { el, mountPage, postJson, refreshMe } from './app.js';
+// Sign-in page.
+// All UI comes from the design system — see docs/design-system.md.
 
-mountPage({
+import { postJson, refreshMe } from './app.js';
+import {
+	mountCenteredNarrowPage, el,
+	SectionCard, Heading, Button, TextInput, LabeledField, EmptyText,
+} from './design-system/index.js';
+
+mountCenteredNarrowPage({
 	active: 'home',
-	build(layout) {
-		const center = el('section', { class: 'center', style: 'grid-column: 1 / -1; max-width: 420px; margin: 32px auto;' });
-		layout.appendChild(center);
-
-		const error = el('div', { class: 'empty', style: 'display:none; color: var(--accent-red); margin-top: 8px;' });
-		const submit = el('button', {
+	refreshMe,
+	build({ center }) {
+		const error = el('div', {
+			class: 'ab-empty',
+			style: 'display:none; color: var(--ab-color-danger); margin-top: 8px;',
+		});
+		const submit = Button({
+			variant: 'primary',
 			type: 'submit',
-			class: 'me-action',
-			style: 'width:100%; padding:10px 14px; font-size:15px; background:var(--brand); color:#fff;',
-		}, 'Sign in');
-		const email = el('input', { type: 'email', name: 'email', autocomplete: 'username', required: true, placeholder: 'you@example.com' });
-		const password = el('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
+			children: 'Sign in',
+		});
+		const email = TextInput({ type: 'email', name: 'email', autocomplete: 'username', required: true, placeholder: 'you@example.com' });
+		const password = TextInput({ type: 'password', name: 'password', autocomplete: 'current-password', required: true });
 
 		const form = el('form', {
 			onSubmit: async (e) => {
@@ -34,37 +42,23 @@ mountPage({
 				}
 			},
 		},
-			labeled('Email', email),
-			labeled('Password', password),
+			LabeledField({ label: 'Email', input: email }),
+			LabeledField({ label: 'Password', input: password }),
 			el('div', { style: 'margin-top: 16px;' }, submit),
 			error,
 		);
 
-		center.appendChild(el('div', { class: 'card' },
-			el('div', { class: 'card-body' },
-				el('h2', { class: 'card-title' }, 'Sign in'),
-				el('p', { class: 'sub', style: 'color: var(--text-muted); margin: 0 0 16px; font-size: 14px;' },
-					'You can browse advisors, firms and teams without signing in. Sign in to manage data.'),
+		center.appendChild(SectionCard({
+			body: [
+				Heading({ level: 2, attrs: { class: 'card-title' }, children: 'Sign in' }),
+				el('p', {
+					class: 'sub',
+					style: 'color: var(--ab-color-text-muted); margin: 0 0 16px; font-size: var(--ab-font-size-base);',
+				}, 'You can browse advisors, firms and teams without signing in. Sign in to manage data.'),
 				form,
-			),
-		));
+			],
+		}));
 
 		setTimeout(() => email.focus(), 50);
 	},
 });
-
-function labeled(label, input) {
-	Object.assign(input.style, {
-		width: '100%',
-		padding: '10px 12px',
-		fontSize: '15px',
-		border: '1px solid var(--border)',
-		borderRadius: '8px',
-		marginTop: '4px',
-		boxSizing: 'border-box',
-	});
-	return el('label', { style: 'display:block; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--text-muted);' },
-		label,
-		input,
-	);
-}

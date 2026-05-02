@@ -1,25 +1,22 @@
-/* Facebook-derivative palette + layout. We aren't trying to clone the
-   exact look — just the *information architecture*: a centered feed of
-   white cards with a sticky top nav and entity rails on either side. */
+/* AdvisorBook layout + legacy component styles.
+   ───────────────────────────────────────────────────────────────
+   The information architecture mimics a Facebook-style activity
+   feed: a centered column of white cards, a sticky top nav, and
+   entity rails on either side.
 
-:root {
-	--bg: #f0f2f5;
-	--card: #ffffff;
-	--border: #e4e6eb;
-	--text: #050505;
-	--text-muted: #65676b;
-	--text-link: #1877f2;
-	--brand: #1877f2;
-	--brand-dark: #166fe5;
-	--accent-green: #2ea44f;
-	--accent-red: #cb3b3b;
-	--accent-amber: #b35900;
-	--chip-bg: #e7f3ff;
-	--chip-bg-firm: #e9f5e9;
-	--chip-bg-team: #f3eafe;
-	--chip-bg-advisor: #fff3e0;
-	--shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-}
+   This stylesheet is structured by atomic-design level. Design
+   tokens (colors, spacing, etc.) and atom-level styles live in
+   ./design-system/. The two @imports below pull them in first;
+   the rest of this file holds molecule + organism + page styles
+   that haven't been migrated to .ab-* class names yet.
+
+   New styles should add their tokens to ./design-system/tokens.css
+   and reference --ab-* custom properties (not raw hex / px).
+   See docs/design-system.md.
+   ─────────────────────────────────────────────────────────────── */
+
+@import url('./design-system/tokens.css');
+@import url('./design-system/components.css');
 
 * { box-sizing: border-box; }
 

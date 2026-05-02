@@ -3,42 +3,37 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Teams — AdvisoryRankings</title>
+	<title>Teams — AdvisorBook</title>
 	<link rel="stylesheet" href="app.css" />
 </head>
 <body>
 	<script type="module">
-		import { api, el, mountPage, initials } from './app.js';
-		mountPage({
+		// Directory page: every team in the DB. UI from the design system.
+		import { api, refreshMe, logout, initials } from './app.js';
+		import {
+			mountFullWidthPage, SectionCard, EmptyCard,
+			EntityList, EntityRow,
+		} from './design-system/index.js';
+
+		mountFullWidthPage({
 			active: 'teams',
-			build(layout) {
-				const center = el('section', { class: 'center', style: 'grid-column: 1 / -1;' });
-				layout.appendChild(center);
+			refreshMe,
+			logout,
+			build({ center }) {
 				api('/PublicTeams').then((teams) => {
-					center.appendChild(el('div', { class: 'card' },
-						el('div', { class: 'card-body' },
-							el('h2', { class: 'card-title' }, `All teams (${teams.length})`),
-							el('div', { class: 'entity-list' },
-								...teams.map((t) =>
-									el('a', { href: `team.html?id=${encodeURIComponent(t.id)}`, style: 'text-decoration:none;color:inherit;' },
-										el('div', { class: 'row' },
-											el('div', { class: 'avatar' }, initials(t.name)),
-											el('div', { class: 'body' },
-												el('div', { class: 'name' }, t.name),
-												el('div', { class: 'sub' }, [
-													t.currentFirmName,
-													t.serviceModel,
-												].filter(Boolean).join(' · ')),
-											),
-										))),
-							),
-						),
-					));
+					center.appendChild(SectionCard({
+						title: `All teams (${teams.length})`,
+						body: EntityList({
+							rows: teams.map((t) => EntityRow({
+								avatar: initials(t.name),
+								name: t.name,
+								sub: [t.currentFirmName, t.serviceModel].filter(Boolean).join(' · '),
+								href: `team.html?id=${encodeURIComponent(t.id)}`,
+							})),
+						}),
+					}));
 				}).catch((err) => {
-					center.appendChild(el('div', { class: 'card' },
-						el('div', { class: 'card-body' },
-							el('h2', { class: 'card-title' }, 'Could not load teams'),
-							el('div', { class: 'empty' }, String(err.message || err)))));
+					center.appendChild(EmptyCard({ title: 'Could not load teams', body: String(err.message || err) }));
 				});
 			},
 		});

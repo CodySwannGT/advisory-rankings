@@ -1,0 +1,102 @@
+/* ───────────────────────────────────────────────────────────────
+   AdvisorBook design tokens
+   ───────────────────────────────────────────────────────────────
+   The single source of truth for color, spacing, radius, shadow,
+   and typography values. Everything else in the stylesheet
+   references these custom properties — never raw hex / px values.
+
+   When you need a new design value, add it here first, then
+   reference it from atoms.css / molecules.css / organisms.css.
+   See docs/design-system.md.
+   ─────────────────────────────────────────────────────────────── */
+
+:root {
+	/* ── Brand & semantic colors ─────────────────────────── */
+	--ab-color-bg:           #f0f2f5;
+	--ab-color-surface:      #ffffff;
+	--ab-color-border:       #e4e6eb;
+	--ab-color-text:         #050505;
+	--ab-color-text-muted:   #65676b;
+	--ab-color-text-link:    #1877f2;
+	--ab-color-brand:        #1877f2;
+	--ab-color-brand-dark:   #166fe5;
+	--ab-color-success:      #2ea44f;
+	--ab-color-danger:       #cb3b3b;
+	--ab-color-warning:      #b35900;
+
+	/* Tinted backgrounds for chips / pills, paired with text colors */
+	--ab-color-chip-bg:          #e7f3ff;
+	--ab-color-chip-firm-bg:     #e9f5e9;
+	--ab-color-chip-team-bg:     #f3eafe;
+	--ab-color-chip-advisor-bg:  #fff3e0;
+	--ab-color-tag-danger-bg:    #fbe6e6;
+	--ab-color-tag-warn-bg:      #fff3df;
+	--ab-color-tag-ok-bg:        #e3f3e8;
+	--ab-color-sanction-bg:      #fff0f0;
+	--ab-color-sanction-border:  #f4caca;
+
+	/* ── Spacing (4px grid) ───────────────────────────────── */
+	--ab-space-1:  4px;
+	--ab-space-2:  8px;
+	--ab-space-3:  12px;
+	--ab-space-4:  16px;
+	--ab-space-5:  20px;
+	--ab-space-6:  24px;
+	--ab-space-8:  32px;
+
+	/* ── Radius ──────────────────────────────────────────── */
+	--ab-radius-sm:    4px;
+	--ab-radius-md:    8px;
+	--ab-radius-lg:    10px;
+	--ab-radius-pill:  999px;
+
+	/* ── Shadows ─────────────────────────────────────────── */
+	--ab-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+	--ab-shadow-drawer: -2px 0 8px rgba(0, 0, 0, 0.12);
+
+	/* ── Typography ──────────────────────────────────────── */
+	--ab-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	--ab-font-size-xs:  11px;
+	--ab-font-size-sm:  12px;
+	--ab-font-size-md:  13px;
+	--ab-font-size-base:14px;
+	--ab-font-size-body:15px;
+	--ab-font-size-lg:  17px;
+	--ab-font-size-xl:  19px;
+	--ab-font-size-2xl: 22px;
+	--ab-font-size-3xl: 26px;
+	--ab-font-weight-normal: 400;
+	--ab-font-weight-medium: 500;
+	--ab-font-weight-semi:   600;
+	--ab-font-weight-bold:   700;
+	--ab-font-weight-black:  800;
+
+	/* ── Layout breakpoints (consumed by media queries only) */
+	--ab-bp-mobile:  700px;
+	--ab-bp-tablet:  1100px;
+
+	/* ── Z-index scale ───────────────────────────────────── */
+	--ab-z-nav:    50;
+	--ab-z-scrim:  49;
+	--ab-z-drawer: 60;
+
+	/* ── Legacy aliases (do not add new uses) ────────────────
+	   Older selectors in app.css still reference these short
+	   names. New code must use --ab-* tokens above. */
+	--bg:                var(--ab-color-bg);
+	--card:              var(--ab-color-surface);
+	--border:            var(--ab-color-border);
+	--text:              var(--ab-color-text);
+	--text-muted:        var(--ab-color-text-muted);
+	--text-link:         var(--ab-color-text-link);
+	--brand:             var(--ab-color-brand);
+	--brand-dark:        var(--ab-color-brand-dark);
+	--accent-green:      var(--ab-color-success);
+	--accent-red:        var(--ab-color-danger);
+	--accent-amber:      var(--ab-color-warning);
+	--chip-bg:           var(--ab-color-chip-bg);
+	--chip-bg-firm:      var(--ab-color-chip-firm-bg);
+	--chip-bg-team:      var(--ab-color-chip-team-bg);
+	--chip-bg-advisor:   var(--ab-color-chip-advisor-bg);
+	--shadow:            var(--ab-shadow-sm);
+}
