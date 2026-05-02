@@ -116,6 +116,10 @@ docs/
                                touching anything visual.
   fabric-runbook.md            ops log: cluster, schema reloads, every
                                workaround, every failed alternative
+  brokercheck-spike.md         feasibility study for adding FINRA
+                               BrokerCheck as a regulator-of-record
+                               source alongside AdvisorHub (research,
+                               not yet implemented)
 
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
@@ -170,6 +174,8 @@ research/
                              full before Cloudflare blocked the
                              sandbox IP — used as ground truth
   extracted.jsonl            sample output of the field extractor
+  brokercheck-samples/       captured FINRA BrokerCheck JSON
+                             responses backing docs/brokercheck-spike.md
   README.md                  how to repopulate from a non-blocked IP
 
 scripts/

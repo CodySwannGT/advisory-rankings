@@ -23,6 +23,14 @@ One JSON file per AdvisorHub post. Mirrors the wp-json `/wp/v2/posts` schema:
 - `team_bio/post_<id>.json` — bios (small set)
 - `_categories.json`, `_tags.json` — taxonomy lookup tables
 
+## `brokercheck-samples/`
+
+Captured FINRA BrokerCheck JSON responses (individual + firm) used
+as the evidence base for `docs/brokercheck-spike.md`. See the
+README inside that directory for endpoint mapping and replay
+instructions, and read the ToU section of the spike doc before
+fetching anything new at scale.
+
 ## `html/` (created by `scripts/crawl_html.py` or `crawl_playwright.py`)
 
 Raw HTML for pages where wp-json is incomplete (e.g., the static rankings
