@@ -70,6 +70,8 @@ The app component declares its URL surface in `config.yaml` at the
 graphqlSchema:
   files: '*.graphql'
 rest: true
+jsResource:
+  files: 'resources.js'
 static:
   files: 'web/*'
 ```
@@ -77,7 +79,12 @@ static:
 That gives us, on `:443`:
 - One auto-generated REST resource per `@table @export` type (~34 of
   them; 23 currently have rows).
-- A static UI under `/` (HTML + CSS + JS in `web/`).
+- Five custom resources from `resources.js` that pre-join across
+  tables for the UI: `/Feed`, `/ArticleView/<id>`,
+  `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`.
+  Doing the joins server-side keeps the page-load to one round-trip.
+- A Facebook-style activity-feed UI under `/` (HTML + CSS + JS in
+  `web/`).
 - HTTP-basic auth required on every route under the same realm; one
   prompt covers both static assets and REST.
 
@@ -108,13 +115,20 @@ still works.
 
 ```
 fabric-deploy branch layout (commit a03f495):
-  config.yaml           ← lifted from harper-app/, plus `static: { files: 'web/*' }`
+  config.yaml           ← lifted from harper-app/, includes
+                          graphqlSchema + rest + jsResource +
+                          static: { files: 'web/*' }
   schema.graphql        ← lifted from harper-app/
+  resources.js          ← lifted from harper-app/ — Feed/Profile resources
   package.json          ← minimal: { "name": "advisor-app", "version": "0.1.0" }
-  web/                  ← static UI for browsing the data
-    index.html
-    app.js
-    style.css
+  web/                  ← Facebook-style UI (see §8); copy whole dir
+    index.html / index.js     home feed
+    article.html / article.js article detail
+    firm.html / firm.js       firm profile
+    advisor.html / advisor.js advisor profile
+    team.html / team.js       team profile
+    firms.html / advisors.html / teams.html  directory pages
+    app.css / app.js          shared CSS + JS
   (everything else inherited from main)
 ```
 
@@ -265,17 +279,30 @@ dual-write, backfill from `FieldAssertion`, then drop the old).
 ### Static UI (`web/`)
 ```bash
 git checkout fabric-deploy
-# edit web/index.html / web/app.js / web/style.css
+# edit any web/*.{html,js,css}
 git commit -am "web: …"
 git push origin fabric-deploy
 ```
 Then **Reload** in Studio (same as schema). The `static:` extension
 re-reads files on reload; no special handling.
 
-> The current `web/app.js` reads from `/<TableName>/` via the same
-> basic-auth credentials the browser already has cached. Only one
-> auth prompt per session because the static realm and REST realm
-> share Harper's authentication.
+> The UI is split across one page per entity kind
+> (`index.html` = feed, `firm.html`, `advisor.html`, `team.html`,
+> `article.html`). Each page is a thin shell that imports a
+> per-page JS module which calls the matching custom resource
+> (`/Feed`, `/FirmProfile/<id>`, etc.) for one round-trip of
+> already-joined data. Shared chrome and DOM helpers live in
+> `web/app.js`. All requests are same-origin so the basic-auth
+> session covers both static and JSON.
+
+### Custom JS resources (`resources.js`)
+Edit `resources.js` at the root of `fabric-deploy` and push. After
+**Reload** Studio re-executes the file; the `Feed` / `*Profile`
+classes re-register at their REST routes. Their bodies issue
+`tables.X.search({})` calls — fine for the current ~99-row dataset.
+Once the dataset grows past ~10k rows, narrow them to indexed
+`search({ conditions: [...] })` queries on the hot paths
+(article-by-publishedDate, employments-by-firmId, etc.).
 
 ### Component dependencies
 Edit the root `package.json` and push. Fabric runs `npm install` on
@@ -360,33 +387,99 @@ When operating from a residential network, prefer the original
 `npm run seed` / `npm run verify` — they're simpler and run server-
 side SQL.
 
+### Smoke-testing the custom JS resources locally
+
+`scripts/preview_feed.mjs` (a.k.a. `npm run preview`) renders the
+`Feed` / `*Profile` resources defined in `harper-app/resources.js`
+against a locally-running Harper, even when port 9926 isn't
+reachable. It pulls every `@export` table out via the ops-API
+Unix socket (`~/.harperdb/operations-server`), stubs
+`globalThis.tables` and `globalThis.Resource`, then imports
+`resources.js` and prints the JSON each resource returns.
+
+```bash
+npm run preview                        # /Feed
+node scripts/preview_feed.mjs firm    <id>
+node scripts/preview_feed.mjs advisor <id>
+node scripts/preview_feed.mjs team    <id>
+node scripts/preview_feed.mjs article <id>
+```
+
+This is purely a local dev aid; the deployed Fabric cluster serves
+the same JSON over HTTPS at `/Feed`, `/FirmProfile/<id>`, etc.
+
 ---
 
 ## 8. Web UI (`web/`)
 
 Plain HTML + vanilla JS + CSS, served by Harper's built-in `static:`
-extension. No build step. No framework. Reads exclusively from
-`/<TableName>/` REST endpoints.
+extension. No build step. No framework. The UI is structured as a
+**Facebook-style activity feed**: a centered column of article
+cards, with chrome rails and entity rollups on either side.
 
-Features:
-- Sidebar with one entry per `@export` table, dim if empty, count if
-  not.
-- Highlights bar with four hand-curated entry points (Taylor move,
-  Cairnes cluster, sanctions, provenance).
-- Per-table list view with column auto-detection (shows the most
-  populous fields first).
-- FK columns rendered as labels (e.g. `George J. Cairnes` instead of
-  the UUID), clickable to navigate to the related record.
-- Per-record view with `dl/dt/dd` rows; FK fields are clickable.
+### Pages
 
-Auth: relies on the browser's stored basic-auth — visit `/` once,
-enter `cody.swann@gmail.com` + the admin password, and every
-subsequent fetch reuses the cached credential.
+| URL | What it shows |
+|---|---|
+| `/` (`index.html`) | Activity feed of every `Article` ordered by `publishedDate desc`, each card hydrated with the entities it documents. Transition articles render an inline event block (`from-firm → to-firm · AUM · T-12 · headcount · upfront % of T-12`); regulatory articles render a stacked-sanctions block (regulator + each sanction as a pill). |
+| `/firm.html?id=…` | Firm profile: current advisors, past advisors with reason-for-leaving, current teams, transitions in / out, branches (market → complex → branch), disclosures filed at the firm, coverage. This is the "sticky" view the user asked for — open Wells Fargo and you get the live roster, alumni, and the two teams that came / went. |
+| `/advisor.html?id=…` | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
+| `/team.html?id=…` | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
+| `/article.html?id=…` | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
+| `/firms.html`, `/advisors.html`, `/teams.html` | Plain directory pages (alphabetical), driven by the auto-generated `/<TableName>/` REST routes. |
 
-To build a richer UI later, this exact pattern still applies —
-Harper's REST is the API surface. If the UI gets large enough to
-warrant a build step, drop a `web/dist/` and update `static.files` to
-match.
+### How the joins happen
+
+The richer pages would otherwise require ~10 client-side fetches
+each. Instead, the browser hits **one** custom resource per page,
+defined in `resources.js`:
+
+| Browser fetches | Resource | Joins it does server-side |
+|---|---|---|
+| `GET /Feed` | `Feed` | Articles + per-target mention tables + `TransitionEvent` (with deal) + `Disclosure` (with sanctions) + advisor / firm / team chips. |
+| `GET /ArticleView/<id>` | `ArticleView` | Same as `/Feed` for one article, plus body + `FieldAssertion` rows. |
+| `GET /FirmProfile/<id>` | `FirmProfile` | Employments → advisors, current vs. past; teams; transitions in / out; branches; disclosures at firm; mention articles. |
+| `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
+| `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
+
+The classes in `resources.js` extend Harper's globally-injected
+`Resource` and use `tables.X.search({})` for the underlying reads.
+Updating any page's data shape means editing the matching method
+**and** the matching `web/<page>.js` renderer in the same change.
+
+### Auth
+
+Same realm covers both `/` and `/<TableName>/` and `/Feed` etc.,
+so a single basic-auth prompt unlocks the entire surface for the
+session.
+
+### Local sandbox caveat
+
+Harper's REST/static HTTP listener (`http.port: 9926`) silently
+fails to bind on container kernels that don't support
+`SO_REUSEPORT` — same family of issue as MQTT in §3 of
+`harper-app/README.md`, but with no Unix-socket fallback. To smoke-
+test the resources without a TCP listener, run
+`npm run preview` (a.k.a. `node scripts/preview_feed.mjs`); it
+pulls every `@export` table out via the ops-API socket, stubs
+`globalThis.tables`, and runs the resource methods directly. On
+Fabric (and any normal VM) TCP 9926 — and therefore `:443` to the
+public REST domain — works fine and the workaround is unnecessary.
+
+### What we tried first that did not work
+
+- **`@harperdb/static` package** — surfaces in some web docs but
+  is not actually published to npm (`npm view @harperdb/static` →
+  E404). Use the bundled `static:` extension; it's part of the
+  `harperdb` package itself.
+- **Browser-side joins via the auto-export endpoints only** —
+  works, and `scripts/verify_via_rest.py` already does this for
+  the Python verifier. But re-implementing the joins in JS for
+  five pages would mean two parallel implementations to keep in
+  sync. Server-side custom resources collapse that to one
+  implementation in one language, at the cost of making the
+  resources.js file the central place to change when the schema
+  changes.
 
 ---
 

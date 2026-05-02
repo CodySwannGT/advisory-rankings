@@ -20,6 +20,7 @@ Requires Node ≥ 18 and Python 3.
 npm run bootstrap     # install deps, install Harper, link the component, start
 npm run seed          # load 99 records from the two scraped articles
 npm run verify        # run cross-table SQL queries
+npm run preview       # render the /Feed JSON locally (sandbox-friendly)
 
 npm run stop          # stop Harper
 npm run status        # check if it's running
@@ -27,6 +28,38 @@ npm run reset         # nuke ~/.harperdb and rebuild from scratch
 ```
 
 `bootstrap` is idempotent — re-run anytime.
+
+## Web UI (Facebook-style activity feed)
+
+The Harper component now ships a small static web app under
+`harper-app/web/` plus aggregating JS resources in
+`harper-app/resources.js`. Together they render an AdvisorHub
+activity feed where each post embeds the entities it documents:
+
+- Home feed (`index.html`) — every article as a Facebook-style card.
+  Transition articles render an inline "from-firm → to-firm · AUM ·
+  T-12 · headcount · upfront % of T-12" event block; disclosure
+  articles render the regulator + stacked sanctions. Mentioned
+  advisors / firms / teams appear as clickable chips.
+- Firm profile (`firm.html?id=…`) — current advisors, past advisors
+  (with terminated-for-cause flag), current teams, transitions in /
+  out, branches (market → complex → branch), disclosures filed
+  while advisors were at the firm, and coverage.
+- Advisor profile (`advisor.html?id=…`) — career timeline (every
+  EmploymentHistory firm with start/end dates and reason for
+  leaving), teams, disclosures with sanction pills, OBAs,
+  registration applications, transitions, and coverage.
+- Team profile (`team.html?id=…`) — current and past members,
+  metric snapshots over time, transitions, coverage.
+- Article detail (`article.html?id=…`) — full body + the same
+  event blocks as the feed card + the FieldAssertion provenance
+  table (which quotes from the article asserted which value).
+
+Once Harper is running, visit `http://127.0.0.1:9926/` (or the
+Fabric cluster's REST domain). On a kernel that can't bind the
+9926 TCP listener (this sandbox), use `npm run preview` to see
+the same JSON the UI would consume. See the runbook §6 for the
+deployed-cluster URL.
 
 ## Repo layout
 
@@ -40,12 +73,24 @@ docs/
                                deployment, prod checklist
 
 harper-app/
-  config.yaml                Harper component config
+  config.yaml                Harper component config (graphqlSchema +
+                             rest + jsResource + static web/)
   schema.graphql             34 entity types as GraphQL SDL with
                              @table @export directives
+  resources.js               custom JS resources backing the UI:
+                             /Feed, /ArticleView/<id>, /FirmProfile/<id>,
+                             /AdvisorProfile/<id>, /TeamProfile/<id>
   seed.py                    inserts 99 records from research/articles/
   verify.py                  cross-table SQL queries that exercise
                              the relationships
+  web/                       static Facebook-style web UI served at /:
+                               index.html / index.js   feed home
+                               article.html / .js      article detail
+                               firm.html / .js         firm profile
+                               advisor.html / .js      advisor profile
+                               team.html / .js         team profile
+                               firms/advisors/teams.html  directories
+                               app.css / app.js        shared CSS + JS
   README.md                  Harper-specific notes (incl. sandbox
                              SO_REUSEPORT workaround)
 
@@ -63,6 +108,8 @@ scripts/
   crawl_html.py              curl fallback
   crawl_playwright.py        headless-browser fallback
   extract_fields.py          regex-based field extractor
+  preview_feed.mjs           offline render of /Feed et al via the
+                             ops-API Unix socket (sandbox-friendly)
 ```
 
 ## What's in the database after `npm run seed`

@@ -10,6 +10,7 @@
     "status": "harperdb status",
     "seed": "python3 harper-app/seed.py",
     "verify": "python3 harper-app/verify.py",
+    "preview": "node scripts/preview_feed.mjs",
     "reset": "harperdb stop || true; rm -rf $HOME/.harperdb && npm run bootstrap && npm run seed && npm run verify"
   },
   "repository": {
