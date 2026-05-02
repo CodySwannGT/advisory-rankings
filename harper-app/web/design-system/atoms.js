@@ -31,8 +31,12 @@ export function Avatar({ initials, size = 'sm', tone = 'neutral', attrs = {} } =
 
 // ─── Tag ──────────────────────────────────────────────────────
 // Tiny inline label. Kinds: "default" | "danger" | "warn" | "ok".
+// Emits both `.ab-tag .ab-tag--<kind>` (new) and the legacy
+// `.tag .<kind>` so existing CSS (`.profile-head .tag`,
+// `.event-card .tag`, etc.) and selectors keep working.
 export function Tag({ kind = 'default', children, attrs = {} } = {}) {
-	const cls = `ab-tag ab-tag--${kind}` + (attrs.class ? ` ${attrs.class}` : '');
+	const legacy = kind === 'default' ? 'tag' : `tag ${kind}`;
+	const cls = `${legacy} ab-tag ab-tag--${kind}` + (attrs.class ? ` ${attrs.class}` : '');
 	return el('span', { ...attrs, class: cls }, ...arrify(children));
 }
 
@@ -48,8 +52,10 @@ export function Skeleton({ width, height, attrs = {} } = {}) {
 
 // ─── EmptyText ────────────────────────────────────────────────
 // Italic muted "no data yet" text. Used inside cards and lists.
+// Emits both `.ab-empty` (new) and legacy `.empty` so the
+// pre-existing `.empty` CSS rule keeps applying everywhere.
 export function EmptyText({ children, attrs = {} } = {}) {
-	const cls = `ab-empty ${attrs.class || ''}`.trim();
+	const cls = `empty ab-empty ${attrs.class || ''}`.trim();
 	return el('div', { ...attrs, class: cls }, ...arrify(children));
 }
 
