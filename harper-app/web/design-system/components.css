@@ -165,3 +165,23 @@
 	max-width: 100%;
 }
 .snap-table-scroll > table { min-width: max-content; }
+
+/* Source attribution footer — used under any section whose data
+   came from an external regulator-of-record (FINRA BrokerCheck,
+   SEC IAPD, …). Required for BrokerCheck per its ToU. */
+.ab-source-attr {
+	font-size: var(--ab-font-size-sm);
+	color: var(--ab-color-text-muted);
+	margin-top: var(--ab-space-3);
+	padding-top: var(--ab-space-2);
+	border-top: 1px dashed var(--ab-color-border);
+	line-height: 1.5;
+}
+.ab-source-attr a {
+	color: var(--ab-color-text-muted);
+	text-decoration: underline;
+	text-decoration-style: dotted;
+}
+.ab-source-attr a:hover {
+	color: var(--ab-color-brand);
+}

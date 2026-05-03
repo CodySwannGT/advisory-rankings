@@ -133,6 +133,7 @@ not own state and do not fetch.
 | `TextInput` | `(attrs)` | Pass-through to `<input>`. |
 | `FormLabel` | `{ label, control, attrs }` | Block-level label wrapping a control. |
 | `Icon` | `{ char, attrs }` | Single emoji or 1–2 letter glyph. |
+| `SourceAttribution` | `{ source, url, termsUrl, fetchedAt, attrs }` | Footer line crediting an external data source. Renders `Source: <a>FINRA BrokerCheck</a> (as of <date>). <a>Terms of use</a>.` Required by FINRA BrokerCheck's ToU under any section that surfaces regulator-of-record facts. |
 
 ### CSS
 

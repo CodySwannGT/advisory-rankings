@@ -116,6 +116,10 @@ docs/
                                touching anything visual.
   fabric-runbook.md            ops log: cluster, schema reloads, every
                                workaround, every failed alternative
+  brokercheck-spike.md         feasibility study for adding FINRA
+                               BrokerCheck as a regulator-of-record
+                               source alongside AdvisorHub (research,
+                               not yet implemented)
 
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
@@ -170,6 +174,8 @@ research/
                              full before Cloudflare blocked the
                              sandbox IP — used as ground truth
   extracted.jsonl            sample output of the field extractor
+  brokercheck-samples/       captured FINRA BrokerCheck JSON
+                             responses backing docs/brokercheck-spike.md
   README.md                  how to repopulate from a non-blocked IP
 
 scripts/
@@ -181,6 +187,38 @@ scripts/
   extract_fields.py          regex-based field extractor
   preview_feed.mjs           offline render of /Feed et al via the
                              ops-API Unix socket (sandbox-friendly)
+  fetch_brokercheck.py       polite, idempotent FINRA BrokerCheck
+                             scraper (modes: --crd, --firm-id,
+                             --enrich, --firm-roster, --search-name,
+                             --from-fixture). See
+                             docs/brokercheck-spike.md for the
+                             rationale and the ToU constraints.
+  brokercheck_crawl_all.py   wave-1 orchestrator: looks up CRDs for
+                             every firm we know about, fetches firm
+                             snapshots, then walks rosters smallest-
+                             first capped at --max-per-firm. Writes
+                             a tail-able log to
+                             research/brokercheck-crawl.log.
+  _brokercheck.py            HTTP client (rate-limited, exponential
+                             backoff, jitter) for
+                             api.brokercheck.finra.org.
+  _brokercheck_parse.py      pure parser: BrokerCheck JSON →
+                             our schema's record shapes. Unit-tested
+                             against fixtures.
+  _brokercheck_load.py       resolver + REST PUT-by-id loader.
+                             Idempotent on natural keys.
+
+tests/
+  web_smoke.mjs              end-to-end Playwright smoke (feed,
+                             firm, advisor, team, article, login,
+                             mobile drawer).
+  brokercheck_web_smoke.mjs  targeted Playwright smoke for the
+                             BrokerCheck UI (CRD badge, attribution
+                             footer, ToU link, regulatory record
+                             card). Runs against the deployed cluster.
+  brokercheck_parse_test.py  parser + loader idempotency tests.
+                             Pure-Python, no network.
+  parity_compare.mjs         deployed-cluster vs local-dev parity.
 ```
 
 ## What's in the database after `npm run seed`

@@ -601,6 +601,34 @@ When operating from a residential network, prefer the original
 `npm run seed` / `npm run verify` — they're simpler and run server-
 side SQL.
 
+### BrokerCheck enrichment
+
+`scripts/fetch_brokercheck.py` populates `Advisor.finraCrd`,
+`Firm.finraCrd`, `EmploymentHistory`, `Disclosure`, `Sanction`,
+`License`, and `BrokerCheckSnapshot` from the FINRA BrokerCheck JSON
+endpoint. It uses the same REST PUT-by-id transport as
+`seed_via_rest.py` (the `:9925` ops API is firewalled here too).
+
+Common entry points:
+
+```bash
+export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+
+# Backfill CRDs onto every Advisor row that lacks one:
+python3 scripts/fetch_brokercheck.py --enrich --max 20
+
+# Add a firm-level Regulatory record card:
+python3 scripts/fetch_brokercheck.py --firm-id 19616
+
+# Discover net-new advisors at a known firm:
+python3 scripts/fetch_brokercheck.py --firm-roster 47770 --max 50
+```
+
+Politeness: 1.5 s ± 0.5 s between requests, exponential backoff on
+4xx/5xx (5 s → 15 s → 45 s), `BC_RATE_SECONDS=3` for slower runs.
+Resumable via `research/brokercheck-state.json`. ToU constraints
+and the full mode reference: `docs/brokercheck-spike.md` §5–§7.
+
 ### Smoke-testing the custom JS resources locally
 
 `scripts/preview_feed.mjs` (a.k.a. `npm run preview`) renders the

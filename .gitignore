@@ -7,3 +7,9 @@ research/extractions/*.json
 research/extractions/.loaded/
 tests/screenshots/
 tests/parity/
+
+# BrokerCheck scraper runtime output — re-derived on every run, not
+# source-of-truth. State file lets the scraper skip CRDs fetched in
+# the last 7 days; log file mirrors stderr output of the orchestrator.
+research/brokercheck-state.json
+research/brokercheck-crawl.log

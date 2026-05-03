@@ -6,7 +6,7 @@ import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
 	DetailsCard, ArticleListBlock, CareerTimeline, Heading,
-	TransitionEventCard, DisclosureEventCard,
+	TransitionEventCard, DisclosureEventCard, SourceAttribution,
 } from './design-system/index.js';
 
 mountThreeColumnPage({
@@ -56,11 +56,23 @@ function render(d, center, right) {
 	}));
 
 	// Career timeline — the marquee section on an advisor profile.
+	const careerBody = el('div', {});
+	if (d.career.length) {
+		careerBody.appendChild(CareerTimeline({ career: d.career, fmtDate }));
+	} else {
+		careerBody.appendChild(EmptyText({ children: 'No employment history on file.' }));
+	}
+	if (d.brokerCheckSnapshot && d.career.length) {
+		careerBody.appendChild(SourceAttribution({
+			source: 'FINRA BrokerCheck',
+			url: `https://brokercheck.finra.org/individual/summary/${encodeURIComponent(d.brokerCheckSnapshot.subjectCrd)}`,
+			termsUrl: 'https://brokercheck.finra.org/terms',
+			fetchedAt: d.brokerCheckSnapshot.fetchedAt,
+		}));
+	}
 	center.appendChild(SectionCard({
 		title: `Career (${d.career.length} firm${d.career.length === 1 ? '' : 's'})`,
-		body: d.career.length
-			? CareerTimeline({ career: d.career, fmtDate })
-			: EmptyText({ children: 'No employment history on file.' }),
+		body: careerBody,
 	}));
 
 	if (d.teams.length) {
@@ -81,9 +93,18 @@ function render(d, center, right) {
 	}
 
 	if (d.disclosures.length) {
+		const discBody = el('div', {}, ...d.disclosures.map((dis) => DisclosureEventCard(dis, fmts)));
+		if (d.brokerCheckSnapshot) {
+			discBody.appendChild(SourceAttribution({
+				source: 'FINRA BrokerCheck',
+				url: `https://brokercheck.finra.org/individual/summary/${encodeURIComponent(d.brokerCheckSnapshot.subjectCrd)}`,
+				termsUrl: 'https://brokercheck.finra.org/terms',
+				fetchedAt: d.brokerCheckSnapshot.fetchedAt,
+			}));
+		}
 		center.appendChild(SectionCard({
 			title: `Disclosures (${d.disclosures.length})`,
-			body: el('div', {}, ...d.disclosures.map((dis) => DisclosureEventCard(dis, fmts))),
+			body: discBody,
 		}));
 	}
 
