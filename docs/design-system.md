@@ -183,10 +183,11 @@ Self-contained UI sections.
 | Component | Used on |
 |---|---|
 | `Card({ children, attrs })` | Every white surface. |
-| `SectionCard({ title, body, attrs })` | The most common container — title + padded body. |
+| `SectionCard({ title, body, attrs })` | The most common container — title + padded body. The `card-title` is a sibling of `.card-body` (not a child) so page code that re-renders by clearing `.card-body` keeps the title. |
 | `EmptyCard({ title, body })` | Error / empty-state shorthand. |
 | `ChipRow({ firms, teams, advisors })` | Mentioned-entities row under feed posts. |
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
+| `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `advisors.html` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
 | `Navbar({ active, refreshMe, logout })` | Sticky top nav. Caller injects `refreshMe` / `logout` from `app.js`. |
 | `SiteFooter()` | Footer with source link. |

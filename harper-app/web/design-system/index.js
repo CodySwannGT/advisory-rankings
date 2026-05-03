@@ -25,7 +25,7 @@ export {
 } from './molecules.js';
 
 export {
-	Card, SectionCard, EmptyCard, ChipRow, EntityList,
+	Card, SectionCard, EmptyCard, ChipRow, EntityList, Paginated,
 	ProfileHead, Navbar, SiteFooter,
 	TransitionEventCard, DisclosureEventCard, ArticleListBlock,
 	FeedPostCard, CareerTimeline, SnapshotTable, ScrollableTable,

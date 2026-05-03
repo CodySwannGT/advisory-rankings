@@ -159,6 +159,19 @@ function readCookie(req, name) {
 }
 function newSid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
+// Mimic Harper's RequestTarget (extends URLSearchParams with `.id`,
+// `.pathname`, parsed `.limit`) so resources.js can read the same shape
+// in dev that production hands them. Just enough for our endpoints —
+// not a full reimplementation of Harper's parser.
+function makeTarget(id, searchParams) {
+	const t = new URLSearchParams(searchParams || '');
+	t.id = id;
+	const lim = parseInt(t.get('limit'), 10);
+	t.limit = Number.isFinite(lim) ? lim : undefined;
+	t.toString = () => id == null ? '' : String(id);
+	return t;
+}
+
 async function readBody(req) {
 	const chunks = [];
 	for await (const c of req) chunks.push(c);
@@ -200,13 +213,13 @@ async function handle(req, res) {
 		const noArgMatch = p.match(/^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams)$/);
 		if (noArgMatch) {
 			const r = await loadResources();
-			return sendJson(res, 200, await new r[noArgMatch[1]]().get());
+			return sendJson(res, 200, await new r[noArgMatch[1]]().get(makeTarget(undefined, url.searchParams)));
 		}
-		const profileMatch = p.match(/^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile)\/(.+)$/);
+		const profileMatch = p.match(/^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/);
 		if (profileMatch) {
 			const [, kind, id] = profileMatch;
 			const r = await loadResources();
-			const out = await new r[kind]().get(decodeURIComponent(id));
+			const out = await new r[kind]().get(makeTarget(decodeURIComponent(id), url.searchParams));
 			return sendJson(res, 200, out);
 		}
 		// Auto-export table list passthrough → SQL via ops API.

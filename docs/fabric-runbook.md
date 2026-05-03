@@ -318,6 +318,27 @@ Once the dataset grows past ~10k rows, narrow them to indexed
 `search({ conditions: [...] })` queries on the hot paths
 (article-by-publishedDate, employments-by-firmId, etc.).
 
+**Paginated endpoints (added 2026-05-03):** `/PublicAdvisors` and
+`/FirmAdvisors/<id>` accept `?cursor=…&limit=…` (default 50, max 100)
+and return `{ items, nextCursor }` (PublicAdvisors also returns
+`total`). The cursor is opaque base64url and stable under inserts —
+clients round-trip whatever they got.
+
+`/FirmProfile/<id>` no longer inlines `currentAdvisors` / `pastAdvisors`
+arrays; it emits `currentAdvisorCount` / `pastAdvisorCount` instead.
+**This is a breaking shape change for `/FirmProfile`** — frontend
+(`web/firm.js`) and backend (`resources.js`) must deploy together,
+which is the default since they ship from the same `fabric-deploy`
+branch. Symptom of a half-deploy: the firm page renders empty
+"Current advisors (0)" cards even when the firm has employees.
+
+The pagination machinery lives in the `parsePagination` /
+`encodeCursor` / `decodeCursor` / `inverseDateKey` / `paginate`
+helpers near the top of `resources.js`. Unit tests for cursor walks
+live at `tests/pagination_test.mjs` and
+`tests/resources_pagination_test.mjs` — run them locally before
+pushing a change to those helpers.
+
 ### Component dependencies
 Edit the root `package.json` and push. Fabric runs `npm install` on
 deploy. The current package.json is intentionally minimal (no

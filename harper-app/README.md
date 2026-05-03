@@ -8,7 +8,7 @@ The advisor schema running on Harper (formerly HarperDB).
 |---|---|
 | `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, and serves `web/*` as a static site. |
 | `schema.graphql` | 34 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
-| `resources.js` | Custom JS resources that join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`. |
+| `resources.js` | Custom JS resources that join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, plus the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`. |
 | `web/` | AdvisorBook static SPA (vanilla JS modules — no build step). Pages: home feed (`index.html`), article detail (`article.html`), per-entity profiles (`firm.html`, `advisor.html`, `team.html`), directories (`firms/advisors/teams.html`), sign-in (`login.html`). UI is composed from the Atomic Design library under `web/design-system/` (tokens / atoms / molecules / organisms / templates) — see `docs/design-system.md`. `app.css` / `app.js` hold page-level styles and non-UI utilities (network, auth, formatters). |
 | `seed.py` | Loads sample data from the two scraped articles (`research/articles/`) — 99 records across 23 tables. |
 | `verify.py` | Cross-table SQL queries that exercise the relationships (career walks, disclosure clusters, sanction stacks, provenance log). |
@@ -40,6 +40,14 @@ Once the server is up:
 - **Custom resources** at `http://127.0.0.1:9926/Feed`,
   `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`,
   `/TeamProfile/<id>` (registered by `resources.js`).
+- **Paginated lists**:
+  - `/PublicAdvisors?cursor=…&limit=50` — directory page.
+    Returns `{ items, nextCursor, total }`. `nextCursor` is null on the
+    last page; round-trip the value you got.
+  - `/FirmAdvisors/<firmId>?status=current|past&cursor=…&limit=50` —
+    advisor lists per firm. Returns `{ items, nextCursor }`. Status
+    defaults to `current`.
+  Default `limit` is 50, max 100. Cursor is opaque base64url.
 - **Web UI** served at `http://127.0.0.1:9926/` from `web/index.html`.
 
 ## Sandbox / container caveat

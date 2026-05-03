@@ -8,11 +8,13 @@
 </head>
 <body>
 	<script type="module">
-		// Directory page: every advisor in the DB. UI from the design system.
+		// Directory page: every advisor in the DB, paginated.
+		// `/PublicAdvisors` is cursor-paginated server-side; the
+		// Paginated organism handles infinite-scroll + Load-more UI.
 		import { api, refreshMe, logout, humanize, initials } from './app.js';
 		import {
-			mountFullWidthPage, SectionCard, EmptyCard,
-			EntityList, EntityRow,
+			mountFullWidthPage, SectionCard,
+			Paginated, EntityRow,
 		} from './design-system/index.js';
 
 		mountFullWidthPage({
@@ -20,30 +22,37 @@
 			refreshMe,
 			logout,
 			build({ center }) {
-				api('/PublicAdvisors').then((rows) => {
-					center.appendChild(SectionCard({
-						title: `All advisors (${rows.length})`,
-						body: EntityList({
-							rows: rows.map((a) => {
-								const name = a.preferredName
-									? `${a.preferredName} ${a.lastName || ''}`.trim()
-									: (a.legalName || a.lastName || a.id);
-								return EntityRow({
-									avatar: initials(name),
-									name,
-									sub: [
-										humanize(a.careerStatus),
-										a.yearsExperience ? `${a.yearsExperience}y` : null,
-										a.finraCrd ? `CRD ${a.finraCrd}` : null,
-									].filter(Boolean).join(' · '),
-									href: `advisor.html?id=${encodeURIComponent(a.id)}`,
-								});
-							}),
-						}),
-					}));
-				}).catch((err) => {
-					center.appendChild(EmptyCard({ title: 'Could not load advisors', body: String(err.message || err) }));
+				const card = SectionCard({
+					title: 'All advisors',
+					body: Paginated({
+						fetchPage: async (cursor) => {
+							const qs = new URLSearchParams({ limit: '50' });
+							if (cursor) qs.set('cursor', cursor);
+							return api(`/PublicAdvisors?${qs}`);
+						},
+						empty: 'No advisors on file.',
+						onTotal: (n) => {
+							const titleEl = card.querySelector('h2.card-title');
+							if (titleEl) titleEl.textContent = `All advisors (${n})`;
+						},
+						renderRow: (a) => {
+							const name = a.preferredName
+								? `${a.preferredName} ${a.lastName || ''}`.trim()
+								: (a.legalName || a.lastName || a.id);
+							return EntityRow({
+								avatar: initials(name),
+								name,
+								sub: [
+									humanize(a.careerStatus),
+									a.yearsExperience ? `${a.yearsExperience}y` : null,
+									a.finraCrd ? `CRD ${a.finraCrd}` : null,
+								].filter(Boolean).join(' · '),
+								href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+							});
+						},
+					}),
 				});
+				center.appendChild(card);
 			},
 		});
 	</script>
