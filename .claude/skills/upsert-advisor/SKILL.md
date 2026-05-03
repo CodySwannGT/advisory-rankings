@@ -147,8 +147,11 @@ That single command writes:
 - `Advisor` (or upserts the existing row matched by `crd:<CRD>` UUIDv5)
 - `BrokerCheckSnapshot` (one row, `fetchedAt` = now, satisfies
   the FINRA ToU "as of <date>" requirement)
-- `EmploymentHistory` rows, one per `currentEmployments[]` and
-  `previousEmployments[]` item
+- `EmploymentHistory` rows, one per real tenure (BD + IA
+  registrations at the same firm whose date ranges overlap or sit
+  within ~90 days are folded by `_dedupe_employments` so the loader
+  writes one row per job, not one row per scope — see
+  `tests/brokercheck_parse_test.py::test_dedupe_employments_*`)
 - `Firm` rows for any firm mentioned in employments (resolved by
   `firmId` from BrokerCheck)
 - `Disclosure` rows with `sourceType: "brokercheck"` and
@@ -233,6 +236,15 @@ BrokerCheck and AdvisorHub between them don't publish:
 - Education (`institution`, `degree`, `field`, `graduationYear`)
 - Designations (`CFP`, `CFA`, `CIMA`, …) with granting body and
   earned date
+- **Team affiliation** — the firm's locator usually names the
+  practice ("The Ibis Group", "The Smith Wealth Group"). If the
+  bio reveals one, mint a `Team` (deterministic id from
+  `_ids.team_id(name, current_firm)`) plus a `TeamMembership`
+  (`_ids.team_membership_id(team_id, advisor_id)`) and an
+  `ArticleTeamMention` so the team chip appears on the
+  advisor profile and the source-bio article. Use the
+  `currentFirmId` from the Advisor's open `EmploymentHistory`
+  row — don't re-derive it from the firm name.
 - Outside-of-AdvisorHub press coverage and ranking-list
   appearances
 

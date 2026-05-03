@@ -266,6 +266,33 @@ State + log files (`research/brokercheck-state.json` and
 output, not source-of-truth data. To bump the cap and continue the
 walk later, just re-run with a higher `--max-per-firm`.
 
+### BD vs IA scope dedup
+
+BrokerCheck publishes BD and IA registrations as separate rows
+under `currentEmployments` / `currentIAEmployments` (and the
+`previous*` variants), even when they describe one continuous
+tenure at one firm — typically the two registrations differ by a
+few days while the firm files U4 amendments. Without dedup the
+loader would write two `EmploymentHistory` rows whose natural-key
+UUID differs only by the few-day startDate gap, producing visible
+duplicates on the advisor profile (Steven M. Swann, CRD 1019847,
+hit this: Wells Fargo Advisors 10/21–10/23 BD vs IA, Morgan
+Stanley 8/24 BD vs 9/3 IA — both appeared twice on his Career
+section before the fix).
+
+`_brokercheck_parse._dedupe_employments` collapses same-firm rows
+whose date ranges overlap or sit within 90 days. Merged row
+keeps the earliest `startDate`, the latest `endDate` (null wins —
+"still current"), and the union of underscore-prefixed scope
+hints. A genuine boomerang ("left and came back years later") is
+preserved because the gap exceeds 90 days. Asserted in
+`tests/brokercheck_parse_test.py::test_dedupe_employments_*`.
+
+If a Cronk- or Swann-style fixture surfaces a new edge case,
+extend the unit test before tweaking the merge window — the
+current 90-day setting catches every real-world BD/IA pairing
+we've seen without folding any sequential tenure.
+
 ### Idempotency
 
 Every entity ID is a deterministic UUIDv5 derived from a stable
