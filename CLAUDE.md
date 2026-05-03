@@ -1,5 +1,15 @@
 # Working in this repo
 
+## No stop-gaps unless explicitly asked
+
+Build the real thing. If a feature needs a backend change, do the
+backend change — don't ship a client-side hack that pretends the
+backend already supports it. If a fix needs a schema migration, do
+the migration. The only time a stop-gap is acceptable is when the
+user explicitly asks for one ("just stub it for now", "client-side
+only is fine", etc.). When in doubt, propose the real fix and
+flag the tradeoff — don't silently downgrade the work.
+
 ## Always keep the documentation in sync with reality
 
 This project's docs are operational, not aspirational — other agents

@@ -5,7 +5,7 @@ import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, ge
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
-	DetailsCard, ArticleListBlock, Tag, Heading,
+	DetailsCard, ArticleListBlock, Tag, Heading, Paginated,
 	TransitionEventCard, DisclosureEventCard, SourceAttribution,
 } from './design-system/index.js';
 
@@ -50,18 +50,25 @@ function render(d, center, right) {
 		center.appendChild(SectionCard({ title: 'About', body: el('div', {}, f.notes) }));
 	}
 
-	// Current advisors — the sticky core: a firm's roster.
-	center.appendChild(SectionCard({
-		title: `Current advisors (${d.currentAdvisors.length})`,
-		body: d.currentAdvisors.length
-			? advisorListBlock(d.currentAdvisors, { showStart: true })
-			: EmptyText({ children: 'No current advisors on file.' }),
-	}));
-
-	if (d.pastAdvisors.length) {
+	// Current advisors — the sticky core: a firm's roster. Paginated
+	// via /FirmAdvisors/<id> so a firm with thousands of seats doesn't
+	// drop a 50,000-row payload on the first paint.
+	if (d.currentAdvisorCount > 0) {
 		center.appendChild(SectionCard({
-			title: `Past advisors (${d.pastAdvisors.length})`,
-			body: advisorListBlock(d.pastAdvisors, { showEnd: true }),
+			title: `Current advisors (${d.currentAdvisorCount})`,
+			body: paginatedAdvisors(f.id, 'current', { showStart: true }),
+		}));
+	} else {
+		center.appendChild(SectionCard({
+			title: 'Current advisors (0)',
+			body: EmptyText({ children: 'No current advisors on file.' }),
+		}));
+	}
+
+	if (d.pastAdvisorCount > 0) {
+		center.appendChild(SectionCard({
+			title: `Past advisors (${d.pastAdvisorCount})`,
+			body: paginatedAdvisors(f.id, 'past', { showEnd: true }),
 		}));
 	}
 
@@ -166,24 +173,32 @@ function _kvRow(k, v) {
 	);
 }
 
-function advisorListBlock(rows, { showStart = false, showEnd = false } = {}) {
-	return EntityList({
-		rows: rows.map((r) => {
-			const a = r.advisor;
-			const sub = [r.roleTitle, humanize(r.roleCategory)].filter(Boolean).join(' · ');
-			let tail = '';
-			if (showStart && r.startDate) tail = `since ${fmtDate(r.startDate, { mode: 'short' })}`;
-			else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
-			else if (r.startDate) tail = fmtDate(r.startDate, { mode: 'short' });
-			return EntityRow({
-				avatar: initials(a.name),
-				name: a.name,
-				sub,
-				tail: r.reasonForLeaving === 'terminated_for_cause'
-					? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
-					: tail,
-				href: `advisor.html?id=${encodeURIComponent(a.id)}`,
-			});
-		}),
+function advisorRow(r, { showStart = false, showEnd = false } = {}) {
+	const a = r.advisor;
+	const sub = [r.roleTitle, humanize(r.roleCategory)].filter(Boolean).join(' · ');
+	let tail = '';
+	if (showStart && r.startDate) tail = `since ${fmtDate(r.startDate, { mode: 'short' })}`;
+	else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
+	else if (r.startDate) tail = fmtDate(r.startDate, { mode: 'short' });
+	return EntityRow({
+		avatar: initials(a.name),
+		name: a.name,
+		sub,
+		tail: r.reasonForLeaving === 'terminated_for_cause'
+			? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
+			: tail,
+		href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+	});
+}
+
+function paginatedAdvisors(firmId, status, opts) {
+	return Paginated({
+		fetchPage: async (cursor) => {
+			const qs = new URLSearchParams({ status, limit: '50' });
+			if (cursor) qs.set('cursor', cursor);
+			return api(`/FirmAdvisors/${encodeURIComponent(firmId)}?${qs}`);
+		},
+		empty: status === 'past' ? 'No past advisors on file.' : 'No current advisors on file.',
+		renderRow: (r) => advisorRow(r, opts),
 	});
 }

@@ -71,6 +71,91 @@ export function EntityList({ rows, empty } = {}) {
 	return el('div', { class: 'entity-list' }, ...rows);
 }
 
+// ─── Paginated ────────────────────────────────────────────────
+// Cursor-paginated list. Auto-loads the next page when a sentinel
+// element scrolls into view; falls back to a visible "Load more"
+// button so this works without IntersectionObserver and without a
+// scrollable viewport (e.g. when fewer rows than fit on screen).
+//
+//   fetchPage(cursor) → Promise<{ items, nextCursor }>
+//   renderRow(item)   → DOM node
+//   empty?            → text shown when the very first page is empty
+//   onTotal?(n)       → optional callback when first page reports total
+//
+// Returns a single DOM node. Drop into a SectionCard `body`.
+export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
+	const list = el('div', { class: 'entity-list' });
+	const status = el('div', { class: 'paginated-status', 'aria-live': 'polite' });
+	const loadMoreBtn = Button({
+		variant: 'neutral',
+		attrs: { class: 'paginated-load-more', type: 'button' },
+		onClick: () => loadNext(),
+		children: 'Load more',
+	});
+	const sentinel = el('div', { class: 'paginated-sentinel', 'aria-hidden': 'true' });
+	const wrap = el('div', { class: 'paginated' }, list, status, loadMoreBtn, sentinel);
+
+	let cursor = null;
+	let loading = false;
+	let done = false;
+	let firstPage = true;
+
+	async function loadNext() {
+		if (loading || done) return;
+		loading = true;
+		loadMoreBtn.disabled = true;
+		status.textContent = 'Loading…';
+		try {
+			const res = await fetchPage(cursor);
+			const items = (res && res.items) || [];
+			if (firstPage) {
+				firstPage = false;
+				if (typeof onTotal === 'function' && typeof res?.total === 'number') {
+					onTotal(res.total);
+				}
+				if (!items.length) {
+					list.replaceWith(empty != null ? EmptyText({ children: empty }) : el('div'));
+					done = true;
+					sentinel.remove();
+					loadMoreBtn.remove();
+					status.textContent = '';
+					return;
+				}
+			}
+			for (const it of items) list.appendChild(renderRow(it));
+			cursor = res?.nextCursor || null;
+			if (!cursor) {
+				done = true;
+				sentinel.remove();
+				loadMoreBtn.remove();
+				status.textContent = 'End of list.';
+			} else {
+				status.textContent = '';
+			}
+		} catch (err) {
+			status.textContent = `Couldn't load more: ${err.message || err}`;
+		} finally {
+			loading = false;
+			loadMoreBtn.disabled = false;
+		}
+	}
+
+	// IntersectionObserver triggers loads as the sentinel enters the
+	// viewport. rootMargin pre-loads ~one viewport early so the user
+	// never sees a blank gap mid-scroll.
+	if ('IntersectionObserver' in window) {
+		const io = new IntersectionObserver((entries) => {
+			for (const e of entries) if (e.isIntersecting) loadNext();
+		}, { rootMargin: '600px' });
+		// Defer attachment to the next microtask so the wrap is in the
+		// DOM before we start observing.
+		queueMicrotask(() => io.observe(sentinel));
+	}
+
+	loadNext();
+	return wrap;
+}
+
 // ─── ProfileHead ──────────────────────────────────────────────
 // Cover gradient + circular avatar + title + subtitle + tags.
 // The marquee block at the top of every profile page.

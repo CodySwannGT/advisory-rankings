@@ -511,6 +511,18 @@ body.drawer-open .nav .nav-scrim { display: block; }
 .entity-list .row .sub { color: var(--text-muted); font-size: 12px; }
 .entity-list .row .tail { color: var(--text-muted); font-size: 12px; text-align: right; }
 
+/* ── Paginated list ──────────────────────────────────────────── */
+
+.paginated { display: flex; flex-direction: column; gap: 8px; }
+.paginated-status {
+	color: var(--text-muted);
+	font-size: 13px;
+	min-height: 18px;
+	padding: 4px 2px;
+}
+.paginated-load-more { align-self: flex-start; }
+.paginated-sentinel { height: 1px; }
+
 /* ── Career timeline (advisor profile) ──────────────────────── */
 
 .timeline { padding: 4px 0 0; }

@@ -75,7 +75,9 @@ documents:
 - Firm profile (`firm.html?id=…`) — current advisors, past advisors
   (with terminated-for-cause flag), current teams, transitions in /
   out, branches (market → complex → branch), disclosures filed
-  while advisors were at the firm, and coverage.
+  while advisors were at the firm, and coverage. The advisor lists
+  are cursor-paginated (50/page) via `/FirmAdvisors/<id>` so a firm
+  with thousands of seats stays responsive.
 - Advisor profile (`advisor.html?id=…`) — career timeline (every
   EmploymentHistory firm with start/end dates and reason for
   leaving), teams, disclosures with sanction pills, OBAs,
@@ -128,7 +130,9 @@ harper-app/
                              @table @export directives
   resources.js               custom JS resources backing the UI:
                              /Feed, /ArticleView/<id>, /FirmProfile/<id>,
-                             /AdvisorProfile/<id>, /TeamProfile/<id>
+                             /AdvisorProfile/<id>, /TeamProfile/<id>,
+                             cursor-paginated /PublicAdvisors and
+                             /FirmAdvisors/<id> (?status&cursor&limit)
   seed.py                    inserts 99 records from research/articles/
   verify.py                  cross-table SQL queries that exercise
                              the relationships
@@ -219,6 +223,12 @@ tests/
   brokercheck_parse_test.py  parser + loader idempotency tests.
                              Pure-Python, no network.
   parity_compare.mjs         deployed-cluster vs local-dev parity.
+  pagination_test.mjs        unit tests for the cursor / paginate
+                             helpers in resources.js. No network.
+  resources_pagination_test.mjs  integration tests that boot the
+                             resource module against a mocked
+                             `tables` global and walk
+                             /PublicAdvisors + /FirmAdvisors page-by-page.
 ```
 
 ## What's in the database after `npm run seed`

@@ -40,8 +40,94 @@
 // Strip a single leading slash so both shapes resolve.
 function normalizeId(target) {
 	if (target == null) return '';
+	// Harper's RequestTarget extends URLSearchParams and exposes the
+	// pre-parsed path id at `target.id`. Prefer that when present, fall
+	// back to toString() for the dev_server bridge and any older callers.
+	if (typeof target === 'object' && target.id != null) return String(target.id);
 	const s = typeof target === 'string' ? target : (target.toString?.() ?? '');
 	return s.startsWith('/') ? s.slice(1) : s;
+}
+
+// Pull cursor + limit off a Harper RequestTarget (or the dev_server's
+// URLSearchParams-compatible shim). Returns concrete defaults so call
+// sites don't need to repeat them.
+//
+//   cursor : opaque base64url-encoded `${sortKey}|${id}` token. The
+//            resource decodes/encodes it; clients just round-trip the
+//            value they got from `nextCursor`.
+//   limit  : 1..MAX_LIMIT, default 50.
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
+function parsePagination(target) {
+	let cursor = null;
+	let limitRaw = null;
+	if (target && typeof target.get === 'function') {
+		cursor = target.get('cursor') || null;
+		limitRaw = target.get('limit');
+	}
+	// Harper also pre-parses `?limit=` onto target.limit as a number.
+	if (limitRaw == null && target && typeof target.limit === 'number') limitRaw = target.limit;
+	const parsed = parseInt(limitRaw, 10);
+	const limit = Math.min(parsed > 0 ? parsed : DEFAULT_LIMIT, MAX_LIMIT);
+	return { cursor, limit };
+}
+
+// Cursor encoding: opaque to clients, but readable in logs. Pack the
+// last seen sort key + id so we can resume on inserts that land
+// between two adjacent records.
+function encodeCursor(sortKey, id) {
+	const raw = `${sortKey ?? ''}\x00${id ?? ''}`;
+	return Buffer.from(raw, 'utf8').toString('base64url');
+}
+function decodeCursor(cursor) {
+	if (!cursor) return null;
+	try {
+		const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+		const idx = raw.indexOf('\x00');
+		if (idx < 0) return null;
+		return { sortKey: raw.slice(0, idx), id: raw.slice(idx + 1) };
+	} catch {
+		return null;
+	}
+}
+
+// Pack a date into a fixed-width string that lex-compares in
+// reverse-chronological order — newest first.  Used as the sort key
+// for advisor employment rows so we can paginate "most-recent first"
+// with the same string-cursor machinery `paginate` uses.
+function inverseDateKey(date) {
+	const ms = dateMs(date);
+	// 14 digits comfortably covers any plausible epoch-ms value
+	// (Number.MAX_SAFE_INTEGER is 16 digits).
+	const inv = 99999999999999n - BigInt(Math.max(0, ms));
+	return String(inv).padStart(14, '0');
+}
+
+// Slice a pre-sorted array after the cursor and return at most `limit`
+// items plus the next cursor.  `keyOf(row)` must produce the same value
+// the input array was sorted by, AND the sort must be lexical-ascending
+// on (keyOf, idOf).
+function paginate(sorted, { cursor, limit }, keyOf, idOf = (r) => r.id) {
+	let start = 0;
+	if (cursor) {
+		const { sortKey, id } = cursor;
+		// Skip past the row identified by the cursor.  Linear scan is
+		// fine for our dataset; switch to binary search if the directory
+		// ever exceeds tens of thousands of rows.
+		for (let i = 0; i < sorted.length; i++) {
+			const k = keyOf(sorted[i]) ?? '';
+			if (k > sortKey || (k === sortKey && idOf(sorted[i]) > id)) {
+				start = i;
+				break;
+			}
+			if (i === sorted.length - 1) start = sorted.length;
+		}
+	}
+	const items = sorted.slice(start, start + limit);
+	const more = start + limit < sorted.length;
+	const last = items[items.length - 1];
+	const nextCursor = more && last ? encodeCursor(keyOf(last) ?? '', idOf(last)) : null;
+	return { items, nextCursor };
 }
 
 function dateMs(v) {
@@ -392,26 +478,18 @@ export class FirmProfile extends Resource {
 		const firm = db.byFirm.get(id);
 		if (!firm) return { error: 'not found', id };
 
-		// Bucket employment rows into current vs. past for the firm.
-		const ehHere = db.employments.filter((e) => e.firmId === id);
-		const currentAdvisors = [];
-		const pastAdvisors = [];
-		for (const e of ehHere) {
-			const a = db.byAdvisor.get(e.advisorId);
-			if (!a) continue;
-			const row = {
-				advisor: { id: a.id, name: advisorDisplayName(a), careerStatus: a.careerStatus },
-				roleTitle: e.roleTitle,
-				roleCategory: e.roleCategory,
-				startDate: e.startDate,
-				endDate: e.endDate,
-				reasonForLeaving: e.reasonForLeaving,
-				aumAtDeparture: e.aumAtDeparture,
-			};
-			(e.endDate ? pastAdvisors : currentAdvisors).push(row);
+		// Count employment rows bucketed by current/past for the section
+		// titles — the actual rows are paginated by `/FirmAdvisors/<id>`
+		// so this endpoint stays small and the firm page first paints
+		// without a 500-row payload.
+		let currentAdvisorCount = 0;
+		let pastAdvisorCount = 0;
+		for (const e of db.employments) {
+			if (e.firmId !== id) continue;
+			if (!db.byAdvisor.has(e.advisorId)) continue;
+			if (e.endDate) pastAdvisorCount++;
+			else currentAdvisorCount++;
 		}
-		currentAdvisors.sort(cmpDesc('startDate'));
-		pastAdvisors.sort(cmpDesc('endDate'));
 
 		const teamsHere = db.teams
 			.filter((t) => t.currentFirmId === id)
@@ -446,8 +524,8 @@ export class FirmProfile extends Resource {
 				...firm,
 				short: firmShort(firm.name),
 			},
-			currentAdvisors,
-			pastAdvisors,
+			currentAdvisorCount,
+			pastAdvisorCount,
 			currentTeams: teamsHere,
 			transitionsIn,
 			transitionsOut,
@@ -462,6 +540,63 @@ export class FirmProfile extends Resource {
 				disclosureCount: bcSnap.disclosureCount,
 				registeredStateCount: bcSnap.registeredStateCount,
 			},
+		};
+	}
+}
+
+// ─── /FirmAdvisors/<firmId>?status=current|past&cursor=…&limit=50 ─
+//
+// Splits the (formerly inlined) `currentAdvisors` / `pastAdvisors`
+// arrays out of `/FirmProfile` so the firm page can paginate them.
+// `status` defaults to "current".
+//
+// Returns `{ items, nextCursor }`.  `items` matches the shape the
+// firm page already renders (advisor + role + dates).
+export class FirmAdvisors extends Resource {
+	allowRead() { return true; }
+	async get(target) {
+		const id = normalizeId(target);
+		if (!id) return { error: 'missing firm id', items: [], nextCursor: null };
+		const status = (target && typeof target.get === 'function' && target.get('status')) === 'past'
+			? 'past' : 'current';
+		const { cursor, limit } = parsePagination(target);
+
+		const db = await loadAll();
+		const rows = [];
+		for (const e of db.employments) {
+			if (e.firmId !== id) continue;
+			const a = db.byAdvisor.get(e.advisorId);
+			if (!a) continue;
+			const isPast = !!e.endDate;
+			if (status === 'past' ? !isPast : isPast) continue;
+			rows.push({
+				// Sort key matches the visible ordering on the firm page:
+				// most-recent start (current) or end (past) first.  The
+				// inverse-date encoding makes the lexical compare used
+				// by `paginate` agree with that order.
+				_sortKey: inverseDateKey(status === 'past' ? e.endDate : e.startDate),
+				_id: e.id || a.id,
+				advisor: { id: a.id, name: advisorDisplayName(a), careerStatus: a.careerStatus },
+				roleTitle: e.roleTitle,
+				roleCategory: e.roleCategory,
+				startDate: e.startDate,
+				endDate: e.endDate,
+				reasonForLeaving: e.reasonForLeaving,
+				aumAtDeparture: e.aumAtDeparture,
+			});
+		}
+		rows.sort((a, b) => {
+			if (a._sortKey !== b._sortKey) return a._sortKey < b._sortKey ? -1 : 1;
+			return (a._id || '').localeCompare(b._id || '');
+		});
+
+		const keyOf = (r) => r._sortKey;
+		const idOf = (r) => r._id;
+		const { items, nextCursor } = paginate(rows, { cursor: decodeCursor(cursor), limit }, keyOf, idOf);
+		// Strip the internal sort fields before sending.
+		return {
+			items: items.map(({ _sortKey, _id, ...rest }) => rest),
+			nextCursor,
 		};
 	}
 }
@@ -703,12 +838,25 @@ export class PublicFirms extends Resource {
 	}
 }
 
+// `/PublicAdvisors?cursor=…&limit=50` — paginated, ordered by lastName.
+//
+// Returns `{ items, nextCursor, total }`.  `nextCursor` is null on the
+// last page.  `total` is the row count across the whole dataset, sent
+// back on every page so the section card can render "All advisors (N)"
+// without the client tracking it separately.
 export class PublicAdvisors extends Resource {
 	allowRead() { return true; }
-	async get() {
+	async get(target) {
 		const rows = await all(tables.Advisor);
-		rows.sort((a, b) => (a.lastName || a.legalName || '').localeCompare(b.lastName || b.legalName || ''));
-		return rows;
+		const keyOf = (a) => (a.lastName || a.legalName || '').toLowerCase();
+		rows.sort((a, b) => {
+			const ka = keyOf(a), kb = keyOf(b);
+			if (ka !== kb) return ka < kb ? -1 : 1;
+			return (a.id || '').localeCompare(b.id || '');
+		});
+		const { cursor, limit } = parsePagination(target);
+		const { items, nextCursor } = paginate(rows, { cursor: decodeCursor(cursor), limit }, keyOf);
+		return { items, nextCursor, total: rows.length };
 	}
 }
 
