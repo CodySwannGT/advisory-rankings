@@ -238,8 +238,12 @@ body.drawer-open .nav .nav-scrim { display: block; }
 .card h2.card-title {
 	font-size: 17px;
 	font-weight: 700;
-	margin: 0 0 10px;
+	margin: 0;
+	padding: 16px 16px 0;
 }
+.card h2.card-title + .card-body { padding-top: 10px; }
+.rail .card h2.card-title { padding: 12px 14px 0; }
+.rail .card h2.card-title + .card-body { padding-top: 8px; }
 .card h3.card-subtitle {
 	font-size: 13px;
 	font-weight: 600;

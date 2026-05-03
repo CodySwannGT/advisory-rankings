@@ -29,13 +29,17 @@ export function Card({ tag = 'div', children, attrs = {} } = {}) {
 // ─── SectionCard ──────────────────────────────────────────────
 // Card with a padded body and an h2 title. The single most-used
 // container in the app.
+//
+// The title is a sibling of `.card-body`, not a child, so page
+// wiring that re-renders by clearing `.card-body` keeps the title
+// in place.
 export function SectionCard({ title, body, attrs = {} } = {}) {
 	return Card({
 		attrs,
-		children: el('div', { class: 'card-body' },
+		children: [
 			title ? Heading({ level: 2, attrs: { class: 'card-title' }, children: title }) : null,
-			...arrify(body),
-		),
+			el('div', { class: 'card-body' }, ...arrify(body)),
+		],
 	});
 }
 

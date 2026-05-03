@@ -183,7 +183,7 @@ Self-contained UI sections.
 | Component | Used on |
 |---|---|
 | `Card({ children, attrs })` | Every white surface. |
-| `SectionCard({ title, body, attrs })` | The most common container — title + padded body. |
+| `SectionCard({ title, body, attrs })` | The most common container — title + padded body. The `card-title` is a sibling of `.card-body` (not a child) so page code that re-renders by clearing `.card-body` keeps the title. |
 | `EmptyCard({ title, body })` | Error / empty-state shorthand. |
 | `ChipRow({ firms, teams, advisors })` | Mentioned-entities row under feed posts. |
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
