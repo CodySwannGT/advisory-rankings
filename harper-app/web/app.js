@@ -171,7 +171,7 @@ const PUBLISHER_BY_HOST = {
 // recognise the host. Pure helper — never throws on bad input.
 export function articleSource(article) {
 	const url = article && article.url;
-	if (!url) return { source: 'AdvisorHub', initials: 'AH', ctaLabel: 'Read original on AdvisorHub →' };
+	if (!url) return { source: 'External', initials: '?', ctaLabel: 'Read original →' };
 	let host = '';
 	try { host = new URL(url).hostname.toLowerCase(); }
 	catch { host = ''; }

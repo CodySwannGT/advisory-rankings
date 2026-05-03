@@ -251,7 +251,7 @@ export function Navbar({ active, refreshMe, logout } = {}) {
 // ─── SiteFooter ───────────────────────────────────────────────
 export function SiteFooter() {
 	return el('footer', { class: 'site-footer' },
-		'Sourced from AdvisorHub · running on Harper · ',
+		'Sourced from AdvisorHub, FINRA BrokerCheck & firm bios · running on Harper · ',
 		el('a', { href: 'https://github.com/CodySwannGT/advisory-rankings', target: '_blank', rel: 'noreferrer' }, 'source'),
 	);
 }
@@ -316,7 +316,7 @@ export function ArticleListBlock({ articles, fmtDate, articleSource } = {}) {
 	if (!articles || !articles.length) return EmptyText({ children: 'No articles yet.' });
 	return EntityList({
 		rows: articles.map((a) => {
-			const src = articleSource ? articleSource(a) : { source: 'AdvisorHub', initials: 'AH' };
+			const src = articleSource ? articleSource(a) : { source: 'External', initials: '?' };
 			return EntityRow({
 				avatar: src.initials,
 				name: el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, a.headline || a.id),
@@ -337,7 +337,7 @@ export function ArticleListBlock({ articles, fmtDate, articleSource } = {}) {
 export function FeedPostCard(item, fmts = {}) {
 	const a = item.article;
 	const { fmtDate, articleSource } = fmts;
-	const src = articleSource ? articleSource(a) : { source: 'AdvisorHub', initials: 'AH', ctaLabel: 'AdvisorHub original →' };
+	const src = articleSource ? articleSource(a) : { source: 'External', initials: '?', ctaLabel: 'Read original →' };
 	return el('article', { class: 'card' },
 		PostHeader({
 			initials: src.initials,

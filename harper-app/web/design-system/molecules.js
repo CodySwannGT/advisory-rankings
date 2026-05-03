@@ -44,7 +44,11 @@ export function EntityChip(entity) {
 // and the article-detail header.
 //
 //   { initials: 'AH', source: 'AdvisorHub', authors?: [...], when?: '3d ago', category?: 'recruiting' }
-export function PostHeader({ initials = 'AH', source = 'AdvisorHub', authors, when, category, attrs = {} } = {}) {
+//
+// Defaults are intentionally neutral — every real caller derives
+// `source` + `initials` from `articleSource(article)` (see app.js).
+// If you see "?" / "External" in the UI, a caller forgot to wire them.
+export function PostHeader({ initials = '?', source = 'External', authors, when, category, attrs = {} } = {}) {
 	const meta = [when, category].filter(Boolean).join(' · ');
 	return el('div', { ...attrs, class: `post-header ${attrs.class || ''}`.trim() },
 		Avatar({ initials, size: 'md', tone: 'brand', attrs: { class: 'post-avatar' } }),
