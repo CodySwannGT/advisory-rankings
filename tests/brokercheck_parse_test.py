@@ -137,6 +137,62 @@ def test_parse_individual_cronk(t: _T) -> None:
     t.check("legalName Darrell Cronk", parsed["advisor"]["legalName"] == "Darrell Cronk")
 
 
+def test_dedupe_employments_bd_ia_overlap(t: _T) -> None:
+    """BrokerCheck publishes BD and IA registrations as separate rows
+    even when they describe the same continuous tenure (typical: a few
+    days apart while the firm files U4 amendments). The parser must
+    fold them into a single EmploymentHistory or the loader writes two
+    rows whose natural-key UUID differs only by startDate.
+
+    Real case: Steven M. Swann (CRD 1019847) at Wells Fargo Advisors
+    (10/21/2002 BD, 10/23/2002 IA → 8/25/2009) and Morgan Stanley
+    (8/24/2009 BD → present, 9/3/2009 IA → present).
+    """
+    from _brokercheck_parse import _dedupe_employments
+    rows = [
+        # BD Wells Fargo + IA Wells Fargo (2-day gap, same firmId, both end same day)
+        {"_firmFinraId": "19616", "_firmName": "WELLS FARGO ADVISORS, LLC",
+         "_iaOnly": False, "startDate": "2002-10-21", "endDate": "2009-08-25"},
+        {"_firmFinraId": "19616", "_firmName": "WELLS FARGO ADVISORS, LLC",
+         "_iaOnly": True,  "startDate": "2002-10-23", "endDate": "2009-08-25"},
+        # BD Morgan Stanley + IA Morgan Stanley (10-day gap, both still current)
+        {"_firmFinraId": "149777", "_firmName": "MORGAN STANLEY",
+         "_iaOnly": False, "startDate": "2009-08-24", "endDate": None},
+        {"_firmFinraId": "149777", "_firmName": "MORGAN STANLEY",
+         "_iaOnly": True,  "startDate": "2009-09-03", "endDate": None},
+    ]
+    out = _dedupe_employments(rows)
+    t.check("4 input rows fold to 2", len(out) == 2, f"got {len(out)} rows: {out}")
+
+    by_firm = {r["_firmFinraId"]: r for r in out}
+    wf = by_firm["19616"]
+    t.check("Wells Fargo: earliest startDate wins",
+            wf["startDate"] == "2002-10-21", f"got {wf['startDate']}")
+    t.check("Wells Fargo: endDate preserved",
+            wf["endDate"] == "2009-08-25", f"got {wf['endDate']}")
+
+    ms = by_firm["149777"]
+    t.check("Morgan Stanley: earliest startDate wins",
+            ms["startDate"] == "2009-08-24", f"got {ms['startDate']}")
+    t.check("Morgan Stanley: still-current endDate stays null",
+            ms["endDate"] is None, f"got {ms['endDate']}")
+
+
+def test_dedupe_employments_keeps_real_boomerang(t: _T) -> None:
+    """If an advisor leaves a firm and returns years later, that's two
+    distinct tenures and must NOT be folded. Multi-year gap >> 90-day
+    merge window."""
+    from _brokercheck_parse import _dedupe_employments
+    rows = [
+        {"_firmFinraId": "16100", "_firmName": "WELLS FARGO BROKERAGE SERVICES",
+         "_iaOnly": False, "startDate": "2010-01-01", "endDate": "2012-06-30"},
+        {"_firmFinraId": "16100", "_firmName": "WELLS FARGO BROKERAGE SERVICES",
+         "_iaOnly": False, "startDate": "2018-03-15", "endDate": None},
+    ]
+    out = _dedupe_employments(rows)
+    t.check("boomerang stays as 2 rows", len(out) == 2, f"got {len(out)}")
+
+
 def test_parse_firm_wells(t: _T) -> None:
     print("\n[parse_firm: Wells Fargo Clearing]")
     raw = json.loads((SAMPLES / "wf-firm-detail.json").read_text())
@@ -355,6 +411,8 @@ def main() -> int:
     test_helpers(t)
     test_parse_individual_cairnes(t)
     test_parse_individual_cronk(t)
+    test_dedupe_employments_bd_ia_overlap(t)
+    test_dedupe_employments_keeps_real_boomerang(t)
     test_parse_firm_wells(t)
     test_loader_idempotent(t)
     test_loader_disclosure_provenance(t)

@@ -308,7 +308,11 @@ def parse_individual(content: dict) -> dict:
     }
 
     # employments — both BD (currentEmployments / previousEmployments) and
-    # IA-only (currentIAEmployments / previousIAEmployments)
+    # IA-only (currentIAEmployments / previousIAEmployments). BrokerCheck
+    # publishes BD and IA registrations as separate rows; same-firm rows
+    # whose date ranges overlap or sit within ~90 days describe the same
+    # tenure and get folded by `_dedupe_employments` so the loader writes
+    # one EmploymentHistory row per real job.
     employments = []
     for emp in (
         content.get("currentEmployments", [])
@@ -317,6 +321,7 @@ def parse_individual(content: dict) -> dict:
         + content.get("previousIAEmployments", [])
     ):
         employments.append(_parse_employment(emp))
+    employments = _dedupe_employments(employments)
 
     # disclosures + sanctions
     disclosures = []
@@ -397,6 +402,96 @@ def _parse_employment(emp: dict) -> dict:
         "_city": emp.get("city") or None,
         "_state": emp.get("state") or None,
     }
+
+
+# Maximum gap (in days) between two same-firm registrations that we still
+# treat as one continuous tenure. BrokerCheck splits BD vs IA registrations
+# into separate rows even when they describe the same job — they typically
+# differ by a few days (administrative U4 amendments). 90 days is enough to
+# absorb that without folding a true boomerang ("left for years and came
+# back" ⇒ usually a multi-year gap).
+_EMPLOYMENT_MERGE_GAP_DAYS = 90
+
+
+def _dedupe_employments(rows: list[dict]) -> list[dict]:
+    """Collapse same-firm registrations that describe the same continuous
+    tenure. BrokerCheck publishes BD and IA registrations as separate
+    rows under `currentEmployments` / `currentIAEmployments` (and the
+    previous variants); without this pass an advisor with both scopes
+    at one firm would write two EmploymentHistory rows whose natural
+    key (`advisor, firm, startDate`) differs by the few-day gap between
+    the two registration dates.
+
+    Rule: rows are grouped by `_firmFinraId` (falling back to
+    `_firmName` when no firmId). Within a group, sort by startDate and
+    merge any consecutive pair whose later startDate is within
+    `_EMPLOYMENT_MERGE_GAP_DAYS` of the earlier endDate (or the earlier
+    row is still current — endDate is null/empty). The merged row keeps
+    the earliest startDate, the latest endDate (null wins — "still
+    current"), and the union of the underscore-prefixed scope hints so
+    the loader can still tell whether the tenure had IA + BD scope.
+    """
+    if not rows:
+        return rows
+
+    groups: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for r in rows:
+        key = r.get("_firmFinraId") or r.get("_firmName") or ""
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(r)
+
+    out: list[dict] = []
+    for key in order:
+        bucket = sorted(groups[key], key=lambda r: r.get("startDate") or "")
+        merged: list[dict] = []
+        for r in bucket:
+            if not merged:
+                merged.append(dict(r))
+                continue
+            cur = merged[-1]
+            cur_end = cur.get("endDate") or ""
+            r_start = r.get("startDate") or ""
+            if _within_merge_gap(cur_end, r_start):
+                cur["startDate"] = min(
+                    s for s in [cur.get("startDate"), r.get("startDate")] if s
+                ) if (cur.get("startDate") and r.get("startDate")) else (
+                    cur.get("startDate") or r.get("startDate")
+                )
+                # endDate: empty/null wins (still current)
+                if not cur.get("endDate") or not r.get("endDate"):
+                    cur["endDate"] = None
+                else:
+                    cur["endDate"] = max(cur["endDate"], r["endDate"])
+                # Union scope hints so we don't lose IA-or-BD provenance
+                cur["_iaOnly"] = cur.get("_iaOnly") and r.get("_iaOnly")
+                for k in ("_iaSecNumber", "_bdSecNumber", "_city", "_state"):
+                    if not cur.get(k) and r.get(k):
+                        cur[k] = r.get(k)
+            else:
+                merged.append(dict(r))
+        out.extend(merged)
+    return out
+
+
+def _within_merge_gap(prev_end: str, next_start: str) -> bool:
+    """True if two registrations should fold into one tenure. Either
+    (a) the previous registration is still current (no end date), or
+    (b) the next start is within `_EMPLOYMENT_MERGE_GAP_DAYS` of the
+        previous end — including the case where they overlap."""
+    if not prev_end:
+        return True
+    if not next_start:
+        return False
+    try:
+        from datetime import date as _date
+        a = _date.fromisoformat(prev_end)
+        b = _date.fromisoformat(next_start)
+    except ValueError:
+        return False
+    return (b - a).days <= _EMPLOYMENT_MERGE_GAP_DAYS
 
 
 def _parse_disclosure(d: dict) -> dict:

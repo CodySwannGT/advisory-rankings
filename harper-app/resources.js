@@ -17,7 +17,9 @@
  *   GET /FirmProfile/<id>      → firm, current/past advisors, current
  *                                teams, transitions in/out, articles.
  *   GET /AdvisorProfile/<id>   → advisor, career walk, teams,
- *                                disclosures + sanctions, OBAs, articles.
+ *                                disclosures + sanctions, OBAs,
+ *                                licenses, designations, education,
+ *                                articles.
  *   GET /TeamProfile/<id>      → team, current/past members, metric
  *                                snapshots, transitions, articles.
  *
@@ -169,9 +171,19 @@ function groupBy(rows, key) {
 
 function advisorDisplayName(a) {
 	if (!a) return null;
-	return a.preferredName
-		? `${a.preferredName} ${a.lastName ?? ''}`.trim()
-		: (a.legalName ?? a.lastName ?? a.id);
+	const last = a.lastName ?? '';
+	const pref = a.preferredName;
+	if (pref) {
+		// preferredName is conventionally the first-name form ("James" for
+		// "C. James Taylor"). Some sources publish a full preferred form
+		// ("Steven M. Swann") — detect that and don't double-stamp the
+		// last name.
+		if (last && pref.toLowerCase().endsWith(last.toLowerCase())) {
+			return pref;
+		}
+		return `${pref} ${last}`.trim();
+	}
+	return a.legalName ?? a.lastName ?? a.id;
 }
 
 function firmShort(name) {
@@ -204,6 +216,7 @@ async function loadAll() {
 		mAdv, mFirm, mTeam, mTE, mDisc,
 		fieldAssertions,
 		bcSnaps,
+		licenses, designations, education,
 	] = await Promise.all([
 		all(tables.Article),
 		all(tables.Advisor),
@@ -229,6 +242,9 @@ async function loadAll() {
 		all(tables.ArticleDisclosureMention),
 		all(tables.FieldAssertion),
 		safeAll(tables.BrokerCheckSnapshot),
+		safeAll(tables.License),
+		safeAll(tables.Designation),
+		safeAll(tables.Education),
 	]);
 	return {
 		articles, advisors, firms, teams, branches,
@@ -240,6 +256,7 @@ async function loadAll() {
 		mAdv, mFirm, mTeam, mTE, mDisc,
 		fieldAssertions,
 		bcSnaps,
+		licenses, designations, education,
 		byAdvisor: indexBy(advisors, 'id'),
 		byFirm: indexBy(firms, 'id'),
 		byTeam: indexBy(teams, 'id'),
@@ -731,6 +748,42 @@ export class AdvisorProfile extends Resource {
 
 		const bcSnap = db.bcSnapByAdvisor.get(id) || null;
 
+		// License / Designation / Education — surfaced for the advisor
+		// profile page. Sorted by grantedDate / earnedDate / graduationYear
+		// so the UI can render a stable order.
+		const licenses = (db.licenses || [])
+			.filter((l) => l.advisorId === id)
+			.sort(cmpAsc('grantedDate'))
+			.map((l) => ({
+				id: l.id,
+				licenseType: l.licenseType,
+				state: l.state,
+				grantedDate: l.grantedDate,
+				expiresDate: l.expiresDate,
+				status: l.status,
+			}));
+		const designations = (db.designations || [])
+			.filter((d2) => d2.advisorId === id)
+			.sort(cmpAsc('earnedDate'))
+			.map((d2) => ({
+				id: d2.id,
+				code: d2.code,
+				grantingBody: d2.grantingBody,
+				earnedDate: d2.earnedDate,
+				expiresDate: d2.expiresDate,
+				status: d2.status,
+			}));
+		const education = (db.education || [])
+			.filter((e) => e.advisorId === id)
+			.sort((x, y) => (x.graduationYear || 0) - (y.graduationYear || 0))
+			.map((e) => ({
+				id: e.id,
+				institution: e.institution,
+				degree: e.degree,
+				field: e.field,
+				graduationYear: e.graduationYear,
+			}));
+
 		return {
 			advisor,
 			displayName: advisorDisplayName(advisor),
@@ -741,6 +794,9 @@ export class AdvisorProfile extends Resource {
 			registrationApplications: regAppsHere,
 			transitions,
 			articles,
+			licenses,
+			designations,
+			education,
 			brokerCheckSnapshot: bcSnap && {
 				fetchedAt: bcSnap.fetchedAt,
 				subjectCrd: bcSnap.subjectCrd,

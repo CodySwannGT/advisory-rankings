@@ -144,9 +144,48 @@ export function getQueryParam(name) {
 	return new URLSearchParams(location.search).get(name);
 }
 
+// Map an article URL hostname to the publisher we want to attribute
+// the post to in the UI. Most articles in this DB are AdvisorHub posts;
+// firm-bio articles (Morgan Stanley, Wells Fargo, Edward Jones, …) are
+// minted by the upsert-advisor skill against the firm's public
+// advisor-locator and need a different label + initials.
+const PUBLISHER_BY_HOST = {
+	'www.advisorhub.com':           { source: 'AdvisorHub',     initials: 'AH' },
+	'advisorhub.com':               { source: 'AdvisorHub',     initials: 'AH' },
+	'advisor.morganstanley.com':    { source: 'Morgan Stanley', initials: 'MS' },
+	'www.morganstanley.com':        { source: 'Morgan Stanley', initials: 'MS' },
+	'fa.wellsfargoadvisors.com':    { source: 'Wells Fargo',    initials: 'WF' },
+	'www.wellsfargoadvisors.com':   { source: 'Wells Fargo',    initials: 'WF' },
+	'www.edwardjones.com':          { source: 'Edward Jones',   initials: 'EJ' },
+	'www.merrilledge.com':          { source: 'Merrill',        initials: 'ML' },
+	'www.ml.com':                   { source: 'Merrill',        initials: 'ML' },
+	'www.ubs.com':                  { source: 'UBS',            initials: 'UB' },
+	'www.lpl.com':                  { source: 'LPL',            initials: 'LP' },
+	'www.raymondjames.com':         { source: 'Raymond James',  initials: 'RJ' },
+	'www.barrons.com':              { source: "Barron's",       initials: 'BA' },
+	'www.forbes.com':               { source: 'Forbes',         initials: 'FB' },
+};
+
+// Returns { source, initials, ctaLabel } for an article. Falls back to
+// the URL hostname (with the leading "www." stripped) when we don't
+// recognise the host. Pure helper — never throws on bad input.
+export function articleSource(article) {
+	const url = article && article.url;
+	if (!url) return { source: 'External', initials: '?', ctaLabel: 'Read original →' };
+	let host = '';
+	try { host = new URL(url).hostname.toLowerCase(); }
+	catch { host = ''; }
+	const known = PUBLISHER_BY_HOST[host];
+	const source = known
+		? known.source
+		: (host.replace(/^www\./, '').split('.')[0] || 'External').replace(/^\w/, (c) => c.toUpperCase());
+	const initialsText = known ? known.initials : initials(source);
+	return { source, initials: initialsText, ctaLabel: `Read original on ${source} →` };
+}
+
 // Convenience bag of formatters to thread through to organisms
 // (FeedPostCard, TransitionEventCard, …) without rewiring imports.
-export const fmts = { fmtMoney, fmtPct, fmtDate, humanize };
+export const fmts = { fmtMoney, fmtPct, fmtDate, humanize, articleSource };
 
 // ─── mountPage — convenience shim around the template ─────────
 //
@@ -192,7 +231,7 @@ export function sectionCard(title, body) {
 	return _SectionCard({ title, body });
 }
 export function articleListBlock(articles) {
-	return _ArticleListBlock({ articles, fmtDate });
+	return _ArticleListBlock({ articles, fmtDate, articleSource });
 }
 export function transitionRow(t) {
 	return _TransitionEventCard(t, fmts);

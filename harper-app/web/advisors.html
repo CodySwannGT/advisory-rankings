@@ -36,9 +36,13 @@
 							if (titleEl) titleEl.textContent = `All advisors (${n})`;
 						},
 						renderRow: (a) => {
-							const name = a.preferredName
-								? `${a.preferredName} ${a.lastName || ''}`.trim()
-								: (a.legalName || a.lastName || a.id);
+							const last = a.lastName || '';
+							const pref = a.preferredName;
+							const name = pref
+								? (last && pref.toLowerCase().endsWith(last.toLowerCase())
+									? pref
+									: `${pref} ${last}`.trim())
+								: (a.legalName || last || a.id);
 							return EntityRow({
 								avatar: initials(name),
 								name,
