@@ -92,6 +92,68 @@ function render(d, center, right) {
 		}));
 	}
 
+	if (d.licenses && d.licenses.length) {
+		const body = el('div', {},
+			EntityList({
+				rows: d.licenses.map((l) => EntityRow({
+					avatar: initials(humanize(l.licenseType)),
+					name: humanize(l.licenseType) || l.licenseType,
+					sub: [
+						l.state ? `state ${l.state}` : null,
+						l.grantedDate ? `granted ${fmtDate(l.grantedDate, { mode: 'short' })}` : null,
+						l.status && l.status !== 'active' ? humanize(l.status) : null,
+					].filter(Boolean).join(' · '),
+				})),
+			}),
+		);
+		if (d.brokerCheckSnapshot) {
+			body.appendChild(SourceAttribution({
+				source: 'FINRA BrokerCheck',
+				url: `https://brokercheck.finra.org/individual/summary/${encodeURIComponent(d.brokerCheckSnapshot.subjectCrd)}`,
+				termsUrl: 'https://brokercheck.finra.org/terms',
+				fetchedAt: d.brokerCheckSnapshot.fetchedAt,
+			}));
+		}
+		center.appendChild(SectionCard({
+			title: `Licenses & exams (${d.licenses.length})`,
+			body,
+		}));
+	}
+
+	if (d.designations && d.designations.length) {
+		center.appendChild(SectionCard({
+			title: `Designations (${d.designations.length})`,
+			body: EntityList({
+				rows: d.designations.map((g) => EntityRow({
+					avatar: g.code,
+					name: g.code,
+					sub: [
+						g.grantingBody,
+						g.earnedDate ? `earned ${fmtDate(g.earnedDate, { mode: 'short' })}` : null,
+						g.status && g.status !== 'active' ? humanize(g.status) : null,
+					].filter(Boolean).join(' · '),
+				})),
+			}),
+		}));
+	}
+
+	if (d.education && d.education.length) {
+		center.appendChild(SectionCard({
+			title: `Education (${d.education.length})`,
+			body: EntityList({
+				rows: d.education.map((e) => EntityRow({
+					avatar: initials(e.institution || '?'),
+					name: e.institution || '(unknown institution)',
+					sub: [
+						e.degree,
+						e.field,
+						e.graduationYear,
+					].filter(Boolean).join(' · '),
+				})),
+			}),
+		}));
+	}
+
 	if (d.disclosures.length) {
 		const discBody = el('div', {}, ...d.disclosures.map((dis) => DisclosureEventCard(dis, fmts)));
 		if (d.brokerCheckSnapshot) {

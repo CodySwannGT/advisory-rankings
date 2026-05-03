@@ -327,7 +327,7 @@ The pages have been migrated to the system:
 | Page | Template | Notable organisms used |
 |---|---|---|
 | `index.html` | `mountThreeColumnPage` | `FeedPostCard`, `BrowseCard`, `RollupCard`, `EntityRow`, `SectionCard` |
-| `advisor.html` | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
+| `advisor.html` | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck) |
 | `firm.html` | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `team.html` | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `article.html` | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
