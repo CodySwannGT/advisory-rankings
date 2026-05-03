@@ -9,7 +9,7 @@
 <body>
 	<script type="module">
 		// Directory page: every firm in the DB. UI from the design system.
-		import { api, refreshMe, logout, humanize, initials } from './app.js';
+		import { api, refreshMe, logout, search, humanize, initials } from './app.js';
 		import {
 			mountFullWidthPage, SectionCard, EmptyCard,
 			EntityList, EntityRow,
@@ -19,6 +19,7 @@
 			active: 'firms',
 			refreshMe,
 			logout,
+			search,
 			build({ center }) {
 				api('/PublicFirms').then((rows) => {
 					center.appendChild(SectionCard({

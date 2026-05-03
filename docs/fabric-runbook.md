@@ -324,6 +324,16 @@ and return `{ items, nextCursor }` (PublicAdvisors also returns
 `total`). The cursor is opaque base64url and stable under inserts —
 clients round-trip whatever they got.
 
+**Global search (`/Search?q=…`):** Public endpoint backing the navbar
+search box. Does an in-memory case-insensitive name match across
+`Advisor`, `Firm`, and `Team`, ranks by prefix / word-prefix /
+substring, returns up to 20 results plus per-kind counts. Linear-scan
+implementation is fine for the current sub-thousand-row dataset; if
+the dataset grows past ~10k rows, switch to indexed
+`tables.X.search({ conditions: [...] })` per name field and merge.
+Queries shorter than 2 characters short-circuit to an empty list so
+a stray keystroke doesn't spam the cluster.
+
 `/FirmProfile/<id>` no longer inlines `currentAdvisors` / `pastAdvisors`
 arrays; it emits `currentAdvisorCount` / `pastAdvisorCount` instead.
 **This is a breaking shape change for `/FirmProfile`** — frontend
@@ -402,6 +412,7 @@ Everything else still requires auth.
 | `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
 | `PUT/POST/DELETE` anywhere | ❌ 401 | Same. The custom resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. |
 

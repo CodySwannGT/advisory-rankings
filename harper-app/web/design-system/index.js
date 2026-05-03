@@ -26,7 +26,7 @@ export {
 
 export {
 	Card, SectionCard, EmptyCard, ChipRow, EntityList, Paginated,
-	ProfileHead, Navbar, SiteFooter,
+	ProfileHead, Navbar, SiteFooter, GlobalSearch,
 	TransitionEventCard, DisclosureEventCard, ArticleListBlock,
 	FeedPostCard, CareerTimeline, SnapshotTable, ScrollableTable,
 	SkeletonCard, BrowseCard, RollupCard, DetailsCard,

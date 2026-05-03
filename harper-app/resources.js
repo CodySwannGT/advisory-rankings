@@ -931,6 +931,143 @@ export class PublicTeams extends Resource {
 	}
 }
 
+// `/Search?q=…&limit=…` — global header search.
+//
+// Backs the navbar search box. Returns a small mixed list of advisor /
+// firm / team matches, ranked by how closely the query matches the
+// entity's display name. Public so an anonymous visitor can use it.
+//
+// Response shape:
+//   {
+//     q,                     // the (trimmed) query the server interpreted
+//     items: [               // up to `limit` rows, mixed kinds, best first
+//       { kind, id, name, sub, score },
+//     ],
+//     counts: { firms, advisors, teams, total }   // total matches per kind
+//                                                 //   before truncation
+//   }
+//
+// Ranking is name-only and case-insensitive. We score:
+//   3 — full string equals query
+//   2 — name starts with query
+//   2 — any whitespace-separated word starts with query
+//   1 — substring match
+// Higher score wins; ties break alphabetically. Firm matches are nudged
+// up half a point so "Wells" prefers the firm "Wells Fargo Advisors"
+// over an advisor named "Wells".
+//
+// The dataset is sub-thousand rows so a linear scan is fine. If it ever
+// grows past ~10k entities, switch to indexed `tables.X.search` calls
+// per field and merge.
+export class Search extends Resource {
+	allowRead() { return true; }
+	async get(target) {
+		const q = (target && typeof target.get === 'function' && target.get('q')) || '';
+		const norm = String(q).trim().toLowerCase();
+		const lim = parsePagination(target).limit;
+		const cap = Math.min(lim, 20);
+		if (norm.length < 2) {
+			return { q: norm, items: [], counts: { firms: 0, advisors: 0, teams: 0, total: 0 } };
+		}
+
+		const [advisors, firms, teams, employments] = await Promise.all([
+			all(tables.Advisor),
+			all(tables.Firm),
+			all(tables.Team),
+			all(tables.EmploymentHistory),
+		]);
+		const byFirm = indexBy(firms, 'id');
+
+		// Pre-compute each advisor's current firm so the dropdown can
+		// render "James Taylor · Wells Fargo Advisors" without the
+		// caller doing a second lookup.
+		const currentFirmByAdvisor = new Map();
+		for (const e of employments) {
+			if (e.endDate) continue;
+			const existing = currentFirmByAdvisor.get(e.advisorId);
+			if (!existing || dateMs(e.startDate) > dateMs(existing.startDate)) {
+				currentFirmByAdvisor.set(e.advisorId, e);
+			}
+		}
+
+		const scoreName = (name) => {
+			if (!name) return 0;
+			const n = String(name).toLowerCase();
+			if (n === norm) return 3;
+			if (n.startsWith(norm)) return 2;
+			// Word-prefix: "morgan" → "JP Morgan" hits via "morgan".
+			for (const w of n.split(/\s+/)) {
+				if (w.startsWith(norm)) return 2;
+			}
+			return n.includes(norm) ? 1 : 0;
+		};
+
+		const matches = [];
+
+		for (const f of firms) {
+			const score = Math.max(scoreName(f.name), scoreName(f.legalName));
+			if (!score) continue;
+			matches.push({
+				kind: 'firm',
+				id: f.id,
+				name: f.name,
+				sub: [f.hqCity, f.hqState].filter(Boolean).join(', ') || f.channel || null,
+				score: score + 0.5,
+				sortKey: (f.name || '').toLowerCase(),
+			});
+		}
+
+		for (const a of advisors) {
+			const display = advisorDisplayName(a) || a.legalName;
+			const score = Math.max(
+				scoreName(display),
+				scoreName(a.legalName),
+				scoreName(a.preferredName),
+				scoreName(a.firstName),
+				scoreName(a.lastName),
+			);
+			if (!score) continue;
+			const eh = currentFirmByAdvisor.get(a.id);
+			const firm = eh ? byFirm.get(eh.firmId) : null;
+			matches.push({
+				kind: 'advisor',
+				id: a.id,
+				name: display,
+				sub: firm ? firm.name : (a.careerStatus || null),
+				score,
+				sortKey: (a.lastName || display || '').toLowerCase(),
+			});
+		}
+
+		for (const t of teams) {
+			const score = scoreName(t.name);
+			if (!score) continue;
+			const firm = t.currentFirmId ? byFirm.get(t.currentFirmId) : null;
+			matches.push({
+				kind: 'team',
+				id: t.id,
+				name: t.name,
+				sub: firm ? firm.name : null,
+				score,
+				sortKey: (t.name || '').toLowerCase(),
+			});
+		}
+
+		matches.sort((a, b) => {
+			if (b.score !== a.score) return b.score - a.score;
+			return a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0;
+		});
+
+		const counts = matches.reduce(
+			(c, m) => { c[m.kind + 's']++; c.total++; return c; },
+			{ firms: 0, advisors: 0, teams: 0, total: 0 },
+		);
+
+		const items = matches.slice(0, cap).map(({ sortKey, ...row }) => row);
+		return { q: norm, items, counts };
+	}
+}
+
 // ─── Auth: cookie-session login/logout/me ─────────────────────────
 // Why session cookies and not JWT-in-localStorage:
 //   - This is a browser app. enableSessions: true is on in

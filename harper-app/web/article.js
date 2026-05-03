@@ -1,7 +1,7 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtDate, humanize, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getQueryParam, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
@@ -12,6 +12,7 @@ mountThreeColumnPage({
 	active: 'home',
 	refreshMe,
 	logout,
+	search,
 	build({ center, right }) {
 		const id = getQueryParam('id');
 		if (!id) {
