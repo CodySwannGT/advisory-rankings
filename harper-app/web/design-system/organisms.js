@@ -312,15 +312,18 @@ export function DisclosureEventCard(d, fmts = {}) {
 // ─── ArticleListBlock ─────────────────────────────────────────
 // Read-only list of articles (used on every profile page's
 // "Coverage" section).
-export function ArticleListBlock({ articles, fmtDate } = {}) {
+export function ArticleListBlock({ articles, fmtDate, articleSource } = {}) {
 	if (!articles || !articles.length) return EmptyText({ children: 'No articles yet.' });
 	return EntityList({
-		rows: articles.map((a) => EntityRow({
-			avatar: 'AH',
-			name: el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, a.headline || a.id),
-			sub: [a.category, fmtDate ? fmtDate(a.publishedDate) : a.publishedDate].filter(Boolean).join(' · '),
-			tail: a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, 'AdvisorHub →') : null,
-		})),
+		rows: articles.map((a) => {
+			const src = articleSource ? articleSource(a) : { source: 'AdvisorHub', initials: 'AH' };
+			return EntityRow({
+				avatar: src.initials,
+				name: el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, a.headline || a.id),
+				sub: [a.category, fmtDate ? fmtDate(a.publishedDate) : a.publishedDate].filter(Boolean).join(' · '),
+				tail: a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, `${src.source} →`) : null,
+			});
+		}),
 	});
 }
 
@@ -333,11 +336,12 @@ export function ArticleListBlock({ articles, fmtDate } = {}) {
 //   fmts = { fmtMoney, fmtPct, fmtDate }
 export function FeedPostCard(item, fmts = {}) {
 	const a = item.article;
-	const { fmtDate } = fmts;
+	const { fmtDate, articleSource } = fmts;
+	const src = articleSource ? articleSource(a) : { source: 'AdvisorHub', initials: 'AH', ctaLabel: 'AdvisorHub original →' };
 	return el('article', { class: 'card' },
 		PostHeader({
-			initials: 'AH',
-			source: 'AdvisorHub',
+			initials: src.initials,
+			source: src.source,
 			authors: a.authors,
 			when: fmtDate ? fmtDate(a.publishedDate, { mode: 'rel' }) : a.publishedDate,
 			category: a.category,
@@ -352,7 +356,7 @@ export function FeedPostCard(item, fmts = {}) {
 		ChipRow({ firms: item.firms || [], teams: item.teams || [], advisors: item.advisors || [] }),
 		el('div', { class: 'post-footer' },
 			el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, 'View details'),
-			a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, 'AdvisorHub original →') : null,
+			a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, `${src.source} original →`) : null,
 		),
 	);
 }

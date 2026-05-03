@@ -169,9 +169,19 @@ function groupBy(rows, key) {
 
 function advisorDisplayName(a) {
 	if (!a) return null;
-	return a.preferredName
-		? `${a.preferredName} ${a.lastName ?? ''}`.trim()
-		: (a.legalName ?? a.lastName ?? a.id);
+	const last = a.lastName ?? '';
+	const pref = a.preferredName;
+	if (pref) {
+		// preferredName is conventionally the first-name form ("James" for
+		// "C. James Taylor"). Some sources publish a full preferred form
+		// ("Steven M. Swann") — detect that and don't double-stamp the
+		// last name.
+		if (last && pref.toLowerCase().endsWith(last.toLowerCase())) {
+			return pref;
+		}
+		return `${pref} ${last}`.trim();
+	}
+	return a.legalName ?? a.lastName ?? a.id;
 }
 
 function firmShort(name) {

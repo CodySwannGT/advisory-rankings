@@ -1,7 +1,7 @@
 // Team profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -77,7 +77,7 @@ function render(d, center, right) {
 
 	center.appendChild(SectionCard({
 		title: `Coverage (${d.articles.length})`,
-		body: ArticleListBlock({ articles: d.articles, fmtDate }),
+		body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
 	}));
 
 	right.appendChild(DetailsCard({

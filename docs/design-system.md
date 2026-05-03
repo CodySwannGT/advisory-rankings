@@ -193,8 +193,8 @@ Self-contained UI sections.
 | `SiteFooter()` | Footer with source link. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
 | `DisclosureEventCard(d, fmts)` | Red-bordered event card for a `Disclosure`. |
-| `ArticleListBlock({ articles, fmtDate })` | "Coverage" list on every profile page. |
-| `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. |
+| `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.js` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |
+| `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. Reads `fmts.articleSource(article)` for the publisher chip + footer CTA, so a Morgan Stanley firm-bio post renders as "MS · Morgan Stanley" / "Read original on Morgan Stanley →" instead of falling back to "AH · AdvisorHub". |
 | `CareerTimeline({ career, fmtDate })` | Vertical timeline on advisor profile. |
 | `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
 | `ScrollableTable(table)` | Wraps a wide `<table>` (e.g. provenance, snapshots) in a horizontally-scrollable container so it doesn't blow out a card on mobile. |
@@ -203,9 +203,20 @@ Self-contained UI sections.
 | `RollupCard({ title, rows, renderRow })` | Small rail card listing items. |
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
 
-`fmts = { fmtMoney, fmtPct, fmtDate, humanize }` is exported from
-`app.js` and threaded through to organisms that need to format
-values. This keeps organisms locale- and project-agnostic.
+`fmts = { fmtMoney, fmtPct, fmtDate, humanize, articleSource }` is
+exported from `app.js` and threaded through to organisms that need
+to format values. This keeps organisms locale- and
+project-agnostic.
+
+`articleSource(article)` returns
+`{ source, initials, ctaLabel }` derived from the article's URL
+hostname. AdvisorHub posts → `{ 'AdvisorHub', 'AH', 'Read original
+on AdvisorHub →' }`; firm-bio articles minted by the
+`upsert-advisor` skill (`advisor.morganstanley.com`,
+`fa.wellsfargoadvisors.com`, …) → the firm's name + 2-letter
+initials. Unknown hosts fall back to a title-cased hostname.
+Hardcoding "AdvisorHub" anywhere in `web/` is a bug — every place
+the UI surfaces a publisher must go through this helper.
 
 `humanize(s)` turns a raw enum identifier (`firm_internal`,
 `closed_no_action`, `vehicleType`, `OutsideBusinessActivity`)

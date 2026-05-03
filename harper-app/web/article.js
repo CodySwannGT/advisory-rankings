@@ -1,7 +1,7 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtDate, humanize, getQueryParam } from './app.js';
+import { api, refreshMe, logout, fmts, fmtDate, humanize, getQueryParam, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
@@ -30,13 +30,14 @@ function render(d, center, right) {
 		return;
 	}
 	const a = d.article;
+	const src = articleSource(a);
 
 	const head = Card({
 		tag: 'article',
 		children: [
 			PostHeader({
-				initials: 'AH',
-				source: 'AdvisorHub',
+				initials: src.initials,
+				source: src.source,
 				authors: a.authors,
 				when: fmtDate(a.publishedDate),
 				category: a.category,
@@ -49,7 +50,7 @@ function render(d, center, right) {
 			).filter(Boolean),
 			ChipRow({ firms: d.firms, teams: d.teams, advisors: d.advisors }),
 			el('div', { class: 'post-footer' },
-				a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, 'Read original on AdvisorHub →') : null),
+				a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, src.ctaLabel) : null),
 		],
 	});
 	center.appendChild(head);
@@ -94,7 +95,7 @@ function render(d, center, right) {
 			['Published', fmtDate(a.publishedDate)],
 			['Modified',  fmtDate(a.modifiedDate)],
 			['Authors',   (a.authors || []).join(', ')],
-			['Source',    a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, 'AdvisorHub →') : null],
+			['Source',    a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, `${src.source} →`) : null],
 		],
 	}));
 }

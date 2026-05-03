@@ -251,6 +251,15 @@ release. **Do not fetch LinkedIn** — it's auth-walled and the
 scraper will return a login page; resolve LinkedIn URLs from
 search snippets only.
 
+**`Advisor.preferredName` convention** — store the **first-name
+form** only ("James" for "C. James Taylor", "Steven M." for
+"Steven Manson Swann"), NOT the full display form. The UI
+helper `advisorDisplayName()` concatenates `preferredName +
+lastName`, so writing the full name produces "Steven M. Swann
+Swann" on every chip. The renderer is now defensive (it detects
+when `preferredName` already ends with `lastName` and skips the
+concat), but the convention still wins — keep new data clean.
+
 For each fact you want to write, you must:
 
 1. Have the exact phrase you read it from. If you can't quote the
