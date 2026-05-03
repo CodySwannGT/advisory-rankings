@@ -63,6 +63,17 @@ export async function refreshMe() {
 	}
 	return _mePromise;
 }
+// ─── global search ────────────────────────────────────────────
+// Wraps `/Search?q=…` so the navbar's `GlobalSearch` organism can
+// stay decoupled from the REST layer. Returns the raw envelope:
+//   { q, items: [{ kind, id, name, sub, score }], counts }
+// Throws when q is empty so the organism can short-circuit.
+export async function search(q) {
+	const norm = String(q || '').trim();
+	if (norm.length < 2) return { q: norm, items: [], counts: { firms: 0, advisors: 0, teams: 0, total: 0 } };
+	return api(`/Search?q=${encodeURIComponent(norm)}`);
+}
+
 export async function logout() {
 	try { await postJson('/Logout'); } catch {}
 	_meCache = { authenticated: false };
@@ -199,6 +210,7 @@ export function mountPage({ active, build }) {
 		active,
 		refreshMe,
 		logout,
+		search,
 		build: ({ layout }) => build(layout),
 	});
 }

@@ -79,6 +79,7 @@
 	--ab-z-nav:    50;
 	--ab-z-scrim:  49;
 	--ab-z-drawer: 60;
+	--ab-z-popover: 70;     /* search dropdown, future menus */
 
 	/* ── Legacy aliases (do not add new uses) ────────────────
 	   Older selectors in app.css still reference these short

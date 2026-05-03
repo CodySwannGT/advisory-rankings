@@ -132,7 +132,8 @@ harper-app/
                              /Feed, /ArticleView/<id>, /FirmProfile/<id>,
                              /AdvisorProfile/<id>, /TeamProfile/<id>,
                              cursor-paginated /PublicAdvisors and
-                             /FirmAdvisors/<id> (?status&cursor&limit)
+                             /FirmAdvisors/<id> (?status&cursor&limit),
+                             plus /Search?q=… for the navbar search box
   seed.py                    inserts 99 records from research/articles/
   verify.py                  cross-table SQL queries that exercise
                              the relationships

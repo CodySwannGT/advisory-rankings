@@ -1,7 +1,7 @@
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -13,6 +13,7 @@ mountThreeColumnPage({
 	active: 'advisors',
 	refreshMe,
 	logout,
+	search,
 	build({ center, right }) {
 		const id = getQueryParam('id');
 		if (!id) {

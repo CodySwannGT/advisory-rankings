@@ -14,6 +14,7 @@
  *   - GET /FirmProfile/<id>        → resources.js FirmProfile.get(id)
  *   - GET /AdvisorProfile/<id>     → resources.js AdvisorProfile.get(id)
  *   - GET /TeamProfile/<id>        → resources.js TeamProfile.get(id)
+ *   - GET /Search?q=…              → resources.js Search.get()
  *   - GET /<TableName>/            → operations-API SQL passthrough
  *
  * Backend store is the running local Harper, accessed exclusively
@@ -210,7 +211,7 @@ async function handle(req, res) {
 				: { authenticated: false });
 		}
 		// Custom JS resources without an id segment.
-		const noArgMatch = p.match(/^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams)$/);
+		const noArgMatch = p.match(/^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search)$/);
 		if (noArgMatch) {
 			const r = await loadResources();
 			return sendJson(res, 200, await new r[noArgMatch[1]]().get(makeTarget(undefined, url.searchParams)));

@@ -19,11 +19,11 @@ import { Navbar, SiteFooter } from './organisms.js';
 //
 //   mountThreeColumnPage({
 //     active: 'home',
-//     refreshMe, logout,                // injected from app.js
+//     refreshMe, logout, search,        // injected from app.js
 //     build: ({ left, center, right }) => { … }
 //   })
-export function mountThreeColumnPage({ active, refreshMe, logout, build } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout }));
+export function mountThreeColumnPage({ active, refreshMe, logout, search, build } = {}) {
+	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });
 	document.body.appendChild(layout);
 	document.body.appendChild(SiteFooter());
@@ -39,8 +39,8 @@ export function mountThreeColumnPage({ active, refreshMe, logout, build } = {}) 
 // ─── FullWidthLayout ──────────────────────────────────────────
 // Single full-width column inside the same .layout grid (used
 // by the directory pages: /firms.html, /advisors.html, /teams.html).
-export function mountFullWidthPage({ active, refreshMe, logout, build } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout }));
+export function mountFullWidthPage({ active, refreshMe, logout, search, build } = {}) {
+	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });
 	document.body.appendChild(layout);
 	document.body.appendChild(SiteFooter());
@@ -53,8 +53,8 @@ export function mountFullWidthPage({ active, refreshMe, logout, build } = {}) {
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
 // Single narrow centered column (used by login.html).
-export function mountCenteredNarrowPage({ active, refreshMe, logout, build, maxWidth = 420 } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout }));
+export function mountCenteredNarrowPage({ active, refreshMe, logout, search, build, maxWidth = 420 } = {}) {
+	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });
 	document.body.appendChild(layout);
 	document.body.appendChild(SiteFooter());

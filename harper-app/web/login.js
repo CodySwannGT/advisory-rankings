@@ -1,7 +1,7 @@
 // Sign-in page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { postJson, refreshMe } from './app.js';
+import { postJson, refreshMe, search } from './app.js';
 import {
 	mountCenteredNarrowPage, el,
 	SectionCard, Heading, Button, TextInput, LabeledField, EmptyText,
@@ -10,6 +10,7 @@ import {
 mountCenteredNarrowPage({
 	active: 'home',
 	refreshMe,
+	search,
 	build({ center }) {
 		const error = el('div', {
 			class: 'ab-empty',

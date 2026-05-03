@@ -180,6 +180,173 @@ export function ProfileHead({ initialsText, title, subtitle, tags = [] } = {}) {
 	});
 }
 
+// ─── GlobalSearch ─────────────────────────────────────────────
+// Header search box. Debounced live-suggest against /Search,
+// dropdown of firm / advisor / team hits, keyboard navigation
+// (↑ / ↓ / Enter / Esc), click-outside to close. Wired into
+// `Navbar` and used nowhere else, but lives here so it can be
+// reused on a future "/search" landing page if we want one.
+//
+// Caller passes `{ search }`, where `search(q)` returns a
+// Promise<{ items, counts }> (the /Search response shape). This
+// keeps the organism decoupled from the REST layer.
+export function GlobalSearch({ search } = {}) {
+	const input = el('input', {
+		type: 'search',
+		placeholder: 'Search advisors, firms, teams',
+		id: 'global-search',
+		autocomplete: 'off',
+		role: 'combobox',
+		'aria-autocomplete': 'list',
+		'aria-expanded': 'false',
+		'aria-controls': 'global-search-results',
+	});
+	const dropdown = el('div', {
+		class: 'gs-dropdown',
+		id: 'global-search-results',
+		role: 'listbox',
+		hidden: '',
+	});
+	const wrap = el('label', { class: 'search gs-wrap' }, input, dropdown);
+
+	let activeIndex = -1;
+	let lastResults = [];
+	let lastQuery = '';
+	let debounceTimer = null;
+	let inflight = 0;
+
+	function showDropdown() {
+		dropdown.removeAttribute('hidden');
+		input.setAttribute('aria-expanded', 'true');
+	}
+	function hideDropdown() {
+		dropdown.setAttribute('hidden', '');
+		input.setAttribute('aria-expanded', 'false');
+		activeIndex = -1;
+	}
+
+	function highlight(name, q) {
+		if (!q) return name;
+		const lower = String(name).toLowerCase();
+		const idx = lower.indexOf(q);
+		if (idx < 0) return name;
+		return [
+			name.slice(0, idx),
+			el('mark', {}, name.slice(idx, idx + q.length)),
+			name.slice(idx + q.length),
+		];
+	}
+
+	function hrefFor(item) {
+		if (item.kind === 'firm') return `firm.html?id=${encodeURIComponent(item.id)}`;
+		if (item.kind === 'team') return `team.html?id=${encodeURIComponent(item.id)}`;
+		if (item.kind === 'advisor') return `advisor.html?id=${encodeURIComponent(item.id)}`;
+		return '#';
+	}
+
+	function renderItems(q, items, counts) {
+		clear(dropdown);
+		lastResults = items;
+		activeIndex = -1;
+		if (!items.length) {
+			dropdown.appendChild(el('div', { class: 'gs-empty' }, `No matches for "${q}".`));
+			return;
+		}
+		items.forEach((it, i) => {
+			const row = el('a', {
+				class: 'gs-item',
+				role: 'option',
+				href: hrefFor(it),
+				'data-idx': String(i),
+			},
+				el('span', { class: `gs-kind gs-kind-${it.kind}` }, it.kind),
+				el('span', { class: 'gs-name' }, ...arrify(highlight(it.name, q))),
+				it.sub ? el('span', { class: 'gs-sub' }, it.sub) : null,
+			);
+			row.addEventListener('mousemove', () => setActive(i));
+			dropdown.appendChild(row);
+		});
+		if (counts && counts.total > items.length) {
+			dropdown.appendChild(el('div', { class: 'gs-more' },
+				`Showing ${items.length} of ${counts.total} matches — keep typing to narrow.`));
+		}
+	}
+
+	function setActive(i) {
+		const rows = dropdown.querySelectorAll('.gs-item');
+		if (!rows.length) { activeIndex = -1; return; }
+		activeIndex = ((i % rows.length) + rows.length) % rows.length;
+		rows.forEach((r, j) => r.classList.toggle('gs-item-active', j === activeIndex));
+		const row = rows[activeIndex];
+		if (row) row.scrollIntoView({ block: 'nearest' });
+	}
+
+	async function runSearch(q) {
+		if (!search) return;
+		const myCall = ++inflight;
+		try {
+			const res = await search(q);
+			// Drop stale responses — only render the most recent call's
+			// payload. Without this, slow connections produce a flicker
+			// of older results overwriting newer ones.
+			if (myCall !== inflight) return;
+			renderItems(q, (res && res.items) || [], res && res.counts);
+			showDropdown();
+		} catch (err) {
+			if (myCall !== inflight) return;
+			clear(dropdown);
+			dropdown.appendChild(el('div', { class: 'gs-empty' },
+				`Search failed: ${err && err.message ? err.message : 'unknown error'}`));
+			showDropdown();
+		}
+	}
+
+	input.addEventListener('input', () => {
+		const q = input.value.trim().toLowerCase();
+		lastQuery = q;
+		if (debounceTimer) clearTimeout(debounceTimer);
+		if (q.length < 2) {
+			hideDropdown();
+			clear(dropdown);
+			return;
+		}
+		debounceTimer = setTimeout(() => runSearch(q), 180);
+	});
+
+	input.addEventListener('focus', () => {
+		if (lastResults.length) showDropdown();
+	});
+
+	input.addEventListener('keydown', (e) => {
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			if (dropdown.hasAttribute('hidden') && lastResults.length) showDropdown();
+			setActive(activeIndex < 0 ? 0 : activeIndex + 1);
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			setActive(activeIndex < 0 ? lastResults.length - 1 : activeIndex - 1);
+		} else if (e.key === 'Enter') {
+			const target = activeIndex >= 0 ? lastResults[activeIndex] : lastResults[0];
+			if (target) {
+				e.preventDefault();
+				window.location.href = hrefFor(target);
+			}
+		} else if (e.key === 'Escape') {
+			hideDropdown();
+			input.blur();
+		}
+	});
+
+	// Click-outside to close. We attach to document so any click
+	// outside the wrap dismisses; pointerdown so it fires before the
+	// click that follows it (which would re-focus the input).
+	document.addEventListener('pointerdown', (e) => {
+		if (!wrap.contains(e.target)) hideDropdown();
+	});
+
+	return wrap;
+}
+
 // ─── Navbar ───────────────────────────────────────────────────
 // Sticky top nav: logo, search, page links, and the "me-spot"
 // (signed-in name + sign-out, or sign-in link). On mobile the
@@ -187,10 +354,10 @@ export function ProfileHead({ initialsText, title, subtitle, tags = [] } = {}) {
 // behind a hamburger.
 //
 // Caller passes:
-//   { active: 'home'|'firms'|'advisors'|'teams', refreshMe, logout }
-// `refreshMe` and `logout` are injected so this organism doesn't
-// hardwire to the API layer.
-export function Navbar({ active, refreshMe, logout } = {}) {
+//   { active: 'home'|'firms'|'advisors'|'teams', refreshMe, logout, search? }
+// `refreshMe` / `logout` / `search` are injected so this organism
+// doesn't hardwire to the API layer.
+export function Navbar({ active, refreshMe, logout, search } = {}) {
 	const link = (href, label) =>
 		el('a', { href, class: active === label.toLowerCase() ? 'active' : null }, label);
 
@@ -240,9 +407,7 @@ export function Navbar({ active, refreshMe, logout } = {}) {
 	return el('nav', { class: 'nav' },
 		burger,
 		el('div', { class: 'logo' }, el('a', { href: 'index.html' }, 'AdvisorBook')),
-		el('label', { class: 'search' },
-			el('input', { type: 'search', placeholder: 'Search advisors, firms, teams', id: 'global-search', autocomplete: 'off' }),
-		),
+		GlobalSearch({ search }),
 		drawer,
 		scrim,
 	);

@@ -11,7 +11,7 @@
 		// Directory page: every advisor in the DB, paginated.
 		// `/PublicAdvisors` is cursor-paginated server-side; the
 		// Paginated organism handles infinite-scroll + Load-more UI.
-		import { api, refreshMe, logout, humanize, initials } from './app.js';
+		import { api, refreshMe, logout, search, humanize, initials } from './app.js';
 		import {
 			mountFullWidthPage, SectionCard,
 			Paginated, EntityRow,
@@ -21,6 +21,7 @@
 			active: 'advisors',
 			refreshMe,
 			logout,
+			search,
 			build({ center }) {
 				const card = SectionCard({
 					title: 'All advisors',

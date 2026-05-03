@@ -166,6 +166,93 @@
 }
 .snap-table-scroll > table { min-width: max-content; }
 
+/* GlobalSearch — header search box + dropdown.
+   The wrap is the existing `.search` label (legacy navbar styles
+   in app.css still set the rounded background and width). The
+   dropdown is positioned absolutely below the input and floats
+   above the navbar via --ab-z-popover. */
+.gs-wrap { position: relative; }
+
+.gs-dropdown {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	background: var(--ab-color-surface);
+	border: 1px solid var(--ab-color-border);
+	border-radius: var(--ab-radius-md);
+	box-shadow: var(--ab-shadow-sm);
+	max-height: 60vh;
+	overflow-y: auto;
+	z-index: var(--ab-z-popover);
+	padding: var(--ab-space-1) 0;
+}
+.gs-dropdown[hidden] { display: none; }
+
+.gs-item {
+	display: grid;
+	grid-template-columns: 64px 1fr auto;
+	align-items: baseline;
+	gap: var(--ab-space-3);
+	padding: var(--ab-space-2) var(--ab-space-3);
+	color: var(--ab-color-text);
+	text-decoration: none;
+	cursor: pointer;
+	font-size: var(--ab-font-size-base);
+}
+.gs-item:hover, .gs-item-active {
+	background: var(--ab-color-bg);
+	text-decoration: none;
+}
+.gs-item mark {
+	background: transparent;
+	color: inherit;
+	font-weight: var(--ab-font-weight-bold);
+}
+.gs-kind {
+	font-size: var(--ab-font-size-xs);
+	font-weight: var(--ab-font-weight-semi);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	padding: 2px 6px;
+	border-radius: var(--ab-radius-sm);
+	justify-self: start;
+	color: var(--ab-color-text-muted);
+}
+.gs-kind-firm    { background: var(--ab-color-chip-firm-bg); }
+.gs-kind-advisor { background: var(--ab-color-chip-advisor-bg); }
+.gs-kind-team    { background: var(--ab-color-chip-team-bg); }
+
+.gs-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.gs-sub {
+	color: var(--ab-color-text-muted);
+	font-size: var(--ab-font-size-sm);
+	max-width: 50%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.gs-empty, .gs-more {
+	padding: var(--ab-space-3);
+	color: var(--ab-color-text-muted);
+	font-size: var(--ab-font-size-sm);
+	font-style: italic;
+}
+.gs-more {
+	border-top: 1px solid var(--ab-color-border);
+	margin-top: var(--ab-space-1);
+}
+
+@media (max-width: 700px) {
+	.gs-item { grid-template-columns: 56px 1fr; }
+	.gs-sub { display: none; }
+}
+
 /* Source attribution footer — used under any section whose data
    came from an external regulator-of-record (FINRA BrokerCheck,
    SEC IAPD, …). Required for BrokerCheck per its ToU. */

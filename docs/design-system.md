@@ -106,7 +106,7 @@ Naming convention: `--ab-<category>-<name>`.
 | `--ab-shadow-*` | `sm`, `drawer` | Elevation |
 | `--ab-font-*` | `--ab-font-stack`, `--ab-font-size-base`, `--ab-font-weight-bold` | Typography |
 | `--ab-bp-*` | `mobile` 700px, `tablet` 1100px | Breakpoints (used in media queries) |
-| `--ab-z-*` | `nav`, `scrim`, `drawer` | z-index layers |
+| `--ab-z-*` | `nav`, `scrim`, `drawer`, `popover` | z-index layers |
 
 For backward compatibility a small block of legacy aliases
 (`--bg`, `--card`, `--brand`, …) is exported at the bottom of
@@ -189,7 +189,8 @@ Self-contained UI sections.
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
 | `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `advisors.html` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
-| `Navbar({ active, refreshMe, logout })` | Sticky top nav. Caller injects `refreshMe` / `logout` from `app.js`. |
+| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.js`. |
+| `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
 | `SiteFooter()` | Footer with source link. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
 | `DisclosureEventCard(d, fmts)` | Red-bordered event card for a `Disclosure`. |
@@ -239,17 +240,20 @@ the page back populated rail elements.
 | `mountFullWidthPage` | Single full-width column. Used by directory pages. | `{ center, layout }` |
 | `mountCenteredNarrowPage` | Single narrow centered column. Used by login. | `{ center, layout }`; accepts `maxWidth`. |
 
-All three accept `{ active, refreshMe, logout, build }`. Caller
-imports `refreshMe` and `logout` from `app.js` and passes them in
-— this keeps templates decoupled from the network layer.
+All three accept `{ active, refreshMe, logout, search, build }`.
+Caller imports `refreshMe`, `logout`, and `search` from `app.js`
+and passes them in — this keeps templates decoupled from the
+network layer. `search` is what powers the navbar's
+`GlobalSearch` dropdown; pages that don't pass it get a search
+box that does nothing, so always pass it.
 
 ```js
-import { api, refreshMe, logout } from './app.js';
+import { api, refreshMe, logout, search } from './app.js';
 import { mountThreeColumnPage, SectionCard } from './design-system/index.js';
 
 mountThreeColumnPage({
 	active: 'firms',
-	refreshMe, logout,
+	refreshMe, logout, search,
 	build({ center, right }) {
 		// populate center / right
 	},

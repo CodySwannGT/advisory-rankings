@@ -4,7 +4,7 @@
 // fetch /Feed → render the three rails. See docs/design-system.md
 // before adding any new visual element here.
 
-import { api, refreshMe, logout, fmts, fmtMoney, humanize, initials } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, humanize, initials } from './app.js';
 import {
 	mountThreeColumnPage, clear,
 	SkeletonCard, EmptyCard, FeedPostCard, BrowseCard, RollupCard,
@@ -15,6 +15,7 @@ mountThreeColumnPage({
 	active: 'home',
 	refreshMe,
 	logout,
+	search,
 	build({ left, center, right }) {
 		// Skeleton until /Feed resolves.
 		center.append(SkeletonCard(), SkeletonCard());
