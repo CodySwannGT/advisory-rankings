@@ -198,6 +198,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | id | PK |
+| `slug` | str | Indexed. SEO-friendly URL slug (`/advisors/<slug>`). Hyphen-separated lowercase from preferred-or-first-name + last-name. Collisions append the FINRA CRD: `john-smith` → `john-smith-2891234`. Minted by `scripts/_slugs.py` (`advisor_slug`) and backfilled via `scripts/backfill_slugs.py`. |
 | `legal_name` | str | "C. James Taylor", "George J. Cairnes" — **always retain middle initial** |
 | `first_name` / `middle_initial?` / `middle_name?` / `last_name` / `suffix?` | str | Parsed |
 | `preferred_name?` | str | "Jim" |
@@ -249,6 +250,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | id | |
+| `slug` | str | Indexed. SEO-friendly URL slug (`/firms/<slug>`). Slugified `name`; collisions append `finra_crd` then a numeric suffix. |
 | `name` | str | "Morgan Stanley Wealth Management" |
 | `legal_name?` | str | |
 | `parent_firm_id?` | id | Merrill ⊂ Bank of America |
@@ -322,6 +324,7 @@ A new entity (not in v0.1). Captures attempted-but-not-completed registrations.
 | Field | Type | Notes |
 |---|---|---|
 | `id` | id | |
+| `slug` | str | Indexed. SEO-friendly URL slug (`/teams/<slug>`). Slugified `name`; collisions append the slugified current-firm name (e.g. `private-wealth-team-morgan-stanley`), then a numeric suffix. |
 | `name` | str | "Empire 360 Team", "Taylor Group", "Shaffer Wealth Partners" |
 | `current_firm_id` | id | |
 | `current_branch_id?` | id | |

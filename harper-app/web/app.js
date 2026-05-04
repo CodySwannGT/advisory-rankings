@@ -6,7 +6,10 @@
 //   • REST client (api / postJson)
 //   • auth state (refreshMe / logout / getCurrentUser)
 //   • formatting helpers (fmtMoney / fmtPct / fmtDate / initials)
-//   • URL helpers (getQueryParam)
+//   • URL helpers — see ./router.js for `parseRoute` and the
+//     `firmPath` / `advisorPath` / `teamPath` / `articlePath`
+//     builders. `getQueryParam` is kept here purely for any
+//     ?cursor=… style query strings (paginated list pages).
 //   • mountPage()  — convenience that delegates to the
 //     design-system three-column template (kept for back-compat).
 //
@@ -79,10 +82,10 @@ export async function logout() {
 	_meCache = { authenticated: false };
 	// Use replace+reload so we end up on a freshly-rendered home
 	// (otherwise setting href to the current page is a no-op).
-	if (location.pathname.endsWith('/index.html') || location.pathname === '/') {
+	if (location.pathname === '/' || location.pathname === '/index.html') {
 		location.reload();
 	} else {
-		location.href = 'index.html';
+		location.href = '/';
 	}
 }
 

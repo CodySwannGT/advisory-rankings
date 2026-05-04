@@ -26,6 +26,7 @@
 
 type Firm @table @export {
   id: ID @primaryKey
+  slug: String @indexed
   name: String! @indexed
   legalName: String
   parentFirmId: ID @indexed
@@ -90,6 +91,7 @@ type BranchAssignment @table @export {
 
 type Advisor @table @export {
   id: ID @primaryKey
+  slug: String @indexed
   legalName: String! @indexed
   firstName: String
   middleInitial: String
@@ -179,6 +181,7 @@ type RegistrationApplication @table @export {
 
 type Team @table @export {
   id: ID @primaryKey
+  slug: String @indexed
   name: String! @indexed
   currentFirmId: ID @indexed
   currentBranchId: ID @indexed

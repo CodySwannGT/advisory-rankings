@@ -1,7 +1,8 @@
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, articleSource } from './app.js';
+import { parseRoute, advisorPath, teamPath } from './router.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -15,19 +16,20 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
-		if (!id) {
+		const route = parseRoute();
+		const slug = route.type === 'firm' ? route.slug : null;
+		if (!slug) {
 			center.appendChild(EmptyCard({ title: 'No firm selected', body: 'Open a firm from the feed.' }));
 			return;
 		}
 
-		api(`/FirmProfile/${encodeURIComponent(id)}`)
-			.then((d) => render(d, center, right))
+		api(`/FirmProfile/${encodeURIComponent(slug)}`)
+			.then((d) => render(d, center, right, route.section))
 			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
 	},
 });
 
-function render(d, center, right) {
+function render(d, center, right, section) {
 	const f = d.firm;
 	const tags = [];
 	if (f.channel) tags.push({ label: humanize(f.channel) });
@@ -85,7 +87,7 @@ function render(d, center, right) {
 						t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
 						t.teamSize ? `${t.teamSize} members` : null,
 					].filter(Boolean).join(' · '),
-					href: `team.html?id=${encodeURIComponent(t.id)}`,
+					href: teamPath(t),
 				})),
 			}),
 		}));
@@ -164,6 +166,24 @@ function render(d, center, right) {
 			],
 		}));
 	}
+
+	// `/firms/<slug>/advisors` and `/firms/<slug>/teams` are deep
+	// links into a section of the same firm page. Scroll the
+	// matching section card into view after first paint so the
+	// nested URL has visible effect even though we render the
+	// same shell.
+	if (section === 'advisors' || section === 'teams') {
+		const titlePrefix = section === 'advisors' ? 'Current advisors' : 'Teams currently at this firm';
+		queueMicrotask(() => {
+			const titles = center.querySelectorAll('h2.card-title');
+			for (const h of titles) {
+				if (h.textContent && h.textContent.startsWith(titlePrefix)) {
+					h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					break;
+				}
+			}
+		});
+	}
 }
 
 function _kvRow(k, v) {
@@ -188,7 +208,7 @@ function advisorRow(r, { showStart = false, showEnd = false } = {}) {
 		tail: r.reasonForLeaving === 'terminated_for_cause'
 			? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
 			: tail,
-		href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+		href: advisorPath(a),
 	});
 }
 

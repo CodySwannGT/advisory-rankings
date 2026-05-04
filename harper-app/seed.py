@@ -13,6 +13,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
 from _ids import uid, firm_id, article_id  # noqa: E402
 from _harper import upsert as _upsert, describe_target  # noqa: E402
+from _slugs import slugify as _slug  # noqa: E402
 
 print(f"[seed] target: {describe_target()}", file=sys.stderr)
 
@@ -22,6 +23,28 @@ def insert(table, records):
     earlier versions of this script."""
     n = _upsert(table, records)
     print(f"  upsert {table}: {len(records)} ({n} touched)")
+
+
+def _ensure_slug(record, kind):
+    """Mint an SEO-friendly slug for a seed record if absent.
+
+    Seed data is small and curated — collisions are not realistic
+    here, so we don't run the full unique-slug dance from
+    scripts/_slugs.py. Re-running the seed re-asserts the same slug
+    (slugify is deterministic), so this stays idempotent.
+    """
+    if record.get("slug"):
+        return record
+    if kind == "advisor":
+        first = record.get("preferredName") or record.get("firstName") or ""
+        last = record.get("lastName") or ""
+        src = f"{first} {last}".strip() or record.get("legalName") or ""
+    else:
+        src = record.get("name") or ""
+    s = _slug(src)
+    if s:
+        record["slug"] = s
+    return record
 
 # ─── FIRMS ───
 # Firm.id is derived from the canonical name via firm_id() so seed-loaded
@@ -65,6 +88,8 @@ firms = [
     {"id": fid("jpmorgan"),       "name": FIRM_NAMES["jpmorgan"],
      "channel": "wirehouse", "hqCity": "New York", "hqState": "NY"},
 ]
+for f in firms:
+    _ensure_slug(f, "firm")
 insert("Firm", firms)
 
 # ─── BRANCHES (3-level: market → complex → branch for Wells Fargo NYC) ───
@@ -110,6 +135,8 @@ advisors = [
      "industryStartDate": "2000-01-01", "yearsExperience": 23,
      "careerStatus": "suspended", "piiLevel": "public"},
 ]
+for a in advisors:
+    _ensure_slug(a, "advisor")
 insert("Advisor", advisors)
 
 # ─── BRANCH ASSIGNMENTS ───
@@ -123,12 +150,15 @@ insert("BranchAssignment", [
 ])
 
 # ─── TEAMS ───
-insert("Team", [
+teams = [
     {"id": uid("team:taylor_group"), "name": "The Taylor Group",
      "currentFirmId": fid("wells_fargo"),
      "currentBranchId": uid("branch:wells_gm_building"),
      "serviceModel": "uhnw"},
-])
+]
+for t in teams:
+    _ensure_slug(t, "team")
+insert("Team", teams)
 
 # ─── TEAM MEMBERSHIPS ───
 team_members = [

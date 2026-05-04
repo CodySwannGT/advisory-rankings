@@ -9,23 +9,93 @@
  *  - the per-table indexes Harper auto-builds are local to this
  *    process anyway.
  *
- * Endpoints (mounted on the same REST port as the auto-exported tables):
- *   GET /Feed                  → activity feed: latest articles, each
- *                                hydrated with the entities it mentions
- *                                and the events it documents.
- *   GET /ArticleView/<id>      → single article + every entity it touches.
- *   GET /FirmProfile/<id>      → firm, current/past advisors, current
- *                                teams, transitions in/out, articles.
- *   GET /AdvisorProfile/<id>   → advisor, career walk, teams,
- *                                disclosures + sanctions, OBAs,
- *                                licenses, designations, education,
- *                                articles.
- *   GET /TeamProfile/<id>      → team, current/past members, metric
- *                                snapshots, transitions, articles.
+ * Data endpoints (mounted on the same REST port as the auto-exported tables):
+ *   GET /Feed                       → activity feed: latest articles, each
+ *                                     hydrated with the entities it mentions
+ *                                     and the events it documents.
+ *   GET /ArticleView/<idOrSlug>     → single article + every entity it touches.
+ *   GET /FirmProfile/<idOrSlug>     → firm, current/past advisors, current
+ *                                     teams, transitions in/out, articles.
+ *   GET /AdvisorProfile/<idOrSlug>  → advisor, career walk, teams,
+ *                                     disclosures + sanctions, OBAs,
+ *                                     licenses, designations, education,
+ *                                     articles.
+ *   GET /TeamProfile/<idOrSlug>     → team, current/past members, metric
+ *                                     snapshots, transitions, articles.
+ *
+ * Page-router endpoints (return the matching HTML shell from web/):
+ *   GET /firms                      → web/firms.html (directory)
+ *   GET /firms/<slug>               → web/firm.html  (detail)
+ *   GET /firms/<slug>/advisors      → web/firm.html  (deep-link, same shell)
+ *   GET /firms/<slug>/teams         → web/firm.html  (deep-link, same shell)
+ *   GET /advisors                   → web/advisors.html
+ *   GET /advisors/<slug>            → web/advisor.html
+ *   GET /teams                      → web/teams.html
+ *   GET /teams/<slug>               → web/team.html
+ *   GET /articles/<slug>            → web/article.html
+ *
+ * The page-router classes export as lowercase aliases (`firms`,
+ * `advisors`, `teams`, `articles`) because Harper mounts each
+ * Resource at the URL matching its export name verbatim. The page's
+ * own JS reads `location.pathname` to extract the slug — see
+ * web/router.js.
  *
  * `tables` and `Resource` are injected as globals by Harper's jsResource
  * loader — see harperdb/application-template/resources.js.
  */
+
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+// ─── HTML shell helpers (page-router resources) ──────────────────
+//
+// The page-router classes below serve thin HTML shells from `web/`
+// at clean, hierarchical URLs. The shells reference `/app.css` and
+// `/<page>.js` with absolute paths so they render correctly at any
+// URL depth (e.g. `/firms/morgan-stanley/advisors`).
+//
+// Files are cached after first read — the shells are tiny (≈400B
+// each) and never change between deploys, so re-reading per request
+// is wasteful. The cache lives for the worker's lifetime.
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WEB_DIR = join(HERE, 'web');
+const HTML_CACHE = new Map();
+
+async function htmlShell(filename) {
+	let body = HTML_CACHE.get(filename);
+	if (body == null) {
+		body = await readFile(join(WEB_DIR, filename), 'utf8');
+		HTML_CACHE.set(filename, body);
+	}
+	return new Response(body, {
+		status: 200,
+		headers: { 'Content-Type': 'text/html; charset=utf-8' },
+	});
+}
+
+// `target` for a page-router resource may be a single segment
+// (`/firms/morgan-stanley` → 'morgan-stanley') or multi-segment
+// (`/firms/morgan-stanley/advisors` → ['morgan-stanley', 'advisors']
+// — Harper's parsePath converts multi-segment paths into a multipart
+// id array). For these resources we don't actually need the slug
+// itself; we just need to know whether *anything* follows the
+// collection prefix so we can pick the directory shell vs. the
+// detail shell. The page's JS reads `location.pathname` to extract
+// the slug.
+function hasAnyId(target) {
+	if (target == null) return false;
+	if (typeof target === 'object' && 'id' in target) {
+		const id = target.id;
+		if (id == null) return false;
+		if (Array.isArray(id)) return id.length > 0;
+		return String(id).length > 0;
+	}
+	const s = typeof target === 'string' ? target : (target.toString?.() ?? '');
+	const trimmed = s.replace(/^\/+|\/+$/g, '');
+	return trimmed.length > 0;
+}
 
 // ─── helpers ──────────────────────────────────────────────────────
 
@@ -158,6 +228,17 @@ function indexBy(rows, key) {
 	return m;
 }
 
+// Like indexBy, but skips rows where the key value is null/empty so
+// the slug map doesn't collide every absent slug onto a single bucket.
+function indexBySlug(rows) {
+	const m = new Map();
+	for (const r of rows) {
+		const s = r.slug;
+		if (s) m.set(s, r);
+	}
+	return m;
+}
+
 function groupBy(rows, key) {
 	const m = new Map();
 	for (const r of rows) {
@@ -262,6 +343,10 @@ async function loadAll() {
 		byTeam: indexBy(teams, 'id'),
 		byBranch: indexBy(branches, 'id'),
 		byArticle: indexBy(articles, 'id'),
+		bySlugAdvisor: indexBySlug(advisors),
+		bySlugFirm: indexBySlug(firms),
+		bySlugTeam: indexBySlug(teams),
+		bySlugArticle: indexBySlug(articles),
 		byTransition: indexBy(transitions, 'id'),
 		byDeal: indexBy(deals, 'id'),
 		byDisclosure: indexBy(disclosures, 'id'),
@@ -280,10 +365,11 @@ function advisorChip(a, db) {
 	const firm = eh ? db.byFirm.get(eh.firmId) : null;
 	return {
 		id: a.id,
+		slug: a.slug || null,
 		kind: 'advisor',
 		name: advisorDisplayName(a),
 		role: eh?.roleTitle || null,
-		firm: firm ? { id: firm.id, name: firm.name, short: firmShort(firm.name) } : null,
+		firm: firm ? { id: firm.id, slug: firm.slug || null, name: firm.name, short: firmShort(firm.name) } : null,
 		careerStatus: a.careerStatus || null,
 	};
 }
@@ -292,6 +378,7 @@ function firmChip(f) {
 	if (!f) return null;
 	return {
 		id: f.id,
+		slug: f.slug || null,
 		kind: 'firm',
 		name: f.name,
 		short: firmShort(f.name),
@@ -309,9 +396,10 @@ function teamChip(t, db) {
 		.sort(cmpDesc('asOf'))[0];
 	return {
 		id: t.id,
+		slug: t.slug || null,
 		kind: 'team',
 		name: t.name,
-		firm: firm ? { id: firm.id, name: firm.name, short: firmShort(firm.name) } : null,
+		firm: firm ? { id: firm.id, slug: firm.slug || null, name: firm.name, short: firmShort(firm.name) } : null,
 		serviceModel: t.serviceModel || null,
 		aum: latestSnap?.aum ?? null,
 		teamSize: latestSnap?.teamSize ?? null,
@@ -430,6 +518,16 @@ function feedItem(article, db) {
 	};
 }
 
+// Slug-or-id resolver: profile endpoints accept either the entity's
+// UUID or its (URL-friendly) slug — clients reading the path
+// `/firms/morgan-stanley` should be able to call
+// `/FirmProfile/morgan-stanley` without a separate slug→id lookup.
+// Returns the row, or null if neither lookup hits.
+function resolveByIdOrSlug(byId, bySlug, idOrSlug) {
+	if (!idOrSlug) return null;
+	return byId.get(idOrSlug) || bySlug.get(idOrSlug) || null;
+}
+
 // ─── /Feed ────────────────────────────────────────────────────────
 
 // All five resources override `allowRead` to return true so the
@@ -460,11 +558,12 @@ export class Feed extends Resource {
 export class ArticleView extends Resource {
 	allowRead() { return true; }
 	async get(target) {
-		const id = normalizeId(target);
-		if (!id) return { error: 'missing article id' };
+		const idOrSlug = normalizeId(target);
+		if (!idOrSlug) return { error: 'missing article id' };
 		const db = await loadAll();
-		const article = db.byArticle.get(id);
-		if (!article) return { error: 'not found', id };
+		const article = resolveByIdOrSlug(db.byArticle, db.bySlugArticle, idOrSlug);
+		if (!article) return { error: 'not found', id: idOrSlug };
+		const id = article.id;
 		const item = feedItem(article, db);
 		const fas = db.fieldAssertions
 			.filter((f) => f.articleId === id)
@@ -489,11 +588,12 @@ export class ArticleView extends Resource {
 export class FirmProfile extends Resource {
 	allowRead() { return true; }
 	async get(target) {
-		const id = normalizeId(target);
-		if (!id) return { error: 'missing firm id' };
+		const idOrSlug = normalizeId(target);
+		if (!idOrSlug) return { error: 'missing firm id' };
 		const db = await loadAll();
-		const firm = db.byFirm.get(id);
-		if (!firm) return { error: 'not found', id };
+		const firm = resolveByIdOrSlug(db.byFirm, db.bySlugFirm, idOrSlug);
+		if (!firm) return { error: 'not found', id: idOrSlug };
+		const id = firm.id;
 
 		// Count employment rows bucketed by current/past for the section
 		// titles — the actual rows are paginated by `/FirmAdvisors/<id>`
@@ -572,13 +672,15 @@ export class FirmProfile extends Resource {
 export class FirmAdvisors extends Resource {
 	allowRead() { return true; }
 	async get(target) {
-		const id = normalizeId(target);
-		if (!id) return { error: 'missing firm id', items: [], nextCursor: null };
+		const idOrSlug = normalizeId(target);
+		if (!idOrSlug) return { error: 'missing firm id', items: [], nextCursor: null };
 		const status = (target && typeof target.get === 'function' && target.get('status')) === 'past'
 			? 'past' : 'current';
 		const { cursor, limit } = parsePagination(target);
 
 		const db = await loadAll();
+		const firmRow = resolveByIdOrSlug(db.byFirm, db.bySlugFirm, idOrSlug);
+		const id = firmRow ? firmRow.id : idOrSlug;
 		const rows = [];
 		for (const e of db.employments) {
 			if (e.firmId !== id) continue;
@@ -593,7 +695,7 @@ export class FirmAdvisors extends Resource {
 				// by `paginate` agree with that order.
 				_sortKey: inverseDateKey(status === 'past' ? e.endDate : e.startDate),
 				_id: e.id || a.id,
-				advisor: { id: a.id, name: advisorDisplayName(a), careerStatus: a.careerStatus },
+				advisor: { id: a.id, slug: a.slug || null, name: advisorDisplayName(a), careerStatus: a.careerStatus },
 				roleTitle: e.roleTitle,
 				roleCategory: e.roleCategory,
 				startDate: e.startDate,
@@ -621,10 +723,13 @@ export class FirmAdvisors extends Resource {
 function transitionRow(t, db) {
 	const fromFirm = db.byFirm.get(t.fromFirmId);
 	const toFirm = db.byFirm.get(t.toFirmId);
+	const subjectTeam = t.subjectTeamId ? db.byTeam.get(t.subjectTeamId) : null;
+	const subjectAdvisor = t.subjectAdvisorId ? db.byAdvisor.get(t.subjectAdvisorId) : null;
+	const subjectFirm = t.subjectFirmId ? db.byFirm.get(t.subjectFirmId) : null;
 	const subject =
-		(t.subjectTeamId && { kind: 'team', id: t.subjectTeamId, name: db.byTeam.get(t.subjectTeamId)?.name }) ||
-		(t.subjectAdvisorId && { kind: 'advisor', id: t.subjectAdvisorId, name: advisorDisplayName(db.byAdvisor.get(t.subjectAdvisorId)) }) ||
-		(t.subjectFirmId && { kind: 'firm', id: t.subjectFirmId, name: db.byFirm.get(t.subjectFirmId)?.name }) || null;
+		(subjectTeam && { kind: 'team', id: subjectTeam.id, slug: subjectTeam.slug || null, name: subjectTeam.name }) ||
+		(subjectAdvisor && { kind: 'advisor', id: subjectAdvisor.id, slug: subjectAdvisor.slug || null, name: advisorDisplayName(subjectAdvisor) }) ||
+		(subjectFirm && { kind: 'firm', id: subjectFirm.id, slug: subjectFirm.slug || null, name: subjectFirm.name }) || null;
 	const deal = t.recruitingDealId ? db.byDeal.get(t.recruitingDealId) : null;
 	return {
 		id: t.id,
@@ -650,7 +755,7 @@ function disclosureRow(d, db) {
 	const advisor = db.byAdvisor.get(d.advisorId);
 	return {
 		id: d.id,
-		advisor: advisor && { id: advisor.id, name: advisorDisplayName(advisor) },
+		advisor: advisor && { id: advisor.id, slug: advisor.slug || null, name: advisorDisplayName(advisor) },
 		disclosureType: d.disclosureType,
 		regulator: d.regulator,
 		regulatorState: d.regulatorState,
@@ -673,6 +778,7 @@ function disclosureRow(d, db) {
 function articleStub(a) {
 	return {
 		id: a.id,
+		slug: a.slug || null,
 		headline: a.headline,
 		publishedDate: a.publishedDate,
 		category: a.category,
@@ -685,11 +791,12 @@ function articleStub(a) {
 export class AdvisorProfile extends Resource {
 	allowRead() { return true; }
 	async get(target) {
-		const id = normalizeId(target);
-		if (!id) return { error: 'missing advisor id' };
+		const idOrSlug = normalizeId(target);
+		if (!idOrSlug) return { error: 'missing advisor id' };
 		const db = await loadAll();
-		const advisor = db.byAdvisor.get(id);
-		if (!advisor) return { error: 'not found', id };
+		const advisor = resolveByIdOrSlug(db.byAdvisor, db.bySlugAdvisor, idOrSlug);
+		if (!advisor) return { error: 'not found', id: idOrSlug };
+		const id = advisor.id;
 
 		const career = db.employments
 			.filter((e) => e.advisorId === id)
@@ -815,11 +922,12 @@ export class AdvisorProfile extends Resource {
 export class TeamProfile extends Resource {
 	allowRead() { return true; }
 	async get(target) {
-		const id = normalizeId(target);
-		if (!id) return { error: 'missing team id' };
+		const idOrSlug = normalizeId(target);
+		if (!idOrSlug) return { error: 'missing team id' };
 		const db = await loadAll();
-		const team = db.byTeam.get(id);
-		if (!team) return { error: 'not found', id };
+		const team = resolveByIdOrSlug(db.byTeam, db.bySlugTeam, idOrSlug);
+		if (!team) return { error: 'not found', id: idOrSlug };
+		const id = team.id;
 
 		const memberRows = db.memberships.filter((m) => m.teamId === id);
 		const currentMembers = [];
@@ -828,7 +936,7 @@ export class TeamProfile extends Resource {
 			const a = db.byAdvisor.get(m.advisorId);
 			if (!a) continue;
 			const row = {
-				advisor: { id: a.id, name: advisorDisplayName(a), careerStatus: a.careerStatus },
+				advisor: { id: a.id, slug: a.slug || null, name: advisorDisplayName(a), careerStatus: a.careerStatus },
 				role: m.role,
 				startDate: m.startDate,
 				endDate: m.endDate,
@@ -1010,6 +1118,7 @@ export class Search extends Resource {
 			matches.push({
 				kind: 'firm',
 				id: f.id,
+				slug: f.slug || null,
 				name: f.name,
 				sub: [f.hqCity, f.hqState].filter(Boolean).join(', ') || f.channel || null,
 				score: score + 0.5,
@@ -1032,6 +1141,7 @@ export class Search extends Resource {
 			matches.push({
 				kind: 'advisor',
 				id: a.id,
+				slug: a.slug || null,
 				name: display,
 				sub: firm ? firm.name : (a.careerStatus || null),
 				score,
@@ -1046,6 +1156,7 @@ export class Search extends Resource {
 			matches.push({
 				kind: 'team',
 				id: t.id,
+				slug: t.slug || null,
 				name: t.name,
 				sub: firm ? firm.name : null,
 				score,
@@ -1138,3 +1249,51 @@ export class Me extends Resource {
 		};
 	}
 }
+
+// ─── Page-router resources (clean URLs) ──────────────────────────
+//
+// Harper mounts each Resource subclass at the URL matching its
+// export name verbatim. The classes below are exported with
+// lowercase aliases (`firms`, `advisors`, `teams`, `articles`) so
+// they take over the clean paths users see in the address bar.
+//
+// Each handler does the same thing: pick the directory shell or
+// the detail shell based on whether anything follows the
+// collection prefix, and stream the HTML file back. The page's own
+// JS (loaded via `<script src="/<page>.js">`) reads the slug from
+// `location.pathname` and fetches `/FirmProfile/<slug>` etc. — see
+// `web/router.js` for the path parser.
+//
+// Sub-routes like `/firms/<slug>/advisors` and
+// `/firms/<slug>/teams` arrive here as a multi-segment id (handled
+// by `hasAnyId`) and serve the same `firm.html` shell — they're
+// deep links into a section of the firm page, not separate views.
+
+class FirmsRouter extends Resource {
+	allowRead() { return true; }
+	async get(target) { return hasAnyId(target) ? htmlShell('firm.html') : htmlShell('firms.html'); }
+}
+class AdvisorsRouter extends Resource {
+	allowRead() { return true; }
+	async get(target) { return hasAnyId(target) ? htmlShell('advisor.html') : htmlShell('advisors.html'); }
+}
+class TeamsRouter extends Resource {
+	allowRead() { return true; }
+	async get(target) { return hasAnyId(target) ? htmlShell('team.html') : htmlShell('teams.html'); }
+}
+class ArticlesRouter extends Resource {
+	allowRead() { return true; }
+	async get() { return htmlShell('article.html'); }
+}
+class LoginRouter extends Resource {
+	allowRead() { return true; }
+	async get() { return htmlShell('login.html'); }
+}
+
+export {
+	FirmsRouter as firms,
+	AdvisorsRouter as advisors,
+	TeamsRouter as teams,
+	ArticlesRouter as articles,
+	LoginRouter as login,
+};

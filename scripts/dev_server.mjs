@@ -16,6 +16,11 @@
  *   - GET /TeamProfile/<id>        → resources.js TeamProfile.get(id)
  *   - GET /Search?q=…              → resources.js Search.get()
  *   - GET /<TableName>/            → operations-API SQL passthrough
+ *   - GET /firms, /advisors, /teams        → directory HTML shells
+ *   - GET /firms/<slug>[/advisors|/teams]  → firm.html shell
+ *   - GET /advisors/<slug>                 → advisor.html shell
+ *   - GET /teams/<slug>                    → team.html shell
+ *   - GET /articles/<slug>                 → article.html shell
  *
  * Backend store is the running local Harper, accessed exclusively
  * over its operations-server Unix socket — the same socket
@@ -181,6 +186,29 @@ async function readBody(req) {
 	try { return JSON.parse(text); } catch { return null; }
 }
 
+// Mirror the page-router resource classes added to harper-app/resources.js
+// so the local Playwright recipe (CLAUDE.md "Verifying UI changes with
+// Playwright") sees the same clean URLs the deployed cluster exposes.
+async function servePageShell(req, res, p) {
+	if (p === '/login') {
+		await serveStatic({ ...req, url: '/login.html' }, res);
+		return true;
+	}
+	const m = p.match(/^\/(firms|advisors|teams|articles)(?:\/(.*))?$/);
+	if (!m) return false;
+	const [, kind, rest] = m;
+	const hasId = !!(rest && rest.length);
+	const file =
+		kind === 'firms'    ? (hasId ? 'firm.html'    : 'firms.html') :
+		kind === 'advisors' ? (hasId ? 'advisor.html' : 'advisors.html') :
+		kind === 'teams'    ? (hasId ? 'team.html'    : 'teams.html') :
+		kind === 'articles' ?           'article.html' : null;
+	if (!file) return false;
+	const shellReq = { ...req, url: `/${file}` };
+	await serveStatic(shellReq, res);
+	return true;
+}
+
 async function handle(req, res) {
 	const url = new URL(req.url, 'http://x');
 	const p = url.pathname;
@@ -229,6 +257,8 @@ async function handle(req, res) {
 			const rows = await loadTable(tableMatch[1]);
 			return sendJson(res, 200, rows);
 		}
+		// Clean URL → page shell.
+		if (await servePageShell(req, res, p)) return;
 		// Static.
 		await serveStatic(req, res);
 	} catch (err) {

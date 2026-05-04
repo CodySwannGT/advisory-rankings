@@ -12,6 +12,7 @@
 
 import { el } from './dom.js';
 import { Avatar, Tag, Icon, TextInput, FormLabel } from './atoms.js';
+import { firmPath, advisorPath, teamPath } from '../router.js';
 
 // ─── EntityChip ───────────────────────────────────────────────
 // A pill linking to a firm / team / advisor. Used in the chip-row
@@ -20,9 +21,9 @@ import { Avatar, Tag, Icon, TextInput, FormLabel } from './atoms.js';
 //   entity = { kind: 'firm'|'team'|'advisor', id, name, short?, firm?, hq? }
 export function EntityChip(entity) {
 	if (!entity) return null;
-	const href = entity.kind === 'firm' ? `firm.html?id=${encodeURIComponent(entity.id)}`
-		: entity.kind === 'team' ? `team.html?id=${encodeURIComponent(entity.id)}`
-		: entity.kind === 'advisor' ? `advisor.html?id=${encodeURIComponent(entity.id)}`
+	const href = entity.kind === 'firm' ? firmPath(entity)
+		: entity.kind === 'team' ? teamPath(entity)
+		: entity.kind === 'advisor' ? advisorPath(entity)
 		: '#';
 	const label = entity.short || entity.name || entity.id;
 	const sub = entity.kind === 'advisor' && entity.firm
@@ -158,9 +159,9 @@ export function LabeledField({ label, input }) {
 // ─── FirmArrow (from-firm → to-firm header for transitions) ───
 export function FirmArrow({ fromFirm, toFirm }) {
 	return el('span', { class: 'firm-arrow' },
-		fromFirm ? el('a', { href: `firm.html?id=${encodeURIComponent(fromFirm.id)}` }, fromFirm.short || fromFirm.name) : '?',
+		fromFirm ? el('a', { href: firmPath(fromFirm) }, fromFirm.short || fromFirm.name) : '?',
 		el('span', { class: 'arrow' }, '→'),
-		toFirm ? el('a', { href: `firm.html?id=${encodeURIComponent(toFirm.id)}` }, toFirm.short || toFirm.name) : '?',
+		toFirm ? el('a', { href: firmPath(toFirm) }, toFirm.short || toFirm.name) : '?',
 	);
 }
 

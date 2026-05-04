@@ -110,54 +110,54 @@ async function main() {
 	if (!cairnes) {
 		fail('Cairnes (CRD 4068906) not found in DB — run the scraper first');
 	} else {
-		await page.goto(`${BASE}/advisor.html?id=${encodeURIComponent(cairnes.id)}`);
+		await page.goto(`${BASE}/advisors/${encodeURIComponent(cairnes.slug || cairnes.id)}`);
 		await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 
 		const title = await page.locator('.profile-head h1').textContent();
 		/Cairnes/i.test(title)
-			? ok(`advisor.html: title "${title.trim()}"`)
-			: fail(`advisor.html: title was "${title}"`);
+			? ok(`/advisors/<slug>: title "${title.trim()}"`)
+			: fail(`/advisors/<slug>: title was "${title}"`);
 
 		// CRD badge in the head tags
 		const crdBadge = await page.locator('.profile-head .tag').filter({ hasText: /CRD/i }).count();
-		crdBadge >= 1 ? ok('advisor.html: CRD badge in profile head')
-			: fail('advisor.html: CRD badge missing');
+		crdBadge >= 1 ? ok('/advisors/<slug>: CRD badge in profile head')
+			: fail('/advisors/<slug>: CRD badge missing');
 
 		// Career timeline
 		const steps = await page.locator('.timeline .step').count();
-		steps >= 5 ? ok(`advisor.html: career timeline has ${steps} firms (5 expected from BC)`)
-			: fail(`advisor.html: career timeline only ${steps} firms (expected ≥ 5)`);
+		steps >= 5 ? ok(`/advisors/<slug>: career timeline has ${steps} firms (5 expected from BC)`)
+			: fail(`/advisors/<slug>: career timeline only ${steps} firms (expected ≥ 5)`);
 
 		// Disclosure cards
 		const discCount = await page.locator('.event-card.disclosure').count();
-		discCount >= 6 ? ok(`advisor.html: ${discCount} disclosure cards (6 expected from BC)`)
-			: fail(`advisor.html: only ${discCount} disclosure cards (expected ≥ 6)`);
+		discCount >= 6 ? ok(`/advisors/<slug>: ${discCount} disclosure cards (6 expected from BC)`)
+			: fail(`/advisors/<slug>: only ${discCount} disclosure cards (expected ≥ 6)`);
 
 		// Sanction pills (FINRA fine + suspension + Texas denial + undertaking)
 		const sancCount = await page.locator('.sanction-pill').count();
-		sancCount >= 4 ? ok(`advisor.html: ${sancCount} sanction pills (≥ 4 expected)`)
-			: fail(`advisor.html: only ${sancCount} sanction pills`);
+		sancCount >= 4 ? ok(`/advisors/<slug>: ${sancCount} sanction pills (≥ 4 expected)`)
+			: fail(`/advisors/<slug>: only ${sancCount} sanction pills`);
 
 		// SourceAttribution — required by FINRA BrokerCheck ToU
 		const attrCount = await page.locator('.ab-source-attr').count();
-		attrCount >= 1 ? ok(`advisor.html: ${attrCount} BrokerCheck attribution footer(s)`)
-			: fail('advisor.html: missing BrokerCheck attribution footer');
+		attrCount >= 1 ? ok(`/advisors/<slug>: ${attrCount} BrokerCheck attribution footer(s)`)
+			: fail('/advisors/<slug>: missing BrokerCheck attribution footer');
 
 		const attrText = await page.locator('.ab-source-attr').first().textContent().catch(() => '');
 		/FINRA BrokerCheck/i.test(attrText)
-			? ok('advisor.html: attribution names FINRA BrokerCheck')
-			: fail(`advisor.html: attribution text wrong: "${attrText.slice(0, 100)}"`);
+			? ok('/advisors/<slug>: attribution names FINRA BrokerCheck')
+			: fail(`/advisors/<slug>: attribution text wrong: "${attrText.slice(0, 100)}"`);
 		/as of/i.test(attrText)
-			? ok('advisor.html: attribution shows "as of <date>" (ToU requirement)')
-			: fail('advisor.html: attribution missing "as of <date>"');
+			? ok('/advisors/<slug>: attribution shows "as of <date>" (ToU requirement)')
+			: fail('/advisors/<slug>: attribution missing "as of <date>"');
 
 		const tosLink = await page.locator('.ab-source-attr a[href*="brokercheck.finra.org/terms"]').count();
-		tosLink >= 1 ? ok('advisor.html: attribution links to BrokerCheck Terms of Use (ToU requirement)')
-			: fail('advisor.html: attribution missing ToU link');
+		tosLink >= 1 ? ok('/advisors/<slug>: attribution links to BrokerCheck Terms of Use (ToU requirement)')
+			: fail('/advisors/<slug>: attribution missing ToU link');
 
 		const bcLink = await page.locator('.ab-source-attr a[href*="brokercheck.finra.org/individual"]').count();
-		bcLink >= 1 ? ok('advisor.html: attribution links to advisor-specific BrokerCheck page')
-			: fail('advisor.html: attribution missing BrokerCheck individual link');
+		bcLink >= 1 ? ok('/advisors/<slug>: attribution links to advisor-specific BrokerCheck page')
+			: fail('/advisors/<slug>: attribution missing BrokerCheck individual link');
 
 		// Career-timeline section: the attribution must appear inside it
 		// (not just disclosures), so users see the source for the
@@ -165,8 +165,8 @@ async function main() {
 		const careerSectionAttr = await page.locator('.card', { hasText: /Career/i })
 			.locator('.ab-source-attr').count();
 		careerSectionAttr >= 1
-			? ok('advisor.html: Career section carries its own attribution')
-			: fail('advisor.html: Career section missing attribution');
+			? ok('/advisors/<slug>: Career section carries its own attribution')
+			: fail('/advisors/<slug>: Career section missing attribution');
 
 		await page.screenshot({ path: `${SHOTS}/bc-advisor-cairnes.png`, fullPage: true });
 	}
@@ -176,22 +176,22 @@ async function main() {
 	if (!firm) {
 		console.log('  (no firm-level BrokerCheckSnapshot in DB — skipping firm checks)');
 	} else {
-		await page.goto(`${BASE}/firm.html?id=${encodeURIComponent(firm.id)}`);
+		await page.goto(`${BASE}/firms/${encodeURIComponent(firm.slug || firm.id)}`);
 		await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 		const title = await page.locator('.profile-head h1').textContent();
-		ok(`firm.html: title "${title.trim()}"`);
+		ok(`/firms/<slug>: title "${title.trim()}"`);
 		const firmAttr = await page.locator('.ab-source-attr').count();
-		firmAttr >= 1 ? ok(`firm.html: ${firmAttr} BrokerCheck attribution footer(s)`)
-			: fail('firm.html: BrokerCheck attribution footer missing');
+		firmAttr >= 1 ? ok(`/firms/<slug>: ${firmAttr} BrokerCheck attribution footer(s)`)
+			: fail('/firms/<slug>: BrokerCheck attribution footer missing');
 		const firmTosLink = await page.locator('.ab-source-attr a[href*="brokercheck.finra.org/terms"]').count();
-		firmTosLink >= 1 ? ok('firm.html: attribution links to BrokerCheck ToU')
-			: fail('firm.html: attribution missing ToU link');
+		firmTosLink >= 1 ? ok('/firms/<slug>: attribution links to BrokerCheck ToU')
+			: fail('/firms/<slug>: attribution missing ToU link');
 
 		// Right-rail "Regulatory record" block we added with disclosure
 		// counts and the SourceAttribution.
 		const regCard = await page.locator('.card').filter({ hasText: /Regulatory record/i }).count();
-		regCard >= 1 ? ok('firm.html: "Regulatory record" right-rail card present')
-			: fail('firm.html: missing "Regulatory record" card');
+		regCard >= 1 ? ok('/firms/<slug>: "Regulatory record" right-rail card present')
+			: fail('/firms/<slug>: missing "Regulatory record" card');
 
 		await page.screenshot({ path: `${SHOTS}/bc-firm.png`, fullPage: true });
 	}

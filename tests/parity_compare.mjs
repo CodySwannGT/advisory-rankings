@@ -44,11 +44,11 @@ const OUT = resolve('tests/parity');
 // screenshot filename + report. goto = path. waitFor = selector
 // that proves the page rendered (or null to skip waiting).
 const STATIC_PAGES = [
-	{ id: 'feed',       goto: '/',                 waitFor: 'article.card .post-headline' },
-	{ id: 'firms',      goto: '/firms.html',       waitFor: '.entity-list .row' },
-	{ id: 'advisors',   goto: '/advisors.html',    waitFor: '.entity-list .row' },
-	{ id: 'teams',      goto: '/teams.html',       waitFor: '.entity-list .row' },
-	{ id: 'login',      goto: '/login.html',       waitFor: 'input[name="email"]' },
+	{ id: 'feed',       goto: '/',           waitFor: 'article.card .post-headline' },
+	{ id: 'firms',      goto: '/firms',      waitFor: '.entity-list .row' },
+	{ id: 'advisors',   goto: '/advisors',   waitFor: '.entity-list .row' },
+	{ id: 'teams',      goto: '/teams',      waitFor: '.entity-list .row' },
+	{ id: 'login',      goto: '/login',      waitFor: 'input[name="email"]' },
 ];
 
 // Profile pages also need an id from the feed. We resolve those
@@ -60,11 +60,12 @@ async function profilePagesFor(base) {
 	const wellsFargo = taylor.firms.find((f) => /^Wells Fargo Advisors$/i.test(f.name)) || taylor.firms[0];
 	const teamObj = taylor.teams[0];
 	const advisor = cairnes.advisors.find((a) => /Cairnes/i.test(a.name)) || cairnes.advisors[0];
+	const slugOrId = (e) => encodeURIComponent(e.slug || e.id);
 	return [
-		{ id: 'firm-wells-fargo',  goto: `/firm.html?id=${encodeURIComponent(wellsFargo.id)}`, waitFor: '.profile-head h1' },
-		{ id: 'team-taylor',       goto: `/team.html?id=${encodeURIComponent(teamObj.id)}`,    waitFor: '.profile-head h1' },
-		{ id: 'advisor-cairnes',   goto: `/advisor.html?id=${encodeURIComponent(advisor.id)}`, waitFor: '.profile-head h1' },
-		{ id: 'article-taylor',    goto: `/article.html?id=${encodeURIComponent(taylor.article.id)}`, waitFor: '.post-headline' },
+		{ id: 'firm-wells-fargo',  goto: `/firms/${slugOrId(wellsFargo)}`, waitFor: '.profile-head h1' },
+		{ id: 'team-taylor',       goto: `/teams/${slugOrId(teamObj)}`,    waitFor: '.profile-head h1' },
+		{ id: 'advisor-cairnes',   goto: `/advisors/${slugOrId(advisor)}`, waitFor: '.profile-head h1' },
+		{ id: 'article-taylor',    goto: `/articles/${slugOrId(taylor.article)}`, waitFor: '.post-headline' },
 	];
 }
 

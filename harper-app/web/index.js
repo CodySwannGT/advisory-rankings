@@ -5,6 +5,7 @@
 // before adding any new visual element here.
 
 import { api, refreshMe, logout, search, fmts, fmtMoney, humanize, initials } from './app.js';
+import { firmPath, advisorPath } from './router.js';
 import {
 	mountThreeColumnPage, clear,
 	SkeletonCard, EmptyCard, FeedPostCard, BrowseCard, RollupCard,
@@ -47,11 +48,10 @@ function renderLeft(root, items) {
 	clear(root);
 	root.appendChild(BrowseCard({
 		items: [
-			{ label: 'Home',       icon: '🏠', href: 'index.html' },
-			{ label: 'Firms',      icon: '🏢', href: 'firms.html' },
-			{ label: 'Advisors',   icon: '👤', href: 'advisors.html' },
-			{ label: 'Teams',      icon: '🤝', href: 'teams.html' },
-			{ label: 'Compliance', icon: '⚖️', href: 'compliance.html' },
+			{ label: 'Home',     icon: '🏠', href: '/' },
+			{ label: 'Firms',    icon: '🏢', href: '/firms' },
+			{ label: 'Advisors', icon: '👤', href: '/advisors' },
+			{ label: 'Teams',    icon: '🤝', href: '/teams' },
 		],
 	}));
 
@@ -90,7 +90,7 @@ function renderRight(root, items) {
 					name: firm.short || firm.name,
 					sub: [humanize(firm.channel), firm.hq].filter(Boolean).join(' · '),
 					tail: `${count} mention${count === 1 ? '' : 's'}`,
-					href: `firm.html?id=${encodeURIComponent(firm.id)}`,
+					href: firmPath(firm),
 				})),
 			}),
 		],
@@ -109,7 +109,7 @@ function renderRight(root, items) {
 						avatar: '⚠',
 						name: d.advisor?.name || 'Disclosure',
 						sub: [humanize(d.regulator), humanize(d.disclosureType)].filter(Boolean).join(' · '),
-						href: d.advisor ? `advisor.html?id=${encodeURIComponent(d.advisor.id)}` : '#',
+						href: d.advisor ? advisorPath(d.advisor) : '#',
 					})),
 				}),
 			],

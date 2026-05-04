@@ -122,13 +122,21 @@ fabric-deploy branch layout (commit a03f495):
   resources.js          ← lifted from harper-app/ — Feed/Profile resources
   package.json          ← minimal: { "name": "advisor-app", "version": "0.1.0" }
   web/                  ← Facebook-style UI (see §8); copy whole dir
-    index.html / index.js     home feed
-    article.html / article.js article detail
-    firm.html / firm.js       firm profile
-    advisor.html / advisor.js advisor profile
-    team.html / team.js       team profile
-    firms.html / advisors.html / teams.html  directory pages
+    index.html / index.js     home feed              (served at /)
+    article.html / article.js article detail shell   (/articles/<slug>)
+    firm.html / firm.js       firm profile shell     (/firms/<slug>)
+    advisor.html / advisor.js advisor profile shell  (/advisors/<slug>)
+    team.html / team.js       team profile shell     (/teams/<slug>)
+    firms.html / advisors.html / teams.html  directory shells
+                              (/firms, /advisors, /teams)
+    router.js                 URL parser + path helpers
+                              (firmPath / advisorPath / teamPath /
+                              articlePath / parseRoute) — all hrefs
+                              go through these
     app.css / app.js          shared CSS + JS
+  (the HTML shells reference /app.css and /<page>.js with absolute
+   paths so they render at any URL depth — `/firms/<slug>/advisors`
+   pulls the same `/app.css` as `/firms`)
   (everything else inherited from main)
 ```
 
@@ -286,18 +294,35 @@ git push origin fabric-deploy
 Then **Reload** in Studio (same as schema). The `static:` extension
 re-reads files on reload; no special handling.
 
-> The UI is the **AdvisorBook** SPA: one page per entity kind
-> (`index.html` = feed, `firm.html`, `advisor.html`, `team.html`,
-> `article.html`) plus directories (`firms.html` / `advisors.html` /
-> `teams.html`) and `login.html`. Each page is a thin shell that
-> imports a per-page JS module, which calls the matching custom
-> resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
-> round-trip of already-joined data. UI components are organized
-> as an Atomic Design library under `web/design-system/` (tokens
-> / atoms / molecules / organisms / templates) — see
-> `docs/design-system.md`. `web/app.js` holds non-UI utilities
-> (network, auth, formatters). All requests are same-origin so
-> the basic-auth session covers both static and JSON.
+> The UI is the **AdvisorBook** SPA: one HTML shell per entity kind,
+> served by the page-router resources in `resources.js` at clean
+> paths — `/` (home feed), `/firms/<slug>`, `/advisors/<slug>`,
+> `/teams/<slug>`, `/articles/<slug>`, plus the directories
+> `/firms`, `/advisors`, `/teams` and `/login`. The page-router
+> resource for each collection (`firms`, `advisors`, `teams`,
+> `articles`, `login` — lowercase Resource exports so Harper mounts
+> them at the matching lowercase URL) reads the corresponding
+> `web/<page>.html` off disk and returns it with
+> `Content-Type: text/html`. The page's own JS module
+> (`/firm.js`, `/advisor.js`, …) reads the slug from
+> `location.pathname` via `web/router.js`, then calls the
+> matching profile resource (`/FirmProfile/<slug>`, etc., which
+> accepts slug-or-id) for one round-trip of already-joined data.
+> UI components are organized as an Atomic Design library under
+> `web/design-system/` — see `docs/design-system.md`.
+> `web/app.js` holds non-UI utilities (network, auth, formatters);
+> `web/router.js` holds the URL parser + path-builder helpers.
+> All requests are same-origin so the basic-auth session covers
+> both static and JSON.
+
+> **Slug fields require backfill on existing data.** `Firm`,
+> `Advisor`, and `Team` got an indexed `slug` column in this
+> revision (`Article.slug` already existed via WordPress).
+> `seed.py` mints slugs for fresh seeds; existing clusters need
+> `python3 scripts/backfill_slugs.py` (talks to the same Harper
+> the rest of `scripts/` does — set `HDB_TARGET_URL` for Fabric).
+> Re-running is safe; it only writes when a row's slug is missing
+> or stale.
 
 > **`config.yaml` static glob caveat — symptom: deployed
 > `/design-system/*` returns 404.** Root cause: a non-recursive
@@ -410,8 +435,9 @@ Everything else still requires auth.
 | Route | Anonymous | Why |
 |---|---|---|
 | `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
-| `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
-| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /firms`, `/firms/<slug>`, `/firms/<slug>/(advisors\|teams)`, `/advisors`, `/advisors/<slug>`, `/teams`, `/teams/<slug>`, `/articles/<slug>`, `/login` | ✅ 200 | Page-router resources (`firms` / `advisors` / `teams` / `articles` / `login` — lowercase exports so the URL matches) read the matching HTML shell off disk and return it with `Content-Type: text/html`. The page's own JS reads the slug from `location.pathname` and calls the data plane. |
+| `GET /Feed`, `/ArticleView/<idOrSlug>`, `/FirmProfile/<idOrSlug>`, `/AdvisorProfile/<idOrSlug>`, `/TeamProfile/<idOrSlug>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. The four profile routes accept either the entity's UUID or its slug — clients reading `/firms/<slug>` call `/FirmProfile/<slug>` directly without a slug→id round trip. |
+| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`/firms`, `/advisors`, `/teams`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
 | `PUT/POST/DELETE` anywhere | ❌ 401 | Same. The custom resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. |
@@ -685,8 +711,8 @@ the same JSON over HTTPS at `/Feed`, `/FirmProfile/<id>`, etc.
 ### Parity-comparing the deployed cluster to a local dev server
 
 `tests/parity_compare.mjs` (Playwright) fingerprints both bases on
-the same set of pages — `/`, `/firms.html`, `/advisors.html`,
-`/teams.html`, `/login.html`, plus four profile pages whose IDs
+the same set of pages — `/`, `/firms`, `/advisors`,
+`/teams`, `/login`, plus four profile pages whose slugs
 are pulled from `/Feed` — and reports any drift in `<title>`,
 navbar logo, count-of-every-meaningful-selector, card title /
 subtitle text, or console errors. Brand swaps (logo
@@ -722,11 +748,11 @@ organisms / templates) — see `docs/design-system.md`.
 | URL | What it shows |
 |---|---|
 | `/` (`index.html`) | Activity feed of every `Article` ordered by `publishedDate desc`, each card hydrated with the entities it documents. Transition articles render an inline event block (`from-firm → to-firm · AUM · T-12 · headcount · upfront % of T-12`); regulatory articles render a stacked-sanctions block (regulator + each sanction as a pill). |
-| `/firm.html?id=…` | Firm profile: current advisors, past advisors with reason-for-leaving, current teams, transitions in / out, branches (market → complex → branch), disclosures filed at the firm, coverage. This is the "sticky" view the user asked for — open Wells Fargo and you get the live roster, alumni, and the two teams that came / went. |
-| `/advisor.html?id=…` | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
-| `/team.html?id=…` | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
-| `/article.html?id=…` | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
-| `/firms.html`, `/advisors.html`, `/teams.html` | Plain directory pages (alphabetical), driven by the auto-generated `/<TableName>/` REST routes. |
+| `/firms/<slug>` | Firm profile: current advisors, past advisors with reason-for-leaving, current teams, transitions in / out, branches (market → complex → branch), disclosures filed at the firm, coverage. This is the "sticky" view the user asked for — open Wells Fargo and you get the live roster, alumni, and the two teams that came / went. `/firms/<slug>/advisors` and `/firms/<slug>/teams` are deep-links into the matching section on the same page. |
+| `/advisors/<slug>` | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
+| `/teams/<slug>` | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
+| `/articles/<slug>` | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
+| `/firms`, `/advisors`, `/teams` | Plain directory pages (alphabetical), driven by `/PublicFirms`, `/PublicAdvisors`, `/PublicTeams`. |
 
 ### How the joins happen
 

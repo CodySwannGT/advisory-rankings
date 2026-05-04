@@ -1,7 +1,8 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtDate, humanize, articleSource } from './app.js';
+import { parseRoute } from './router.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
@@ -14,12 +15,13 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
-		if (!id) {
+		const route = parseRoute();
+		const slug = route.type === 'article' ? route.slug : null;
+		if (!slug) {
 			center.appendChild(EmptyCard({ title: 'No article selected', body: 'Pick an article from the feed.' }));
 			return;
 		}
-		api(`/ArticleView/${encodeURIComponent(id)}`)
+		api(`/ArticleView/${encodeURIComponent(slug)}`)
 			.then((d) => render(d, center, right))
 			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
 	},

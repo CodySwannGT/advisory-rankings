@@ -1,7 +1,8 @@
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, articleSource } from './app.js';
+import { parseRoute, teamPath } from './router.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -15,12 +16,13 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
-		if (!id) {
+		const route = parseRoute();
+		const slug = route.type === 'advisor' ? route.slug : null;
+		if (!slug) {
 			center.appendChild(EmptyCard({ title: 'No advisor selected', body: 'Pick an advisor from the feed.' }));
 			return;
 		}
-		api(`/AdvisorProfile/${encodeURIComponent(id)}`)
+		api(`/AdvisorProfile/${encodeURIComponent(slug)}`)
 			.then((d) => render(d, center, right))
 			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
 	},
@@ -87,7 +89,7 @@ function render(d, center, right) {
 					tail: m.endDate
 						? `${fmtDate(m.startDate, { mode: 'short' })} – ${fmtDate(m.endDate, { mode: 'short' })}`
 						: m.startDate ? `since ${fmtDate(m.startDate, { mode: 'short' })}` : '',
-					href: `team.html?id=${encodeURIComponent(m.team.id)}`,
+					href: teamPath(m.team),
 				})),
 			}),
 		}));

@@ -67,26 +67,35 @@ resources in `harper-app/resources.js`. Together they render an
 AdvisorHub activity feed where each post embeds the entities it
 documents:
 
-- Home feed (`index.html`) — every article as a Facebook-style card.
+- Home feed (`/`) — every article as a Facebook-style card.
   Transition articles render an inline "from-firm → to-firm · AUM ·
   T-12 · headcount · upfront % of T-12" event block; disclosure
   articles render the regulator + stacked sanctions. Mentioned
   advisors / firms / teams appear as clickable chips.
-- Firm profile (`firm.html?id=…`) — current advisors, past advisors
+- Firm profile (`/firms/<slug>`) — current advisors, past advisors
   (with terminated-for-cause flag), current teams, transitions in /
   out, branches (market → complex → branch), disclosures filed
   while advisors were at the firm, and coverage. The advisor lists
   are cursor-paginated (50/page) via `/FirmAdvisors/<id>` so a firm
-  with thousands of seats stays responsive.
-- Advisor profile (`advisor.html?id=…`) — career timeline (every
+  with thousands of seats stays responsive. `/firms/<slug>/advisors`
+  and `/firms/<slug>/teams` deep-link to the matching section on
+  the same firm page.
+- Advisor profile (`/advisors/<slug>`) — career timeline (every
   EmploymentHistory firm with start/end dates and reason for
   leaving), teams, disclosures with sanction pills, OBAs,
   registration applications, transitions, and coverage.
-- Team profile (`team.html?id=…`) — current and past members,
+- Team profile (`/teams/<slug>`) — current and past members,
   metric snapshots over time, transitions, coverage.
-- Article detail (`article.html?id=…`) — full body + the same
+- Article detail (`/articles/<slug>`) — full body + the same
   event blocks as the feed card + the FieldAssertion provenance
   table (which quotes from the article asserted which value).
+
+URL slugs are stable, human-readable identifiers stored on each
+entity (`Firm.slug`, `Advisor.slug`, `Team.slug`, `Article.slug`)
+and minted by `scripts/_slugs.py`. Backfill an existing dataset
+with `python3 scripts/backfill_slugs.py`. Profile REST endpoints
+accept either the slug or the original UUID (`/FirmProfile/morgan-stanley`
+≡ `/FirmProfile/<uuid>`).
 
 Once Harper is running, visit `http://127.0.0.1:9926/` (or the
 Fabric cluster's REST domain). On a kernel that can't bind the
@@ -138,13 +147,23 @@ harper-app/
   verify.py                  cross-table SQL queries that exercise
                              the relationships
   web/                       static AdvisorBook UI served at /:
-                               index.html / index.js   feed home
+                               index.html / index.js   feed home (/)
                                article.html / .js      article detail
+                                                       (/articles/<slug>)
                                firm.html / .js         firm profile
+                                                       (/firms/<slug>)
                                advisor.html / .js      advisor profile
+                                                       (/advisors/<slug>)
                                team.html / .js         team profile
+                                                       (/teams/<slug>)
                                firms/advisors/teams.html  directories
-                               login.html / .js        sign-in form
+                                                       (/firms, /advisors,
+                                                        /teams)
+                               login.html / .js        sign-in form (/login)
+                               router.js               URL parser +
+                                                       firmPath/advisorPath/
+                                                       teamPath/articlePath
+                                                       helpers
                                app.css                 page styles
                                app.js                  network, auth,
                                                        formatters, +

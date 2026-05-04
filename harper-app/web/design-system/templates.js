@@ -38,7 +38,7 @@ export function mountThreeColumnPage({ active, refreshMe, logout, search, build 
 
 // ─── FullWidthLayout ──────────────────────────────────────────
 // Single full-width column inside the same .layout grid (used
-// by the directory pages: /firms.html, /advisors.html, /teams.html).
+// by the directory pages: /firms, /advisors, /teams).
 export function mountFullWidthPage({ active, refreshMe, logout, search, build } = {}) {
 	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });
@@ -52,7 +52,7 @@ export function mountFullWidthPage({ active, refreshMe, logout, search, build } 
 }
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
-// Single narrow centered column (used by login.html).
+// Single narrow centered column (used by /login).
 export function mountCenteredNarrowPage({ active, refreshMe, logout, search, build, maxWidth = 420 } = {}) {
 	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });

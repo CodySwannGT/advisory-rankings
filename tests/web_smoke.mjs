@@ -155,30 +155,30 @@ async function main() {
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 
 	const firmTitle = await page.locator('.profile-head h1').textContent();
-	/Wells Fargo/.test(firmTitle) ? ok(`firm.html: header "${firmTitle.trim()}"`) : fail(`firm.html: header was "${firmTitle}"`);
+	/Wells Fargo/.test(firmTitle) ? ok(`/firms/<slug>: header "${firmTitle.trim()}"`) : fail(`/firms/<slug>: header was "${firmTitle}"`);
 
 	const sectionTitles = await page.locator('.card h2.card-title').allTextContents();
 	const hasCurrent = sectionTitles.some((s) => /Current advisors/i.test(s));
 	const hasPast = sectionTitles.some((s) => /Past advisors/i.test(s));
 	const hasIn = sectionTitles.some((s) => /moves to/i.test(s));
-	hasCurrent ? ok('firm.html: "Current advisors" section') : fail('firm.html: missing current-advisors section');
-	hasPast ? ok('firm.html: "Past advisors" section') : fail('firm.html: missing past-advisors section');
-	hasIn ? ok('firm.html: "Recent moves to" section') : fail('firm.html: missing inbound transitions');
+	hasCurrent ? ok('/firms/<slug>: "Current advisors" section') : fail('/firms/<slug>: missing current-advisors section');
+	hasPast ? ok('/firms/<slug>: "Past advisors" section') : fail('/firms/<slug>: missing past-advisors section');
+	hasIn ? ok('/firms/<slug>: "Recent moves to" section') : fail('/firms/<slug>: missing inbound transitions');
 
 	// Past advisors should include Cairnes with terminated tag.
 	const pastBlock = page.locator('.card').filter({ hasText: 'Past advisors' }).first();
 	const pastText = await pastBlock.textContent();
 	/Cairnes/.test(pastText)
-		? ok('firm.html: past-advisor list includes Cairnes')
-		: fail('firm.html: past-advisor list missing Cairnes', pastText.slice(0, 200));
+		? ok('/firms/<slug>: past-advisor list includes Cairnes')
+		: fail('/firms/<slug>: past-advisor list missing Cairnes', pastText.slice(0, 200));
 	/terminated/i.test(pastText)
-		? ok('firm.html: terminated-for-cause flagged')
-		: fail('firm.html: terminated tag missing', pastText.slice(0, 200));
+		? ok('/firms/<slug>: terminated-for-cause flagged')
+		: fail('/firms/<slug>: terminated tag missing', pastText.slice(0, 200));
 
 	// Right rail: branch tree.
 	(await page.locator('.right .card').filter({ hasText: 'Branches' }).count()) >= 1
-		? ok('firm.html: right rail shows Branches')
-		: fail('firm.html: right rail missing Branches');
+		? ok('/firms/<slug>: right rail shows Branches')
+		: fail('/firms/<slug>: right rail missing Branches');
 
 	await shot('02-firm-wells-fargo');
 	flushPageErrors('firm.html');
@@ -188,58 +188,58 @@ async function main() {
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 
 	const advTitle = await page.locator('.profile-head h1').textContent();
-	/Cairnes/.test(advTitle) ? ok(`advisor.html: header "${advTitle.trim()}"`) : fail(`advisor.html: header "${advTitle}"`);
+	/Cairnes/.test(advTitle) ? ok(`/advisors/<slug>: header "${advTitle.trim()}"`) : fail(`/advisors/<slug>: header "${advTitle}"`);
 
 	// Career timeline. After the BrokerCheck enrichment lands, this is
 	// 5 firms (Merrill → Stanford → Wells Fargo Investments → Wells
 	// Fargo Clearing → Chelsea); pre-enrichment it was 3. Accept ≥ 3.
 	const steps = await page.locator('.timeline .step').count();
 	steps >= 3
-		? ok(`advisor.html: career timeline has ${steps} steps`)
-		: fail(`advisor.html: career timeline only ${steps} steps`);
+		? ok(`/advisors/<slug>: career timeline has ${steps} steps`)
+		: fail(`/advisors/<slug>: career timeline only ${steps} steps`);
 
 	// At least one disclosure rendered with sanction pills. BrokerCheck
 	// adds 1 over the AdvisorHub-extracted set (FINRA AWC + Texas state
 	// + U5 + 3 customer disputes = 6), so ≥ 5 is the floor.
 	const advDiscCount = await page.locator('.event-card.disclosure').count();
 	advDiscCount >= 5
-		? ok(`advisor.html: ${advDiscCount} disclosure events`)
-		: fail(`advisor.html: only ${advDiscCount} disclosure events (expected ≥ 5)`);
+		? ok(`/advisors/<slug>: ${advDiscCount} disclosure events`)
+		: fail(`/advisors/<slug>: only ${advDiscCount} disclosure events (expected ≥ 5)`);
 
 	const advSanctionCount = await page.locator('.sanction-pill').count();
 	advSanctionCount >= 3
-		? ok(`advisor.html: ${advSanctionCount} sanction pills`)
-		: fail(`advisor.html: only ${advSanctionCount} sanction pills`);
+		? ok(`/advisors/<slug>: ${advSanctionCount} sanction pills`)
+		: fail(`/advisors/<slug>: only ${advSanctionCount} sanction pills`);
 
 	// Status tag (danger). After BrokerCheck enrichment Cairnes shows
 	// "Withdrawn" (registration lapsed) rather than "Suspended" (which
 	// is what AdvisorHub reported at article time). Accept either.
 	const statusTag = await page.locator('.profile-head .tag.danger, .profile-head .tag.warn').first().textContent().catch(() => '');
 	/suspended|withdrawn/i.test(statusTag)
-		? ok(`advisor.html: career status flagged ("${statusTag.trim()}")`)
-		: fail(`advisor.html: status tag was "${statusTag}"`);
+		? ok(`/advisors/<slug>: career status flagged ("${statusTag.trim()}")`)
+		: fail(`/advisors/<slug>: status tag was "${statusTag}"`);
 
 	// FINRA CRD badge surfaced in the profile-head tags.
 	const crdBadge = await page.locator('.profile-head .tag').filter({ hasText: /CRD/i }).count();
 	crdBadge >= 1
-		? ok(`advisor.html: FINRA CRD badge present`)
-		: fail(`advisor.html: missing CRD badge in profile head`);
+		? ok(`/advisors/<slug>: FINRA CRD badge present`)
+		: fail(`/advisors/<slug>: missing CRD badge in profile head`);
 
 	// BrokerCheck attribution footer — required by the BrokerCheck ToU
 	// whenever we surface regulator-of-record facts. The career and
 	// disclosures sections each render one.
 	const sourceAttrs = await page.locator('.ab-source-attr').count();
 	sourceAttrs >= 1
-		? ok(`advisor.html: ${sourceAttrs} BrokerCheck attribution footer(s)`)
-		: fail(`advisor.html: missing BrokerCheck attribution footer (ToU requirement)`);
+		? ok(`/advisors/<slug>: ${sourceAttrs} BrokerCheck attribution footer(s)`)
+		: fail(`/advisors/<slug>: missing BrokerCheck attribution footer (ToU requirement)`);
 	const sourceAttrText = await page.locator('.ab-source-attr').first().textContent().catch(() => '');
 	/FINRA BrokerCheck/i.test(sourceAttrText) && /as of/i.test(sourceAttrText)
-		? ok('advisor.html: attribution names FINRA BrokerCheck and shows "as of <date>"')
-		: fail(`advisor.html: attribution malformed: "${sourceAttrText.slice(0, 120)}"`);
+		? ok('/advisors/<slug>: attribution names FINRA BrokerCheck and shows "as of <date>"')
+		: fail(`/advisors/<slug>: attribution malformed: "${sourceAttrText.slice(0, 120)}"`);
 	const tosLink = await page.locator('.ab-source-attr a[href*="brokercheck.finra.org/terms"]').count();
 	tosLink >= 1
-		? ok('advisor.html: attribution links to BrokerCheck ToU (required by ToU)')
-		: fail('advisor.html: attribution missing ToU link');
+		? ok('/advisors/<slug>: attribution links to BrokerCheck ToU (required by ToU)')
+		: fail('/advisors/<slug>: attribution missing ToU link');
 
 	await shot('03-advisor-cairnes');
 	flushPageErrors('advisor.html');
@@ -251,19 +251,19 @@ async function main() {
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 
 	const teamTitle = await page.locator('.profile-head h1').textContent();
-	/Taylor/.test(teamTitle) ? ok(`team.html: header "${teamTitle.trim()}"`) : fail(`team.html: header "${teamTitle}"`);
+	/Taylor/.test(teamTitle) ? ok(`/teams/<slug>: header "${teamTitle.trim()}"`) : fail(`/teams/<slug>: header "${teamTitle}"`);
 
 	const memberRows = await page.locator('.card').filter({ hasText: 'Current members' })
 		.first().locator('.row').count();
 	memberRows >= 9
-		? ok(`team.html: ${memberRows} current members`)
-		: fail(`team.html: only ${memberRows} current members (expected 9)`);
+		? ok(`/teams/<slug>: ${memberRows} current members`)
+		: fail(`/teams/<slug>: only ${memberRows} current members (expected 9)`);
 
 	// Metric snapshot table — should have 2 rows (2023 + 2026).
 	const snapRows = await page.locator('.snap-table tbody tr').count();
 	snapRows >= 2
-		? ok(`team.html: ${snapRows} metric snapshot rows`)
-		: fail(`team.html: only ${snapRows} snapshot rows (expected 2)`);
+		? ok(`/teams/<slug>: ${snapRows} metric snapshot rows`)
+		: fail(`/teams/<slug>: only ${snapRows} snapshot rows (expected 2)`);
 
 	await shot('04-team-taylor-group');
 	flushPageErrors('team.html');
@@ -276,27 +276,27 @@ async function main() {
 
 	const articleHasProvenance = await page.locator('.card').filter({ hasText: 'Field-assertion provenance' }).count();
 	articleHasProvenance >= 1
-		? ok('article.html: provenance section present')
-		: fail('article.html: missing provenance section');
+		? ok('/articles/<slug>: provenance section present')
+		: fail('/articles/<slug>: missing provenance section');
 
 	const provQuotes = await page.locator('.snap-table tbody tr').count();
 	provQuotes >= 4
-		? ok(`article.html: ${provQuotes} provenance rows`)
-		: fail(`article.html: only ${provQuotes} provenance rows (expected 4+)`);
+		? ok(`/articles/<slug>: ${provQuotes} provenance rows`)
+		: fail(`/articles/<slug>: only ${provQuotes} provenance rows (expected 4+)`);
 
 	await shot('05-article-detail');
 	flushPageErrors('article.html');
 
 	// ── flat directory pages ──────────────────────────────
-	for (const page2 of ['firms.html', 'advisors.html', 'teams.html']) {
+	for (const page2 of ['firms', 'advisors', 'teams']) {
 		await page.goto(`${BASE}/${page2}`, { waitUntil: 'domcontentloaded' });
 		await page.waitForSelector('.entity-list .row', { timeout: 10000 });
 		const rows = await page.locator('.entity-list .row').count();
 		rows >= 1
-			? ok(`${page2}: ${rows} rows`)
-			: fail(`${page2}: empty`);
-		await shot(`06-${page2.replace('.html','')}`);
-		flushPageErrors(page2);
+			? ok(`/${page2}: ${rows} rows`)
+			: fail(`/${page2}: empty`);
+		await shot(`06-${page2}`);
+		flushPageErrors(`/${page2}`);
 	}
 
 	// ── auth flow: anonymous → sign in → /Me reflects → sign out ──
