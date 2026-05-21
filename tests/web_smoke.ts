@@ -10,8 +10,8 @@
  * promise rejections.
  *
  * Run:
- *   npm run dev:server &        # in another shell
- *   npm run smoke
+ *   bun run dev:server &        # in another shell
+ *   bun run smoke
  *
  * Screenshots land in tests/screenshots/.
  */
@@ -22,7 +22,7 @@ import { createRequire } from 'node:module';
 import { loadCreds, createAuthTokens } from '../src/scripts/_auth.js';
 
 // Resolve playwright in both layouts:
-//   - CI runner — `npm install` populates `./node_modules/playwright`,
+//   - CI runner — `bun install` populates `./node_modules/playwright`,
 //     reachable from the standard resolver chain.
 //   - Local sandbox — Playwright is installed globally at
 //     `/opt/node22/lib/node_modules` and not reachable from the

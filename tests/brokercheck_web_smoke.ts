@@ -15,7 +15,7 @@
  *     BrokerCheck data.
  *
  * Runs against the deployed cluster by default. Override:
- *   BASE_URL=https://… npm run smoke:brokercheck
+ *   BASE_URL=https://… bun run smoke:brokercheck
  *
  * Cairnes is the canonical disclosure-rich case — his record drives
  * most of the assertions here. Pick any known-good firm CRD for the

@@ -1,0 +1,31 @@
+# This file is managed by Lisa.
+# Do not edit directly — changes will be overwritten on the next `lisa` run.
+
+node_modules/**/*
+.serverless/**/*
+.webpack/**/*
+.warmup/**/*
+	
+build
+dist
+node_modules
+graphql
+generated
+public
+components/ui/
+playwright-report/
+AGENTS.md
+CHANGELOG.md
+src/graphql
+src/graphql-generated
+*.md
+*.mdx
+*.sh
+*.json
+coverage
+
+# Amplify CLI auto-generates files in a format Prettier disallows
+# (quoted keys, commas instead of semicolons in TS object types,
+# no trailing newline). Keep its scaffolding out of format gates.
+# No-op for projects that don't use Amplify.
+amplify

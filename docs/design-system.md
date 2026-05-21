@@ -89,7 +89,7 @@ src/web/
                                 from here
 ```
 
-`npm run build` emits the runtime `.js` modules into `harper-app/web/`.
+`bun run build` emits the runtime `.js` modules into `harper-app/web/`.
 Those generated files are deploy artifacts and are ignored by git.
 
 ---

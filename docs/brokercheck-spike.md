@@ -10,7 +10,7 @@ implemented end-to-end:
 - `harper-app/schema.graphql` — `BrokerCheckSnapshot` table,
   `sourceType` / `sourceRef` columns on `Disclosure` and
   `EmploymentHistory`, `docketNumber` on `Disclosure`. Deployed.
-- `src/scripts/fetch_brokercheck.ts` / `npm run brokercheck --` —
+- `src/scripts/fetch_brokercheck.ts` / `bun run brokercheck --` —
   polite, idempotent scraper (≤ 0.7
   req/sec, exponential backoff). Five modes: `--crd`, `--firm-id`,
   `--enrich`, `--firm-roster`, `--search-name`, plus
@@ -234,12 +234,12 @@ Implementation implications:
 
 | Command | Effect |
 |---|---|
-| `npm run brokercheck -- --crd 4068906` | One CRD. Backstop for "I have a CRD, fetch this." |
-| `npm run brokercheck -- --firm-id 19616` | One firm-level snapshot (enables the firm-page Regulatory record card). |
-| `npm run brokercheck -- --enrich --max 20` | Iterates every `Advisor` row in the live DB without a `finraCrd`, searches BrokerCheck by legal name, and — when exactly one (firstName, lastName) candidate matches — fetches the full report and merges into the existing row. Skips ambiguous names; they need manual disambiguation. |
-| `npm run brokercheck -- --firm-roster 47770 --max 50` | Walks `/search/individual?firm=<id>&query=` (empty query, paginated) to discover advisors we don't yet know about. Polite — pages of 50, 1.5 s ± 0.5 s gap. |
-| `npm run brokercheck -- --search-name 'Cody Swann' --max 5` | Plain name search. |
-| `npm run brokercheck -- --from-fixture <file>` | Offline replay against a recorded JSON response under `research/brokercheck-samples/`. |
+| `bun run brokercheck -- --crd 4068906` | One CRD. Backstop for "I have a CRD, fetch this." |
+| `bun run brokercheck -- --firm-id 19616` | One firm-level snapshot (enables the firm-page Regulatory record card). |
+| `bun run brokercheck -- --enrich --max 20` | Iterates every `Advisor` row in the live DB without a `finraCrd`, searches BrokerCheck by legal name, and — when exactly one (firstName, lastName) candidate matches — fetches the full report and merges into the existing row. Skips ambiguous names; they need manual disambiguation. |
+| `bun run brokercheck -- --firm-roster 47770 --max 50` | Walks `/search/individual?firm=<id>&query=` (empty query, paginated) to discover advisors we don't yet know about. Polite — pages of 50, 1.5 s ± 0.5 s gap. |
+| `bun run brokercheck -- --search-name 'Cody Swann' --max 5` | Plain name search. |
+| `bun run brokercheck -- --from-fixture <file>` | Offline replay against a recorded JSON response under `research/brokercheck-samples/`. |
 
 Add `--dry-run` to parse-without-write. Add `--force` to ignore the
 7-day "recently fetched" skip. `BC_RATE_SECONDS=3 …` for an even
@@ -247,7 +247,7 @@ slower crawl.
 
 ### The wave-1 orchestrator
 
-`src/scripts/brokercheck_crawl_all.ts` (via `npm run brokercheck:crawl --`)
+`src/scripts/brokercheck_crawl_all.ts` (via `bun run brokercheck:crawl --`)
 chains the modes above in a
 sensible order and is the recommended driver for "scrape as much
 as you reasonably can without a license":
@@ -259,7 +259,7 @@ as you reasonably can without a license":
 | 3. Roster walks | Walks rosters smallest-first (so we make progress before a wirehouse hogs the budget), capping each firm at `--max-per-firm` advisors per run. |
 
 ```bash
-npm run brokercheck:crawl -- --max-per-firm 200
+bun run brokercheck:crawl -- --max-per-firm 200
 tail -f research/brokercheck-crawl.log
 ```
 

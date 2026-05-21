@@ -1,6 +1,8 @@
 {
-  "lines": 0,
-  "functions": 0,
-  "branches": 0,
-  "statements": 0
+  "global": {
+    "statements": 17,
+    "branches": 18,
+    "functions": 16,
+    "lines": 19
+  }
 }

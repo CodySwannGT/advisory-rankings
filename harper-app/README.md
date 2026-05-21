@@ -9,27 +9,27 @@ The advisor schema running on Harper (formerly HarperDB).
 | `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, and serves `web/*` as a static site. |
 | `schema.graphql` | 34 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
 | `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, and `/Search?q=…` for the navbar global search box. |
-| `web/` | AdvisorBook static SPA. HTML/CSS are tracked here; browser `.js` modules are generated from `src/web/**/*.ts` by `npm run build`. UI is composed from the Atomic Design library under `src/web/design-system/` and emitted to `web/design-system/` — see `docs/design-system.md`. |
+| `web/` | AdvisorBook static SPA. HTML/CSS are tracked here; browser `.js` modules are generated from `src/web/**/*.ts` by `bun run build`. UI is composed from the Atomic Design library under `src/web/design-system/` and emitted to `web/design-system/` — see `docs/design-system.md`. |
 
 ## How to run (clean machine)
 
 ```bash
-npm install --save harperdb
+bun install
 HDB_ROOT=$HOME/.harperdb \
 TC_AGREEMENT=yes \
 HDB_ADMIN_USERNAME=admin HDB_ADMIN_PASSWORD=admin-local \
   ./node_modules/.bin/harperdb install
 
 ln -sfn "$PWD/harper-app" "$HOME/.harperdb/components/advisor-app"
-npm run build
+bun run build
 ./node_modules/.bin/harperdb start
 
 # Talk to the operations API on port 9925:
 curl -u admin:admin-local -H 'Content-Type: application/json' \
   -d '{"operation":"describe_all"}' http://127.0.0.1:9925/
 
-npm run seed
-npm run verify
+bun run seed
+bun run verify
 ```
 
 Once the server is up:
@@ -68,14 +68,14 @@ Workaround applied here:
    don't use MQTT.
 3. Talk to the operations API via the **Unix domain socket** Harper
    creates at `/home/user/.harperdb/operations-server`. It exposes the
-   same JSON API as port 9925; `npm run seed`, `npm run verify`, and
-   `npm run preview` use the TypeScript Harper client for this.
+   same JSON API as port 9925; `bun run seed`, `bun run verify`, and
+   `bun run preview` use the TypeScript Harper client for this.
 
 The HTTP listener for REST + the static web UI (port 9926) has **no
 Unix-socket fallback** in 4.7.x — the listener simply doesn't bind
 on this kernel. To exercise the `Feed` / `*Profile` resources
-locally without TCP, run `npm run preview` (a.k.a.
-`node dist/src/scripts/preview_feed.js` after `npm run build`) — it
+locally without TCP, run `bun run preview` (a.k.a.
+`node dist/src/scripts/preview_feed.js` after `bun run build`) — it
 pulls every `@export` table out via the ops-API socket, stubs
 `globalThis.tables`, and runs the resource methods directly. Browser
 preview of `web/index.html`

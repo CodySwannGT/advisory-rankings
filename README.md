@@ -14,23 +14,24 @@ from AdvisorHub.com coverage and running on Harper.
 
 ## Quick start
 
-Requires Node >= 18.
+Requires Bun >= 1.3.11 and Node >= 22.21.1. This repo is managed by
+Lisa's `harper-fabric` project type and intentionally uses Bun.
 
 ```bash
-npm run bootstrap     # install deps, install Harper, link the component, start
-npm run build         # compile TypeScript and generate Harper/browser JS
-npm run typecheck     # TypeScript compiler check
-npm run test          # Vitest suite
-npm run test:cov      # Vitest coverage report
-npm run seed          # load 99 records from the two scraped articles
-npm run verify        # run cross-table SQL queries
-npm run preview       # render the /Feed JSON locally (sandbox-friendly)
-npm run dev:server    # serve harper-app/web/ + custom resources locally
-npm run smoke         # Playwright suite (BASE_URL=… for prod)
+bun run bootstrap     # install deps, install Harper, link the component, start
+bun run build         # compile TypeScript and generate Harper/browser JS
+bun run typecheck     # TypeScript compiler check
+bun run test          # Vitest suite
+bun run test:cov      # Vitest coverage report
+bun run seed          # load 99 records from the two scraped articles
+bun run verify        # run cross-table SQL queries
+bun run preview       # render the /Feed JSON locally (sandbox-friendly)
+bun run dev:server    # serve harper-app/web/ + custom resources locally
+bun run smoke         # Playwright suite (BASE_URL=… for prod)
 
-npm run stop          # stop Harper
-npm run status        # check if it's running
-npm run reset         # nuke ~/.harperdb and rebuild from scratch
+bun run stop          # stop Harper
+bun run status        # check if it's running
+bun run reset         # nuke ~/.harperdb and rebuild from scratch
 ```
 
 `bootstrap` is idempotent — re-run anytime.
@@ -41,10 +42,10 @@ Push-deploy to the Fabric cluster from anywhere — uses Studio's
 `:443` proxy, not the firewalled `:9925`:
 
 ```bash
-npm run deploy        # tar harper-app/ → POST deploy_component → restart
+bun run deploy        # tar harper-app/ → POST deploy_component → restart
 ```
 
-`npm run deploy` runs `npm run build` first, so Fabric receives the
+`bun run deploy` runs `bun run build` first, so Fabric receives the
 generated `harper-app/resources.js` and browser modules produced from
 TypeScript rather than stale checked-in JavaScript. It reads
 `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from env first,
@@ -58,7 +59,7 @@ smoke against the live cluster URL.
 For ad-hoc data-plane calls, use the Harper-native JWT:
 
 ```bash
-TOKEN=$(npm run --silent token)
+TOKEN=$(bun run --silent token)
 curl -H "Authorization: Bearer $TOKEN" \
      https://advisory-rankings-de.cody-swann-org.harperfabric.com/Feed
 ```
@@ -99,7 +100,7 @@ documents:
 
 Once Harper is running, visit `http://127.0.0.1:9926/` (or the
 Fabric cluster's REST domain). On a kernel that can't bind the
-9926 TCP listener (this sandbox), use `npm run preview` to see
+9926 TCP listener (this sandbox), use `bun run preview` to see
 the same JSON the UI would consume. See the runbook §6 for the
 deployed-cluster URL.
 
@@ -108,7 +109,7 @@ molecules → organisms → templates) under
 `src/web/design-system/` and emitted to
 `harper-app/web/design-system/`. Every page is composed from
 that library; nothing inlines markup. Read `docs/design-system.md`
-before touching any UI — `CLAUDE.md` requires you to look up
+before touching any UI — `AGENTS.md` / `CLAUDE.md` requires you to look up
 existing components first and to add new ones to the library
 rather than to a page file.
 
@@ -223,7 +224,7 @@ tests/
   parity_compare.ts          deployed-cluster vs local-dev parity.
 ```
 
-## What's in the database after `npm run seed`
+## What's in the database after `bun run seed`
 
 99 records across 23 of the 34 tables, drawn from:
 
@@ -239,14 +240,14 @@ tests/
   activity, registration application withdrawal, defunct firm
   (Stanford Financial), and field-assertion provenance.
 
-`npm run verify` reconstructs all of the above with TypeScript checks
+`bun run verify` reconstructs all of the above with TypeScript checks
 joins and prints them.
 
 ## Data sources
 
 AdvisorHub article URLs are listed in `research/README.md`. The
 WordPress REST API at `https://www.advisorhub.com/wp-json/wp/v2/posts`
-is the preferred ingest endpoint — `npm run crawl:wpjson -- --out
+is the preferred ingest endpoint — `bun run crawl:wpjson -- --out
 research/wpjson` walks every public post type. (Run from a residential
 IP; Cloudflare's WAF flags datacenter ASNs.)
 
