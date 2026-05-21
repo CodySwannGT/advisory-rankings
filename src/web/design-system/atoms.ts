@@ -158,18 +158,8 @@ function showAvatarFallback(img, fallback) {
 }
 
 function watchAvatarImageLoad(img, fallback) {
-	const startTimer = () => setTimeout(() => {
+	setTimeout(() => {
 		if (!img.isConnected || !img.parentElement) return;
 		if (!img.complete || img.naturalWidth === 0) showAvatarFallback(img, fallback);
-	}, 3000);
-	if (!('IntersectionObserver' in window)) {
-		startTimer();
-		return;
-	}
-	const observer = new IntersectionObserver(entries => {
-		if (!entries.some(entry => entry.isIntersecting)) return;
-		observer.disconnect();
-		startTimer();
-	});
-	observer.observe(img);
+	}, 4000);
 }
