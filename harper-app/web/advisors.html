@@ -14,7 +14,7 @@
 		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js';
 		import {
 			mountFullWidthPage, SectionCard,
-			Paginated, EntityRow,
+			Paginated, EntityRow, Avatar,
 		} from '/design-system/index.js';
 
 		mountFullWidthPage({
@@ -45,7 +45,7 @@
 									: `${pref} ${last}`.trim())
 								: (a.legalName || last || a.id);
 							return EntityRow({
-								avatar: initials(name),
+								avatar: Avatar({ initials: initials(name), imageUrl: a.headshotUrl, alt: name }),
 								name,
 								sub: [
 									humanize(a.careerStatus),

@@ -25,9 +25,13 @@ export function Button({ variant = 'neutral', type = 'button', onClick, children
 // ─── Avatar ───────────────────────────────────────────────────
 // Sizes: "sm" (32px row avatar), "md" (40px feed-post avatar), "lg" (104px profile).
 // Tones: "brand" (filled blue), "advisor" (warm tint), "neutral" (default).
-export function Avatar({ initials, size = 'sm', tone = 'neutral', attrs = {} } = {}) {
-	const cls = `ab-avatar ab-avatar--${size} ab-avatar--${tone}` + (attrs.class ? ` ${attrs.class}` : '');
-	return el('div', { ...attrs, class: cls }, String(initials ?? '?'));
+export function Avatar({ initials, imageUrl, alt, size = 'sm', tone = 'neutral', attrs = {} } = {}) {
+	const cls = `ab-avatar ab-avatar--${size} ab-avatar--${tone}` + (imageUrl ? ' ab-avatar--image' : '') + (attrs.class ? ` ${attrs.class}` : '');
+	return el('div', { ...attrs, class: cls },
+		imageUrl
+			? el('img', { src: imageUrl, alt: alt || String(initials ?? 'Profile image'), loading: 'lazy', decoding: 'async' })
+			: String(initials ?? '?'),
+	);
 }
 
 // ─── Tag ──────────────────────────────────────────────────────

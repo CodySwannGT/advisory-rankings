@@ -9,7 +9,7 @@ import { api, refreshMe, logout, search, fmts, fmtMoney, humanize, initials, ent
 import {
 	mountThreeColumnPage, clear,
 	SkeletonCard, EmptyCard, FeedPostCard, BrowseCard, RollupCard,
-	SectionCard, EntityList, EntityRow, Heading, el,
+	SectionCard, EntityList, EntityRow, Heading, el, Avatar,
 } from './design-system/index.js';
 
 mountThreeColumnPage({
@@ -87,7 +87,7 @@ function renderRight(root, items) {
 			Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: 'Trending firms' }),
 			EntityList({
 				rows: topFirms.map(({ firm, count }) => EntityRow({
-					avatar: initials(firm.name),
+					avatar: Avatar({ initials: initials(firm.name), imageUrl: firm.logoUrl, alt: firm.name }),
 					name: firm.short || firm.name,
 					sub: [humanize(firm.channel), firm.hq].filter(Boolean).join(' · '),
 					tail: `${count} mention${count === 1 ? '' : 's'}`,

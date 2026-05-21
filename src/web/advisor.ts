@@ -52,6 +52,7 @@ function render(d, center, right) {
 
 	center.appendChild(ProfileHead({
 		initialsText: initials(d.displayName),
+		imageUrl: a.headshotUrl,
 		title: d.displayName,
 		subtitle: subtitleParts.filter(Boolean).join(' · '),
 		tags,
