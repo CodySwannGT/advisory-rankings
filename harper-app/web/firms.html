@@ -12,7 +12,7 @@
 		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js';
 		import {
 			mountFullWidthPage, SectionCard, EmptyCard,
-			EntityList, EntityRow,
+			EntityList, EntityRow, Avatar,
 		} from '/design-system/index.js';
 
 		mountFullWidthPage({
@@ -26,7 +26,7 @@
 						title: `All firms (${rows.length})`,
 						body: EntityList({
 							rows: rows.map((f) => EntityRow({
-								avatar: initials(f.name),
+								avatar: Avatar({ initials: initials(f.name), imageUrl: f.logoUrl, alt: f.name }),
 								name: f.name,
 								sub: [
 									humanize(f.channel),

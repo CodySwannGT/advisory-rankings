@@ -4,7 +4,7 @@
 
 import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
 import {
-	mountThreeColumnPage, el,
+	mountThreeColumnPage, el, Avatar,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
 	DetailsCard, ArticleListBlock, Tag, Heading, Paginated,
 	TransitionEventCard, DisclosureEventCard, SourceAttribution,
@@ -43,6 +43,7 @@ function render(d, center, right) {
 
 	center.appendChild(ProfileHead({
 		initialsText: initials(f.name),
+		imageUrl: f.logoUrl,
 		title: f.name,
 		subtitle: subtitleParts.join(' · '),
 		tags,
@@ -183,7 +184,7 @@ function advisorRow(r, { showStart = false, showEnd = false } = {}) {
 	else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
 	else if (r.startDate) tail = fmtDate(r.startDate, { mode: 'short' });
 	return EntityRow({
-		avatar: initials(a.name),
+		avatar: Avatar({ initials: initials(a.name), imageUrl: a.headshotUrl, alt: a.name }),
 		name: a.name,
 		sub,
 		tail: r.reasonForLeaving === 'terminated_for_cause'

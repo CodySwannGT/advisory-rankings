@@ -162,13 +162,13 @@ export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
 // Cover gradient + circular avatar + title + subtitle + tags.
 // The marquee block at the top of every profile page.
 //
-//   { initialsText, title, subtitle?, tags?: [{kind?, label}] }
-export function ProfileHead({ initialsText, title, subtitle, tags = [] } = {}) {
+//   { initialsText, imageUrl?, title, subtitle?, tags?: [{kind?, label}] }
+export function ProfileHead({ initialsText, imageUrl, title, subtitle, tags = [] } = {}) {
 	return Card({
 		children: [
 			el('div', { class: 'profile-cover' }),
 			el('div', { class: 'profile-head' },
-				Avatar({ initials: initialsText, size: 'lg', tone: 'profile', attrs: { class: 'profile-avatar' } }),
+				Avatar({ initials: initialsText, imageUrl, alt: title, size: 'lg', tone: 'profile', attrs: { class: 'profile-avatar' } }),
 				el('div', { class: 'profile-title' },
 					Heading({ level: 1, children: title || '' }),
 					subtitle ? el('div', { class: 'subtitle' }, subtitle) : null,
