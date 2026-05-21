@@ -9,12 +9,13 @@
 #
 # What this does:
 #   1. npm install (if node_modules missing)
-#   2. harperdb install into $HDB_ROOT (if not already installed)
-#   3. Patch the Harper config for sandbox-friendly defaults:
+#   2. Build generated Harper/browser JavaScript from TypeScript source
+#   3. harperdb install into $HDB_ROOT (if not already installed)
+#   4. Patch the Harper config for sandbox-friendly defaults:
 #        threads.count: 1   (works around kernels without SO_REUSEPORT)
 #        mqtt: disabled     (we don't use it; failed binds spam logs)
-#   4. Symlink ./harper-app into <HDB_ROOT>/components/advisor-app
-#   5. Start Harper in the background
+#   5. Symlink ./harper-app into <HDB_ROOT>/components/advisor-app
+#   6. Start Harper in the background
 
 set -euo pipefail
 
@@ -36,9 +37,13 @@ else
   say "node_modules/harperdb already present — skipping npm install"
 fi
 
-# ── 2. harperdb install ──────────────────────────────────────────
+# ── 2. TypeScript build ──────────────────────────────────────────
+say "Building generated Harper/browser JavaScript…"
+(cd "$REPO_ROOT" && npm run build)
+
+# ── 3. harperdb install ──────────────────────────────────────────
 if [ ! -f "$HDB_ROOT/harperdb-config.yaml" ]; then
-  say "Running harperdb install into $HDB_ROOT…"
+  say "Running harperdb install into ${HDB_ROOT}…"
   HDB_ROOT="$HDB_ROOT" \
   TC_AGREEMENT="yes" \
   HDB_ADMIN_USERNAME="$HDB_ADMIN_USERNAME" \
@@ -49,10 +54,10 @@ if [ ! -f "$HDB_ROOT/harperdb-config.yaml" ]; then
   LOGGING_LEVEL=warn \
     "$HDB_BIN" install
 else
-  say "Harper already installed at $HDB_ROOT — skipping install"
+  say "Harper already installed at ${HDB_ROOT} — skipping install"
 fi
 
-# ── 3. Patch sandbox-friendly defaults ───────────────────────────
+# ── 4. Patch sandbox-friendly defaults ───────────────────────────
 CFG="$HDB_ROOT/harperdb-config.yaml"
 say "Applying sandbox-friendly config to $CFG"
 
@@ -62,24 +67,23 @@ if grep -qE '^[[:space:]]*count:[[:space:]]+[0-9]+' "$CFG"; then
 fi
 
 # Disable MQTT listeners (sandbox kernels often reject these binds)
-python3 - "$CFG" <<'PY'
-import sys, pathlib, re
-p = pathlib.Path(sys.argv[1])
-text = p.read_text()
-# Only patch the mqtt block, leave others alone
-new = re.sub(
-    r'(mqtt:\s*\n\s*network:\s*\n)(\s*port:.*\n\s*securePort:.*\n)(\s*mtls:.*\n)(\s*webSocket:).*',
-    r'\1    port: null\n    securePort: null\n\3\4 false',
-    text, flags=re.MULTILINE,
-)
-if new != text:
-    p.write_text(new)
-    print("  mqtt block patched")
-else:
-    print("  mqtt block already patched (or shape changed)")
-PY
+node --input-type=module - "$CFG" <<'JS'
+import { readFileSync, writeFileSync } from 'node:fs';
+const file = process.argv[2];
+const text = readFileSync(file, 'utf8');
+const next = text.replace(
+  /(mqtt:\s*\n\s*network:\s*\n)(\s*port:.*\n\s*securePort:.*\n)(\s*mtls:.*\n)(\s*webSocket:).*/m,
+  '$1    port: null\n    securePort: null\n$3$4 false'
+);
+if (next !== text) {
+  writeFileSync(file, next);
+  console.log('  mqtt block patched');
+} else {
+  console.log('  mqtt block already patched (or shape changed)');
+}
+JS
 
-# ── 4. Symlink component ─────────────────────────────────────────
+# ── 5. Symlink component ─────────────────────────────────────────
 COMPONENTS_DIR="$HDB_ROOT/components"
 mkdir -p "$COMPONENTS_DIR"
 LINK="$COMPONENTS_DIR/$COMPONENT_NAME"
@@ -92,7 +96,7 @@ else
   ln -sfn "$TARGET" "$LINK"
 fi
 
-# ── 5. Start Harper ──────────────────────────────────────────────
+# ── 6. Start Harper ──────────────────────────────────────────────
 status=$("$HDB_BIN" status 2>/dev/null | grep -oE 'status:[[:space:]]+(running|stopped)' | head -1 || true)
 if [[ "$status" == *running* ]]; then
   say "Harper already running — restarting to pick up config & component changes"

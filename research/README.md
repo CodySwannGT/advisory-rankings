@@ -13,7 +13,7 @@ sandbox's egress IP. These are ground-truth for the schema design.
 | `02-cairnes-finra-disclosure.wpjson.json` | FINRA regulatory disclosure | Full wp-json record. 5 parallel disclosure events (FINRA AWC, U5 termination, state board order, FINRA arbitration award, pending customer dispute). FINRA Rule 3270 + 2010 violations. OBA via LLC. Multi-firm career trail incl. defunct Stanford Financial. |
 | `00-recent-posts-listing.json` | wp-json index sample | Demonstrates pagination format + per-post field shape |
 
-## `wpjson/` (created by `scripts/crawl_via_wpjson.py`)
+## `wpjson/` (created by `npm run crawl:wpjson`)
 
 One JSON file per AdvisorHub post. Mirrors the wp-json `/wp/v2/posts` schema:
 
@@ -31,7 +31,7 @@ README inside that directory for endpoint mapping and replay
 instructions, and read the ToU section of the spike doc before
 fetching anything new at scale.
 
-## `html/` (created by `scripts/crawl_html.py` or `crawl_playwright.py`)
+## `html/` (created by `npm run crawl:html` or `npm run crawl:playwright`)
 
 Raw HTML for pages where wp-json is incomplete (e.g., the static rankings
 landing pages, recruiting deal aggregations).
@@ -40,10 +40,10 @@ landing pages, recruiting deal aggregations).
 
 ```bash
 # wp-json (preferred — full structured content, ~1 req/sec is polite)
-python3 scripts/crawl_via_wpjson.py --out research/wpjson --max-pages 60
+npm run crawl:wpjson -- --out research/wpjson --max-pages 60
 
 # Optional: extract field candidates from saved articles
-python3 scripts/extract_fields.py --out research/extracted.jsonl
+npm run extract:fields -- --out research/extracted.jsonl
 ```
 
 The Cloudflare WAF that blocked this sandbox is keyed on egress IP

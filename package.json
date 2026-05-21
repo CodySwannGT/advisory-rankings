@@ -3,18 +3,35 @@
   "version": "0.1.0",
   "description": "Advisor data schema (sourced from AdvisorHub) running on Harper.",
   "private": true,
+  "type": "module",
   "scripts": {
     "bootstrap": "bash scripts/bootstrap.sh",
+    "build": "tsc && node dist/src/build/build.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
     "start": "harperdb start",
     "stop": "harperdb stop",
     "status": "harperdb status",
-    "seed": "python3 harper-app/seed.py",
-    "verify": "python3 harper-app/verify.py",
-    "preview": "node scripts/preview_feed.mjs",
-    "dev:server": "node scripts/dev_server.mjs",
-    "deploy": "node scripts/deploy.mjs",
-    "smoke": "node tests/web_smoke.mjs",
-    "token": "node scripts/get_token.mjs",
+    "seed": "npm run build && node dist/src/scripts/seed.js",
+    "verify": "npm run build && node dist/src/scripts/verify.js",
+    "seed:rest": "npm run build && node dist/src/scripts/seed_via_rest.js",
+    "verify:rest": "npm run build && node dist/src/scripts/verify_via_rest.js",
+    "preview": "npm run build && node dist/src/scripts/preview_feed.js",
+    "dev:server": "npm run build && node dist/src/scripts/dev_server.js",
+    "deploy": "npm run build && node dist/src/scripts/deploy.js",
+    "smoke": "npm run build && node dist/tests/web_smoke.js",
+    "smoke:brokercheck": "npm run build && node dist/tests/brokercheck_web_smoke.js",
+    "token": "npm run build && node dist/src/scripts/get_token.js",
+    "crawl:wpjson": "npm run build && node dist/src/scripts/crawl_via_wpjson.js",
+    "crawl:html": "npm run build && node dist/src/scripts/crawl_html.js",
+    "crawl:playwright": "npm run build && node dist/src/scripts/crawl_playwright.js",
+    "extract:fields": "npm run build && node dist/src/scripts/extract_fields.js",
+    "extract:helper": "npm run build && node dist/src/scripts/extract_helper.js",
+    "ingest": "npm run build && node dist/src/scripts/ingest.js",
+    "load:extractions": "npm run build && node dist/src/scripts/load_extractions.js",
+    "brokercheck": "npm run build && node dist/src/scripts/fetch_brokercheck.js",
+    "brokercheck:crawl": "npm run build && node dist/src/scripts/brokercheck_crawl_all.js",
     "reset": "harperdb stop || true; rm -rf $HOME/.harperdb && npm run bootstrap && npm run seed && npm run verify"
   },
   "repository": {
@@ -22,10 +39,17 @@
     "url": "http://local_proxy@127.0.0.1:44395/git/CodySwannGT/advisory-rankings"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "harperdb": "^4.7.29"
   },
   "devDependencies": {
-    "playwright": "^1.56.1"
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "playwright": "^1.56.1",
+    "tsx": "^4.20.6",
+    "typescript": "^6.0.3",
+    "uuid": "^13.0.0",
+    "vitest": "^4.1.0"
   },
   "engines": {
     "node": ">=18"

@@ -8,7 +8,7 @@ every page is assembled from those blocks. No page-level file
 should be hand-rolling chrome, cards, or rows.
 
 > **Agent rule** — before touching anything visual, search this
-> document and the `harper-app/web/design-system/` files for an
+> document and the `src/web/design-system/` files for an
 > existing component that fits. If none does, add a new one at
 > the right tier *before* you build the feature, then consume it
 > from the page. This rule is enforced in `CLAUDE.md`.
@@ -31,25 +31,26 @@ complex tiers.
 Imports are unidirectional: tokens are referenced everywhere,
 atoms import nothing else from the system, molecules import only
 atoms, organisms import atoms + molecules, templates import any
-of the above. **Pages import from `design-system/index.js` only.**
+of the above. **Pages import from `design-system/index.js` only**
+at runtime; the source import is `src/web/design-system/index.ts`.
 
 This is the same model described in
 <https://atomicdesign.bradfrost.com/chapter-2/>. We chose it
 because the UI is data-dense and most components recur on three
 or more pages — a flat "shared utilities" approach was already
-producing copy-paste between `firm.js`, `advisor.js`, `team.js`.
+producing copy-paste between `firm.ts`, `advisor.ts`, `team.ts`.
 
 ---
 
 ## 2. File layout
 
 ```
-harper-app/web/
+src/web/
   app.css                       legacy + page-level styles. Imports
                                 tokens.css and components.css at the top
                                 so design-system styles always load
                                 first.
-  app.js                        non-UI utilities (api, formatters,
+  app.ts                        non-UI utilities (api, formatters,
                                 auth state, mountPage shim) plus
                                 back-compat re-exports of legacy
                                 names. Pages MUST get UI from
@@ -60,18 +61,18 @@ harper-app/web/
                                 spacing, radius, shadow, type. The
                                 only place raw hex / px values live.
     components.css              styles for the .ab-* class names
-                                emitted by atoms.js. New atom CSS
+                                emitted by atoms.ts. New atom CSS
                                 belongs here.
-    dom.js                      el() / $() / clear() — the lowest
+    dom.ts                      el() / $() / clear() — the lowest
                                 hyperscript helpers. Dependency-free.
-    atoms.js                    Button, Avatar, Tag, Skeleton,
+    atoms.ts                    Button, Avatar, Tag, Skeleton,
                                 EmptyText, Heading, TextInput,
                                 FormLabel, Icon
-    molecules.js                EntityChip, PostHeader, EntityRow,
+    molecules.ts                EntityChip, PostHeader, EntityRow,
                                 KvList, SanctionPill, DealStrip,
                                 EventStat, NavRow, LabeledField,
                                 FirmArrow
-    organisms.js                Card, SectionCard, EmptyCard,
+    organisms.ts                Card, SectionCard, EmptyCard,
                                 ChipRow, EntityList, ProfileHead,
                                 Navbar, SiteFooter,
                                 TransitionEventCard,
@@ -81,12 +82,15 @@ harper-app/web/
                                 ScrollableTable,
                                 SkeletonCard, BrowseCard,
                                 RollupCard, DetailsCard
-    templates.js                mountThreeColumnPage,
+    templates.ts                mountThreeColumnPage,
                                 mountFullWidthPage,
                                 mountCenteredNarrowPage
-    index.js                    barrel export — every page imports
+    index.ts                    barrel export — every page imports
                                 from here
 ```
+
+`npm run build` emits the runtime `.js` modules into `harper-app/web/`.
+Those generated files are deploy artifacts and are ignored by git.
 
 ---
 
@@ -115,7 +119,7 @@ reference `--ab-*` names directly.
 
 ---
 
-## 4. Atoms (`design-system/atoms.js`)
+## 4. Atoms (`design-system/atoms.ts`)
 
 Each atom maps to a single DOM element with variants. Atoms do
 not own state and do not fetch.
@@ -152,7 +156,7 @@ through the JS, and document it in this table.
 
 ---
 
-## 5. Molecules (`design-system/molecules.js`)
+## 5. Molecules (`design-system/molecules.ts`)
 
 Composed from atoms; each does one concrete job.
 
@@ -176,7 +180,7 @@ should adopt `.ab-*` names if they require new styles.
 
 ---
 
-## 6. Organisms (`design-system/organisms.js`)
+## 6. Organisms (`design-system/organisms.ts`)
 
 Self-contained UI sections.
 
@@ -189,12 +193,12 @@ Self-contained UI sections.
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
 | `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `advisors.html` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
-| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.js`. |
+| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. |
 | `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
 | `SiteFooter()` | Footer with source link. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
 | `DisclosureEventCard(d, fmts)` | Red-bordered event card for a `Disclosure`. |
-| `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.js` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |
+| `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.ts` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |
 | `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. Reads `fmts.articleSource(article)` for the publisher chip + footer CTA, so a Morgan Stanley firm-bio post renders as "MS · Morgan Stanley" / "Read original on Morgan Stanley →" instead of falling back to "AH · AdvisorHub". |
 | `CareerTimeline({ career, fmtDate })` | Vertical timeline on advisor profile. |
 | `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
@@ -205,7 +209,7 @@ Self-contained UI sections.
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
 
 `fmts = { fmtMoney, fmtPct, fmtDate, humanize, articleSource }` is
-exported from `app.js` and threaded through to organisms that need
+exported from `app.ts` and threaded through to organisms that need
 to format values. This keeps organisms locale- and
 project-agnostic.
 
@@ -229,7 +233,7 @@ PascalCase value straight from the database.
 
 ---
 
-## 7. Templates (`design-system/templates.js`)
+## 7. Templates (`design-system/templates.ts`)
 
 Templates own the global chrome (Navbar + footer + grid) and hand
 the page back populated rail elements.
@@ -241,7 +245,7 @@ the page back populated rail elements.
 | `mountCenteredNarrowPage` | Single narrow centered column. Used by login. | `{ center, layout }`; accepts `maxWidth`. |
 
 All three accept `{ active, refreshMe, logout, search, build }`.
-Caller imports `refreshMe`, `logout`, and `search` from `app.js`
+Caller imports `refreshMe`, `logout`, and `search` from `app.ts`
 and passes them in — this keeps templates decoupled from the
 network layer. `search` is what powers the navbar's
 `GlobalSearch` dropdown; pages that don't pass it get a search
@@ -260,7 +264,7 @@ mountThreeColumnPage({
 });
 ```
 
-The legacy `mountPage({ active, build(layout) })` from `app.js`
+The legacy `mountPage({ active, build(layout) })` from `app.ts`
 still works for older callers — it forwards to
 `mountThreeColumnPage` and exposes `layout` (the grid root) to
 the build callback.
@@ -273,7 +277,7 @@ the build callback.
    Composition of 2–3 atoms → molecule. Self-contained section
    with internal layout → organism. Page shell → template.
 
-2. **Search first.** Open `design-system/{atoms,molecules,organisms}.js`
+2. **Search first.** Open `src/web/design-system/{atoms,molecules,organisms}.ts`
    and grep for adjacent functionality before creating a new
    component. If there's a near-match, extend the existing one
    with a new variant rather than duplicating it.
@@ -288,7 +292,7 @@ the build callback.
    `--ab-*` tokens — never raw hex / px. If you need a new token,
    add it to `tokens.css` first.
 
-5. **Re-export** the component from `design-system/index.js` so
+5. **Re-export** the component from `design-system/index.ts` so
    pages can import it from the barrel.
 
 6. **Update this doc** — add a row to the catalog table for the
@@ -316,7 +320,7 @@ These are the things that this library exists to prevent.
 - **A new top-level CSS class without a token tier.** Don't add
   `.firm-card-special-blue` directly; either reuse an existing
   atom variant or add a new variant + token.
-- **Direct imports from `molecules.js` or `organisms.js`** in
+- **Direct imports from `molecules.ts` or `organisms.ts`** in
   page files. Always go through `design-system/index.js`. (The
   internal cross-tier imports are fine *inside* the system.)
 - **Hand-rolling navigation chrome** in a page. Use one of the
@@ -338,7 +342,7 @@ The pages have been migrated to the system:
 | `firms.html`, `advisors.html`, `teams.html` | `mountFullWidthPage` | `SectionCard`, `EntityList`, `EntityRow` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
-The legacy `app.js` exports (`navbar`, `siteFooter`, `mountPage`,
+The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,
 `profileHead`, `sectionCard`, `articleListBlock`, `transitionRow`,
 `disclosureRow`, `entityChip`) are kept as thin shims to the
 design-system equivalents so any unmigrated callers keep working.
