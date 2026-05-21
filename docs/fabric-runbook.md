@@ -709,6 +709,27 @@ mounted REST export immediately. Without `HDB_TARGET_URL` it uses the
 local Harper operations socket. Check rows land in
 `AdvisorResearchCheck`; source-backed facts discovered by the agent
 still belong in the relevant entity table plus `FieldAssertion`.
+Advisor headshots are stored on `Advisor.headshotUrl`; firm logos are
+stored on `Firm.logoUrl` when a scraped/extracted source provides a
+public image URL.
+
+`src/scripts/backfill_media.ts` backs one-off public-web media
+enrichment for already-loaded rows. It searches for advisors or firms
+missing those fields, checks candidate pages for likely headshot/logo
+images, verifies the candidate URL returns an image, and writes only
+when `--write` is supplied:
+
+```bash
+bun run media:backfill -- --target firms --max 10
+bun run media:backfill -- --target advisors --max 10 --write
+bun run media:backfill -- --target firms --name "Wells Fargo Advisors" \
+  --source-url https://www.wellsfargoadvisors.com/ --write
+```
+
+Search engines may return bot challenges from datacenter networks. When
+you already know a firm bio, team page, or advisor profile URL,
+`--source-url` bypasses search and extracts media directly from that
+page.
 
 ### Smoke-testing the custom JS resources locally
 

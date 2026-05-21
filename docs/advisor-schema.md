@@ -268,6 +268,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `custodian_relationships?` | [str] | RIAs: Schwab, Fidelity, Pershing, TradePMR |
 | `is_aggregator?` | bool | Beacon Pointe, Focus, Hightower, Wealthcare, Steward |
 | `website?` | url | |
+| `logo_url?` | url | Public firm logo captured from scraped source metadata or firm-bio pages. |
 
 ### 4.6 `Branch` / `Office`
 

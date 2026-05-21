@@ -3,6 +3,7 @@
 import { mkdir, readdir, readFile, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   advisorId,
   articleId,
@@ -32,7 +33,7 @@ async function files(): Promise<string[]> {
   return (await readdir(EXTRACT_DIR)).filter(f => f.endsWith(".json")).map(f => join(EXTRACT_DIR, f));
 }
 
-function buildRows(ex: any): Record<string, any[]> {
+export function buildRows(ex: any): Record<string, any[]> {
   const rows: Record<string, any[]> = {};
   const push = (table: string, row: any) => {
     rows[table] ??= [];
@@ -60,13 +61,13 @@ function buildRows(ex: any): Record<string, any[]> {
     const name = f.natural_key?.canonical_name ?? f.fields?.name;
     const id = firmId(name);
     firmByName.set(name, id);
-    push("Firm", { id, name, ...(f.fields ?? {}) });
+    push("Firm", { id, name, ...f.fields });
   }
   for (const a of arr(ex.advisors)) {
     const name = a.natural_key?.legal_name ?? a.fields?.legalName;
     const id = advisorId(name, a.natural_key?.first_employer ?? String(a.natural_key?.career_start_year ?? ""));
     advisorByName.set(name, id);
-    push("Advisor", { id, legalName: name, ...(a.fields ?? {}) });
+    push("Advisor", { id, legalName: name, ...a.fields });
     push("ArticleAdvisorMention", { id: uid(`aam:${aid}:${id}`), articleId: aid, advisorId: id });
   }
   for (const [name, id] of firmByName) {
@@ -88,7 +89,7 @@ function buildRows(ex: any): Record<string, any[]> {
       id: employmentHistoryId(advId, fid, eh.fields?.startDate ?? ""),
       advisorId: advId,
       firmId: fid,
-      ...(eh.fields ?? {}),
+      ...eh.fields,
     });
   }
   for (const s of arr(ex.sanctions)) {
@@ -106,7 +107,7 @@ function buildRows(ex: any): Record<string, any[]> {
     push("OutsideBusinessActivity", {
       id: uid(`oba:${advId}:${oba.fields?.name ?? ""}`),
       advisorId: advId,
-      ...(oba.fields ?? {}),
+      ...oba.fields,
     });
   }
   for (const fa of arr(ex.field_assertions)) {
@@ -123,17 +124,28 @@ function buildRows(ex: any): Record<string, any[]> {
   return rows;
 }
 
-console.error(`[load_extractions] target: ${describeTarget()}`);
-const dryRun = process.argv.includes("--dry-run");
-await mkdir(LOADED_DIR, { recursive: true });
+async function main(): Promise<void> {
+  console.error(`[load_extractions] target: ${describeTarget()}`);
+  const dryRun = process.argv.includes("--dry-run");
+  await mkdir(LOADED_DIR, { recursive: true });
 
-for (const file of await files()) {
-  const ex = JSON.parse(await readFile(file, "utf8"));
-  const rows = buildRows(ex);
-  const summary: Record<string, number> = {};
-  for (const [table, tableRows] of Object.entries(rows)) {
-    summary[table] = dryRun ? tableRows.length : await upsert(table, tableRows);
+  for (const file of await files()) {
+    const ex = JSON.parse(await readFile(file, "utf8"));
+    const rows = buildRows(ex);
+    const summary: Record<string, number> = {};
+    for (const [table, tableRows] of Object.entries(rows)) {
+      summary[table] = dryRun
+        ? tableRows.length
+        : await upsert(table, tableRows);
+    }
+    console.log(`${file}: ${JSON.stringify(summary)}`);
+    if (!dryRun) await rename(file, join(LOADED_DIR, file.split("/").pop()!));
   }
-  console.log(`${file}: ${JSON.stringify(summary)}`);
-  if (!dryRun) await rename(file, join(LOADED_DIR, file.split("/").pop()!));
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }

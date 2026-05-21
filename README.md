@@ -27,6 +27,8 @@ bun run seed          # load 99 records from the two scraped articles
 bun run verify        # run cross-table SQL queries
 bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
+bun run media:backfill -- --target firms --max 10
+                     # find missing firm logo/advisor headshot URLs
 bun run preview       # render the /Feed JSON locally (sandbox-friendly)
 bun run dev:server    # serve harper-app/web/ + custom resources locally
 bun run smoke         # Playwright suite (BASE_URL=… for prod)
@@ -215,8 +217,8 @@ src/
                              parser/loader/client helpers
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
-                             advisor research queues, token, preview,
-                             and dev server commands
+                             media backfill, advisor research queues,
+                             token, preview, and dev server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 
