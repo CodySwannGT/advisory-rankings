@@ -72,7 +72,7 @@ function idFromLocation(locationLike = location) {
   if (queryId) return queryId;
   const last = locationLike.pathname.split("/").filter(Boolean).pop() || "";
   const match = UUID_RE.exec(decodeURIComponent(last));
-  return match ? match[0] : null;
+  return match ? match[0] : decodeURIComponent(last) || null;
 }
 
 /**
