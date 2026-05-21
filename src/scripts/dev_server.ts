@@ -12,6 +12,7 @@
  *   - Static GET for /<file>       → web/<file>
  *   - Static GET for /firms        → web/firms.html
  *   - Static GET for /firms/<slug> → web/firm.html
+ *   - Static GET for /articles/<slug> → web/article.html
  *   - GET /Feed                    → resources.js Feed.get()
  *   - GET /ArticleView/<id>        → resources.js ArticleView.get(id)
  *   - GET /FirmProfile/<id>        → resources.js FirmProfile.get(id)
@@ -129,6 +130,7 @@ async function serveStatic(req, res) {
 	else if (p.startsWith('/advisors/')) p = '/advisor.html';
 	else if (p === '/teams') p = '/teams.html';
 	else if (p.startsWith('/teams/')) p = '/team.html';
+	else if (p.startsWith('/articles/')) p = '/article.html';
 	const file = join(ROOT, p);
 	if (!file.startsWith(ROOT)) {
 		res.writeHead(403).end('forbidden');

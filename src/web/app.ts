@@ -156,7 +156,13 @@ export function getQueryParam(name) {
 	return new URLSearchParams(location.search).get(name);
 }
 
-export { slugifyText, entityPath, entityIdFromLocation as getEntityIdParam } from './urls.js';
+export {
+	slugifyText,
+	entityPath,
+	articlePath,
+	entityIdFromLocation as getEntityIdParam,
+	articleIdFromLocation as getArticleIdParam,
+} from './urls.js';
 
 // Map an article URL hostname to the publisher we want to attribute
 // the post to in the UI. Most articles in this DB are AdvisorHub posts;

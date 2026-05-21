@@ -67,6 +67,10 @@ function entityPath(kind, entity) {
 	return `/${kind}/${slugify(entity.name)}-${encodeURIComponent(entity.id)}`;
 }
 
+function articlePath(article) {
+	return `/articles/${slugify(article.headline)}-${encodeURIComponent(article.id)}`;
+}
+
 // Profile pages also need an id from the feed. We resolve those
 // once per base via /Feed and stuff them into the page list.
 async function profilePagesFor(base) {
@@ -80,7 +84,7 @@ async function profilePagesFor(base) {
 		{ id: 'firm-wells-fargo',  goto: entityPath('firms', wellsFargo), waitFor: '.profile-head h1' },
 		{ id: 'team-taylor',       goto: entityPath('teams', teamObj),    waitFor: '.profile-head h1' },
 		{ id: 'advisor-cairnes',   goto: entityPath('advisors', advisor), waitFor: '.profile-head h1' },
-		{ id: 'article-taylor',    goto: `/article.html?id=${encodeURIComponent(taylor.article.id)}`, waitFor: '.post-headline' },
+		{ id: 'article-taylor',    goto: articlePath(taylor.article), waitFor: '.post-headline' },
 	];
 }
 

@@ -99,9 +99,10 @@ documents:
 - Team profile (`/teams/<slug>-<id>`, with `team.html?id=…` still
   supported) — current and past members,
   metric snapshots over time, transitions, coverage.
-- Article detail (`article.html?id=…`) — full body + the same
-  event blocks as the feed card + the FieldAssertion provenance
-  table (which quotes from the article asserted which value).
+- Article detail (`/articles/<slug>-<id>`, with `article.html?id=…`
+  still supported) — full body + the same event blocks as the feed
+  card + the FieldAssertion provenance table (which quotes from the
+  article asserted which value).
 
 Once Harper is running, visit `http://127.0.0.1:9926/` (or the
 Fabric cluster's REST domain). On a kernel that can't bind the
@@ -152,12 +153,12 @@ harper-app/
                              /FirmAdvisors/<id> (?status&cursor&limit),
                              plus /Search?q=… for the navbar search box
   firms/ advisors/ teams/    Fastify route shells for /firms,
-  seo_shell.js               /advisors, /teams, and profile slug URLs
+  articles/ seo_shell.js     /advisors, /teams, /articles, and slug URLs
   web/                       static AdvisorBook UI served at /.
                              HTML and CSS are tracked; .js browser
                              modules are generated from src/web/:
                                index.html / index.js   feed home
-                               article.html / .js      article detail
+                               article.html / .js      /articles/<slug>-<id>
                                firm.html / .js         /firms/<slug>-<id>
                                advisor.html / .js      /advisors/<slug>-<id>
                                team.html / .js         /teams/<slug>-<id>

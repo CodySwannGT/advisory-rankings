@@ -50,15 +50,47 @@ export function entityPath(kind, entity) {
 }
 
 /**
- * Read an entity id from a legacy query string or from a slug ending in a UUID.
+ * Build the canonical public URL for an article detail page.
+ *
+ * @param article Article with an id and headline-ish text.
+ * @returns Absolute browser path for the article detail.
+ */
+export function articlePath(article) {
+  if (!article?.id) return "#";
+  const title = article.headline || article.title || article.slug || article.id;
+  return `/articles/${slugifyText(title)}-${encodeURIComponent(article.id)}`;
+}
+
+/**
+ * Read an id from a legacy query string or from a slug ending in a UUID.
  *
  * @param locationLike Browser location-like object.
- * @returns Entity id, or null when none is present.
+ * @returns Record id, or null when none is present.
  */
-export function entityIdFromLocation(locationLike = location) {
+function idFromLocation(locationLike = location) {
   const queryId = new URLSearchParams(locationLike.search).get("id");
   if (queryId) return queryId;
   const last = locationLike.pathname.split("/").filter(Boolean).pop() || "";
   const match = UUID_RE.exec(decodeURIComponent(last));
   return match ? match[0] : null;
+}
+
+/**
+ * Read an entity id from the current clean URL or legacy query string.
+ *
+ * @param locationLike Browser location-like object.
+ * @returns Entity id, or null when none is present.
+ */
+export function entityIdFromLocation(locationLike = location) {
+  return idFromLocation(locationLike);
+}
+
+/**
+ * Read an article id from the current clean URL or legacy query string.
+ *
+ * @param locationLike Browser location-like object.
+ * @returns Article id, or null when none is present.
+ */
+export function articleIdFromLocation(locationLike = location) {
+  return idFromLocation(locationLike);
 }

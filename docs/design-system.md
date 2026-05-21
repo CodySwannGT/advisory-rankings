@@ -338,7 +338,7 @@ The pages have been migrated to the system:
 | `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck) |
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
-| `article.html` | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
+| `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountFullWidthPage` | `SectionCard`, `EntityList`, `EntityRow` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 

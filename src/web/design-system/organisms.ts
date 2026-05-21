@@ -16,7 +16,7 @@ import {
 	PostHeader, EntityRow, EntityChip, KvList, SanctionPill,
 	DealStrip, EventStat, NavRow, FirmArrow,
 } from './molecules.js';
-import { entityPath } from '../urls.js';
+import { articlePath, entityPath } from '../urls.js';
 
 // ─── Card ─────────────────────────────────────────────────────
 // White rounded surface with shadow. The base container for
@@ -483,7 +483,7 @@ export function ArticleListBlock({ articles, fmtDate, articleSource } = {}) {
 			const src = articleSource ? articleSource(a) : { source: 'External', initials: '?' };
 			return EntityRow({
 				avatar: src.initials,
-				name: el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, a.headline || a.id),
+				name: el('a', { href: articlePath(a) }, a.headline || a.id),
 				sub: [a.category, fmtDate ? fmtDate(a.publishedDate) : a.publishedDate].filter(Boolean).join(' · '),
 				tail: a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, `${src.source} →`) : null,
 			});
@@ -502,6 +502,7 @@ export function FeedPostCard(item, fmts = {}) {
 	const a = item.article;
 	const { fmtDate, articleSource } = fmts;
 	const src = articleSource ? articleSource(a) : { source: 'External', initials: '?', ctaLabel: 'Read original →' };
+	const detailHref = articlePath(a);
 	return el('article', { class: 'card' },
 		PostHeader({
 			initials: src.initials,
@@ -511,7 +512,7 @@ export function FeedPostCard(item, fmts = {}) {
 			category: a.category,
 		}),
 		el('h2', { class: 'post-headline' },
-			el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, a.headline || '(untitled)')),
+			el('a', { href: detailHref }, a.headline || '(untitled)')),
 		a.dek ? el('div', { class: 'post-dek' }, a.dek) : null,
 		...(item.eventCards || []).map((c) =>
 			c.kind === 'transition' ? TransitionEventCard(c, fmts) :
@@ -519,7 +520,7 @@ export function FeedPostCard(item, fmts = {}) {
 		).filter(Boolean),
 		ChipRow({ firms: item.firms || [], teams: item.teams || [], advisors: item.advisors || [] }),
 		el('div', { class: 'post-footer' },
-			el('a', { href: `article.html?id=${encodeURIComponent(a.id)}` }, 'View details'),
+			el('a', { href: detailHref }, 'View details'),
 			a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, `${src.source} original →`) : null,
 		),
 	);
