@@ -29,6 +29,7 @@
     "brokercheck": "bun run build && node dist/scripts/fetch_brokercheck.js",
     "brokercheck:crawl": "bun run build && node dist/scripts/brokercheck_crawl_all.js",
     "media:backfill": "bun run build && node dist/scripts/backfill_media.js",
+    "scrape:morgan-stanley": "bun run build && node dist/scripts/scrape_morgan_stanley.js",
     "research:advisors": "bun run build && node dist/scripts/research_advisors.js",
     "reset": "harperdb stop || true; rm -rf $HOME/.harperdb && bun run bootstrap && bun run seed && bun run verify",
     "lint": "oxlint && eslint . --quiet",

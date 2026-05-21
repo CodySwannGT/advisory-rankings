@@ -207,7 +207,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `industry_start_date` | date | "16-year broker" / "started his career at Merrill Lynch in 2000" → derive |
 | `years_experience` | int (derived) | `now - industry_start_date` |
 | `career_status` | enum (`active`, `retired`, `barred`, `suspended`, `deceased`, `withdrawn`) | |
-| `headshot_url?` | url | |
+| `headshot_url?` | url | Single canonical advisor image URL from the best source-provided rendition. |
 | `bio_text?` | text | |
 | `linkedin_url?` | url | |
 | `business_email?` / `business_phone?` | str | |

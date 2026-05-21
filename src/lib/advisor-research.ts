@@ -26,7 +26,7 @@ export interface AdvisorResearchCheck {
   readonly sourceType: string;
   readonly checkedAt: string;
   readonly status: string;
-  readonly sourcesChecked?: readonly string[];
+  readonly sourcesChecked?: ReadonlyArray<string>;
   readonly notes?: string;
   readonly nextCheckAfter?: string;
 }
@@ -79,7 +79,11 @@ function dateOnly(value: Date): string {
 function missingWebResearchFields(
   advisor: AdvisorResearchAdvisor
 ): ReadonlyArray<string> {
-  return WEB_RESEARCH_FIELDS.filter(field => !advisor[field]);
+  return WEB_RESEARCH_FIELDS.filter(field => {
+    const value = advisor[field];
+    if (Array.isArray(value)) return value.length === 0;
+    return !value;
+  });
 }
 
 /**

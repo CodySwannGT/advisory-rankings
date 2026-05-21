@@ -25,6 +25,10 @@ bun run test          # Vitest suite
 bun run test:cov      # Vitest coverage report
 bun run seed          # load 99 records from the two scraped articles
 bun run verify        # run cross-table SQL queries
+bun run scrape:morgan-stanley -- --max-advisors 25
+                     # dry-run Morgan Stanley locator import
+bun run scrape:morgan-stanley -- --write --max-advisors 500
+                     # upsert via Fabric using env/Keychain credentials
 bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
 bun run media:backfill -- --target firms --max 10
@@ -217,8 +221,9 @@ src/
                              parser/loader/client helpers
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
-                             media backfill, advisor research queues,
-                             token, preview, and dev server commands
+                             media backfill, Morgan Stanley locator
+                             scraping, advisor research queues, token,
+                             preview, and dev server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 
