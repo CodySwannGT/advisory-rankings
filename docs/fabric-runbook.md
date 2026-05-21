@@ -78,7 +78,7 @@ static:
 ```
 
 That gives us, on `:443`:
-- One auto-generated REST resource per `@table @export` type (~34 of
+- One auto-generated REST resource per `@table @export` type (~35 of
   them; 23 currently have rows).
 - Custom resources from generated `resources.js` that pre-join across
   tables for the UI: `/Feed`, `/ArticleView/<id>`,
@@ -171,7 +171,7 @@ keys under **Config → SSH Keys**; that's the path we used.
 1. Generate an Ed25519 keypair:
    ```bash
    bun run build
-   node dist/src/scripts/gen_fabric_deploy_key.js
+   node dist/scripts/gen_fabric_deploy_key.js
    # writes /tmp/harper-signup/fabric-deploy-key{,.pub}, chmod 600
    ```
    (We use Node's `crypto.generateKeyPairSync` because `ssh-keygen`
@@ -674,6 +674,37 @@ Politeness: 1.5 s ± 0.5 s between requests, exponential backoff on
 Resumable via `research/brokercheck-state.json`. ToU constraints
 and the full mode reference: `docs/brokercheck-spike.md` §5–§7.
 
+### Advisor web-research queue
+
+`src/scripts/research_advisors.ts` backs the scheduled public-web
+research workflow. It does not search the web by itself; instead it
+provides the durable queue and bookkeeping that an agent Automation
+uses before and after targeted public searches that follow the
+`upsert-advisor` skill.
+
+```bash
+export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+export HDB_ADMIN_USERNAME=cody.swann@gmail.com
+export HDB_ADMIN_PASSWORD=…   # from ~/.harper-fabric-credentials
+
+# Pick the next five advisors whose web research is missing/stale.
+bun run research:advisors -- due --max 5 --stale-days 30 --json
+
+# Record a completed check so the same advisor is not retried daily.
+bun run research:advisors -- record \
+  --advisor-id <advisor-id> \
+  --status no_new_data \
+  --sources https://example.com/bio,https://example.com/ranking \
+  --notes "No new source-backed facts found"
+```
+
+When `HDB_TARGET_URL` is set the script reads ordinary tables through
+Fabric's operations proxy rather than assuming every new table has a
+mounted REST export immediately. Without `HDB_TARGET_URL` it uses the
+local Harper operations socket. Check rows land in
+`AdvisorResearchCheck`; source-backed facts discovered by the agent
+still belong in the relevant entity table plus `FieldAssertion`.
+
 ### Smoke-testing the custom JS resources locally
 
 `src/scripts/preview_feed.ts` (a.k.a. `bun run preview`) renders the
@@ -774,7 +805,7 @@ fails to bind on container kernels that don't support
 `SO_REUSEPORT` — same family of issue as MQTT in §3 of
 `harper-app/README.md`, but with no Unix-socket fallback. To smoke-
 test the resources without a TCP listener, run
-`bun run preview` (a.k.a. `node dist/src/scripts/preview_feed.js` after build); it
+`bun run preview` (a.k.a. `node dist/scripts/preview_feed.js` after build); it
 pulls every `@export` table out via the ops-API socket, stubs
 `globalThis.tables`, and runs the resource methods directly. On
 Fabric (and any normal VM) TCP 9926 — and therefore `:443` to the

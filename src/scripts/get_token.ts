@@ -16,11 +16,11 @@
  * src/scripts/_auth.ts for why this routes through Studio (Fabric
  * doesn't expose the ops API on :443 or :9925-from-here).
  */
-import { createAuthTokens } from './_auth.js';
+import { createAuthTokens } from "./_auth.js";
 
 const tokens = await createAuthTokens();
-if (process.argv.includes('--json')) {
-	console.log(JSON.stringify(tokens, null, 2));
+if (process.argv.includes("--json")) {
+  console.log(JSON.stringify(tokens, null, 2));
 } else {
-	console.log(tokens.operation_token);
+  console.log(tokens.operation_token);
 }

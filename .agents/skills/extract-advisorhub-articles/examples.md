@@ -3,7 +3,8 @@
 Two full examples — read once at the start of a batch to anchor the
 output shape. Both come from articles that are already in
 `research/articles/`, so you can compare your output against
-`harper-app/seed.py` (which loads the same content).
+`src/data/seed-data.json` and `src/scripts/seed.ts` (which load the
+same content).
 
 ---
 

@@ -1,8 +1,9 @@
 # Extraction document schema
 
-This is the contract for `research/extractions/<wpId>.json` — what you
-(Claude in a skill session) write after reading an article. The Python
-loader (`scripts/load_extractions.py`) consumes it.
+This is the contract for `research/extractions/<wpId>.json` - what you
+write after reading an article. The TypeScript loader
+(`src/scripts/load_extractions.ts`, via `bun run load:extractions`)
+consumes it.
 
 ## Top-level shape
 

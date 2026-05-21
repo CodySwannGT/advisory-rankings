@@ -7,9 +7,11 @@ describe("deterministic ids", () => {
     expect(firmId("Morgan Stanley Wealth Management")).toBe(
       "e82bd15d-c55a-5ef8-ae35-02c12485a85b"
     );
-    expect(articleId("https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/")).toBe(
-      "0940d374-3476-56c8-9b1e-86701f84a9f2"
-    );
+    expect(
+      articleId(
+        "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/"
+      )
+    ).toBe("0940d374-3476-56c8-9b1e-86701f84a9f2");
   });
 
   it("keeps Python slug rules", () => {

@@ -13,11 +13,17 @@
     "**/dist/**",
     "**/coverage/**",
     "**/node_modules/**",
+    "tests/parity_compare.ts",
     "harper-app/resources.js",
     "harper-app/web/**/*.js"
   ],
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],
-  "ignoreBinaries": ["harperdb", "playwright", "tsx"],
+  "ignoreBinaries": ["audit", "harperdb", "knip", "playwright", "tsx"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/lib/harper.ts": ["duplicates", "exports"],
+    "src/lib/ids.ts": ["exports"]
+  },
   "rules": {
     "devDependencies": "off"
   }
