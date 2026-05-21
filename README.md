@@ -14,10 +14,14 @@ from AdvisorHub.com coverage and running on Harper.
 
 ## Quick start
 
-Requires Node ≥ 18 and Python 3.
+Requires Node >= 18.
 
 ```bash
 npm run bootstrap     # install deps, install Harper, link the component, start
+npm run build         # compile TypeScript and generate Harper/browser JS
+npm run typecheck     # TypeScript compiler check
+npm run test          # Vitest suite
+npm run test:cov      # Vitest coverage report
 npm run seed          # load 99 records from the two scraped articles
 npm run verify        # run cross-table SQL queries
 npm run preview       # render the /Feed JSON locally (sandbox-friendly)
@@ -40,8 +44,13 @@ Push-deploy to the Fabric cluster from anywhere — uses Studio's
 npm run deploy        # tar harper-app/ → POST deploy_component → restart
 ```
 
-Reads `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from
-`~/.harper-fabric-credentials` (chmod 600) or env. Auto-deploy on
+`npm run deploy` runs `npm run build` first, so Fabric receives the
+generated `harper-app/resources.js` and browser modules produced from
+TypeScript rather than stale checked-in JavaScript. It reads
+`HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD` from env first,
+then macOS Keychain services `advisory-rankings-harper-username` and
+`advisory-rankings-harper-password`, then
+`~/.harper-fabric-credentials` (chmod 600). Auto-deploy on
 merge to `main` runs the same script via
 `.github/workflows/deploy.yml` and gates the merge on the Playwright
 smoke against the live cluster URL.
@@ -49,7 +58,7 @@ smoke against the live cluster URL.
 For ad-hoc data-plane calls, use the Harper-native JWT:
 
 ```bash
-TOKEN=$(node scripts/get_token.mjs)
+TOKEN=$(npm run --silent token)
 curl -H "Authorization: Bearer $TOKEN" \
      https://advisory-rankings-de.cody-swann-org.harperfabric.com/Feed
 ```
@@ -57,13 +66,13 @@ curl -H "Authorization: Bearer $TOKEN" \
 `docs/fabric-runbook.md` §6 has the full auth model: native JWT
 (`create_authentication_tokens`) for the data plane and Studio
 session cookie for the Fabric control plane. The auth split is in
-`scripts/_auth.mjs`.
+`src/scripts/_auth.ts`.
 
 ## Web UI — AdvisorBook (Facebook-style activity feed)
 
 The Harper component ships a small static web app branded
 **AdvisorBook** under `harper-app/web/`, plus aggregating JS
-resources in `harper-app/resources.js`. Together they render an
+resources generated at `harper-app/resources.js`. Together they render an
 AdvisorHub activity feed where each post embeds the entities it
 documents:
 
@@ -94,8 +103,9 @@ Fabric cluster's REST domain). On a kernel that can't bind the
 the same JSON the UI would consume. See the runbook §6 for the
 deployed-cluster URL.
 
-The UI is built as an **Atomic Design system** (tokens → atoms →
+The UI is built as an **Atomic Design system** (tokens -> atoms ->
 molecules → organisms → templates) under
+`src/web/design-system/` and emitted to
 `harper-app/web/design-system/`. Every page is composed from
 that library; nothing inlines markup. Read `docs/design-system.md`
 before touching any UI — `CLAUDE.md` requires you to look up
@@ -128,16 +138,15 @@ harper-app/
                              rest + jsResource + static web/)
   schema.graphql             34 entity types as GraphQL SDL with
                              @table @export directives
-  resources.js               custom JS resources backing the UI:
+  resources.js               generated custom JS resources backing the UI:
                              /Feed, /ArticleView/<id>, /FirmProfile/<id>,
                              /AdvisorProfile/<id>, /TeamProfile/<id>,
                              cursor-paginated /PublicAdvisors and
                              /FirmAdvisors/<id> (?status&cursor&limit),
                              plus /Search?q=… for the navbar search box
-  seed.py                    inserts 99 records from research/articles/
-  verify.py                  cross-table SQL queries that exercise
-                             the relationships
-  web/                       static AdvisorBook UI served at /:
+  web/                       static AdvisorBook UI served at /.
+                             HTML and CSS are tracked; .js browser
+                             modules are generated from src/web/:
                                index.html / index.js   feed home
                                article.html / .js      article detail
                                firm.html / .js         firm profile
@@ -183,53 +192,35 @@ research/
                              responses backing docs/brokercheck-spike.md
   README.md                  how to repopulate from a non-blocked IP
 
+src/
+  build/build.ts             copies compiled Harper/browser JS into
+                             harper-app/ for deploy
+  data/seed-data.json        canonical 99-record seed fixture
+  harper/resources.ts        TypeScript source for Harper custom
+                             resources
+  lib/                       shared IDs, Harper clients, BrokerCheck
+                             parser/loader/client helpers
+  scripts/                   TypeScript sources for seed, verify,
+                             deploy, crawlers, ingest, BrokerCheck,
+                             token, preview, and dev server commands
+  web/                       TypeScript source for AdvisorBook pages
+                             and design-system modules
+
 scripts/
   bootstrap.sh               clone-and-run installer
-  crawl_via_wpjson.py        polite WordPress REST crawler
-                             (preferred ingest path)
-  crawl_html.py              curl fallback
-  crawl_playwright.py        headless-browser fallback
-  extract_fields.py          regex-based field extractor
-  preview_feed.mjs           offline render of /Feed et al via the
-                             ops-API Unix socket (sandbox-friendly)
-  fetch_brokercheck.py       polite, idempotent FINRA BrokerCheck
-                             scraper (modes: --crd, --firm-id,
-                             --enrich, --firm-roster, --search-name,
-                             --from-fixture). See
-                             docs/brokercheck-spike.md for the
-                             rationale and the ToU constraints.
-  brokercheck_crawl_all.py   wave-1 orchestrator: looks up CRDs for
-                             every firm we know about, fetches firm
-                             snapshots, then walks rosters smallest-
-                             first capped at --max-per-firm. Writes
-                             a tail-able log to
-                             research/brokercheck-crawl.log.
-  _brokercheck.py            HTTP client (rate-limited, exponential
-                             backoff, jitter) for
-                             api.brokercheck.finra.org.
-  _brokercheck_parse.py      pure parser: BrokerCheck JSON →
-                             our schema's record shapes. Unit-tested
-                             against fixtures.
-  _brokercheck_load.py       resolver + REST PUT-by-id loader.
-                             Idempotent on natural keys.
 
 tests/
-  web_smoke.mjs              end-to-end Playwright smoke (feed,
+  *.test.ts                  Vitest unit/characterization coverage:
+                             IDs, seed fixture counts, BrokerCheck
+                             parser/loader, resource pagination
+  web_smoke.ts               end-to-end Playwright smoke (feed,
                              firm, advisor, team, article, login,
                              mobile drawer).
-  brokercheck_web_smoke.mjs  targeted Playwright smoke for the
+  brokercheck_web_smoke.ts   targeted Playwright smoke for the
                              BrokerCheck UI (CRD badge, attribution
                              footer, ToU link, regulatory record
                              card). Runs against the deployed cluster.
-  brokercheck_parse_test.py  parser + loader idempotency tests.
-                             Pure-Python, no network.
-  parity_compare.mjs         deployed-cluster vs local-dev parity.
-  pagination_test.mjs        unit tests for the cursor / paginate
-                             helpers in resources.js. No network.
-  resources_pagination_test.mjs  integration tests that boot the
-                             resource module against a mocked
-                             `tables` global and walk
-                             /PublicAdvisors + /FirmAdvisors page-by-page.
+  parity_compare.ts          deployed-cluster vs local-dev parity.
 ```
 
 ## What's in the database after `npm run seed`
@@ -248,16 +239,16 @@ tests/
   activity, registration application withdrawal, defunct firm
   (Stanford Financial), and field-assertion provenance.
 
-`npm run verify` reconstructs all of the above with cross-table SQL
+`npm run verify` reconstructs all of the above with TypeScript checks
 joins and prints them.
 
 ## Data sources
 
 AdvisorHub article URLs are listed in `research/README.md`. The
 WordPress REST API at `https://www.advisorhub.com/wp-json/wp/v2/posts`
-is the preferred ingest endpoint — `scripts/crawl_via_wpjson.py` walks
-every public post type. (Run from a residential IP; Cloudflare's WAF
-flags datacenter ASNs.)
+is the preferred ingest endpoint — `npm run crawl:wpjson -- --out
+research/wpjson` walks every public post type. (Run from a residential
+IP; Cloudflare's WAF flags datacenter ASNs.)
 
 ## License
 

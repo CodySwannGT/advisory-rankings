@@ -1,0 +1,848 @@
+{
+  "Advisor": [
+    {
+      "careerStatus": "active",
+      "firstName": "C.",
+      "id": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "industryStartDate": "2009-01-01",
+      "lastName": "Taylor",
+      "legalName": "C. James Taylor",
+      "piiLevel": "public",
+      "preferredName": "James",
+      "yearsExperience": 16
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Shane",
+      "id": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "lastName": "Drumm",
+      "legalName": "Shane Drumm"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Michaella",
+      "gender": "female",
+      "id": "906ecafe-f925-5704-ade3-bf10e94f0b60",
+      "lastName": "Irvine",
+      "legalName": "Michaella Irvine"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Cameron",
+      "id": "7d80b8b4-0090-592a-934e-1e47e9c590eb",
+      "lastName": "Irvine",
+      "legalName": "Cameron Irvine"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Marcus",
+      "id": "56f4452b-35b7-564e-baf4-a0eee1196be9",
+      "lastName": "Briscoe",
+      "legalName": "Marcus Briscoe"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Jamison",
+      "id": "50b683bd-647b-572d-b9e6-7ee64c44969d",
+      "lastName": "Embury",
+      "legalName": "Jamison Embury"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Roger",
+      "id": "87e32953-09d1-5352-a7ff-8ee10fd7e870",
+      "lastName": "McGlynn",
+      "legalName": "Roger McGlynn"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Hunter",
+      "id": "73480165-97cd-5357-9d83-5cf328417fec",
+      "lastName": "Embury",
+      "legalName": "Hunter Embury"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Kyle",
+      "id": "286ec7b4-acdf-5769-9f2e-9e93a802b13e",
+      "lastName": "Drumm",
+      "legalName": "Kyle Drumm"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Michael",
+      "id": "5713fb50-e997-5afd-977a-fa95e11d8029",
+      "lastName": "Freiheit",
+      "legalName": "Michael Freiheit"
+    },
+    {
+      "careerStatus": "active",
+      "firstName": "Patrick",
+      "id": "bb2e75ad-65a0-5292-a540-5b042a10903f",
+      "lastName": "Baumann",
+      "legalName": "Patrick Baumann"
+    },
+    {
+      "careerStatus": "suspended",
+      "firstName": "George",
+      "id": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "industryStartDate": "2000-01-01",
+      "lastName": "Cairnes",
+      "legalName": "George J. Cairnes",
+      "middleInitial": "J.",
+      "piiLevel": "public",
+      "yearsExperience": 23
+    }
+  ],
+  "Article": [
+    {
+      "authors": [
+        "AdvisorHub Staff",
+        "Mason Braswell"
+      ],
+      "category": "advisor_moves",
+      "headline": "$6B Morgan Stanley Team Jumps to Wells Fargo Advisors in NYC",
+      "id": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "modifiedDate": "2026-05-01",
+      "publishedDate": "2026-05-01",
+      "slug": "6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc",
+      "url": "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/",
+      "wpCategories": [
+        7,
+        79
+      ],
+      "wpId": 252451,
+      "wpPostType": "post",
+      "wpTags": [
+        1133,
+        272,
+        1477,
+        978
+      ]
+    },
+    {
+      "category": "regulatory",
+      "headline": "Finra Fines, Suspends Texas Broker Over Unapproved Real Estate OBA",
+      "id": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "modifiedDate": "2025-10-03",
+      "publishedDate": "2025-10-03",
+      "slug": "finra-fines-suspends-texas-broker-over-unapproved-real-estate-oba",
+      "url": "https://www.advisorhub.com/finra-fines-suspends-texas-broker-over-unapproved-real-estate-oba/",
+      "wpCategories": [
+        79
+      ],
+      "wpId": 239679,
+      "wpPostType": "post",
+      "wpTags": [
+        236,
+        1116,
+        978
+      ]
+    }
+  ],
+  "ArticleAdvisorMention": [
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "0136cf75-8c7a-5ea1-bdb4-157fef3ff85d"
+    },
+    {
+      "advisorId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "62a52736-8e48-5e4e-b18b-6e2eb7557e66"
+    },
+    {
+      "advisorId": "906ecafe-f925-5704-ade3-bf10e94f0b60",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "0b517358-5ff4-52e2-9278-334e550bf79e"
+    },
+    {
+      "advisorId": "7d80b8b4-0090-592a-934e-1e47e9c590eb",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "1969b81c-da6a-56a1-8fef-2b729b72b398"
+    },
+    {
+      "advisorId": "56f4452b-35b7-564e-baf4-a0eee1196be9",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "2356b4c0-af56-58c7-bef7-f0a5cdbf87b9"
+    },
+    {
+      "advisorId": "50b683bd-647b-572d-b9e6-7ee64c44969d",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "ee8052a4-af5e-569b-8239-e2065464e549"
+    },
+    {
+      "advisorId": "87e32953-09d1-5352-a7ff-8ee10fd7e870",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "1d049612-8cef-567e-b877-a8d32e7d0691"
+    },
+    {
+      "advisorId": "73480165-97cd-5357-9d83-5cf328417fec",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "03356315-fa32-5f95-ba12-b36fd02356ca"
+    },
+    {
+      "advisorId": "286ec7b4-acdf-5769-9f2e-9e93a802b13e",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "ae2d0ac4-ec0d-5680-94fa-7c83e6f1b26d"
+    },
+    {
+      "advisorId": "5713fb50-e997-5afd-977a-fa95e11d8029",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "55a5d8ed-42ef-5e73-8958-c0a859b070d3"
+    },
+    {
+      "advisorId": "bb2e75ad-65a0-5292-a540-5b042a10903f",
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "82f10560-09a1-5388-a67e-08309db92cb6"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "id": "79100fba-e579-5aad-9904-796f55cf113e"
+    }
+  ],
+  "ArticleDisclosureMention": [
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "disclosureId": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
+      "id": "12c82a01-e16d-50fe-8e53-f89c298d3a72"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "disclosureId": "cdfbfc84-5625-57ab-b4e6-c11958d6e38c",
+      "id": "c3d00b71-4709-54f7-b685-efe75db32b04"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "disclosureId": "a4ef3b08-45a3-5aee-a4d9-94168581a1ba",
+      "id": "dc4a30ef-bb40-586c-a4df-ae162e99f683"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "disclosureId": "a5c7fc2e-751a-5a7d-a75c-cae541514fa3",
+      "id": "e2a5df64-1d52-55a8-b1b7-16fc0bdb05f0"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "disclosureId": "e28ce235-05bf-578b-b2ff-f1107e87dbf1",
+      "id": "5216cf61-56cd-547e-9eeb-33b229ad9ff3"
+    }
+  ],
+  "ArticleFirmMention": [
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "id": "8929a0ad-181d-5ebf-8b11-8b2d22031523"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "98ae1746-7151-577f-ad53-852ff14a5b93"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "2c68cb0c-6917-5148-9449-601739ebb92e",
+      "id": "554542d1-d01a-5d86-995f-12695426b8f8"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "04798db4-2888-5a57-b635-03a1966482a6",
+      "id": "53acf9e7-81e8-5075-b76f-a64c6719f67f"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "370f6c69-7815-542e-bd86-05296325f80c",
+      "id": "2ccb27c9-801e-559b-ae6f-56261fee0c91"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "b34e7f24-cd14-5d1e-b9aa-c7a889f7f3ff",
+      "id": "ca7f6c68-67bb-51d4-aa59-230146ea2104"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "firmId": "0a0bef38-2656-55e0-b1bf-8d443dbeaa5f",
+      "id": "f8723a7c-308b-5c30-927b-db155a753a2a"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "909b3d52-d006-5d44-b5ea-714dda2c2664"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "firmId": "b9936006-e60a-5a34-8731-f78ae948c25f",
+      "id": "545b67ce-e46d-5919-8b13-26728a2c941f"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "firmId": "04798db4-2888-5a57-b635-03a1966482a6",
+      "id": "3926bc18-84ab-5f95-bd4f-d93563f9ec8b"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "firmId": "2e42b811-3381-5943-92df-7fcd50889fb8",
+      "id": "c713fc82-9ec5-500f-bc45-7408cafe8425"
+    }
+  ],
+  "ArticleTeamMention": [
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "7243aaea-943e-59e9-a457-44d21c12a7e7",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    }
+  ],
+  "ArticleTransitionEventMention": [
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "id": "a9c59dbb-4583-51df-a307-36e6d040a87a",
+      "transitionEventId": "02763eb8-239f-5160-bde7-5ece39b0671f"
+    }
+  ],
+  "Branch": [
+    {
+      "city": "New York",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "12c434d3-4c25-5f8f-a405-66b96d647af0",
+      "level": "market",
+      "name": "Wells Fargo New York City market",
+      "state": "NY"
+    },
+    {
+      "city": "New York",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "acbcd2d4-4328-5092-a7f9-90f5aa8cd0d2",
+      "level": "complex",
+      "name": "Midtown Manhattan complex",
+      "parentBranchId": "12c434d3-4c25-5f8f-a405-66b96d647af0",
+      "state": "NY"
+    },
+    {
+      "address": "767 Fifth Avenue",
+      "buildingName": "GM building",
+      "city": "New York",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "500696fc-861b-545b-9fcf-b768742b4607",
+      "level": "branch",
+      "name": "Wells Fargo Advisors \u2013 GM Building",
+      "parentBranchId": "acbcd2d4-4328-5092-a7f9-90f5aa8cd0d2",
+      "state": "NY"
+    }
+  ],
+  "BranchAssignment": [
+    {
+      "advisorId": "5713fb50-e997-5afd-977a-fa95e11d8029",
+      "branchId": "500696fc-861b-545b-9fcf-b768742b4607",
+      "effectiveFrom": "2024-01-01",
+      "id": "b7295c5c-6121-5e8a-96c9-50d3e4d0918e",
+      "role": "branch_manager"
+    },
+    {
+      "advisorId": "bb2e75ad-65a0-5292-a540-5b042a10903f",
+      "branchId": "12c434d3-4c25-5f8f-a405-66b96d647af0",
+      "effectiveFrom": "2024-01-01",
+      "id": "17cf0b76-25db-50ba-9c97-dc903da9a127",
+      "role": "market_leader"
+    }
+  ],
+  "Disclosure": [
+    {
+      "admitDeny": "without_admitting_or_denying",
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "allegationCategories": [
+        "OBA_undisclosed"
+      ],
+      "allegationPeriodEnd": "2023-04-30",
+      "allegationPeriodStart": "2015-08-01",
+      "allegationText": "Partnered with a firm customer to identify, buy, manage, and sell real estate without firm permission. Created a limited liability company for the partnership's activities; received compensation; falsely attested on multiple firm compliance questionnaires.",
+      "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "dateResolved": "2025-10-01",
+      "disclosureType": "regulatory",
+      "firmIdAtTime": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "forum": "regulator_AWC",
+      "id": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
+      "isFirmLevel": false,
+      "productCategories": [
+        "real_estate"
+      ],
+      "regulator": "FINRA",
+      "ruleViolations": [
+        "FINRA Rule 3270",
+        "FINRA Rule 2010"
+      ],
+      "status": "settled",
+      "wasProSe": true
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "allegationCategories": [
+        "loan_to_client",
+        "loan_from_client"
+      ],
+      "allegationText": "Wells Fargo terminated Cairnes after allegations he facilitated a loan between clients as well as loans and other transactions between a client and individuals associated with him.",
+      "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "dateInitiated": "2023-07-01",
+      "disclosureType": "employment_separation",
+      "firmIdAtTime": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "cdfbfc84-5625-57ab-b4e6-c11958d6e38c",
+      "isFirmLevel": false,
+      "regulator": "firm_internal",
+      "status": "closed_no_action"
+    },
+    {
+      "admitDeny": "consented_no_admission",
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "allegationCategories": [
+        "OBA_undisclosed"
+      ],
+      "allegationText": "Texas State Securities Board: paid at least $175,000 helping a firm customer set up and run a real estate business.",
+      "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "dateResolved": "2024-04-01",
+      "disclosureType": "regulatory",
+      "forum": "regulator_AWC",
+      "id": "a4ef3b08-45a3-5aee-a4d9-94168581a1ba",
+      "regulator": "state_securities",
+      "regulatorState": "TX",
+      "status": "consented"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "allegationText": "FINRA arbitration panel ordered Cairnes to pay Wells Fargo $180,000 over two promissory notes signed when he joined the firm in 2009 from Stanford Financial.",
+      "awardAmount": 180000.0,
+      "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "dateResolved": "2025-08-01",
+      "disclosureType": "civil_judicial",
+      "firmIdAtTime": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "forum": "FINRA_arbitration",
+      "id": "a5c7fc2e-751a-5a7d-a75c-cae541514fa3",
+      "isFirmLevel": false,
+      "regulator": "FINRA",
+      "status": "awarded_for_claimant"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "allegationCategories": [
+        "loan_from_client"
+      ],
+      "allegationText": "Customer alleges they established a line of credit to loan money to Cairnes as well as his family members and friends, which has not been fully repaid.",
+      "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "dateInitiated": "2023-04-01",
+      "disclosureType": "customer_dispute",
+      "firmIdAtTime": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "e28ce235-05bf-578b-b2ff-f1107e87dbf1",
+      "regulator": "firm_internal",
+      "status": "pending"
+    }
+  ],
+  "DisclosureCluster": [
+    {
+      "id": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
+      "primaryDisclosureId": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
+      "rootEventDescription": "Cairnes real-estate OBA with firm customer (2015-2023); FINRA AWC + state action + arbitration award + customer dispute + U5"
+    }
+  ],
+  "EmployerConcentration": [
+    {
+      "clientRoleType": "mixed",
+      "employerName": "Nvidia",
+      "id": "4e84442b-bca9-52a2-a6e4-cd0fd6ac56ed",
+      "notes": "Concentration of clients who are employees and executives at Nvidia.",
+      "subjectId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "subjectType": "team"
+    }
+  ],
+  "EmploymentHistory": [
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "endDate": "2011-01-01",
+      "firmId": "370f6c69-7815-542e-bd86-05296325f80c",
+      "id": "b8f28819-4ac4-52ba-b78c-dafcce830966",
+      "reasonForLeaving": "voluntary",
+      "roleCategory": "lead_advisor",
+      "roleTitle": "Financial Advisor",
+      "startDate": "2009-01-01"
+    },
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "endDate": "2020-01-01",
+      "firmId": "04798db4-2888-5a57-b635-03a1966482a6",
+      "id": "6971c4e4-f4d9-5a4a-807c-f97468c9d5d0",
+      "reasonForLeaving": "voluntary",
+      "roleCategory": "lead_advisor",
+      "roleTitle": "Financial Advisor",
+      "startDate": "2011-01-01"
+    },
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "endDate": "2026-05-01",
+      "firmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "id": "0c75e3c4-eba1-5b99-b035-2d863e63465c",
+      "reasonForLeaving": "voluntary",
+      "roleCategory": "lead_advisor",
+      "roleTitle": "Managing Director",
+      "startDate": "2020-01-01"
+    },
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "branchId": "500696fc-861b-545b-9fcf-b768742b4607",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "3fff370b-43a6-5d6c-a809-4b95ab78e294",
+      "roleCategory": "lead_advisor",
+      "roleTitle": "Managing Director",
+      "startDate": "2026-05-01"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "endDate": "2008-01-01",
+      "firmId": "04798db4-2888-5a57-b635-03a1966482a6",
+      "id": "a2ecd2cf-9508-54de-aa15-e92e378e9ab1",
+      "reasonForLeaving": "voluntary",
+      "startDate": "2000-01-01"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "endDate": "2009-02-01",
+      "firmId": "b9936006-e60a-5a34-8731-f78ae948c25f",
+      "id": "f94b1122-bd58-5618-a44e-b8ee938a74dc",
+      "reasonForLeaving": "other",
+      "startDate": "2008-01-01"
+    },
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "endDate": "2023-07-01",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "104120db-a14f-5917-af6b-2e614f697a22",
+      "reasonForLeaving": "terminated_for_cause",
+      "signingBonusPromissoryNote": true,
+      "startDate": "2009-01-01",
+      "terminationDisclosureId": "cdfbfc84-5625-57ab-b4e6-c11958d6e38c",
+      "u5Filed": true,
+      "u5FilingDate": "2023-07-15"
+    }
+  ],
+  "FieldAssertion": [
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "5940000000",
+      "confidence": "asserted",
+      "fieldName": "aum",
+      "id": "eabadd1c-66a2-5424-a857-0f8b6a46f4a4",
+      "quotePhrase": "Morgan Stanley team that managed $5.94 billion in assets",
+      "targetId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "targetTable": "Team"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "18600000",
+      "confidence": "asserted",
+      "fieldName": "annualRevenue",
+      "id": "4bfe68b9-50df-51ec-9981-c986da4648bf",
+      "quotePhrase": "produced $18.6 million in annual revenue",
+      "targetId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "targetTable": "Team"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "16",
+      "confidence": "asserted",
+      "fieldName": "yearsExperience",
+      "id": "df4667a5-ea1f-5651-83db-786981c7ee15",
+      "quotePhrase": "16-year broker C. James Taylor",
+      "targetId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "targetTable": "Advisor"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "2.75",
+      "confidence": "asserted",
+      "fieldName": "upfrontPctT12",
+      "id": "9c0ae534-b4be-57a2-b4a2-c0ee8a5d324a",
+      "quotePhrase": "could include 275% of trailing-12 revenue in upfront cash",
+      "targetId": "66d1c92b-7e0c-58b4-b0ab-28d86b8795c8",
+      "targetTable": "RecruitingDealQuote"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "assertedValue": "25000",
+      "confidence": "asserted",
+      "fieldName": "amount",
+      "id": "b9483fc6-fcd4-5ecb-962c-bff5ee94bd62",
+      "quotePhrase": "suspended for four months and fined $25,000",
+      "targetId": "74641232-8156-585b-90fd-e02fcb4ac2ab",
+      "targetTable": "Sanction"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "assertedValue": "4",
+      "confidence": "asserted",
+      "fieldName": "durationMonths",
+      "id": "b87095f0-477b-539c-bb1b-30504563b604",
+      "quotePhrase": "suspended for four months",
+      "targetId": "59fd86d5-1c27-5713-9940-82dd4f02c37f",
+      "targetTable": "Sanction"
+    },
+    {
+      "articleId": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "assertedValue": "\"LLC\"",
+      "confidence": "asserted",
+      "fieldName": "vehicleType",
+      "id": "ef7897f0-34b6-549c-aa10-b2133b7f08ad",
+      "quotePhrase": "created a limited liability company for the partnership's activities",
+      "targetId": "2e79939c-a3f8-5341-8570-899f68af3beb",
+      "targetTable": "OutsideBusinessActivity"
+    }
+  ],
+  "Firm": [
+    {
+      "channel": "wirehouse",
+      "hqCity": "New York",
+      "hqCountry": "US",
+      "hqState": "NY",
+      "id": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "name": "Morgan Stanley Wealth Management",
+      "subChannel": "Morgan_Stanley_Private_Wealth"
+    },
+    {
+      "channel": "wirehouse",
+      "hqCity": "St. Louis",
+      "hqCountry": "US",
+      "hqState": "MO",
+      "id": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "name": "Wells Fargo Advisors",
+      "subChannel": "Wells_Fargo_Advisors"
+    },
+    {
+      "channel": "independent_bd",
+      "hqCity": "St. Louis",
+      "hqState": "MO",
+      "id": "2c68cb0c-6917-5148-9449-601739ebb92e",
+      "name": "Wells Fargo Advisors Financial Network (FiNet)",
+      "subChannel": "Wells_FiNet"
+    },
+    {
+      "channel": "wirehouse",
+      "hqCity": "New York",
+      "hqCountry": "US",
+      "hqState": "NY",
+      "id": "04798db4-2888-5a57-b635-03a1966482a6",
+      "name": "Merrill Lynch",
+      "parentFirmId": "4f2f200f-553b-58a8-98fa-031f684310c0"
+    },
+    {
+      "channel": "bank",
+      "hqCity": "Charlotte",
+      "hqState": "NC",
+      "id": "4f2f200f-553b-58a8-98fa-031f684310c0",
+      "name": "Bank of America"
+    },
+    {
+      "channel": "regional_bd",
+      "hqCity": "Parsippany",
+      "hqState": "NJ",
+      "id": "370f6c69-7815-542e-bd86-05296325f80c",
+      "name": "Hennion & Walsh"
+    },
+    {
+      "channel": "wirehouse",
+      "hqCity": "Weehawken",
+      "hqState": "NJ",
+      "id": "b34e7f24-cd14-5d1e-b9aa-c7a889f7f3ff",
+      "name": "UBS Wealth Management USA"
+    },
+    {
+      "channel": "regional_bd",
+      "dissolutionReason": "seized",
+      "dissolvedYear": 2009,
+      "foundedYear": 1986,
+      "id": "b9936006-e60a-5a34-8731-f78ae948c25f",
+      "name": "Stanford Financial Group",
+      "notes": "Seized by federal regulators in 2009; founder Robert Allen Stanford convicted of running an $8 billion Ponzi scheme."
+    },
+    {
+      "channel": "independent_bd",
+      "id": "2e42b811-3381-5943-92df-7fcd50889fb8",
+      "name": "Chelsea Financial Services"
+    },
+    {
+      "channel": "wirehouse",
+      "hqCity": "New York",
+      "hqState": "NY",
+      "id": "0a0bef38-2656-55e0-b1bf-8d443dbeaa5f",
+      "name": "J.P. Morgan Advisors"
+    }
+  ],
+  "OutsideBusinessActivity": [
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "compensationAmountMin": 175000.0,
+      "compensationReceived": true,
+      "disclosedToFirm": false,
+      "endDate": "2023-04-30",
+      "id": "2e79939c-a3f8-5341-8570-899f68af3beb",
+      "name": "Real-estate partnership LLC with firm customer",
+      "startDate": "2015-08-01",
+      "vehicleType": "LLC",
+      "withCustomers": true
+    }
+  ],
+  "RecruitingDealQuote": [
+    {
+      "appliesToTransitionEventId": "02763eb8-239f-5160-bde7-5ece39b0671f",
+      "asOfDate": "2026-05-01",
+      "backendMetrics": "Plus back-end bonuses (specifics not disclosed)",
+      "channelTarget": "wirehouse",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "66d1c92b-7e0c-58b4-b0ab-28d86b8795c8",
+      "producerTier": "top_producer",
+      "upfrontPctT12": 2.75
+    }
+  ],
+  "RegistrationApplication": [
+    {
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "appliedDate": "2023-08-01",
+      "firmId": "2e42b811-3381-5943-92df-7fcd50889fb8",
+      "id": "a0e8b9c4-c668-5136-83c2-c8b4aacdf562",
+      "resolvedDate": "2023-11-01",
+      "status": "withdrawn_by_firm"
+    }
+  ],
+  "Sanction": [
+    {
+      "amount": 25000.0,
+      "disclosureId": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
+      "effectiveDate": "2025-10-01",
+      "id": "74641232-8156-585b-90fd-e02fcb4ac2ab",
+      "jurisdiction": "FINRA",
+      "sanctionType": "fine"
+    },
+    {
+      "disclosureId": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
+      "durationMonths": 4,
+      "effectiveDate": "2025-10-01",
+      "id": "59fd86d5-1c27-5713-9940-82dd4f02c37f",
+      "jurisdiction": "FINRA",
+      "sanctionType": "suspension"
+    },
+    {
+      "disclosureId": "a4ef3b08-45a3-5aee-a4d9-94168581a1ba",
+      "durationMonths": 24,
+      "effectiveDate": "2024-04-01",
+      "id": "058f51e4-1eb3-5249-8b4e-b3df323a96e3",
+      "jurisdiction": "Texas",
+      "sanctionType": "bar"
+    }
+  ],
+  "Team": [
+    {
+      "currentBranchId": "500696fc-861b-545b-9fcf-b768742b4607",
+      "currentFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "name": "The Taylor Group",
+      "serviceModel": "uhnw"
+    }
+  ],
+  "TeamMembership": [
+    {
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "id": "4da308a8-82f6-5e61-b12b-03671660fea4",
+      "role": "lead",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "id": "d689f153-1b42-5217-803b-932708035d3c",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "906ecafe-f925-5704-ade3-bf10e94f0b60",
+      "id": "ab3bc932-12b9-5e49-9e02-f2626457ab66",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "7d80b8b4-0090-592a-934e-1e47e9c590eb",
+      "id": "89172056-9bb4-5cf7-8793-88148a10a0e5",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "56f4452b-35b7-564e-baf4-a0eee1196be9",
+      "id": "8eba029a-ee6d-5b3f-a241-da650062f572",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "50b683bd-647b-572d-b9e6-7ee64c44969d",
+      "id": "cd1093e0-f528-5c85-872f-35750365dc34",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "87e32953-09d1-5352-a7ff-8ee10fd7e870",
+      "id": "ae633b46-43cf-5b73-b070-c5b2fa9d4f3a",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "73480165-97cd-5357-9d83-5cf328417fec",
+      "id": "8717e525-8369-597f-a5f2-d5e26142c295",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "advisorId": "286ec7b4-acdf-5769-9f2e-9e93a802b13e",
+      "id": "85b7a21e-5792-51da-bf52-4db4ec126f39",
+      "role": "partner",
+      "startDate": "2026-05-01",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    }
+  ],
+  "TeamMetricSnapshot": [
+    {
+      "asOf": "2023-12-31",
+      "aum": 1200000000.0,
+      "id": "488ba4e2-431c-5383-b105-560530c8f805",
+      "sourceRef": "Barron's profile, 2023",
+      "sourceType": "barrons_profile",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
+    },
+    {
+      "annualRevenue": 18600000.0,
+      "asOf": "2026-05-01",
+      "aum": 5940000000.0,
+      "id": "9ad4d3b0-1d64-5d3d-8f8f-464d77124fcf",
+      "sourceRef": "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/",
+      "sourceType": "advisorhub_article",
+      "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "teamSize": 19
+    }
+  ],
+  "TransitionEvent": [
+    {
+      "announcedDate": "2026-05-01",
+      "aumMoved": 5940000000.0,
+      "fromFirmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "headcountMoved": 19,
+      "id": "02763eb8-239f-5160-bde7-5ece39b0671f",
+      "isBreakaway": false,
+      "isReturn": false,
+      "moveDate": "2026-05-01",
+      "productionT12": 18600000.0,
+      "recruitingDealId": "66d1c92b-7e0c-58b4-b0ab-28d86b8795c8",
+      "subjectTeamId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "toBranchId": "500696fc-861b-545b-9fcf-b768742b4607",
+      "toFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d"
+    }
+  ]
+}

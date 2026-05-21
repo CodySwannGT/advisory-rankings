@@ -10,17 +10,18 @@ implemented end-to-end:
 - `harper-app/schema.graphql` — `BrokerCheckSnapshot` table,
   `sourceType` / `sourceRef` columns on `Disclosure` and
   `EmploymentHistory`, `docketNumber` on `Disclosure`. Deployed.
-- `scripts/fetch_brokercheck.py` — polite, idempotent scraper (≤ 0.7
+- `src/scripts/fetch_brokercheck.ts` / `npm run brokercheck --` —
+  polite, idempotent scraper (≤ 0.7
   req/sec, exponential backoff). Five modes: `--crd`, `--firm-id`,
   `--enrich`, `--firm-roster`, `--search-name`, plus
   `--from-fixture` for offline replay.
-- `tests/brokercheck_parse_test.py` — 53 assertions covering the
+- `tests/brokercheck_parse.test.ts` — Vitest coverage for the
   parser, the loader's idempotency contract, and the regression
   that bit us mid-spike (case-insensitive `McGlynn` ↔ `Mcglynn`).
-- `harper-app/web/design-system/atoms.js` — `SourceAttribution` atom
+- `src/web/design-system/atoms.ts` — `SourceAttribution` atom
   satisfies the ToU's "identify source, link to ToU, disclose 'as
   of' date" requirements; wired into `advisor.js` and `firm.js`.
-- `tests/brokercheck_web_smoke.mjs` — Playwright smoke against the
+- `tests/brokercheck_web_smoke.ts` — Playwright smoke against the
   deployed cluster verifying every UI promise. 18/18 passing on
   `advisory-rankings-de.cody-swann-org.harperfabric.com`.
 
@@ -233,12 +234,12 @@ Implementation implications:
 
 | Command | Effect |
 |---|---|
-| `python3 scripts/fetch_brokercheck.py --crd 4068906` | One CRD. Backstop for "I have a CRD, fetch this." |
-| `python3 scripts/fetch_brokercheck.py --firm-id 19616` | One firm-level snapshot (enables the firm-page Regulatory record card). |
-| `python3 scripts/fetch_brokercheck.py --enrich --max 20` | Iterates every `Advisor` row in the live DB without a `finraCrd`, searches BrokerCheck by legal name, and — when exactly one (firstName, lastName) candidate matches — fetches the full report and merges into the existing row. Skips ambiguous names; they need manual disambiguation. |
-| `python3 scripts/fetch_brokercheck.py --firm-roster 47770 --max 50` | Walks `/search/individual?firm=<id>&query=` (empty query, paginated) to discover advisors we don't yet know about. Polite — pages of 50, 1.5 s ± 0.5 s gap. |
-| `python3 scripts/fetch_brokercheck.py --search-name 'Cody Swann' --max 5` | Plain name search. |
-| `python3 scripts/fetch_brokercheck.py --from-fixture <file>` | Offline replay against a recorded JSON response under `research/brokercheck-samples/`. |
+| `npm run brokercheck -- --crd 4068906` | One CRD. Backstop for "I have a CRD, fetch this." |
+| `npm run brokercheck -- --firm-id 19616` | One firm-level snapshot (enables the firm-page Regulatory record card). |
+| `npm run brokercheck -- --enrich --max 20` | Iterates every `Advisor` row in the live DB without a `finraCrd`, searches BrokerCheck by legal name, and — when exactly one (firstName, lastName) candidate matches — fetches the full report and merges into the existing row. Skips ambiguous names; they need manual disambiguation. |
+| `npm run brokercheck -- --firm-roster 47770 --max 50` | Walks `/search/individual?firm=<id>&query=` (empty query, paginated) to discover advisors we don't yet know about. Polite — pages of 50, 1.5 s ± 0.5 s gap. |
+| `npm run brokercheck -- --search-name 'Cody Swann' --max 5` | Plain name search. |
+| `npm run brokercheck -- --from-fixture <file>` | Offline replay against a recorded JSON response under `research/brokercheck-samples/`. |
 
 Add `--dry-run` to parse-without-write. Add `--force` to ignore the
 7-day "recently fetched" skip. `BC_RATE_SECONDS=3 …` for an even
@@ -246,7 +247,8 @@ slower crawl.
 
 ### The wave-1 orchestrator
 
-`scripts/brokercheck_crawl_all.py` chains the modes above in a
+`src/scripts/brokercheck_crawl_all.ts` (via `npm run brokercheck:crawl --`)
+chains the modes above in a
 sensible order and is the recommended driver for "scrape as much
 as you reasonably can without a license":
 
@@ -257,7 +259,7 @@ as you reasonably can without a license":
 | 3. Roster walks | Walks rosters smallest-first (so we make progress before a wirehouse hogs the budget), capping each firm at `--max-per-firm` advisors per run. |
 
 ```bash
-python3 scripts/brokercheck_crawl_all.py --max-per-firm 200
+npm run brokercheck:crawl -- --max-per-firm 200
 tail -f research/brokercheck-crawl.log
 ```
 
@@ -280,13 +282,13 @@ hit this: Wells Fargo Advisors 10/21–10/23 BD vs IA, Morgan
 Stanley 8/24 BD vs 9/3 IA — both appeared twice on his Career
 section before the fix).
 
-`_brokercheck_parse._dedupe_employments` collapses same-firm rows
+`dedupeEmployments` in `src/lib/brokercheck-parse.ts` collapses same-firm rows
 whose date ranges overlap or sit within 90 days. Merged row
 keeps the earliest `startDate`, the latest `endDate` (null wins —
 "still current"), and the union of underscore-prefixed scope
 hints. A genuine boomerang ("left and came back years later") is
 preserved because the gap exceeds 90 days. Asserted in
-`tests/brokercheck_parse_test.py::test_dedupe_employments_*`.
+`tests/brokercheck_parse.test.ts`.
 
 If a Cronk- or Swann-style fixture surfaces a new edge case,
 extend the unit test before tweaking the merge window — the

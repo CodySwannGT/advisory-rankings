@@ -58,10 +58,14 @@ In the Fabric UI:
 
 Harper Fabric supports two flows. Pick **one**:
 
-### Option A — Pull-based (Git, easiest)
+### Option A — Pull-based (Git, possible but no longer primary)
 
-Fabric clones your repo, builds, and runs. Best when the code is
-already in a Git repo (it is).
+Fabric clones your repo, builds, and runs. This project now keeps
+TypeScript as source and emits Harper/browser JavaScript during
+`npm run build`, so pull deploy is only safe when Fabric runs the
+build before loading `harper-app/` or when a prepared deploy branch
+already contains generated artifacts. The live project uses the
+push-based GitHub Actions flow below as the primary path.
 
 1. Push the branch you want to deploy to GitHub (already done — this
    project lives on `claude/research-advisor-schema-RLV0N`, with `main`
@@ -76,7 +80,9 @@ already in a Git repo (it is).
    push --tags`) and pointing Fabric at the tag.
 6. Click **Deploy**. Fabric clones, runs `npm install` if a
    `package.json` is detected, mounts the component, and starts the
-   server.
+   server. Confirm that `harper-app/resources.js` and
+   `harper-app/web/*.js` exist in the deployed package; they are
+   generated from TypeScript and are not committed to `main`.
 
 When the cluster says **Running**, the schema is live and REST
 endpoints are auto-generated at
@@ -88,14 +94,10 @@ You run a single `harperdb deploy_component` from your laptop and
 Fabric receives the bundle directly. No Git round-trip.
 
 ```bash
-./node_modules/.bin/harperdb deploy_component \
-  project=advisor-app \
-  package=./harper-app \
-  target=<CLUSTER_URL> \
-  username=<ADMIN_USER> \
-  password=<ADMIN_PASS> \
-  restart=true \
-  replicated=true
+export HARPER_CLUSTER_URL=https://<CLUSTER_URL>
+export HARPER_ADMIN_USERNAME=<ADMIN_USER>
+export HARPER_ADMIN_PASSWORD=<ADMIN_PASS>
+npm run deploy
 ```
 
 Flags:
@@ -103,7 +105,7 @@ Flags:
 | Flag | Meaning |
 |---|---|
 | `project` | The component name to register on the cluster. Use `advisor-app` to match the local symlink we set up in `bootstrap.sh`. |
-| `package` | Local path to the component directory. |
+| `package` | `npm run deploy` builds TypeScript, then packages `harper-app/`. |
 | `target` | Your cluster URL from Step 2. |
 | `username` / `password` | Admin credentials from Step 2. |
 | `restart=true` | Restart the cluster process after deploy so the new schema is loaded. |
@@ -124,8 +126,8 @@ export HDB_ADMIN_PASSWORD=<ADMIN_PASS>
 
 # Now any of these target Fabric instead of localhost:
 npm run seed                         # load the canonical sample data
-python3 scripts/ingest.py            # load whatever is in research/wpjson/
-python3 scripts/load_extractions.py  # load LLM-produced extractions
+npm run ingest                       # load whatever is in research/wpjson/
+npm run load:extractions             # load LLM-produced extractions
 npm run verify                       # cross-table SQL spot-checks
 ```
 
@@ -138,15 +140,15 @@ local Unix socket at `~/.harperdb/operations-server`.
 ## 5. Run the ingestion skills against Fabric
 
 The two skills shipped in this repo (`/ingest-advisorhub` and
-`/extract-advisorhub-articles`) shell out to the same Python scripts,
-so as long as the env vars in Step 4 are set in the session, the
-skills target Fabric automatically.
+`/extract-advisorhub-articles`) shell out to the same npm-backed
+TypeScript scripts, so as long as the env vars in Step 4 are set in
+the session, the skills target Fabric automatically.
 
 A typical first deploy looks like:
 
 ```bash
 # 1. crawl AdvisorHub from your laptop
-python3 scripts/crawl_via_wpjson.py --out research/wpjson
+npm run crawl:wpjson -- --out research/wpjson
 
 # 2. point at Fabric
 export HDB_TARGET_URL=https://<CLUSTER_URL>/
@@ -157,7 +159,7 @@ export HDB_ADMIN_PASSWORD=<ADMIN_PASS>
 npm run seed
 
 # 4. ingest the crawler's output
-python3 scripts/ingest.py
+npm run ingest
 
 # 5. (optional) extract richer entities via the LLM skill
 #     /extract-advisorhub-articles in a Claude Code session
@@ -175,9 +177,10 @@ Before pointing a real workload at this:
 - [ ] **Rotate the admin password** off the value you typed in Step 2;
       use a strong password from your secrets manager.
 - [ ] **Move credentials into env / a secrets manager** — never commit
-      them. The scripts read from `HDB_ADMIN_USERNAME` /
-      `HDB_ADMIN_PASSWORD`, so 1Password CLI / Doppler / AWS Secrets
-      Manager all work.
+      them. The deploy/auth scripts read `HARPER_ADMIN_USERNAME` /
+      `HARPER_ADMIN_PASSWORD` from env first, then macOS Keychain,
+      then `~/.harper-fabric-credentials`; 1Password CLI / Doppler /
+      AWS Secrets Manager all work.
 - [ ] **Enable replication** if you provisioned > 1 node
       (`replicated=true` on every `deploy_component`).
 - [ ] **Pin to a Git tag** if using pull-based deploy. Don't deploy

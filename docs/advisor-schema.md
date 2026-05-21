@@ -30,8 +30,9 @@ Two complete articles were captured before the IP block:
    `research/articles/02-cairnes-finra-disclosure.wpjson.json`.
    Story shape: **FINRA regulatory disclosure**.
 
-The crawler scripts (`scripts/crawl_via_wpjson.py`, `scripts/crawl_html.py`,
-`scripts/crawl_playwright.py`) are checked in. **From an unblocked IP** the
+The crawler scripts (`src/scripts/crawl_via_wpjson.ts`,
+`src/scripts/crawl_html.ts`, `src/scripts/crawl_playwright.ts`; run
+via `npm run crawl:*`) are checked in. **From an unblocked IP** the
 wp-json crawler can pull the entire post archive at full fidelity — every
 field below has an exact JSON path.
 
@@ -303,7 +304,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `u5_filed?` | bool | |
 | `u5_filing_date?` | date | |
 | `termination_disclosure_id?` | id | → `Disclosure` |
-| `source_type?` | enum (`brokercheck`, `advisorhub_article`, `form_adv`, ...) | populated by the BrokerCheck loader (`scripts/fetch_brokercheck.py`); `null` for hand-seeded rows |
+| `source_type?` | enum (`brokercheck`, `advisorhub_article`, `form_adv`, ...) | populated by the BrokerCheck loader (`npm run brokercheck --`); `null` for hand-seeded rows |
 | `source_ref?` | str | when `source_type=brokercheck`, points at the `BrokerCheckSnapshot.id` that wrote this row |
 
 ### 4.8 `RegistrationApplication`
@@ -685,7 +686,7 @@ Representative AdvisorHub URLs whose excerpts were surfaced via search:
 
 ### 8.3 Reproducing / extending the corpus
 
-From an unblocked IP, run `scripts/crawl_via_wpjson.py` — it walks
+From an unblocked IP, run `npm run crawl:wpjson -- --out research/wpjson` — it walks
 `/wp-json/wp/v2/posts?per_page=100&page=N` until exhaustion and saves each
 post's full JSON (incl. `content.rendered` HTML, categories, tags,
 `coauthors`, `acf` custom fields). The schema in §4 was designed to
