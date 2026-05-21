@@ -1,5 +1,9 @@
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+
+const WEB_ASSET_VERSION = "20260521-media";
+const JS_IMPORT_RE =
+  /(\bfrom\s+["']|\bimport\s*\(\s*["']|\bimport\s+["'])(\.{1,2}\/[^"']+\.js)(["'])/g;
 
 async function copyGeneratedWeb(): Promise<void> {
   await mkdir("harper-app/web", { recursive: true });
@@ -7,6 +11,24 @@ async function copyGeneratedWeb(): Promise<void> {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
+  await versionGeneratedWebModules("harper-app/web");
+}
+
+async function versionGeneratedWebModules(dir: string): Promise<void> {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await versionGeneratedWebModules(path);
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+    const source = await readFile(path, "utf8");
+    const versioned = source.replace(JS_IMPORT_RE, (match, prefix, specifier, suffix) => {
+      if (specifier.includes("?")) return match;
+      return `${prefix}${specifier}?v=${WEB_ASSET_VERSION}${suffix}`;
+    });
+    if (versioned !== source) await writeFile(path, versioned);
+  }
 }
 
 async function main(): Promise<void> {

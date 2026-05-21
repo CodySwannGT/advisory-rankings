@@ -4,18 +4,18 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>Advisors — AdvisorBook</title>
-	<link rel="stylesheet" href="/app.css" />
+	<link rel="stylesheet" href="/app.css?v=20260521-media" />
 </head>
 <body>
 	<script type="module">
 		// Directory page: every advisor in the DB, paginated.
 		// `/PublicAdvisors` is cursor-paginated server-side; the
 		// Paginated organism handles infinite-scroll + Load-more UI.
-		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js';
+		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
 		import {
 			mountFullWidthPage, SectionCard,
 			Paginated, EntityRow, Avatar,
-		} from '/design-system/index.js';
+		} from '/design-system/index.js?v=20260521-media';
 
 		mountFullWidthPage({
 			active: 'advisors',
