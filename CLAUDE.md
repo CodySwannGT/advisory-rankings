@@ -10,6 +10,19 @@ user explicitly asks for one ("just stub it for now", "client-side
 only is fine", etc.). When in doubt, propose the real fix and
 flag the tradeoff — don't silently downgrade the work.
 
+## PR merge handling
+
+GitHub auto-merge cannot currently be enabled for
+`CodySwannGT/advisory-rankings` because the repo is private and the
+account does not have the required GitHub Pro/Team/Enterprise
+feature. Attempts to enable it returned:
+
+`Upgrade to GitHub Pro or make this repository public to enable this feature.`
+
+When an agent opens a PR for this repo, it must remember to merge the
+PR manually once it is mergeable instead of relying on repository
+auto-merge.
+
 ## Always keep the documentation in sync with reality
 
 This project's docs are operational, not aspirational — other agents
