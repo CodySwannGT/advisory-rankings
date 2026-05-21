@@ -7,6 +7,7 @@ import { registerEntityShells } from "../seo_shell.js";
  */
 export default async function firmsRoutes(fastify) {
   registerEntityShells(fastify, {
+    basePath: "/firms",
     directoryUrl: new URL("../web/firms.html", import.meta.url),
     profileUrl: new URL("../web/firm.html", import.meta.url),
   });

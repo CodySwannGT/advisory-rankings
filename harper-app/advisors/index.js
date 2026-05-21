@@ -7,6 +7,7 @@ import { registerEntityShells } from "../seo_shell.js";
  */
 export default async function advisorsRoutes(fastify) {
   registerEntityShells(fastify, {
+    basePath: "/advisors",
     directoryUrl: new URL("../web/advisors.html", import.meta.url),
     profileUrl: new URL("../web/advisor.html", import.meta.url),
   });

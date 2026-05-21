@@ -10,10 +10,14 @@ const headers = {
  *
  * @param fastify Fastify instance provided by Harper.
  * @param root0 Route shell file URLs.
+ * @param root0.basePath Public directory base path.
  * @param root0.directoryUrl Directory page HTML file URL.
  * @param root0.profileUrl Profile page HTML file URL.
  */
-export function registerEntityShells(fastify, { directoryUrl, profileUrl }) {
+export function registerEntityShells(
+  fastify,
+  { basePath, directoryUrl, profileUrl }
+) {
   const html = {};
   const sendDirectory = async (_request, reply) => {
     html.directory ||= await readFile(directoryUrl, "utf8");
@@ -23,6 +27,6 @@ export function registerEntityShells(fastify, { directoryUrl, profileUrl }) {
     html.profile ||= await readFile(profileUrl, "utf8");
     return reply.headers(headers).send(html.profile);
   };
-  fastify.get("/", sendDirectory);
-  fastify.get("/:slug", sendProfile);
+  fastify.get(basePath, sendDirectory);
+  fastify.get(`${basePath}/:slug`, sendProfile);
 }
