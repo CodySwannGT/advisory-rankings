@@ -8,7 +8,7 @@
       "name": "lisa",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa"
       },
       "policy": {
         "installation": "INSTALLED_BY_DEFAULT",
@@ -20,7 +20,7 @@
       "name": "lisa-typescript",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-typescript"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-typescript"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -32,7 +32,7 @@
       "name": "lisa-expo",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-expo"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-expo"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -44,7 +44,7 @@
       "name": "lisa-nestjs",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-nestjs"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-nestjs"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -56,7 +56,7 @@
       "name": "lisa-cdk",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-cdk"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-cdk"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -68,7 +68,7 @@
       "name": "lisa-harper-fabric",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-harper-fabric"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-harper-fabric"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -80,7 +80,7 @@
       "name": "lisa-rails",
       "source": {
         "source": "local",
-        "path": "../lisa/plugins/lisa-rails"
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-rails"
       },
       "policy": {
         "installation": "AVAILABLE",
