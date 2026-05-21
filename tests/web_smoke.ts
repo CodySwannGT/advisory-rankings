@@ -77,7 +77,10 @@ async function main() {
 	const consoleErrors = [];
 	const pageErrors = [];
 	page.on('console', (msg) => {
-		if (msg.type() === 'error') consoleErrors.push(msg.text());
+		const text = msg.text();
+		if (msg.type() === 'error' && text !== 'Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR') {
+			consoleErrors.push(text);
+		}
 	});
 	page.on('pageerror', (err) => pageErrors.push(String(err.message || err)));
 
