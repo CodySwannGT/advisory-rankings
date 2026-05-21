@@ -1,9 +1,19 @@
 #!/usr/bin/env node
 // @ts-nocheck
-import { basicAuth, requiredEnv, restGet } from "../lib/rest.js";
+import { basicAuth, restGet } from "../lib/rest.js";
+import { loadCreds } from "./_auth.js";
 
-const base = requiredEnv("HDB_TARGET_URL");
-const auth = basicAuth(requiredEnv("HDB_ADMIN_USERNAME"), requiredEnv("HDB_ADMIN_PASSWORD"));
+const creds = loadCreds();
+const clusterBase = (creds.clusterUrl ?? "").replace(/\/+$/, "");
+const base = (process.env.HDB_TARGET_URL ?? `${clusterBase}:9925/`).replace(/\/+$/, "");
+const username = process.env.HDB_ADMIN_USERNAME ?? creds.username;
+const password = process.env.HDB_ADMIN_PASSWORD ?? creds.password;
+
+if (!base) throw new Error("HDB_TARGET_URL is required (or HARPER_CLUSTER_URL via loadCreds)");
+if (!username) throw new Error("HDB_ADMIN_USERNAME is required (or HARPER_ADMIN_USERNAME via loadCreds)");
+if (!password) throw new Error("HDB_ADMIN_PASSWORD is required (or HARPER_ADMIN_PASSWORD via loadCreds)");
+
+const auth = basicAuth(username, password);
 
 const tables = [
   "Firm", "FirmSuccession", "Branch", "BranchAssignment", "Advisor",
