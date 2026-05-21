@@ -57,6 +57,60 @@ function normalizeSluggedId(value) {
 	return match ? match[0] : value;
 }
 
+function slugifyText(text) {
+	return String(text || '')
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/&/g, ' and ')
+		.split(/[^a-z0-9]+/)
+		.filter(Boolean)
+		.join('-');
+}
+
+function resolveBySlug(rows, identifier, namesForRow) {
+	if (!identifier) return null;
+	const slug = slugifyText(identifier);
+	if (!slug) return null;
+	return rows.find((row) => {
+		if (row.slug && slugifyText(row.slug) === slug) return true;
+		return namesForRow(row).some((name) => slugifyText(name) === slug);
+	}) || null;
+}
+
+function resolveArticle(db, identifier) {
+	return db.byArticle.get(identifier) || resolveBySlug(db.articles, identifier, (article) => [
+		article.slug,
+		article.headline,
+		article.title,
+	]);
+}
+
+function resolveFirm(db, identifier) {
+	return db.byFirm.get(identifier) || resolveBySlug(db.firms, identifier, (firm) => [
+		firm.slug,
+		firm.name,
+		firm.short,
+	]);
+}
+
+function resolveAdvisor(db, identifier) {
+	return db.byAdvisor.get(identifier) || resolveBySlug(db.advisors, identifier, (advisor) => [
+		advisor.slug,
+		advisorDisplayName(advisor),
+		[advisor.firstName, advisor.lastName].filter(Boolean).join(' '),
+		advisor.legalName,
+		advisor.preferredName,
+	]);
+}
+
+function resolveTeam(db, identifier) {
+	return db.byTeam.get(identifier) || resolveBySlug(db.teams, identifier, (team) => [
+		team.slug,
+		team.name,
+	]);
+}
+
 // Pull cursor + limit off a Harper RequestTarget (or the dev_server's
 // URLSearchParams-compatible shim). Returns concrete defaults so call
 // sites don't need to repeat them.
@@ -472,11 +526,12 @@ export class ArticleView extends Resource {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing article id' };
 		const db = await loadAll();
-		const article = db.byArticle.get(id);
+		const article = resolveArticle(db, id);
 		if (!article) return { error: 'not found', id };
+		const articleId = article.id;
 		const item = feedItem(article, db);
 		const fas = db.fieldAssertions
-			.filter((f) => f.articleId === id)
+			.filter((f) => f.articleId === articleId)
 			.map((f) => ({
 				targetTable: f.targetTable,
 				targetId: f.targetId,
@@ -501,8 +556,9 @@ export class FirmProfile extends Resource {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing firm id' };
 		const db = await loadAll();
-		const firm = db.byFirm.get(id);
+		const firm = resolveFirm(db, id);
 		if (!firm) return { error: 'not found', id };
+		const firmId = firm.id;
 
 		// Count employment rows bucketed by current/past for the section
 		// titles — the actual rows are paginated by `/FirmAdvisors/<id>`
@@ -511,39 +567,39 @@ export class FirmProfile extends Resource {
 		let currentAdvisorCount = 0;
 		let pastAdvisorCount = 0;
 		for (const e of db.employments) {
-			if (e.firmId !== id) continue;
+			if (e.firmId !== firmId) continue;
 			if (!db.byAdvisor.has(e.advisorId)) continue;
 			if (e.endDate) pastAdvisorCount++;
 			else currentAdvisorCount++;
 		}
 
 		const teamsHere = db.teams
-			.filter((t) => t.currentFirmId === id)
+			.filter((t) => t.currentFirmId === firmId)
 			.map((t) => teamChip(t, db));
 
 		const transitionsIn = db.transitions
-			.filter((t) => t.toFirmId === id)
+			.filter((t) => t.toFirmId === firmId)
 			.sort(cmpDesc('moveDate'))
 			.map((t) => transitionRow(t, db));
 		const transitionsOut = db.transitions
-			.filter((t) => t.fromFirmId === id)
+			.filter((t) => t.fromFirmId === firmId)
 			.sort(cmpDesc('moveDate'))
 			.map((t) => transitionRow(t, db));
 
-		const articleIds = new Set(db.mFirm.filter((m) => m.firmId === id).map((m) => m.articleId));
+		const articleIds = new Set(db.mFirm.filter((m) => m.firmId === firmId).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid))
 			.filter(Boolean)
 			.sort(cmpDesc('publishedDate'))
 			.map((a) => articleStub(a));
 
-		const branchesHere = db.branches.filter((b) => b.firmId === id);
+		const branchesHere = db.branches.filter((b) => b.firmId === firmId);
 
 		const firmDisclosures = db.disclosures
-			.filter((d) => d.firmIdAtTime === id)
+			.filter((d) => d.firmIdAtTime === firmId)
 			.map((d) => disclosureRow(d, db));
 
-		const bcSnap = db.bcSnapByFirm.get(id) || null;
+		const bcSnap = db.bcSnapByFirm.get(firmId) || null;
 
 		return {
 			firm: {
@@ -697,11 +753,12 @@ export class AdvisorProfile extends Resource {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing advisor id' };
 		const db = await loadAll();
-		const advisor = db.byAdvisor.get(id);
+		const advisor = resolveAdvisor(db, id);
 		if (!advisor) return { error: 'not found', id };
+		const advisorId = advisor.id;
 
 		const career = db.employments
-			.filter((e) => e.advisorId === id)
+			.filter((e) => e.advisorId === advisorId)
 			.sort(cmpAsc('startDate'))
 			.map((e) => {
 				const firm = db.byFirm.get(e.firmId);
@@ -723,7 +780,7 @@ export class AdvisorProfile extends Resource {
 			});
 
 		const teams = db.memberships
-			.filter((m) => m.advisorId === id)
+			.filter((m) => m.advisorId === advisorId)
 			.map((m) => {
 				const t = db.byTeam.get(m.teamId);
 				return {
@@ -735,33 +792,33 @@ export class AdvisorProfile extends Resource {
 			});
 
 		const disclosures = db.disclosures
-			.filter((d) => d.advisorId === id)
+			.filter((d) => d.advisorId === advisorId)
 			.sort((x, y) => dateMs(x.dateInitiated ?? x.dateResolved) - dateMs(y.dateInitiated ?? y.dateResolved))
 			.map((d) => disclosureRow(d, db));
 
-		const obasHere = db.obas.filter((o) => o.advisorId === id);
-		const regAppsHere = db.regApps.filter((r) => r.advisorId === id).map((r) => ({
+		const obasHere = db.obas.filter((o) => o.advisorId === advisorId);
+		const regAppsHere = db.regApps.filter((r) => r.advisorId === advisorId).map((r) => ({
 			...r,
 			firm: firmChip(db.byFirm.get(r.firmId)),
 		}));
 
-		const articleIds = new Set(db.mAdv.filter((m) => m.advisorId === id).map((m) => m.articleId));
+		const articleIds = new Set(db.mAdv.filter((m) => m.advisorId === advisorId).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid)).filter(Boolean)
 			.sort(cmpDesc('publishedDate'))
 			.map(articleStub);
 
 		const transitions = db.transitions
-			.filter((t) => t.subjectAdvisorId === id)
+			.filter((t) => t.subjectAdvisorId === advisorId)
 			.map((t) => transitionRow(t, db));
 
-		const bcSnap = db.bcSnapByAdvisor.get(id) || null;
+		const bcSnap = db.bcSnapByAdvisor.get(advisorId) || null;
 
 		// License / Designation / Education — surfaced for the advisor
 		// profile page. Sorted by grantedDate / earnedDate / graduationYear
 		// so the UI can render a stable order.
 		const licenses = (db.licenses || [])
-			.filter((l) => l.advisorId === id)
+			.filter((l) => l.advisorId === advisorId)
 			.sort(cmpAsc('grantedDate'))
 			.map((l) => ({
 				id: l.id,
@@ -772,7 +829,7 @@ export class AdvisorProfile extends Resource {
 				status: l.status,
 			}));
 		const designations = (db.designations || [])
-			.filter((d2) => d2.advisorId === id)
+			.filter((d2) => d2.advisorId === advisorId)
 			.sort(cmpAsc('earnedDate'))
 			.map((d2) => ({
 				id: d2.id,
@@ -783,7 +840,7 @@ export class AdvisorProfile extends Resource {
 				status: d2.status,
 			}));
 		const education = (db.education || [])
-			.filter((e) => e.advisorId === id)
+			.filter((e) => e.advisorId === advisorId)
 			.sort((x, y) => (x.graduationYear || 0) - (y.graduationYear || 0))
 			.map((e) => ({
 				id: e.id,
@@ -827,10 +884,11 @@ export class TeamProfile extends Resource {
 		const id = normalizeId(target);
 		if (!id) return { error: 'missing team id' };
 		const db = await loadAll();
-		const team = db.byTeam.get(id);
+		const team = resolveTeam(db, id);
 		if (!team) return { error: 'not found', id };
+		const teamId = team.id;
 
-		const memberRows = db.memberships.filter((m) => m.teamId === id);
+		const memberRows = db.memberships.filter((m) => m.teamId === teamId);
 		const currentMembers = [];
 		const pastMembers = [];
 		for (const m of memberRows) {
@@ -856,14 +914,14 @@ export class TeamProfile extends Resource {
 		sortMembers(pastMembers);
 
 		const snaps = db.teamSnaps
-			.filter((s) => s.teamId === id)
+			.filter((s) => s.teamId === teamId)
 			.sort(cmpAsc('asOf'));
 
 		const transitions = db.transitions
-			.filter((t) => t.subjectTeamId === id)
+			.filter((t) => t.subjectTeamId === teamId)
 			.map((t) => transitionRow(t, db));
 
-		const articleIds = new Set(db.mTeam.filter((m) => m.teamId === id).map((m) => m.articleId));
+		const articleIds = new Set(db.mTeam.filter((m) => m.teamId === teamId).map((m) => m.articleId));
 		const articles = [...articleIds]
 			.map((aid) => db.byArticle.get(aid)).filter(Boolean)
 			.sort(cmpDesc('publishedDate'))

@@ -28,6 +28,10 @@ mountThreeColumnPage({
 });
 
 function render(d, center, right) {
+	if (d.error) {
+		center.appendChild(EmptyCard({ title: 'Advisor not found', body: d.id || '' }));
+		return;
+	}
 	const a = d.advisor;
 	canonicalizeEntityRoute('advisor', { ...a, name: d.displayName });
 	const tags = [];
