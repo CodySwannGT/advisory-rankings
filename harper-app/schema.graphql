@@ -42,6 +42,7 @@ type Firm @table @export {
   isAggregator: Boolean
   notes: String
   website: String
+  logoUrl: String
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }

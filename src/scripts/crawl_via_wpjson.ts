@@ -39,7 +39,7 @@ for (const type of TYPES) {
   for (let page = 1; ; page++) {
     if (maxPages && page > maxPages) break;
     if (maxRequests && requests >= maxRequests) break;
-    const url = `${BASE}/${type}?per_page=${perPage}&page=${page}`;
+    const url = `${BASE}/${type}?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia`;
     try {
       const rows = await fetchJson(url);
       requests++;

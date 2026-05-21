@@ -32,6 +32,23 @@ function extractedPath(wpId: number): string {
   return join(EXTRACT_DIR, `${wpId}.json`);
 }
 
+function imageUrls(raw: any): string[] {
+  const urls = new Set<string>();
+  const embedded = raw?._embedded?.["wp:featuredmedia"] ?? [];
+  for (const media of embedded) {
+    if (media?.source_url) urls.add(media.source_url);
+    for (const size of Object.values(media?.media_details?.sizes ?? {})) {
+      if ((size as any)?.source_url) urls.add((size as any).source_url);
+    }
+  }
+  const $ = cheerio.load(raw?.content?.rendered ?? "");
+  $("img").each((_, element) => {
+    const src = $(element).attr("src") ?? $(element).attr("data-src");
+    if (src) urls.add(src);
+  });
+  return [...urls];
+}
+
 async function findPending(): Promise<void> {
   await mkdir(EXTRACT_DIR, { recursive: true });
   for await (const [wpId, source] of wpjsonRecords()) {
@@ -47,7 +64,11 @@ async function show(wpId: string): Promise<void> {
     const raw = JSON.parse(await readFile(source, "utf8"));
     const title = cheerio.load(raw.title?.rendered ?? "").text();
     const body = cheerio.load(raw.content?.rendered ?? "").text();
-    console.log(`# ${title}\n\n${body}`);
+    const images = imageUrls(raw);
+    const imageBlock = images.length
+      ? `\n\n## Candidate image URLs\n\n${images.map(url => `- ${url}`).join("\n")}`
+      : "";
+    console.log(`# ${title}\n\n${body}${imageBlock}`);
     return;
   }
   throw new Error(`wpId not found: ${wpId}`);
