@@ -20,11 +20,11 @@
  *
  * Backend store is the running local Harper, accessed exclusively
  * over its operations-server Unix socket — the same socket
- * `npm run seed`, `npm run verify`, and `npm run preview` already use.
+ * `bun run seed`, `bun run verify`, and `bun run preview` already use.
  *
  * Usage:
- *   npm run dev:server                             # listens on :9926
- *   PORT=8080 npm run dev:server                   # listens on :8080
+ *   bun run dev:server                             # listens on :9926
+ *   PORT=8080 bun run dev:server                   # listens on :8080
  */
 
 import { createServer, request as httpRequest } from 'node:http';

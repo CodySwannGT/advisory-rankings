@@ -22,7 +22,7 @@
  * Usage:
  *   BASELINE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
  *   NEW_URL=http://127.0.0.1:8765 \
- *     npm run build && node dist/tests/parity_compare.js
+ *     bun run build && node dist/tests/parity_compare.js
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';

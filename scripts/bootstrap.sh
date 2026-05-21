@@ -8,7 +8,7 @@
 #   HDB_ROOT=/custom/path ./scripts/bootstrap.sh
 #
 # What this does:
-#   1. npm install (if node_modules missing)
+#   1. bun install (if node_modules missing)
 #   2. Build generated Harper/browser JavaScript from TypeScript source
 #   3. harperdb install into $HDB_ROOT (if not already installed)
 #   4. Patch the Harper config for sandbox-friendly defaults:
@@ -29,17 +29,17 @@ HDB_BIN="$REPO_ROOT/node_modules/.bin/harperdb"
 
 say() { printf '\n[bootstrap] %s\n' "$*"; }
 
-# ── 1. npm install ───────────────────────────────────────────────
+# ── 1. bun install ───────────────────────────────────────────────
 if [ ! -d "$REPO_ROOT/node_modules/harperdb" ]; then
-  say "Installing npm dependencies…"
-  (cd "$REPO_ROOT" && npm install)
+  say "Installing Bun dependencies..."
+  (cd "$REPO_ROOT" && bun install)
 else
-  say "node_modules/harperdb already present — skipping npm install"
+  say "node_modules/harperdb already present -- skipping bun install"
 fi
 
 # ── 2. TypeScript build ──────────────────────────────────────────
-say "Building generated Harper/browser JavaScript…"
-(cd "$REPO_ROOT" && npm run build)
+say "Building generated Harper/browser JavaScript..."
+(cd "$REPO_ROOT" && bun run build)
 
 # ── 3. harperdb install ──────────────────────────────────────────
 if [ ! -f "$HDB_ROOT/harperdb-config.yaml" ]; then

@@ -15,8 +15,8 @@
  * See src/scripts/_auth.ts for the helpers and the rationale.
  *
  * Usage:
- *   npm run deploy                     # ./harper-app
- *   PROJECT=advisor-app DIR=./harper-app npm run deploy
+ *   bun run deploy                     # ./harper-app
+ *   PROJECT=advisor-app DIR=./harper-app bun run deploy
  */
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -87,7 +87,7 @@ async function main() {
 	// Verify as an anonymous visitor would: /Feed is public (the
 	// resource overrides allowRead). If a future change locks /Feed
 	// down again, this catches it. For admin-only routes use a JWT
-	// minted with `npm run token`.
+	// minted with `bun run token`.
 	console.log(`▶ waiting for ${creds.clusterUrl}/Feed to respond …`);
 	let feed;
 	for (let i = 0; i < 30; i++) {

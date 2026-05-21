@@ -2,7 +2,7 @@ name: Deploy to Fabric
 
 # When `main` advances we package up `harper-app/` and push it to the
 # Fabric cluster via Studio's operations proxy.  Same code path that
-# `npm run deploy` uses locally — see src/scripts/deploy.ts and the
+# `bun run deploy` uses locally — see src/scripts/deploy.ts and the
 # fabric-runbook §6 for why we go through Studio's :443 instead of the
 # cluster's :9925 (firewalled from datacenter egress).
 #
@@ -31,7 +31,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.21.1'
 
       - name: Verify required secrets are wired
         run: |
@@ -40,19 +40,19 @@ jobs:
             exit 1
           fi
 
-      - name: Install npm dependencies (needed for `playwright` JS module)
-        run: npm install --no-audit --no-fund
+      - name: Install Bun dependencies (needed for `playwright` JS module)
+        run: bun install --frozen-lockfile
 
       - name: Build and deploy harper-app/ to Fabric (deploy_component + restart)
-        run: npm run deploy
+        run: bun run deploy
 
       - name: Install Playwright Chromium browser
-        run: npx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
 
       - name: Smoke-test the deployed UI
         env:
           BASE_URL: ${{ env.HARPER_CLUSTER_URL }}
-        run: npm run smoke
+        run: bun run smoke
 
       - name: Upload smoke screenshots on failure
         if: failure()

@@ -1,12 +1,30 @@
-import { defineConfig } from "vitest/config";
+/**
+ * This file is managed by Lisa.
+ * Do not edit directly — changes will be overwritten on the next `lisa` run.
+ */
 
-export default defineConfig({
-  test: {
-    include: ["tests/**/*.test.ts"],
-    coverage: {
-      provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: ["src/build/**", "src/types/**", "src/tests/**"],
-    },
-  },
-});
+/**
+ * Vitest Configuration - Main Entry Point (Harper/Fabric)
+ *
+ * Thin wrapper around @codyswann/lisa vitest config factory.
+ * Customize via vitest.config.local.ts and vitest.thresholds.json.
+ *
+ * @see https://vitest.dev/config/
+ * @module vitest.config
+ */
+import {
+  defaultThresholds,
+  getHarperFabricVitestConfig,
+  mergeThresholds,
+  mergeVitestConfigs,
+} from "@codyswann/lisa/vitest/harper-fabric";
+
+import localConfig from "./vitest.config.local";
+import thresholdsOverrides from "./vitest.thresholds.json" with { type: "json" };
+
+export default mergeVitestConfigs(
+  getHarperFabricVitestConfig({
+    thresholds: mergeThresholds(defaultThresholds, thresholdsOverrides),
+  }),
+  localConfig
+);

@@ -1,21 +1,7 @@
 {
+  "extends": ["@codyswann/lisa/tsconfig/harper-fabric", "./tsconfig.local.json"],
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022", "DOM"],
-    "rootDir": ".",
-    "outDir": "dist",
-    "strict": false,
-    "allowJs": false,
-    "checkJs": false,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmitOnError": true,
-    "types": ["node", "vitest"]
-  },
-  "include": ["src/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "dist", "harper-app/web/**/*.js", "harper-app/resources.js"]
+    "baseUrl": "./",
+    "ignoreDeprecations": "6.0"
+  }
 }

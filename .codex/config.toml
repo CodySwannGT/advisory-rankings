@@ -1,0 +1,6 @@
+# This file is partly managed by Lisa.
+# The keys Lisa owns are listed below; other keys you add are preserved on update.
+project_doc_max_bytes = 65536
+
+[features]
+codex_hooks = true

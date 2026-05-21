@@ -5,12 +5,12 @@
  * `create_authentication_tokens` op and print it on stdout.
  *
  * Usage:
- *   TOKEN=$(npm run --silent token)
+ *   TOKEN=$(bun run --silent token)
  *   curl -H "Authorization: Bearer $TOKEN" \
  *        https://<cluster>/Feed
  *
  *   # or, both tokens as JSON:
- *   npm run token -- --json
+ *   bun run token -- --json
  *
  * Reads creds from ~/.harper-fabric-credentials or env. See
  * src/scripts/_auth.ts for why this routes through Studio (Fabric

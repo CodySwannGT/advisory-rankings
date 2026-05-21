@@ -17,11 +17,11 @@
  * imports resources.js, and prints the JSON each resource returns.
  *
  * Run:
- *   npm run preview                         # /Feed
- *   npm run preview -- firm <id>
- *   npm run preview -- advisor <id>
- *   npm run preview -- team <id>
- *   npm run preview -- article <id>
+ *   bun run preview                         # /Feed
+ *   bun run preview -- firm <id>
+ *   bun run preview -- advisor <id>
+ *   bun run preview -- team <id>
+ *   bun run preview -- article <id>
  *
  * Reads HDB_ADMIN_USERNAME / HDB_ADMIN_PASSWORD from the env, falling
  * back to admin/admin-local (the bootstrap.sh defaults).
