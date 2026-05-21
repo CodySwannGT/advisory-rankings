@@ -288,8 +288,11 @@ async function main() {
 	// ── article detail with provenance ───────────────────
 	await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
-	await page.locator('article.card .post-headline a').first().click();
+	await page.locator('article.card .post-footer a').filter({ hasText: 'View details' }).first().click();
 	await page.waitForSelector('.post-headline', { timeout: 10000 });
+	/^\/articles\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
+		? ok('article URL: clean /articles/<slug>-<id> path')
+		: fail('article URL: expected clean /articles/<slug>-<id> path', page.url());
 
 	const articleHasProvenance = await page.locator('.card').filter({ hasText: 'Field-assertion provenance' }).count();
 	articleHasProvenance >= 1

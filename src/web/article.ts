@@ -2,7 +2,7 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getArticleIdParam, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
@@ -15,7 +15,7 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
+		const id = getArticleIdParam();
 		if (!id) {
 			center.appendChild(EmptyCard({ title: 'No article selected', body: 'Pick an article from the feed.' }));
 			return;
