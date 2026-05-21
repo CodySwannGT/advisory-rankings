@@ -1,0 +1,23 @@
+Migration inventory:
+  active: instruction files - 2 found
+    - CLAUDE.md
+    - AGENTS.md
+  active: skills - 3 found
+    - extract-advisorhub-articles
+    - ingest-advisorhub
+    - upsert-advisor
+  inactive: command sources - none found
+  inactive: subagents - none found
+Migration surfaces:
+  active: AGENTS.md - 1 instruction file(s) found.
+  active: skills - 3 skill(s) converted.
+  inactive: MCP config - No settings or MCP config found.
+  inactive: subagents - No subagents found.
+Migration report:
+  symlinked: AGENTS.md - Linked to CLAUDE.md.
+  rewritten: .agents/skills/extract-advisorhub-articles/SKILL.md - Converted Claude skill.
+  rewritten: .agents/skills/ingest-advisorhub/SKILL.md - Converted Claude skill.
+  rewritten: .agents/skills/upsert-advisor/SKILL.md - Converted Claude skill.
+  overwritten: .agents/skills/extract-advisorhub-articles - Existing Codex skill will be replaced.
+  overwritten: .agents/skills/upsert-advisor - Existing Codex skill will be replaced.
+  overwritten: .agents/skills/ingest-advisorhub - Existing Codex skill will be replaced.
