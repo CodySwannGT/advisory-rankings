@@ -2,7 +2,7 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getArticleIdParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getArticleIdParam, articleSource, canonicalizeArticleRoute } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
@@ -32,6 +32,7 @@ function render(d, center, right) {
 		return;
 	}
 	const a = d.article;
+	canonicalizeArticleRoute(a);
 	const src = articleSource(a);
 
 	const head = Card({

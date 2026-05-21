@@ -21,6 +21,7 @@
 // default), so all calls are relative.
 
 import { mountThreeColumnPage } from './design-system/templates.js';
+import { entityPath, articlePath } from './urls.js';
 
 // ─── tiny DOM helpers (re-exported for back-compat) ───────────
 export { $, el, clear } from './design-system/dom.js';
@@ -163,6 +164,22 @@ export {
 	entityIdFromLocation as getEntityIdParam,
 	articleIdFromLocation as getArticleIdParam,
 } from './urls.js';
+
+export function canonicalizeEntityRoute(kind, entity) {
+	const path = entityPath(kind, entity);
+	replaceWithCanonicalPath(path);
+}
+
+export function canonicalizeArticleRoute(article) {
+	const path = articlePath(article);
+	replaceWithCanonicalPath(path);
+}
+
+function replaceWithCanonicalPath(path) {
+	if (!path || path === '#' || !globalThis.history?.replaceState) return;
+	if (location.pathname === path && !location.search) return;
+	history.replaceState(null, '', path);
+}
 
 // Map an article URL hostname to the publisher we want to attribute
 // the post to in the UI. Most articles in this DB are AdvisorHub posts;

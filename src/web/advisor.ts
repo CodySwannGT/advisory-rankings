@@ -2,7 +2,7 @@
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource, canonicalizeEntityRoute } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -29,6 +29,7 @@ mountThreeColumnPage({
 
 function render(d, center, right) {
 	const a = d.advisor;
+	canonicalizeEntityRoute('advisor', { ...a, name: d.displayName });
 	const tags = [];
 	if (a.careerStatus) {
 		const kind = a.careerStatus === 'active' ? 'ok'
