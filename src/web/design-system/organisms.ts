@@ -16,6 +16,7 @@ import {
 	PostHeader, EntityRow, EntityChip, KvList, SanctionPill,
 	DealStrip, EventStat, NavRow, FirmArrow,
 } from './molecules.js';
+import { entityPath } from '../urls.js';
 
 // ─── Card ─────────────────────────────────────────────────────
 // White rounded surface with shadow. The base container for
@@ -239,10 +240,7 @@ export function GlobalSearch({ search } = {}) {
 	}
 
 	function hrefFor(item) {
-		if (item.kind === 'firm') return `firm.html?id=${encodeURIComponent(item.id)}`;
-		if (item.kind === 'team') return `team.html?id=${encodeURIComponent(item.id)}`;
-		if (item.kind === 'advisor') return `advisor.html?id=${encodeURIComponent(item.id)}`;
-		return '#';
+		return entityPath(item.kind, item);
 	}
 
 	function renderItems(q, items, counts) {
@@ -375,15 +373,15 @@ export function Navbar({ active, refreshMe, logout, search } = {}) {
 				children: 'Sign out',
 			}));
 		} else {
-			meSpot.appendChild(el('a', { class: 'me-action', href: 'login.html' }, 'Sign in'));
+			meSpot.appendChild(el('a', { class: 'me-action', href: '/login.html' }, 'Sign in'));
 		}
 	}
 
 	const links = el('div', { class: 'nav-links' },
-		link('index.html', 'Home'),
-		link('firms.html', 'Firms'),
-		link('advisors.html', 'Advisors'),
-		link('teams.html', 'Teams'),
+		link('/', 'Home'),
+		link('/firms', 'Firms'),
+		link('/advisors', 'Advisors'),
+		link('/teams', 'Teams'),
 	);
 
 	const burger = el('button', {
@@ -407,7 +405,7 @@ export function Navbar({ active, refreshMe, logout, search } = {}) {
 
 	return el('nav', { class: 'nav' },
 		burger,
-		el('div', { class: 'logo' }, el('a', { href: 'index.html' }, 'AdvisorBook')),
+		el('div', { class: 'logo' }, el('a', { href: '/' }, 'AdvisorBook')),
 		GlobalSearch({ search }),
 		drawer,
 		scrim,
@@ -458,7 +456,7 @@ export function DisclosureEventCard(d, fmts = {}) {
 			Tag({ kind: 'danger', children: humanize(d.disclosureType) || 'Disclosure' }),
 			reg ? el('span', {}, reg) : null,
 			d.status ? Tag({ kind: 'default', children: humanize(d.status) }) : null,
-			d.advisor ? el('a', { href: `advisor.html?id=${encodeURIComponent(d.advisor.id)}` }, d.advisor.name) : null,
+			d.advisor ? el('a', { href: entityPath('advisor', d.advisor) }, d.advisor.name) : null,
 		),
 		d.allegationText ? el('div', { class: 'allegation' }, '"', d.allegationText, '"') : null,
 		(d.sanctions && d.sanctions.length)
@@ -541,7 +539,7 @@ export function CareerTimeline({ career, fmtDate } = {}) {
 				el('div', { class: 'body' },
 					el('div', { class: 'title' },
 						c.firm
-							? el('a', { href: `firm.html?id=${encodeURIComponent(c.firm.id)}` }, c.firm.name)
+							? el('a', { href: entityPath('firm', c.firm) }, c.firm.name)
 							: '?',
 						c.branch ? el('span', { class: 'role' }, ` · ${c.branch.name}`) : null,
 					),

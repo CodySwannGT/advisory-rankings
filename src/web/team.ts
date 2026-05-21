@@ -2,7 +2,7 @@
 // Team profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -16,7 +16,7 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
+		const id = getEntityIdParam();
 		if (!id) {
 			center.appendChild(EmptyCard({ title: 'No team selected', body: 'Pick a team from a firm or feed.' }));
 			return;
@@ -91,7 +91,7 @@ function render(d, center, right) {
 			['Founded',       t.foundedYear],
 			['Dissolved',     t.dissolvedYear],
 			['Current firm',  d.currentFirm
-				? el('a', { href: `firm.html?id=${encodeURIComponent(d.currentFirm.id)}` }, d.currentFirm.name)
+				? el('a', { href: entityPath('firm', d.currentFirm) }, d.currentFirm.name)
 				: null],
 		],
 	}));
@@ -122,7 +122,7 @@ function memberList(members, { showStart = false, showRange = false } = {}) {
 				name: a.name,
 				sub: humanize(m.role || a.careerStatus) || '',
 				tail,
-				href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+				href: entityPath('advisor', a),
 			});
 		}),
 	});

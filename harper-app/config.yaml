@@ -14,6 +14,14 @@ rest: true
 jsResource:
   files: 'resources.js'
 
+# Clean public routes for SEO-friendly directory and profile URLs.
+# These serve the same static HTML shells as the legacy *.html paths.
+fastifyRoutes:
+  files:
+    - 'firms/index.js'
+    - 'advisors/index.js'
+    - 'teams/index.js'
+
 # AdvisorBook web UI.  Served at the same origin as REST so the
 # browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
 # `**/*` is recursive so the design-system/ subdirectory ships too.

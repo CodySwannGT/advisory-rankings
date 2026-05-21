@@ -34,7 +34,7 @@ export async function api(path, init = {}) {
 	const res = await fetch(path, {
 		credentials: 'same-origin',
 		...init,
-		headers: { Accept: 'application/json', ...(init.headers || {}) },
+		headers: { Accept: 'application/json', ...init.headers },
 	});
 	if (!res.ok) {
 		const text = await res.text().catch(() => '');
@@ -83,7 +83,7 @@ export async function logout() {
 	if (location.pathname.endsWith('/index.html') || location.pathname === '/') {
 		location.reload();
 	} else {
-		location.href = 'index.html';
+		location.href = '/';
 	}
 }
 
@@ -155,6 +155,8 @@ export function initials(name) {
 export function getQueryParam(name) {
 	return new URLSearchParams(location.search).get(name);
 }
+
+export { slugifyText, entityPath, entityIdFromLocation as getEntityIdParam } from './urls.js';
 
 // Map an article URL hostname to the publisher we want to attribute
 // the post to in the UI. Most articles in this DB are AdvisorHub posts;

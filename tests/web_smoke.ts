@@ -154,6 +154,9 @@ async function main() {
 	const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo·/ }).first();
 	await wellsChip.click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
+	/^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
+		? ok('firm URL: clean /firms/<slug>-<id> path')
+		: fail('firm URL: expected clean /firms/<slug>-<id> path', page.url());
 
 	const firmTitle = await page.locator('.profile-head h1').textContent();
 	/Wells Fargo/.test(firmTitle) ? ok(`firm.html: header "${firmTitle.trim()}"`) : fail(`firm.html: header was "${firmTitle}"`);
@@ -190,6 +193,9 @@ async function main() {
 	// ── click into Cairnes from the past-advisors list ────
 	await pastBlock.locator('a').filter({ hasText: 'Cairnes' }).first().click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
+	/^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
+		? ok('advisor URL: clean /advisors/<slug>-<id> path')
+		: fail('advisor URL: expected clean /advisors/<slug>-<id> path', page.url());
 
 	const advTitle = await page.locator('.profile-head h1').textContent();
 	/Cairnes/.test(advTitle) ? ok(`advisor.html: header "${advTitle.trim()}"`) : fail(`advisor.html: header "${advTitle}"`);
@@ -257,6 +263,9 @@ async function main() {
 	await page.waitForSelector('.chip.team', { timeout: 10000 });
 	await page.locator('.chip.team').filter({ hasText: 'Taylor' }).first().click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
+	/^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
+		? ok('team URL: clean /teams/<slug>-<id> path')
+		: fail('team URL: expected clean /teams/<slug>-<id> path', page.url());
 
 	const teamTitle = await page.locator('.profile-head h1').textContent();
 	/Taylor/.test(teamTitle) ? ok(`team.html: header "${teamTitle.trim()}"`) : fail(`team.html: header "${teamTitle}"`);
@@ -296,14 +305,14 @@ async function main() {
 	flushPageErrors('article.html');
 
 	// ── flat directory pages ──────────────────────────────
-	for (const page2 of ['firms.html', 'advisors.html', 'teams.html']) {
+	for (const page2 of ['firms', 'advisors', 'teams']) {
 		await page.goto(`${BASE}/${page2}`, { waitUntil: 'domcontentloaded' });
 		await page.waitForSelector('.entity-list .row', { timeout: 10000 });
 		const rows = await page.locator('.entity-list .row').count();
 		rows >= 1
 			? ok(`${page2}: ${rows} rows`)
 			: fail(`${page2}: empty`);
-		await shot(`06-${page2.replace('.html','')}`);
+		await shot(`06-${page2}`);
 		flushPageErrors(page2);
 	}
 
@@ -371,7 +380,7 @@ async function main() {
 
 	// Tap Firms in the drawer; should navigate and the drawer should close.
 	await mPage.locator('.nav-drawer .nav-links a:has-text("Firms")').click();
-	await mPage.waitForURL(/firms\.html/, { timeout: 8000 });
+	await mPage.waitForURL(/\/firms$/, { timeout: 8000 });
 	await mPage.waitForTimeout(300);
 	const drawerClosedAfterClick = await mPage.evaluate(() => !document.body.classList.contains('drawer-open'));
 	drawerClosedAfterClick ? ok('mobile: drawer closes after clicking a link') : fail('mobile: drawer stayed open after click');
