@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub tracker conventions
+    url: https://github.com/CodySwannGT/advisory-rankings/blob/main/docs/github-tracker.md
+    about: Read the PRD and ticket lifecycle before opening tracker issues.

@@ -233,46 +233,29 @@ Incrementally lowers ESLint code complexity thresholds toward target minimums:
 
 Does not modify the `maxLines` threshold. Skips if all metrics are at/below targets. Prevents duplicate PRs.
 
-### Claude Nightly Jira Triage (`claude-nightly-jira-triage.yml`)
+### GitHub Tracker and PRD Intake
 
-**Triggers**: Cron every 2 hours (all days), manual dispatch
+This repo uses GitHub Issues as the Lisa tracker and the default PRD source.
+The active conventions live in `.lisa.config.json`,
+`.github/ISSUE_TEMPLATE/`, `.github/labels.yml`, and
+`docs/github-tracker.md`.
 
-**Auto-enables**: When Claude and Jira credentials are configured (`CLAUDE_CODE_OAUTH_TOKEN`, `JIRA_API_TOKEN` secrets and `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_PROJECT_KEY` repository variables). No feature flag needed.
+GitHub Issues are split into two label lifecycles:
 
-Automatically triages untriaged Jira tickets by examining them and posting actionable comments. Supports multi-repo setups where multiple repositories share a single Jira project:
+1. PRDs use exactly one `prd-*` label at a time:
+   `prd-draft -> prd-ready -> prd-in-review -> prd-blocked | prd-ticketed -> prd-shipped`.
+2. Build tickets use exactly one `status:*` label at a time:
+   `status:ready -> status:in-progress -> status:code-review -> status:on-dev -> status:done`.
 
-1. Fetches untriaged tickets via JQL using repo-scoped labels (`claude-triaged-<repo-name>`, e.g., `claude-triaged-frontend-v2`). Each repo filters by its own label so every repo triages independently
-2. **Relevance Gating**: Searches the local codebase for code related to the ticket. If no relevant code is found, adds the repo-scoped label and skips -- no noise posted to the ticket
-3. **Cross-repo Awareness**: Reads existing comments on the ticket before posting. If another repo already posted triage findings, only adds supplementary findings from this repo's perspective. All comments are prefixed with the repo name (e.g., `*[frontend-v2] Ambiguity detected*`)
-4. **Ambiguity Detection**: Flags vague language, untestable criteria, undefined terms, and missing scope. Posts a comment per ambiguity with a suggested clarifying question
-5. **Edge Case Analysis**: Searches the codebase for related files, checks git history, and identifies boundary conditions, error handling gaps, and integration risks. Posts a consolidated comment referencing only files in this repo
-6. **Verification Methodology**: For each acceptance criterion, specifies a concrete verification method scoped to what this repo can test (e.g., frontend suggests Playwright tests, backend suggests API curl commands). Posts a structured table comment
-7. Labels the ticket with the repo-scoped label (`claude-triaged-<repo-name>`) so it is not reprocessed by this repo
+Use Lisa intake manually when needed:
 
-**Manual dispatch inputs**:
-- `ticket_key`: Triage a specific ticket by key (e.g., `PROJ-123`)
-- `ticket_count`: Number of tickets to process in batch mode (default: 5)
+```bash
+/lisa:intake github intake_mode=prd
+/lisa:intake github intake_mode=build
+```
 
-This workflow is read-only — it does not modify code or create PRs. It only reads the codebase and posts Jira comments.
-
-**How to activate**:
-
-1. Add the secrets in **Settings** > **Secrets and variables** > **Actions** > **Secrets**:
-
-   | Secret | Description | How to get |
-   |--------|-------------|------------|
-   | `CLAUDE_CODE_OAUTH_TOKEN` | OAuth token for Claude Code | See `CLAUDE_CODE_OAUTH_TOKEN` in the Core Secrets section below |
-   | `JIRA_API_TOKEN` | API token from Atlassian | [Create API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
-
-2. Add repository variables in **Settings** > **Secrets and variables** > **Actions** > **Variables**:
-
-   | Variable | Description | Example |
-   |----------|-------------|---------|
-   | `JIRA_BASE_URL` | Jira instance base URL | `https://company.atlassian.net` |
-   | `JIRA_USER_EMAIL` | Email associated with the API token | `user@company.com` |
-   | `JIRA_PROJECT_KEY` | Jira project key for ticket queries | `PROJ` |
-
-3. The workflow auto-enables once all three variables and both secrets are set. No feature flag needed.
+The previous Jira triage workflow has been removed from this repo so
+repository automation does not point at an inactive tracker.
 
 ### Auto-update PR Branches (`auto-update-pr-branches.yml`)
 
@@ -493,17 +476,11 @@ gpg --export-secret-keys YOUR_KEY_ID | base64 > signing-key.txt
 
 ---
 
-### Jira Integration Secrets (Optional)
+### GitHub Tracker Secrets
 
-| Secret | Description |
-|--------|-------------|
-| `JIRA_API_TOKEN` | API token from Atlassian |
-| `JIRA_AUTOMATION_WEBHOOK` | Webhook URL for Jira automation |
-
-**How to get JIRA_API_TOKEN**:
-1. Go to [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
-2. Click **Create API token**
-3. Copy the token
+No Jira secrets are required for tracker work in this repo. GitHub tracker
+automation uses the repository `GITHUB_TOKEN` in Actions and the authenticated
+`gh` CLI for local Lisa runs.
 
 ## Repository Variables
 
@@ -513,9 +490,6 @@ Variables are non-sensitive configuration values. Set them in **Settings** > **S
 |----------|-------------|---------|
 | `ENABLE_CLAUDE_NIGHTLY` | Enable nightly Claude workflows | `true` |
 | `ENABLE_CLAUDE_CODE_REVIEW_RESPONSE` | Enable Claude response to CodeRabbit reviews | `true` |
-| `JIRA_BASE_URL` | Jira instance base URL (enables Jira triage workflow) | `https://company.atlassian.net` |
-| `JIRA_USER_EMAIL` | Email associated with the Jira API token | `user@company.com` |
-| `JIRA_PROJECT_KEY` | Jira project key for ticket queries | `PROJ` |
 | `SENTRY_ORG` | Sentry organization slug | `my-company` |
 | `SENTRY_PROJECT` | Sentry project slug | `frontend-app` |
 

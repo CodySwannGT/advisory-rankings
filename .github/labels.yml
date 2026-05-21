@@ -1,0 +1,72 @@
+- name: prd-draft
+  color: 'D4C5F9'
+  description: 'Product-owned PRD draft, not ready for intake'
+- name: prd-ready
+  color: 'FBCA04'
+  description: 'Product says this PRD is ready for Lisa intake'
+- name: prd-in-review
+  color: '1D76DB'
+  description: 'Lisa is validating and ticketing this PRD'
+- name: prd-blocked
+  color: 'D93F0B'
+  description: 'PRD needs clarification before tickets can be created'
+- name: prd-ticketed
+  color: '0E8A16'
+  description: 'PRD has been converted into tracker tickets'
+- name: prd-shipped
+  color: '5319E7'
+  description: 'PRD work has shipped'
+- name: prd-intake-feedback
+  color: 'BFDADC'
+  description: 'Feedback issue or comments created during PRD intake'
+- name: status:ready
+  color: 'FBCA04'
+  description: 'Ready for build intake'
+- name: status:in-progress
+  color: '0E8A16'
+  description: 'Build intake has claimed this issue'
+- name: status:code-review
+  color: '5319E7'
+  description: 'PR is open and awaiting review'
+- name: status:on-dev
+  color: '1D76DB'
+  description: 'Built and available on dev'
+- name: status:done
+  color: '0E8A16'
+  description: 'Work is shipped'
+- name: status:blocked
+  color: 'D93F0B'
+  description: 'Blocked by missing information, failing verification, or external dependency'
+- name: type:Epic
+  color: '3E4B9E'
+  description: 'Large body of related work'
+- name: type:Story
+  color: '0E8A16'
+  description: 'User-facing slice of value under an epic'
+- name: type:Task
+  color: '1D76DB'
+  description: 'Single-repo implementation task'
+- name: type:Bug
+  color: 'D93F0B'
+  description: 'Defect with reproduction and expected behavior'
+- name: type:Sub-task
+  color: 'C5DEF5'
+  description: 'Single-repo child task under a story'
+- name: type:Spike
+  color: 'BFD4F2'
+  description: 'Time-boxed investigation'
+- name: type:Improvement
+  color: '006B75'
+  description: 'Refactor, optimization, or quality improvement'
+- name: priority:low
+  color: 'C2E0C6'
+  description: 'Low priority'
+- name: priority:medium
+  color: 'FBCA04'
+  description: 'Medium priority'
+- name: priority:high
+  color: 'D93F0B'
+  description: 'High priority'
+- name: priority:critical
+  color: 'B60205'
+  description: 'Critical priority'

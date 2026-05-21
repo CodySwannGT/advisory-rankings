@@ -141,6 +141,9 @@ docs/
                                touching anything visual.
   fabric-runbook.md            ops log: cluster, schema reloads, every
                                workaround, every failed alternative
+  github-tracker.md            GitHub Issues tracker + PRD lifecycle
+                               labels, templates, and Lisa intake
+                               commands
   brokercheck-spike.md         feasibility study for adding FINRA
                                BrokerCheck as a regulator-of-record
                                source alongside AdvisorHub (research,
