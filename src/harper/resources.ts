@@ -29,6 +29,7 @@
  */
 
 // ─── helpers ──────────────────────────────────────────────────────
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 // Robust date comparator. Harper returns dates as Date instances when
 // queried via `tables.X.search({})` (production path), but as ISO-8601
@@ -46,9 +47,14 @@ function normalizeId(target) {
 	// Harper's RequestTarget extends URLSearchParams and exposes the
 	// pre-parsed path id at `target.id`. Prefer that when present, fall
 	// back to toString() for the dev_server bridge and any older callers.
-	if (typeof target === 'object' && target.id != null) return String(target.id);
+	if (typeof target === 'object' && target.id != null) return normalizeSluggedId(String(target.id));
 	const s = typeof target === 'string' ? target : (target.toString?.() ?? '');
-	return s.startsWith('/') ? s.slice(1) : s;
+	return normalizeSluggedId(s.startsWith('/') ? s.slice(1) : s);
+}
+
+function normalizeSluggedId(value) {
+	const match = UUID_RE.exec(decodeURIComponent(value || ''));
+	return match ? match[0] : value;
 }
 
 // Pull cursor + limit off a Harper RequestTarget (or the dev_server's
