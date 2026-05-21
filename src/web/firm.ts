@@ -2,7 +2,7 @@
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource, canonicalizeEntityRoute } from './app.js';
 import {
 	mountThreeColumnPage, el, Avatar,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -30,6 +30,7 @@ mountThreeColumnPage({
 
 function render(d, center, right) {
 	const f = d.firm;
+	canonicalizeEntityRoute('firm', f);
 	const tags = [];
 	if (f.channel) tags.push({ label: humanize(f.channel) });
 	if (f.subChannel) tags.push({ label: humanize(f.subChannel) });

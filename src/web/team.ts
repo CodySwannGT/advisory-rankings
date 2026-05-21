@@ -2,7 +2,7 @@
 // Team profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource, canonicalizeEntityRoute } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -29,6 +29,7 @@ mountThreeColumnPage({
 
 function render(d, center, right) {
 	const t = d.team;
+	canonicalizeEntityRoute('team', t);
 	const latest = d.metricSnapshots[d.metricSnapshots.length - 1];
 	const tags = [];
 	if (t.serviceModel) tags.push({ label: `${humanize(t.serviceModel)} clients` });

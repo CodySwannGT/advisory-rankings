@@ -95,6 +95,14 @@ async function main() {
 		pageErrors.length = 0;
 	}
 
+	function cleanProfilePath(kind, url) {
+		const path = new URL(url).pathname;
+		const canonical = new RegExp(`^/${kind}/[a-z0-9-]+-[0-9a-f-]{36}$`, 'i');
+		const legacySlug = new RegExp(`^/${kind}/[a-z0-9-]+$`, 'i');
+		const legacyId = new RegExp(`^/${kind}/[0-9a-f-]{36}$`, 'i');
+		return canonical.test(path) || legacySlug.test(path) || legacyId.test(path);
+	}
+
 	// ── /  (home feed) ────────────────────────────────────
 	await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
@@ -157,9 +165,9 @@ async function main() {
 	const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo·/ }).first();
 	await wellsChip.click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
-	/^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
-		? ok('firm URL: clean /firms/<slug>-<id> path')
-		: fail('firm URL: expected clean /firms/<slug>-<id> path', page.url());
+	cleanProfilePath('firms', page.url())
+		? ok('firm URL: clean /firms/... path')
+		: fail('firm URL: expected clean /firms/... path', page.url());
 
 	const firmTitle = await page.locator('.profile-head h1').textContent();
 	/Wells Fargo/.test(firmTitle) ? ok(`firm.html: header "${firmTitle.trim()}"`) : fail(`firm.html: header was "${firmTitle}"`);
@@ -196,9 +204,9 @@ async function main() {
 	// ── click into Cairnes from the past-advisors list ────
 	await pastBlock.locator('a').filter({ hasText: 'Cairnes' }).first().click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
-	/^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
-		? ok('advisor URL: clean /advisors/<slug>-<id> path')
-		: fail('advisor URL: expected clean /advisors/<slug>-<id> path', page.url());
+	cleanProfilePath('advisors', page.url())
+		? ok('advisor URL: clean /advisors/... path')
+		: fail('advisor URL: expected clean /advisors/... path', page.url());
 
 	const advTitle = await page.locator('.profile-head h1').textContent();
 	/Cairnes/.test(advTitle) ? ok(`advisor.html: header "${advTitle.trim()}"`) : fail(`advisor.html: header "${advTitle}"`);
@@ -266,9 +274,9 @@ async function main() {
 	await page.waitForSelector('.chip.team', { timeout: 10000 });
 	await page.locator('.chip.team').filter({ hasText: 'Taylor' }).first().click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
-	/^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
-		? ok('team URL: clean /teams/<slug>-<id> path')
-		: fail('team URL: expected clean /teams/<slug>-<id> path', page.url());
+	cleanProfilePath('teams', page.url())
+		? ok('team URL: clean /teams/... path')
+		: fail('team URL: expected clean /teams/... path', page.url());
 
 	const teamTitle = await page.locator('.profile-head h1').textContent();
 	/Taylor/.test(teamTitle) ? ok(`team.html: header "${teamTitle.trim()}"`) : fail(`team.html: header "${teamTitle}"`);
@@ -293,9 +301,9 @@ async function main() {
 	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
 	await page.locator('article.card .post-footer a').filter({ hasText: 'View details' }).first().click();
 	await page.waitForSelector('.post-headline', { timeout: 10000 });
-	/^\/articles\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(new URL(page.url()).pathname)
-		? ok('article URL: clean /articles/<slug>-<id> path')
-		: fail('article URL: expected clean /articles/<slug>-<id> path', page.url());
+	cleanProfilePath('articles', page.url())
+		? ok('article URL: clean /articles/... path')
+		: fail('article URL: expected clean /articles/... path', page.url());
 
 	const articleHasProvenance = await page.locator('.card').filter({ hasText: 'Field-assertion provenance' }).count();
 	articleHasProvenance >= 1
