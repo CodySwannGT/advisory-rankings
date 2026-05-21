@@ -28,23 +28,19 @@ export function Button({ variant = 'neutral', type = 'button', onClick, children
 export function Avatar({ initials, imageUrl, alt, size = 'sm', tone = 'neutral', attrs = {} } = {}) {
 	const cls = `ab-avatar ab-avatar--${size} ab-avatar--${tone}` + (imageUrl ? ' ab-avatar--image' : '') + (attrs.class ? ` ${attrs.class}` : '');
 	const fallback = String(initials ?? '?');
-	return el('div', { ...attrs, class: cls },
-		imageUrl
-			? el('img', {
-				src: imageUrl,
-				alt: alt || fallback,
-				loading: 'lazy',
-				decoding: 'async',
-				onError: event => {
-					const img = event.currentTarget;
-					const avatar = img.parentElement;
-					if (!avatar) return;
-					avatar.classList.remove('ab-avatar--image');
-					avatar.textContent = fallback;
-				},
-			})
-			: fallback,
-	);
+	if (!imageUrl) return el('div', { ...attrs, class: cls }, fallback);
+	const img = el('img', {
+		src: imageUrl,
+		alt: alt || fallback,
+		loading: 'lazy',
+		decoding: 'async',
+		onError: event => showAvatarFallback(event.currentTarget, fallback),
+		onLoad: event => {
+			if (event.currentTarget.naturalWidth === 0) showAvatarFallback(event.currentTarget, fallback);
+		},
+	});
+	watchAvatarImageLoad(img, fallback);
+	return el('div', { ...attrs, class: cls }, img);
 }
 
 // ─── Tag ──────────────────────────────────────────────────────
@@ -152,4 +148,28 @@ export function SourceAttribution({ source, url, termsUrl, fetchedAt, attrs = {}
 function arrify(x) {
 	if (x == null) return [];
 	return Array.isArray(x) ? x : [x];
+}
+
+function showAvatarFallback(img, fallback) {
+	const avatar = img.parentElement;
+	if (!avatar) return;
+	avatar.classList.remove('ab-avatar--image');
+	avatar.textContent = fallback;
+}
+
+function watchAvatarImageLoad(img, fallback) {
+	const startTimer = () => setTimeout(() => {
+		if (!img.isConnected || !img.parentElement) return;
+		if (!img.complete || img.naturalWidth === 0) showAvatarFallback(img, fallback);
+	}, 3000);
+	if (!('IntersectionObserver' in window)) {
+		startTimer();
+		return;
+	}
+	const observer = new IntersectionObserver(entries => {
+		if (!entries.some(entry => entry.isIntersecting)) return;
+		observer.disconnect();
+		startTimer();
+	});
+	observer.observe(img);
 }
