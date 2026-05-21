@@ -13,16 +13,32 @@
 		// Paginated organism handles infinite-scroll + Load-more UI.
 		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
 		import {
-			mountFullWidthPage, SectionCard,
+			mountThreeColumnPage, SectionCard, DetailsCard,
 			Paginated, EntityRow, Avatar,
 		} from '/design-system/index.js?v=20260521-media';
 
-		mountFullWidthPage({
+		mountThreeColumnPage({
 			active: 'advisors',
 			refreshMe,
 			logout,
 			search,
-			build({ center }) {
+			build({ center, right }) {
+				let loaded = 0;
+				const stats = DetailsCard({
+					title: 'Advisor directory',
+					pairs: [
+						['Loaded', '0'],
+						['Total', 'Loading…'],
+						['Page size', '50'],
+					],
+				});
+				right.appendChild(stats);
+				const setStat = (label, value) => {
+					const rows = [...stats.querySelectorAll('.kv-row')];
+					const row = rows.find((r) => r.querySelector('.kv-key')?.textContent === label);
+					const val = row?.querySelector('.kv-val');
+					if (val) val.textContent = String(value);
+				};
 				const card = SectionCard({
 					title: 'All advisors',
 					body: Paginated({
@@ -35,6 +51,7 @@
 						onTotal: (n) => {
 							const titleEl = card.querySelector('h2.card-title');
 							if (titleEl) titleEl.textContent = `All advisors (${n})`;
+							setStat('Total', n);
 						},
 						renderRow: (a) => {
 							const last = a.lastName || '';
@@ -44,7 +61,7 @@
 									? pref
 									: `${pref} ${last}`.trim())
 								: (a.legalName || last || a.id);
-							return EntityRow({
+							const row = EntityRow({
 								avatar: Avatar({ initials: initials(name), imageUrl: a.headshotUrl, alt: name }),
 								name,
 								sub: [
@@ -54,6 +71,9 @@
 								].filter(Boolean).join(' · '),
 								href: entityPath('advisor', { ...a, name }),
 							});
+							loaded += 1;
+							setStat('Loaded', loaded);
+							return row;
 						},
 					}),
 				});

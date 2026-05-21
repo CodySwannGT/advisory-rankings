@@ -11,16 +11,16 @@
 		// Directory page: every team in the DB. UI from the design system.
 		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
 		import {
-			mountFullWidthPage, SectionCard, EmptyCard,
+			mountThreeColumnPage, SectionCard, EmptyCard, DetailsCard,
 			EntityList, EntityRow,
 		} from '/design-system/index.js?v=20260521-media';
 
-		mountFullWidthPage({
+		mountThreeColumnPage({
 			active: 'teams',
 			refreshMe,
 			logout,
 			search,
-			build({ center }) {
+			build({ center, right }) {
 				api('/PublicTeams').then((teams) => {
 					center.appendChild(SectionCard({
 						title: `All teams (${teams.length})`,
@@ -32,6 +32,16 @@
 								href: entityPath('team', t),
 							})),
 						}),
+					}));
+					const firms = new Set(teams.map((t) => t.currentFirmName).filter(Boolean));
+					const serviceModels = new Set(teams.map((t) => humanize(t.serviceModel)).filter(Boolean));
+					right.appendChild(DetailsCard({
+						title: 'Team directory',
+						pairs: [
+							['Teams', teams.length],
+							['Current firms', firms.size],
+							['Service models', serviceModels.size],
+						],
 					}));
 				}).catch((err) => {
 					center.appendChild(EmptyCard({ title: 'Could not load teams', body: String(err.message || err) }));
