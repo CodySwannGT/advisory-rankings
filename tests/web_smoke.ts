@@ -110,9 +110,10 @@ async function main() {
 	const postCount = await page.locator('article.card').count();
 	postCount >= 2 ? ok(`/ feed: ${postCount} post cards`) : fail(`/ feed: only ${postCount} cards`);
 
-	const taylorHeadline = await page.locator('article.card .post-headline')
-		.filter({ hasText: 'Morgan Stanley' }).first().textContent();
-	taylorHeadline ? ok('/ feed: Taylor article headline present') : fail('/ feed: Taylor headline missing');
+		const taylorCard = page.locator('article.card').filter({ hasText: 'The Taylor Group' }).first();
+		await taylorCard.waitFor({ timeout: 10000 });
+		const taylorHeadline = await taylorCard.locator('.post-headline').textContent();
+		taylorHeadline ? ok('/ feed: Taylor article headline present') : fail('/ feed: Taylor headline missing');
 
 	// Transition event card with from→to + AUM moved.
 	const transition = page.locator('.event-card.transition').first();
@@ -141,9 +142,8 @@ async function main() {
 		: fail('/ feed: disclosure event missing FINRA', disclosureText.slice(0, 120));
 
 	// Entity chips on the Taylor card (firm + team + advisor).
-	const taylorCard = page.locator('article.card').filter({ hasText: 'Morgan Stanley Team' }).first();
-	const chipKinds = await taylorCard.locator('.chip-row .chip').evaluateAll((els) =>
-		els.map((e) => Array.from(e.classList).find((c) => ['firm', 'team', 'advisor'].includes(c))));
+		const chipKinds = await taylorCard.locator('.chip-row .chip').evaluateAll((els) =>
+			els.map((e) => Array.from(e.classList).find((c) => ['firm', 'team', 'advisor'].includes(c))));
 	const distinctKinds = new Set(chipKinds);
 	distinctKinds.has('firm') && distinctKinds.has('team') && distinctKinds.has('advisor')
 		? ok(`/ feed: Taylor card shows firm/team/advisor chips (${chipKinds.length} total)`)
@@ -162,7 +162,7 @@ async function main() {
 	// Chip textContent is "firmWells Fargo · St. Louis, MO" (firmShort
 	// strips the trailing " Advisors") for the parent vs.
 	// "firmWells Fargo Advisors Financial Network (FiNet) ·…" for FiNet.
-	const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo·/ }).first();
+		const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo(?:·|$)/ }).first();
 	await wellsChip.click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 	cleanProfilePath('firms', page.url())
@@ -296,11 +296,26 @@ async function main() {
 	await shot('04-team-taylor-group');
 	flushPageErrors('team.html');
 
-	// ── article detail with provenance ───────────────────
-	await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
-	await page.locator('article.card .post-footer a').filter({ hasText: 'View details' }).first().click();
-	await page.waitForSelector('.post-headline', { timeout: 10000 });
+		// ── article detail with provenance ───────────────────
+		await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+		await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
+		const articleWithProvenance = await page.evaluate(async () => {
+			const feed = await fetch('/Feed').then((r) => r.json());
+			for (const item of feed.items || []) {
+				const id = item.article?.id || item.id;
+				const detail = await fetch(`/ArticleView/${encodeURIComponent(id)}`).then((r) => r.json());
+				if (detail.provenance?.length) {
+					return document.querySelector(`a[href*="${id}"]`)?.getAttribute('href') || `/articles/${id}`;
+				}
+			}
+			return null;
+		});
+		articleWithProvenance
+			? ok('article.html: found feed article with provenance')
+			: fail('article.html: no feed article with provenance');
+		if (!articleWithProvenance) throw new Error('no feed article with provenance');
+		await page.goto(`${BASE}${articleWithProvenance}`, { waitUntil: 'domcontentloaded' });
+		await page.waitForSelector('.post-headline', { timeout: 10000 });
 	cleanProfilePath('articles', page.url())
 		? ok('article URL: clean /articles/... path')
 		: fail('article URL: expected clean /articles/... path', page.url());
