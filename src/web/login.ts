@@ -34,7 +34,7 @@ mountCenteredNarrowPage({
 				try {
 					await postJson('/Login', { email: email.value, password: password.value });
 					await refreshMe();
-					location.href = 'index.html';
+					location.href = '/';
 				} catch (err) {
 					error.textContent = /401/.test(String(err)) ? 'Invalid email or password.' : String(err.message || err);
 					error.style.display = 'block';

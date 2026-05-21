@@ -84,17 +84,20 @@ documents:
   T-12 · headcount · upfront % of T-12" event block; disclosure
   articles render the regulator + stacked sanctions. Mentioned
   advisors / firms / teams appear as clickable chips.
-- Firm profile (`firm.html?id=…`) — current advisors, past advisors
+- Firm profile (`/firms/<slug>-<id>`, with `firm.html?id=…` still
+  supported) — current advisors, past advisors
   (with terminated-for-cause flag), current teams, transitions in /
   out, branches (market → complex → branch), disclosures filed
   while advisors were at the firm, and coverage. The advisor lists
   are cursor-paginated (50/page) via `/FirmAdvisors/<id>` so a firm
   with thousands of seats stays responsive.
-- Advisor profile (`advisor.html?id=…`) — career timeline (every
+- Advisor profile (`/advisors/<slug>-<id>`, with `advisor.html?id=…`
+  still supported) — career timeline (every
   EmploymentHistory firm with start/end dates and reason for
   leaving), teams, disclosures with sanction pills, OBAs,
   registration applications, transitions, and coverage.
-- Team profile (`team.html?id=…`) — current and past members,
+- Team profile (`/teams/<slug>-<id>`, with `team.html?id=…` still
+  supported) — current and past members,
   metric snapshots over time, transitions, coverage.
 - Article detail (`article.html?id=…`) — full body + the same
   event blocks as the feed card + the FieldAssertion provenance
@@ -138,7 +141,8 @@ docs/
 
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
-                             rest + jsResource + static web/)
+                             rest + jsResource + Fastify clean routes +
+                             static web/)
   schema.graphql             35 entity types as GraphQL SDL with
                              @table @export directives
   resources.js               generated custom JS resources backing the UI:
@@ -147,15 +151,20 @@ harper-app/
                              cursor-paginated /PublicAdvisors and
                              /FirmAdvisors/<id> (?status&cursor&limit),
                              plus /Search?q=… for the navbar search box
+  firms/ advisors/ teams/    Fastify route shells for /firms,
+  seo_shell.js               /advisors, /teams, and profile slug URLs
   web/                       static AdvisorBook UI served at /.
                              HTML and CSS are tracked; .js browser
                              modules are generated from src/web/:
                                index.html / index.js   feed home
                                article.html / .js      article detail
-                               firm.html / .js         firm profile
-                               advisor.html / .js      advisor profile
-                               team.html / .js         team profile
-                               firms/advisors/teams.html  directories
+                               firm.html / .js         /firms/<slug>-<id>
+                               advisor.html / .js      /advisors/<slug>-<id>
+                               team.html / .js         /teams/<slug>-<id>
+                               firms/advisors/teams.html
+                                                       directories at
+                                                       /firms, /advisors,
+                                                       /teams
                                login.html / .js        sign-in form
                                app.css                 page styles
                                app.js                  network, auth,

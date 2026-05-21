@@ -2,7 +2,7 @@
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -16,7 +16,7 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
+		const id = getEntityIdParam();
 		if (!id) {
 			center.appendChild(EmptyCard({ title: 'No firm selected', body: 'Open a firm from the feed.' }));
 			return;
@@ -86,7 +86,7 @@ function render(d, center, right) {
 						t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
 						t.teamSize ? `${t.teamSize} members` : null,
 					].filter(Boolean).join(' · '),
-					href: `team.html?id=${encodeURIComponent(t.id)}`,
+					href: entityPath('team', t),
 				})),
 			}),
 		}));
@@ -189,7 +189,7 @@ function advisorRow(r, { showStart = false, showEnd = false } = {}) {
 		tail: r.reasonForLeaving === 'terminated_for_cause'
 			? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
 			: tail,
-		href: `advisor.html?id=${encodeURIComponent(a.id)}`,
+		href: entityPath('advisor', a),
 	});
 }
 

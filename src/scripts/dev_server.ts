@@ -10,6 +10,8 @@
  * unreachable.  This server reproduces that surface in plain Node:
  *   - Static GET for /             → web/index.html
  *   - Static GET for /<file>       → web/<file>
+ *   - Static GET for /firms        → web/firms.html
+ *   - Static GET for /firms/<slug> → web/firm.html
  *   - GET /Feed                    → resources.js Feed.get()
  *   - GET /ArticleView/<id>        → resources.js ArticleView.get(id)
  *   - GET /FirmProfile/<id>        → resources.js FirmProfile.get(id)
@@ -121,6 +123,12 @@ const MIME = {
 async function serveStatic(req, res) {
 	let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
 	if (p === '/') p = '/index.html';
+	if (p === '/firms') p = '/firms.html';
+	else if (p.startsWith('/firms/')) p = '/firm.html';
+	else if (p === '/advisors') p = '/advisors.html';
+	else if (p.startsWith('/advisors/')) p = '/advisor.html';
+	else if (p === '/teams') p = '/teams.html';
+	else if (p.startsWith('/teams/')) p = '/team.html';
 	const file = join(ROOT, p);
 	if (!file.startsWith(ROOT)) {
 		res.writeHead(403).end('forbidden');

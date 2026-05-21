@@ -46,11 +46,26 @@ const OUT = resolve('tests/parity');
 // that proves the page rendered (or null to skip waiting).
 const STATIC_PAGES = [
 	{ id: 'feed',       goto: '/',                 waitFor: 'article.card .post-headline' },
-	{ id: 'firms',      goto: '/firms.html',       waitFor: '.entity-list .row' },
-	{ id: 'advisors',   goto: '/advisors.html',    waitFor: '.entity-list .row' },
-	{ id: 'teams',      goto: '/teams.html',       waitFor: '.entity-list .row' },
+	{ id: 'firms',      goto: '/firms',            waitFor: '.entity-list .row' },
+	{ id: 'advisors',   goto: '/advisors',         waitFor: '.entity-list .row' },
+	{ id: 'teams',      goto: '/teams',            waitFor: '.entity-list .row' },
 	{ id: 'login',      goto: '/login.html',       waitFor: 'input[name="email"]' },
 ];
+
+function slugify(text) {
+	return String(text || '')
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/&/g, ' and ')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.replace(/-{2,}/g, '-') || 'profile';
+}
+
+function entityPath(kind, entity) {
+	return `/${kind}/${slugify(entity.name)}-${encodeURIComponent(entity.id)}`;
+}
 
 // Profile pages also need an id from the feed. We resolve those
 // once per base via /Feed and stuff them into the page list.
@@ -62,9 +77,9 @@ async function profilePagesFor(base) {
 	const teamObj = taylor.teams[0];
 	const advisor = cairnes.advisors.find((a) => /Cairnes/i.test(a.name)) || cairnes.advisors[0];
 	return [
-		{ id: 'firm-wells-fargo',  goto: `/firm.html?id=${encodeURIComponent(wellsFargo.id)}`, waitFor: '.profile-head h1' },
-		{ id: 'team-taylor',       goto: `/team.html?id=${encodeURIComponent(teamObj.id)}`,    waitFor: '.profile-head h1' },
-		{ id: 'advisor-cairnes',   goto: `/advisor.html?id=${encodeURIComponent(advisor.id)}`, waitFor: '.profile-head h1' },
+		{ id: 'firm-wells-fargo',  goto: entityPath('firms', wellsFargo), waitFor: '.profile-head h1' },
+		{ id: 'team-taylor',       goto: entityPath('teams', teamObj),    waitFor: '.profile-head h1' },
+		{ id: 'advisor-cairnes',   goto: entityPath('advisors', advisor), waitFor: '.profile-head h1' },
 		{ id: 'article-taylor',    goto: `/article.html?id=${encodeURIComponent(taylor.article.id)}`, waitFor: '.post-headline' },
 	];
 }

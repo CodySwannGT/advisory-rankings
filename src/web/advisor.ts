@@ -2,7 +2,7 @@
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getQueryParam, articleSource } from './app.js';
+import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource } from './app.js';
 import {
 	mountThreeColumnPage, el,
 	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
@@ -16,7 +16,7 @@ mountThreeColumnPage({
 	logout,
 	search,
 	build({ center, right }) {
-		const id = getQueryParam('id');
+		const id = getEntityIdParam();
 		if (!id) {
 			center.appendChild(EmptyCard({ title: 'No advisor selected', body: 'Pick an advisor from the feed.' }));
 			return;
@@ -88,7 +88,7 @@ function render(d, center, right) {
 					tail: m.endDate
 						? `${fmtDate(m.startDate, { mode: 'short' })} – ${fmtDate(m.endDate, { mode: 'short' })}`
 						: m.startDate ? `since ${fmtDate(m.startDate, { mode: 'short' })}` : '',
-					href: `team.html?id=${encodeURIComponent(m.team.id)}`,
+					href: entityPath('team', m.team),
 				})),
 			}),
 		}));

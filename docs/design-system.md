@@ -162,7 +162,7 @@ Composed from atoms; each does one concrete job.
 
 | Component | Job |
 |---|---|
-| `EntityChip(entity)` | Pill linking to `firm.html` / `team.html` / `advisor.html`. |
+| `EntityChip(entity)` | Pill linking to `/firms/<slug>-<id>` / `/teams/<slug>-<id>` / `/advisors/<slug>-<id>`. |
 | `PostHeader({ initials, source, authors, when, category })` | Avatar + source line + when/category line for feed cards and article headers. |
 | `EntityRow({ avatar, name, sub, tail, href, extras })` | The unit row for any `.entity-list` (rosters, members, browse, trending, …). Wrap in `<a>` if `href` is given. |
 | `KvList(pairs)` | Definition-list of `[label, value]` pairs. Skips null / '' / false. |
@@ -191,7 +191,7 @@ Self-contained UI sections.
 | `EmptyCard({ title, body })` | Error / empty-state shorthand. |
 | `ChipRow({ firms, teams, advisors })` | Mentioned-entities row under feed posts. |
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
-| `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `advisors.html` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
+| `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `/advisors` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
 | `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. |
 | `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
@@ -335,11 +335,11 @@ The pages have been migrated to the system:
 | Page | Template | Notable organisms used |
 |---|---|---|
 | `index.html` | `mountThreeColumnPage` | `FeedPostCard`, `BrowseCard`, `RollupCard`, `EntityRow`, `SectionCard` |
-| `advisor.html` | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck) |
-| `firm.html` | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
-| `team.html` | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
+| `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck) |
+| `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
+| `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `article.html` | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
-| `firms.html`, `advisors.html`, `teams.html` | `mountFullWidthPage` | `SectionCard`, `EntityList`, `EntityRow` |
+| `/firms`, `/advisors`, `/teams` (`*.html`) | `mountFullWidthPage` | `SectionCard`, `EntityList`, `EntityRow` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
 The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,
