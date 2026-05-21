@@ -1,0 +1,85 @@
+name: Product Requirement
+description: Create a GitHub-hosted PRD for Lisa intake.
+title: '[PRD] '
+labels:
+  - prd-draft
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for product requirements that should later be moved to `prd-ready` for Lisa intake. Do not add `status:*` labels to PRDs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Opportunity
+      description: Explain the user problem, business outcome, and why this matters now.
+      placeholder: Users need...
+    validations:
+      required: true
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+      description: List the concrete outcomes this PRD must achieve.
+      placeholder: |
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: List intentionally excluded scope.
+      placeholder: |
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: users
+    attributes:
+      label: Users / Stakeholders
+      description: Identify affected users, operators, and decision makers.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Describe business rules, permissions, data constraints, and edge cases.
+      placeholder: |
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Use Gherkin so generated tickets inherit observable outcomes.
+      placeholder: |
+        Scenario: ...
+          Given ...
+          When ...
+          Then ...
+    validations:
+      required: true
+  - type: textarea
+    id: source_artifacts
+    attributes:
+      label: Source Artifacts
+      description: Link designs, prototypes, recordings, data samples, dashboards, or reference docs.
+      placeholder: |
+        - Figma:
+        - Prototype:
+        - Data/API:
+        - Reference:
+    validations:
+      required: false
+  - type: textarea
+    id: open_questions
+    attributes:
+      label: Open Questions
+      description: List unresolved decisions. Move to `prd-ready` only after blockers are resolved.
+      placeholder: |
+        - ...
+    validations:
+      required: false

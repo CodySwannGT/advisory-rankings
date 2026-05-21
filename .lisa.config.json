@@ -1,3 +1,9 @@
 {
-  "harness": "both"
+  "harness": "both",
+  "tracker": "github",
+  "source": "github",
+  "github": {
+    "org": "CodySwannGT",
+    "repo": "advisory-rankings"
+  }
 }
