@@ -25,6 +25,8 @@ bun run test          # Vitest suite
 bun run test:cov      # Vitest coverage report
 bun run seed          # load 99 records from the two scraped articles
 bun run verify        # run cross-table SQL queries
+bun run research:advisors -- due --max 5 --stale-days 30
+                     # pick advisors due for public-web research
 bun run preview       # render the /Feed JSON locally (sandbox-friendly)
 bun run dev:server    # serve harper-app/web/ + custom resources locally
 bun run smoke         # Playwright suite (BASE_URL=… for prod)
@@ -137,7 +139,7 @@ docs/
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
                              rest + jsResource + static web/)
-  schema.graphql             34 entity types as GraphQL SDL with
+  schema.graphql             35 entity types as GraphQL SDL with
                              @table @export directives
   resources.js               generated custom JS resources backing the UI:
                              /Feed, /ArticleView/<id>, /FirmProfile/<id>,
@@ -203,7 +205,8 @@ src/
                              parser/loader/client helpers
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
-                             token, preview, and dev server commands
+                             advisor research queues, token, preview,
+                             and dev server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 
@@ -226,7 +229,7 @@ tests/
 
 ## What's in the database after `bun run seed`
 
-99 records across 23 of the 34 tables, drawn from:
+99 records across 23 of the 35 tables, drawn from:
 
 - **Article 1** (advisor team move): Taylor Group, $5.94B AUM,
   Morgan Stanley → Wells Fargo, NYC. Exercises team membership,

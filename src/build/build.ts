@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 async function copyGeneratedWeb(): Promise<void> {
   await mkdir("harper-app/web", { recursive: true });
-  await cp("dist/src/web", "harper-app/web", {
+  await cp("dist/web", "harper-app/web", {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
@@ -11,11 +11,11 @@ async function copyGeneratedWeb(): Promise<void> {
 
 async function main(): Promise<void> {
   await mkdir("harper-app", { recursive: true });
-  await cp("dist/src/harper/resources.js", "harper-app/resources.js");
+  await cp("dist/harper/resources.js", "harper-app/resources.js");
   await copyGeneratedWeb();
 
   // tsc may leave empty source subdirectories in dist; keep dist readable.
-  for (const dir of ["dist/src/harper", "dist/src/web"]) {
+  for (const dir of ["dist/harper", "dist/web"]) {
     try {
       const entries = await readdir(dir);
       if (entries.length === 0) await rm(dir, { recursive: true, force: true });
@@ -24,7 +24,9 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`built Harper JS resources into ${join("harper-app", "resources.js")} and web/*.js`);
+  console.log(
+    `built Harper JS resources into ${join("harper-app", "resources.js")} and web/*.js`
+  );
 }
 
 await main();

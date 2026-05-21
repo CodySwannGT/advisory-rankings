@@ -29,13 +29,13 @@ type Firm @table @export {
   name: String! @indexed
   legalName: String
   parentFirmId: ID @indexed
-  channel: String! @indexed         # wirehouse, regional_bd, pure_ria, etc.
-  subChannel: String                # FiNet, LPL_Strategic_Wealth, etc.
+  channel: String! @indexed # wirehouse, regional_bd, pure_ria, etc.
+  subChannel: String # FiNet, LPL_Strategic_Wealth, etc.
   finraCrd: String @indexed
   secFilerId: String @indexed
   foundedYear: Int
   dissolvedYear: Int
-  dissolutionReason: String         # acquired, merged, seized, bankruptcy, ...
+  dissolutionReason: String # acquired, merged, seized, bankruptcy, ...
   hqCity: String
   hqState: String
   hqCountry: String
@@ -51,7 +51,7 @@ type FirmSuccession @table @export {
   predecessorFirmId: ID! @indexed
   successorFirmId: ID! @indexed
   successionDate: Date
-  successionType: String            # acquired, merged, seized, spun_off, wound_down
+  successionType: String # acquired, merged, seized, spun_off, wound_down
   transferredAssetsPct: Float
   transferredAdvisorsPct: Float
   notes: String
@@ -64,9 +64,9 @@ type Branch @table @export {
   id: ID @primaryKey
   firmId: ID! @indexed
   parentBranchId: ID @indexed
-  level: String! @indexed           # market, complex, branch
+  level: String! @indexed # market, complex, branch
   name: String
-  buildingName: String              # e.g. "GM building"
+  buildingName: String # e.g. "GM building"
   address: String
   city: String @indexed
   state: String @indexed
@@ -80,9 +80,9 @@ type BranchAssignment @table @export {
   id: ID @primaryKey
   branchId: ID! @indexed
   advisorId: ID! @indexed
-  role: String! @indexed            # branch_manager, complex_executive, market_leader
+  role: String! @indexed # branch_manager, complex_executive, market_leader
   effectiveFrom: Date
-  effectiveTo: Date                 # null = current
+  effectiveTo: Date # null = current
   createdAt: Date @createdTime
 }
 
@@ -97,11 +97,11 @@ type Advisor @table @export {
   lastName: String @indexed
   suffix: String
   preferredName: String
-  gender: String                    # female, male, nonbinary, undisclosed
+  gender: String # female, male, nonbinary, undisclosed
   birthYear: Int
   industryStartDate: Date
   yearsExperience: Int @indexed
-  careerStatus: String @indexed     # active, retired, barred, suspended, deceased, withdrawn
+  careerStatus: String @indexed # active, retired, barred, suspended, deceased, withdrawn
   finraCrd: String @indexed
   secIard: String @indexed
   headshotUrl: String
@@ -109,7 +109,7 @@ type Advisor @table @export {
   linkedinUrl: String
   businessEmail: String
   businessPhone: String
-  piiLevel: String                  # public, restricted
+  piiLevel: String # public, restricted
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -118,7 +118,7 @@ type Education @table @export {
   id: ID @primaryKey
   advisorId: ID! @indexed
   institution: String @indexed
-  degree: String                    # BA, BS, MBA, JD, MS, PhD, MD, other
+  degree: String # BA, BS, MBA, JD, MS, PhD, MD, other
   field: String
   graduationYear: Int
 }
@@ -126,17 +126,17 @@ type Education @table @export {
 type Designation @table @export {
   id: ID @primaryKey
   advisorId: ID! @indexed
-  code: String! @indexed            # CFP, CFA, CIMA, CPWA, ChFC, ...
+  code: String! @indexed # CFP, CFA, CIMA, CPWA, ChFC, ...
   grantingBody: String
   earnedDate: Date
   expiresDate: Date
-  status: String                    # active, lapsed, revoked
+  status: String # active, lapsed, revoked
 }
 
 type License @table @export {
   id: ID @primaryKey
   advisorId: ID! @indexed
-  licenseType: String! @indexed     # Series_7, Series_66, state_insurance_NY
+  licenseType: String! @indexed # Series_7, Series_66, state_insurance_NY
   state: String @indexed
   grantedDate: Date
   expiresDate: Date
@@ -151,10 +151,10 @@ type EmploymentHistory @table @export {
   firmId: ID! @indexed
   branchId: ID @indexed
   roleTitle: String
-  roleCategory: String              # lead_advisor, partner, support_csa, ...
+  roleCategory: String # lead_advisor, partner, support_csa, ...
   startDate: Date @indexed
   endDate: Date
-  reasonForLeaving: String          # voluntary, terminated_for_cause, retired, ...
+  reasonForLeaving: String # voluntary, terminated_for_cause, retired, ...
   aumAtDeparture: Float
   productionT12AtDeparture: Float
   signingBonusPromissoryNote: Boolean
@@ -162,8 +162,8 @@ type EmploymentHistory @table @export {
   u5Filed: Boolean
   u5FilingDate: Date
   terminationDisclosureId: ID
-  sourceType: String @indexed       # brokercheck, advisorhub_article, form_adv, ...
-  sourceRef: String                 # CRD-keyed snapshot id, article id, etc.
+  sourceType: String @indexed # brokercheck, advisorhub_article, form_adv, ...
+  sourceRef: String # CRD-keyed snapshot id, article id, etc.
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -173,7 +173,7 @@ type RegistrationApplication @table @export {
   advisorId: ID! @indexed
   firmId: ID! @indexed
   appliedDate: Date
-  status: String                    # pending, approved, withdrawn_by_advisor, withdrawn_by_firm, denied
+  status: String # pending, approved, withdrawn_by_advisor, withdrawn_by_firm, denied
   resolvedDate: Date
 }
 
@@ -182,10 +182,10 @@ type Team @table @export {
   name: String! @indexed
   currentFirmId: ID @indexed
   currentBranchId: ID @indexed
-  firmProgram: String               # "Private Wealth Management", etc.
+  firmProgram: String # "Private Wealth Management", etc.
   foundedYear: Int
   dissolvedYear: Int
-  serviceModel: String              # mass_affluent, hnw, uhnw, institutional, mixed
+  serviceModel: String # mass_affluent, hnw, uhnw, institutional, mixed
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -194,7 +194,7 @@ type TeamMembership @table @export {
   id: ID @primaryKey
   teamId: ID! @indexed
   advisorId: ID! @indexed
-  role: String                      # founding_partner, lead, partner, support_csa, ...
+  role: String # founding_partner, lead, partner, support_csa, ...
   startDate: Date
   endDate: Date
 }
@@ -207,7 +207,7 @@ type TeamMetricSnapshot @table @export {
   annualRevenue: Float
   householdCount: Int
   teamSize: Int
-  sourceType: String                # advisorhub_article, barrons_profile, form_adv, ...
+  sourceType: String # advisorhub_article, barrons_profile, form_adv, ...
   sourceRef: String
   createdAt: Date @createdTime
 }
@@ -252,8 +252,8 @@ type RecruitingDealQuote @table @export {
   firmId: ID! @indexed
   asOfDate: Date
   channelTarget: String
-  producerTier: String              # top_producer, mid, entry
-  upfrontPctT12: Float              # 2.75 = 275%
+  producerTier: String # top_producer, mid, entry
+  upfrontPctT12: Float # 2.75 = 275%
   totalPctT12: Float
   forgivableLoanTermYears: Int
   backendMetrics: String
@@ -269,16 +269,16 @@ type Disclosure @table @export {
   advisorId: ID! @indexed
   firmIdAtTime: ID @indexed
   clusterId: ID @indexed
-  disclosureType: String! @indexed  # regulatory, customer_dispute, employment_separation, ...
-  regulator: String @indexed        # FINRA, SEC, state_securities, JAMS, AAA, ...
+  disclosureType: String! @indexed # regulatory, customer_dispute, employment_separation, ...
+  regulator: String @indexed # FINRA, SEC, state_securities, JAMS, AAA, ...
   regulatorState: String
-  forum: String                     # FINRA_arbitration, regulator_AWC, ...
+  forum: String # FINRA_arbitration, regulator_AWC, ...
   allegationText: String
   allegationPeriodStart: Date
   allegationPeriodEnd: Date
-  allegationCategories: [String]    # unauthorized_trading, OBA_undisclosed, ...
+  allegationCategories: [String] # unauthorized_trading, OBA_undisclosed, ...
   productCategories: [String]
-  ruleViolations: [String]          # ["FINRA Rule 3270", "FINRA Rule 2010"]
+  ruleViolations: [String] # ["FINRA Rule 3270", "FINRA Rule 2010"]
   status: String @indexed
   admitDeny: String
   wasProSe: Boolean
@@ -288,9 +288,9 @@ type Disclosure @table @export {
   settlementAmount: Float
   awardAmount: Float
   isFirmLevel: Boolean
-  docketNumber: String              # FINRA AWC docket, court docket, etc.
-  sourceType: String @indexed       # brokercheck, advisorhub_article, form_adv, ...
-  sourceRef: String                 # CRD-keyed snapshot id, article id, etc.
+  docketNumber: String # FINRA AWC docket, court docket, etc.
+  sourceType: String @indexed # brokercheck, advisorhub_article, form_adv, ...
+  sourceRef: String # CRD-keyed snapshot id, article id, etc.
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -305,7 +305,7 @@ type DisclosureCluster @table @export {
 type Sanction @table @export {
   id: ID @primaryKey
   disclosureId: ID! @indexed
-  sanctionType: String! @indexed    # fine, suspension, bar, censure, restitution, disgorgement
+  sanctionType: String! @indexed # fine, suspension, bar, censure, restitution, disgorgement
   amount: Float
   durationMonths: Float
   jurisdiction: String
@@ -317,7 +317,7 @@ type OutsideBusinessActivity @table @export {
   id: ID @primaryKey
   advisorId: ID! @indexed
   name: String
-  vehicleType: String               # LLC, LP, partnership, ...
+  vehicleType: String # LLC, LP, partnership, ...
   withCustomers: Boolean
   disclosedToFirm: Boolean
   startDate: Date
@@ -331,10 +331,10 @@ type OutsideBusinessActivity @table @export {
 
 type EmployerConcentration @table @export {
   id: ID @primaryKey
-  subjectType: String!              # 'advisor' or 'team'
+  subjectType: String! # 'advisor' or 'team'
   subjectId: ID! @indexed
   employerName: String! @indexed
-  clientRoleType: String            # employees, executives, founders, retirees_alumni, mixed
+  clientRoleType: String # employees, executives, founders, retirees_alumni, mixed
   concentrationEstimatePct: Float
   notes: String
 }
@@ -343,12 +343,12 @@ type EmployerConcentration @table @export {
 
 type Ranking @table @export {
   id: ID @primaryKey
-  publisher: String! @indexed       # AdvisorHub, Barron's, Forbes
-  name: String! @indexed            # Advisors to Watch, Women Advisors, Next Gen, ...
+  publisher: String! @indexed # AdvisorHub, Barron's, Forbes
+  name: String! @indexed # Advisors to Watch, Women Advisors, Next Gen, ...
   year: Int! @indexed
-  subjectType: String               # advisor, team, firm
+  subjectType: String # advisor, team, firm
   methodologyUrl: String
-  eligibilityCriteria: String       # JSON-encoded
+  eligibilityCriteria: String # JSON-encoded
 }
 
 type RankingEntry @table @export {
@@ -431,19 +431,19 @@ type ArticleDisclosureMention @table @export {
 # same CRD updates `fetchedAt` and `rawHash` rather than inserting.
 type BrokerCheckSnapshot @table @export {
   id: ID @primaryKey
-  subjectKind: String! @indexed       # individual | firm
-  subjectCrd: String! @indexed        # FINRA CRD (or firmId for firms)
-  subjectAdvisorId: ID @indexed       # resolved when subjectKind=individual
-  subjectFirmId: ID @indexed          # resolved when subjectKind=firm
+  subjectKind: String! @indexed # individual | firm
+  subjectCrd: String! @indexed # FINRA CRD (or firmId for firms)
+  subjectAdvisorId: ID @indexed # resolved when subjectKind=individual
+  subjectFirmId: ID @indexed # resolved when subjectKind=firm
   fetchedAt: Date! @indexed
-  bcScope: String                     # ACTIVE / InActive / NotInScope
+  bcScope: String # ACTIVE / InActive / NotInScope
   iaScope: String
   disclosureCount: Int
   employmentCount: Int
   examCount: Int
   registeredStateCount: Int
-  rawHash: String                     # sha256 of the normalized response
-  rawJson: String                     # the raw response, JSON-encoded
+  rawHash: String # sha256 of the normalized response
+  rawJson: String # the raw response, JSON-encoded
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime
 }
@@ -455,10 +455,26 @@ type FieldAssertion @table @export {
   targetTable: String! @indexed
   targetId: ID! @indexed
   fieldName: String! @indexed
-  assertedValue: String             # JSON-encoded
+  assertedValue: String # JSON-encoded
   quotePhrase: String
-  confidence: String                # asserted, inferred, derived
+  confidence: String # asserted, inferred, derived
   assertedAt: Date @createdTime
+}
+
+# Tracks bounded, resumable source checks that do not map cleanly to a
+# source-native snapshot table. The first use is scheduled web research
+# for advisor bios, designations, team pages, rankings, and press.
+type AdvisorResearchCheck @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  sourceType: String! @indexed # web_research, firm_bio, rankings, press
+  checkedAt: Date! @indexed
+  status: String! @indexed # success, no_new_data, ambiguous, failed
+  sourcesChecked: [String]
+  notes: String
+  nextCheckAfter: Date @indexed
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
 }
 
 # ─── USER LAYER ────────────────────────────────────────────────────

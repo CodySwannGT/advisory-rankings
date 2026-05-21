@@ -1,3 +1,34 @@
 {
-  "exclusions": []
+  "exclusions": [
+    {
+      "id": "GHSA-vj76-c3g6-qr5v",
+      "package": "tar-fs",
+      "reason": "Transitive through the HarperDB local CLI/runtime. Project code does not extract attacker-controlled tar archives, and the deployed Fabric app is not bundled with this npm dependency tree."
+    },
+    {
+      "id": "GHSA-jx2c-rxcm-jvmq",
+      "package": "fastify",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. The deployed Fabric app runs on Harper-managed infrastructure rather than this npm Fastify instance, and project code does not expose a Fastify server."
+    },
+    {
+      "id": "GHSA-wphj-fx3q-84ch",
+      "package": "systeminformation",
+      "reason": "Transitive through the HarperDB local CLI/runtime. The vulnerable Windows fsSize path is not invoked by project code or by the deployed Fabric app bundle."
+    },
+    {
+      "id": "GHSA-hvx9-hwr7-wjj9",
+      "package": "systeminformation",
+      "reason": "Transitive through the HarperDB local CLI/runtime. Project code does not call networkInterfaces with untrusted NetworkManager profile names, and deployed Fabric runtime is managed separately."
+    },
+    {
+      "id": "GHSA-5vv4-hvf7-2h46",
+      "package": "systeminformation",
+      "reason": "Transitive through the HarperDB local CLI/runtime. Project code does not call versions with attacker-controlled locate output, and this dependency is not bundled into deployed app resources."
+    },
+    {
+      "id": "GHSA-9c88-49p5-5ggf",
+      "package": "systeminformation",
+      "reason": "Transitive through the HarperDB local CLI/runtime. Project code does not call wifi helpers with untrusted interface parameters, and the deployed Fabric runtime is managed separately."
+    }
+  ]
 }

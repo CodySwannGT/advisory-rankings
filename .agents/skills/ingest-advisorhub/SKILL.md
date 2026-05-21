@@ -1,127 +1,125 @@
 ---
 name: "ingest-advisorhub"
-description: "Crawl AdvisorHub's WordPress REST API and load fresh articles into the local Harper database. Idempotent \u2014 safe to re-run anytime; cached pages skip and existing rows upsert under the same primary keys. Use when the user wants to \"ingest\", \"scrape\", \"crawl\", \"refresh\", \"update\", \"pull\", or \"load\" advisor data, articles, recruiting moves, or AdvisorHub content."
+description: "Crawl AdvisorHub's WordPress REST API with the repo's Bun/TypeScript scripts and load fresh articles into Harper. Idempotent and safe to re-run; useful for scheduled refreshes, news ingestion, article backfills, recruiting moves, firms, teams, and AdvisorHub content updates."
 ---
 
-# Ingest AdvisorHub → Harper
+# Ingest AdvisorHub -> Harper
 
-This skill runs the two-stage data pipeline:
+This skill runs the cheap, repeatable AdvisorHub data path:
 
-1. **Crawl** — `scripts/crawl_via_wpjson.py` walks the WordPress REST API
-   (`/wp-json/wp/v2/posts`, `recruiting_moves`, `firm`, `team_bio`, …) and
-   saves every record as JSON under `research/wpjson/<type>/post_<id>.json`.
-   Pages already on disk are skipped, so re-runs only fetch what's new.
+1. **Crawl** - `bun run crawl:wpjson -- --out research/wpjson` calls
+   `src/scripts/crawl_via_wpjson.ts`, walking AdvisorHub's wp-json API
+   for `posts`, `recruiting_moves`, `firm`, and `team_bio`.
+2. **Ingest** - `bun run ingest` calls `src/scripts/ingest.ts`,
+   reads `research/wpjson/**/post_*.json`, derives stable IDs from
+   natural keys, and upserts `Article`, `Firm`, `ArticleFirmMention`,
+   and candidate `FieldAssertion` rows into Harper.
 
-2. **Ingest** — `scripts/ingest.py` reads the saved JSON, derives stable
-   UUIDs from natural keys (article URL, firm canonical name), and
-   **upserts** into Harper. Every record's primary key is deterministic, so
-   re-running an unchanged input is a no-op.
+Both stages are idempotent. Re-running unchanged inputs writes the same
+primary keys back through Harper upserts.
 
-Both stages are independently idempotent. The full pipeline is too.
+## Pre-flight
 
-## Steps to follow when this skill is invoked
+This repo uses Bun. Read `package.json` first if command names may have
+changed.
 
-### 0. Pre-flight
-
-Make sure Harper is up:
-
-```bash
-npm run status
-```
-
-If the output says `status: stopped` or the command errors, bootstrap first:
+For local Harper:
 
 ```bash
-npm run bootstrap
+bun run status
 ```
 
-Bootstrap is itself idempotent — it'll skip work that's already done.
+If Harper is stopped, ask before running `bun run bootstrap`; bootstrap
+installs/starts local services and should not be hidden inside this skill.
 
-### 1. Crawl
-
-Default polite settings — 6s mean sleep, ±50% jitter, circuit-breaker after
-3 consecutive errors:
+For deployed Harper, set:
 
 ```bash
-python3 scripts/crawl_via_wpjson.py --out research/wpjson
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+HDB_ADMIN_USERNAME=...
+HDB_ADMIN_PASSWORD=...
 ```
 
-Useful flags the user might ask for:
-- `--max-pages N` — cap pages per post type (default 200; lower for dev)
-- `--per-page N` — records per page (default 50)
-- `--types posts recruiting_moves firm` — restrict which post types to crawl
-- `--max-requests N` — hard cap on total HTTP requests
-- `--sleep S --jitter J` — tune pacing
+`src/lib/harper.ts` uses `HDB_TARGET_URL` when present; otherwise it
+falls back to the local Harper operations socket.
 
-If the run aborts with `[stop] hit N consecutive errors`, the egress IP has
-likely been WAF-flagged. **Wait at least an hour and re-run** — cached pages
-will skip, so resume is free.
+## Crawl
 
-### 2. Ingest
+For an interactive refresh or first corpus build:
 
 ```bash
-python3 scripts/ingest.py
+bun run crawl:wpjson -- --out research/wpjson
 ```
 
-Reads `research/wpjson/**/post_*.json` and `research/articles/*.wpjson.json`
-(the manually-saved sample articles), upserts into Harper. Optional flags:
+Useful flags:
 
-- `--wpjson-dir PATH` — override input dir
-- `--limit N` — process at most N posts (useful for smoke tests)
+- `--max-pages N` - cap pages per post type. Use this for scheduled
+  news refreshes so each run only checks recent pages.
+- `--per-page N` - records per page, default `100`.
+- `--sleep S` - seconds between page requests, default `6`.
+- `--max-requests N` - hard cap across all post types.
 
-### 3. Confirm
-
-Run the verification queries to spot-check that the new data joined cleanly:
+For a timer/Automation, prefer a recent, polite crawl:
 
 ```bash
-npm run verify
+bun run crawl:wpjson -- --out research/wpjson --max-pages 3 --per-page 100 --sleep 6
 ```
 
-Or check raw row counts:
+Do not schedule full archive crawls unless the user explicitly asks and
+the network/IP is appropriate. AdvisorHub may block datacenter egress;
+if a run stops on HTTP errors, report the block and let the next run
+resume normally.
+
+## Ingest
+
+After crawl:
 
 ```bash
-python3 -c "
-import base64, json, subprocess, os
-SOCKET = os.path.expanduser('~/.harperdb') + '/operations-server'
-auth = base64.b64encode(b'admin:admin-local').decode()
-def sql(q):
-    r = subprocess.run(['curl','-sS','--unix-socket',SOCKET,'-m','10',
-        '-H','Content-Type: application/json',
-        '-H',f'Authorization: Basic {auth}',
-        '-d',json.dumps({'operation':'sql','sql':q}),
-        'http://localhost/'], capture_output=True, text=True)
-    return json.loads(r.stdout)
-for t in ['Article','Firm','ArticleFirmMention','FieldAssertion']:
-    print(f'  {t:25s} {sql(f\"SELECT COUNT(*) AS n FROM data.{t}\")[0][\"n\"]}')
-"
+bun run ingest
 ```
 
-## How idempotency works at every layer
+Optional smoke limit:
 
-| Layer | Idempotency mechanism |
+```bash
+bun run ingest -- --limit 25
+```
+
+## Confirm
+
+Run a non-destructive verification command:
+
+```bash
+bun run verify
+```
+
+For deployed Harper over REST, use:
+
+```bash
+bun run verify:rest
+```
+
+Report:
+
+- crawl pages/requests fetched and whether AdvisorHub blocked the run
+- ingest upsert counts per table
+- final headline row counts when verification is available
+- any missing Harper credentials or runtime blockers
+
+## Idempotency
+
+| Layer | Mechanism |
 |---|---|
-| Crawler | Each `_page_NNN.json` cached on first fetch. Second run re-uses the file. |
-| Crawler post files | Saved as `post_<wpId>.json` keyed on the WordPress integer ID — same post = same filename = overwrite. |
-| ID derivation | `scripts/_ids.py` derives UUIDv5 from natural keys (article URL, firm canonical name). Same input → same UUID. Used by both `seed.py` and `ingest.py` so they share PKs. |
-| Harper writes | Both scripts use the `upsert` operation, which inserts or replaces by primary key — never produces duplicates. |
-| Resume on block | Circuit breaker aborts the crawler after 3 consecutive non-200s. Resume by simply re-running. |
+| Crawler files | `research/wpjson/<type>/post_<wpId>.json` is keyed by WordPress ID. |
+| IDs | `src/lib/ids.ts` derives UUIDv5 IDs from article URLs, firm names, and other natural keys. |
+| Harper writes | `src/lib/harper.ts` writes with `upsert`, not insert. |
+| Re-runs | Same input produces same IDs and updates the same rows. |
 
-## What to report back to the user
+## What this skill does not do
 
-After the pipeline runs, summarize:
-- How many post files the crawler fetched on this run (vs. how many cached)
-- How many articles / firms / mentions / field-assertions the ingest touched
-- Final row counts in the headline tables (Article, Firm, FieldAssertion)
-- If a circuit-breaker tripped, mention the suggested wait-and-retry
-
-Keep the report under 6 lines unless the user asks for detail.
-
-## Common follow-up requests this skill should NOT do
-
-- **Bootstrap from scratch** — the user must invoke that explicitly
-  (`npm run bootstrap`). The skill assumes Harper is already installed.
-- **Wipe and reseed** — only `npm run reset` does that and it's destructive.
-- **Rich entity extraction** (advisor names, AUM, recruiting deals from
-  prose) — the current ingest only does Article + firm-mentions +
-  regex-derivable FieldAssertions. Higher-fidelity extraction belongs in a
-  separate LLM-based phase, which is not this skill.
+- Wipe or reset data. Only `bun run reset` does that, and it is
+  destructive.
+- Perform rich prose extraction of advisors, teams, transitions, or
+  disclosures. Use `extract-advisorhub-articles` after crawling when
+  richer entities are needed.
+- Crawl BrokerCheck. Use `upsert-advisor` or the BrokerCheck scripts
+  documented in `docs/brokercheck-spike.md`.

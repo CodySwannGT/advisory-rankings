@@ -7,7 +7,7 @@ The advisor schema running on Harper (formerly HarperDB).
 | File | Purpose |
 |---|---|
 | `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, and serves `web/*` as a static site. |
-| `schema.graphql` | 34 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
+| `schema.graphql` | 35 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
 | `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, and `/Search?q=…` for the navbar global search box. |
 | `web/` | AdvisorBook static SPA. HTML/CSS are tracked here; browser `.js` modules are generated from `src/web/**/*.ts` by `bun run build`. UI is composed from the Atomic Design library under `src/web/design-system/` and emitted to `web/design-system/` — see `docs/design-system.md`. |
 
@@ -75,7 +75,7 @@ The HTTP listener for REST + the static web UI (port 9926) has **no
 Unix-socket fallback** in 4.7.x — the listener simply doesn't bind
 on this kernel. To exercise the `Feed` / `*Profile` resources
 locally without TCP, run `bun run preview` (a.k.a.
-`node dist/src/scripts/preview_feed.js` after `bun run build`) — it
+`node dist/scripts/preview_feed.js` after `bun run build`) — it
 pulls every `@export` table out via the ops-API socket, stubs
 `globalThis.tables`, and runs the resource methods directly. Browser
 preview of `web/index.html`
@@ -87,7 +87,7 @@ unnecessary.
 
 ## What the verification confirms
 
-- All 34 tables from the schema were created with correct PK + attribute
+- All 35 tables from the schema were created with correct PK + attribute
   shape (run `describe_all`).
 - A four-firm career walk for C. James Taylor reconstructs from
   `EmploymentHistory` joined to `Firm`, ordered by start date.

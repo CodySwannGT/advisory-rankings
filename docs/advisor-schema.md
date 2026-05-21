@@ -558,6 +558,30 @@ re-fetching the same CRD updates the row in place.
 | `raw_hash` | str | sha256 of the normalized response — change detection |
 | `raw_json` | text | the full BrokerCheck response, JSON-encoded |
 
+### 4.21b `AdvisorResearchCheck` (scheduled public-web research)
+
+One row per bounded source check for an advisor. This is deliberately
+separate from `Advisor`: a run can record "checked and found nothing"
+without modifying the advisor profile, and failed or ambiguous checks
+are visible to the next run instead of creating a silent retry loop.
+
+The first source type is `web_research`, used by the scheduled
+public-web enrichment job for firm bios, team pages, ranking pages,
+press releases, and search-snippet-only LinkedIn URLs. It is not a
+source-of-record table; any fact discovered still needs a
+`FieldAssertion` row with source-backed text.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | id | deterministic from `(advisor_id, source_type, checked_at)` |
+| `advisor_id` | id | advisor checked |
+| `source_type` | enum (`web_research`, `firm_bio`, `rankings`, `press`) | default scheduled lane is `web_research` |
+| `checked_at` | date | when the source check ran |
+| `status` | enum (`success`, `no_new_data`, `ambiguous`, `failed`) | controls retry behavior |
+| `sources_checked` | [url] | pages or snippets considered |
+| `notes` | text | short explanation, especially for ambiguity/failure |
+| `next_check_after` | date | optional backoff for failures or low-value advisors |
+
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 
 | Field | Type |
