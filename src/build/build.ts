@@ -4,20 +4,43 @@ import { join } from "node:path";
 const WEB_ASSET_VERSION = "20260521-media";
 const HARPER_WEB_DIR = "harper-app/web";
 const HARPER_APP_DIR = "harper-app";
+const PACKAGE_JSON = "package.json";
 const JS_IMPORT_RE =
   /(\bfrom\s+["']|\bimport\s*\(\s*["']|\bimport\s+["'])(\.{1,2}\/[^"']+\.js)(["'])/g;
+
+/** Minimal package fields needed for generated browser metadata. */
+interface PackageManifest {
+  readonly version?: string;
+}
 
 /**
  * Copies generated browser modules and adds cache-busting import versions.
  * @returns Promise that resolves after generated web files are deploy-ready.
  */
 async function copyGeneratedWeb(): Promise<void> {
+  await writeGeneratedVersionModule();
   await mkdir(HARPER_WEB_DIR, { recursive: true });
   await cp("dist/web", HARPER_WEB_DIR, {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
   await versionGeneratedWebModules(HARPER_WEB_DIR);
+}
+
+/**
+ * Writes the package version into the browser bundle at build time.
+ * @returns Promise that resolves once the version module is refreshed.
+ */
+async function writeGeneratedVersionModule(): Promise<void> {
+  const manifest = JSON.parse(
+    await readFile(PACKAGE_JSON, "utf8")
+  ) as PackageManifest;
+  const version = manifest.version || "0.0.0";
+
+  await writeFile(
+    join("dist/web", "version.js"),
+    `export const APP_VERSION = ${JSON.stringify(version)};\n`
+  );
 }
 
 /**

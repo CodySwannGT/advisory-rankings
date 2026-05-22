@@ -535,19 +535,23 @@ fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
 
 ### Auto-deploy on merge to `main` (CI)
 
-`.github/workflows/deploy.yml` runs `bun install` -> `bun run deploy`
--> `bunx playwright install --with-deps chromium` -> Playwright smoke
-(`bun run smoke`, backed by `tests/web_smoke.ts`) against the live cluster URL. Required repo
-secrets:
+`.github/workflows/deploy.yml` follows Lisa's release-and-deploy shape:
+determine the target environment, call
+`CodySwannGT/lisa/.github/workflows/release.yml@main` for the
+standard-version bump, then check out the released branch and run
+`bun install` -> `bun run deploy` -> `bunx playwright install --with-deps chromium`
+-> Playwright smoke (`bun run smoke`, backed by `tests/web_smoke.ts`)
+against the live cluster URL. Required repo secrets:
 
 | Secret | Source |
 |---|---|
+| `DEPLOY_KEY` | GitHub deploy key used by Lisa's release workflow to push version bumps. |
 | `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
 | `HARPER_ADMIN_PASSWORD` | GitHub Actions secret, matching the local Keychain value |
 
 If the smoke fails, CI uploads `tests/screenshots/` as a
-build artifact. The workflow also runs on `workflow_dispatch` so
-you can re-deploy without a commit.
+build artifact. The workflow also runs on `workflow_dispatch` for
+manual releases/deploys.
 
 > **Don't drop the `bun install` step — symptom: smoke fails with
 > `Cannot find module '/opt/node22/lib/node_modules/playwright'`.**
