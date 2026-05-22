@@ -3,11 +3,14 @@ import { buildFirmMergePlan } from "../src/lib/firm-merge.js";
 import { canonicalFirmId } from "../src/lib/firm-identity.js";
 import { firmId, uid } from "../src/lib/ids.js";
 
+const MORGAN_STANLEY = "Morgan Stanley";
+const MORGAN_STANLEY_WEALTH_MANAGEMENT = "Morgan Stanley Wealth Management";
+
 describe("firm merge planning", () => {
   it("merges curated aliases, preserves details, and rewrites firm references", () => {
-    const canonicalName = "Morgan Stanley";
-    const aliasName = "Morgan Stanley Wealth Management";
-    const aliasId = firmId("Morgan Stanley Wealth Management");
+    const canonicalName = MORGAN_STANLEY;
+    const aliasName = MORGAN_STANLEY_WEALTH_MANAGEMENT;
+    const aliasId = firmId(MORGAN_STANLEY_WEALTH_MANAGEMENT);
     const canonicalId = canonicalFirmId(canonicalName);
     const advisorId = uid("advisor:merge-test");
     const rows = buildFirmMergePlan({
@@ -74,5 +77,41 @@ describe("firm merge planning", () => {
         reason: "curated_alias",
       })
     );
+  });
+
+  it("synthesizes the canonical firm when stale data only has an alias row", () => {
+    const aliasName = MORGAN_STANLEY_WEALTH_MANAGEMENT;
+    const aliasId = firmId(aliasName);
+    const canonicalId = canonicalFirmId(aliasName);
+    const rows = buildFirmMergePlan({
+      Firm: [
+        {
+          id: aliasId,
+          name: aliasName,
+          hqCity: "New York",
+          hqState: "NY",
+          channel: "wirehouse",
+        },
+      ],
+      ArticleFirmMention: [
+        {
+          id: uid("afm:alias-only"),
+          articleId: uid("article:alias-only"),
+          firmId: aliasId,
+        },
+      ],
+    });
+
+    expect(rows.rows.Firm).toContainEqual(
+      expect.objectContaining({
+        id: canonicalId,
+        name: MORGAN_STANLEY,
+        hqCity: "New York",
+      })
+    );
+    expect(rows.rows.Firm).not.toContainEqual(
+      expect.objectContaining({ id: aliasId })
+    );
+    expect(rows.rows.ArticleFirmMention[0].firmId).toBe(canonicalId);
   });
 });

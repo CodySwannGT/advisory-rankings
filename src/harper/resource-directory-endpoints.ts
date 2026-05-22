@@ -12,6 +12,7 @@ import {
   searchCounts,
   teamSearchMatches,
 } from "./resource-search.js";
+import { canonicalizeFirmResourceRows } from "./resource-firm-canonicalization.js";
 /**
  * Public firm directory resource.
  */
@@ -29,7 +30,11 @@ export class PublicFirms extends Resource {
    * @returns Public firm rows sorted by name.
    */
   async get() {
-    return [...(await all(tables.Firm))].sort((a, b) =>
+    const rows = canonicalizeFirmResourceRows({
+      firms: await all(tables.Firm),
+      firmAliases: await optionalAll(tables.FirmAlias),
+    });
+    return [...rows.firms].sort((a, b) =>
       (a.name || "").localeCompare(b.name || "")
     );
   }
@@ -83,8 +88,13 @@ export class PublicTeams extends Resource {
       all(tables.Team),
       all(tables.Firm),
     ]);
-    const byFirm = new Map(firms.map(firm => [firm.id, firm]));
-    return [...teams]
+    const rows = canonicalizeFirmResourceRows({
+      teams,
+      firms,
+      firmAliases: await optionalAll(tables.FirmAlias),
+    });
+    const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
+    return [...rows.teams]
       .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
       .map(team => ({
         ...team,
@@ -121,18 +131,26 @@ export class Search extends Resource {
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
-    const [advisors, firms, teams, employments] = await Promise.all([
-      all(tables.Advisor),
-      all(tables.Firm),
-      all(tables.Team),
-      all(tables.EmploymentHistory),
-    ]);
-    const byFirm = new Map(firms.map(firm => [firm.id, firm]));
-    const currentFirmByAdvisor = currentEmploymentByAdvisor(employments);
-    const matches = rankedSearchMatches({
-      advisors,
+    const [advisors, firms, teams, employments, firmAliases] =
+      await Promise.all([
+        all(tables.Advisor),
+        all(tables.Firm),
+        all(tables.Team),
+        all(tables.EmploymentHistory),
+        optionalAll(tables.FirmAlias),
+      ]);
+    const rows = canonicalizeFirmResourceRows({
       firms,
       teams,
+      employments,
+      firmAliases,
+    });
+    const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
+    const currentFirmByAdvisor = currentEmploymentByAdvisor(rows.employments);
+    const matches = rankedSearchMatches({
+      advisors,
+      firms: rows.firms,
+      teams: rows.teams,
       byFirm,
       currentFirmByAdvisor,
       norm,
@@ -143,6 +161,15 @@ export class Search extends Resource {
       counts: searchCounts(matches),
     };
   }
+}
+
+/**
+ * Reads an optional Harper table that may be absent during rolling deploys.
+ * @param table - Harper table handle, when this schema has the table.
+ * @returns Rows from the table, or an empty array when unavailable.
+ */
+async function optionalAll(table) {
+  return table ? all(table) : [];
 }
 
 /**

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { canonicalizeFirmResourceRows } from "./resource-firm-canonicalization.js";
 import { all, indexBy } from "./resource-pagination.js";
 
 /**
@@ -18,7 +19,7 @@ async function loadTableRows() {
   const entries = await Promise.all(
     tableSpecs().map(async spec => [spec.key, await readRows(spec)])
   );
-  return Object.fromEntries(entries);
+  return canonicalizeFirmRows(Object.fromEntries(entries));
 }
 
 /**
@@ -56,6 +57,15 @@ function tableSpecs() {
     ["education", tables.Education, true],
     ["firmAliases", tables.FirmAlias, true],
   ].map(([key, table, optional]) => ({ key, table, optional }));
+}
+
+/**
+ * Applies curated firm alias merges to resource snapshots at read time.
+ * @param rows - Raw public resource rows keyed by endpoint-friendly names.
+ * @returns Rows with duplicate firm ids rewritten to canonical firm ids.
+ */
+function canonicalizeFirmRows(rows) {
+  return canonicalizeFirmResourceRows(rows);
 }
 
 /**
