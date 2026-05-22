@@ -40,12 +40,14 @@ landing pages, recruiting deal aggregations).
 
 ```bash
 # wp-json (preferred — full structured content, ~1 req/sec is polite)
-npm run crawl:wpjson -- --out research/wpjson --max-pages 60
+bun run crawl:wpjson -- --browser --out research/wpjson \
+  --since 2025-11-21 --max-pages 30 --per-page 100 --sleep 6
 
 # Optional: extract field candidates from saved articles
-npm run extract:fields -- --out research/extracted.jsonl
+bun run extract:fields -- --out research/extracted.jsonl
 ```
 
 The Cloudflare WAF that blocked this sandbox is keyed on egress IP
-reputation. From a residential / non-datacenter IP the wp-json endpoint
-allows steady polling.
+reputation and browser characteristics. The crawler's `--browser` mode
+uses Playwright for the wp-json request layer while preserving the same
+polite pagination and sleep controls.

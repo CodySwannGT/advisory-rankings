@@ -187,7 +187,8 @@
 	position: absolute;
 	top: calc(100% + 6px);
 	left: 0;
-	right: 0;
+	right: auto;
+	width: min(560px, calc(100vw - 24px));
 	background: var(--ab-color-surface);
 	border: 1px solid var(--ab-color-border);
 	border-radius: var(--ab-radius-md);
@@ -201,7 +202,7 @@
 
 .gs-item {
 	display: grid;
-	grid-template-columns: 64px 1fr auto;
+	grid-template-columns: 64px minmax(0, 1fr) max-content;
 	align-items: baseline;
 	gap: var(--ab-space-3);
 	padding: var(--ab-space-2) var(--ab-space-3);
@@ -241,7 +242,7 @@
 .gs-sub {
 	color: var(--ab-color-text-muted);
 	font-size: var(--ab-font-size-sm);
-	max-width: 50%;
+	max-width: 180px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -259,6 +260,7 @@
 }
 
 @media (max-width: 700px) {
+	.gs-dropdown { width: calc(100vw - 24px); }
 	.gs-item { grid-template-columns: 56px 1fr; }
 	.gs-sub { display: none; }
 }

@@ -65,25 +65,20 @@ function render(d, center, right) {
 		}));
 	}
 
-	if (d.provenance && d.provenance.length) {
+	const evidenceRows = compactProvenance(d.provenance || []);
+	if (evidenceRows.length) {
 		center.appendChild(SectionCard({
-			title: `Field-assertion provenance (${d.provenance.length})`,
+			title: `Extracted facts (${evidenceRows.length})`,
 			body: ScrollableTable(
 				el('table', { class: 'snap-table' },
 					el('thead', {}, el('tr', {},
-						el('th', {}, 'Target'),
 						el('th', {}, 'Field'),
 						el('th', {}, 'Value'),
-						el('th', {}, 'Quote'),
-						el('th', {}, 'Confidence'),
 					)),
-					el('tbody', {}, ...d.provenance.map((p) =>
+					el('tbody', {}, ...evidenceRows.map((p) =>
 						el('tr', {},
-							el('td', {}, humanize(p.targetTable)),
-							el('td', {}, humanize(p.fieldName)),
-							el('td', {}, p.assertedValue || ''),
-							el('td', {}, p.quotePhrase ? `"${p.quotePhrase}"` : ''),
-							el('td', {}, humanize(p.confidence) || ''),
+							el('td', {}, p.field),
+							el('td', {}, p.value),
 						))),
 				),
 			),
@@ -94,7 +89,7 @@ function render(d, center, right) {
 		title: 'Article metadata',
 		pairs: [
 			['Slug',      a.slug],
-			['Category',  a.category],
+			['Category',  humanize(a.category)],
 			['Published', fmtDate(a.publishedDate)],
 			['Modified',  fmtDate(a.modifiedDate)],
 			['Authors',   (a.authors || []).join(', ')],
@@ -105,4 +100,19 @@ function render(d, center, right) {
 
 function paragraphs(text) {
 	return text.split(/\n{2,}/).map((p) => el('p', {}, p));
+}
+
+function compactProvenance(rows) {
+	const seen = new Set();
+	const result = [];
+	for (const row of rows) {
+		const field = humanize(row.fieldName);
+		const value = String(row.assertedValue || row.quotePhrase || '').trim();
+		if (!field || !value) continue;
+		const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		result.push({ field, value });
+	}
+	return result;
 }

@@ -11,7 +11,7 @@
 // chrome elsewhere.
 
 import { el } from './dom.js';
-import { Navbar, SiteFooter } from './organisms.js';
+import { BrowseCard, Navbar, SiteFooter } from './organisms.js';
 
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
@@ -32,14 +32,28 @@ export function mountThreeColumnPage({ active, refreshMe, logout, search, build 
 	const left = el('aside', { class: 'left rail' });
 	const center = el('section', { class: 'center' });
 	const right = el('aside', { class: 'right rail' });
+	left.appendChild(primaryBrowseCard());
 	layout.append(left, center, right);
 
 	build({ left, center, right, layout });
 }
 
+function primaryBrowseCard() {
+	return BrowseCard({
+		items: [
+			{ label: 'Home',       icon: '🏠', href: '/' },
+			{ label: 'Firms',      icon: '🏢', href: '/firms' },
+			{ label: 'Advisors',   icon: '👤', href: '/advisors' },
+			{ label: 'Teams',      icon: '🤝', href: '/teams' },
+			{ label: 'Compliance', icon: '⚖️', href: '/regulatory.html' },
+		],
+	});
+}
+
 // ─── FullWidthLayout ──────────────────────────────────────────
-// Single full-width column inside the same .layout grid (used
-// by the directory pages: /firms.html, /advisors.html, /teams.html).
+// Single full-width column inside the same .layout grid. Reserve this
+// for exceptional utility pages; public content should generally use
+// mountThreeColumnPage so large screens keep both rails populated.
 export function mountFullWidthPage({ active, refreshMe, logout, search, build } = {}) {
 	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
 	const layout = el('div', { class: 'layout' });

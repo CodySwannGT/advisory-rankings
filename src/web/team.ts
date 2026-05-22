@@ -28,11 +28,16 @@ mountThreeColumnPage({
 });
 
 function render(d, center, right) {
+	if (d.error) {
+		center.appendChild(EmptyCard({ title: 'Team not found', body: d.id || '' }));
+		return;
+	}
 	const t = d.team;
 	canonicalizeEntityRoute('team', t);
 	const latest = d.metricSnapshots[d.metricSnapshots.length - 1];
 	const tags = [];
-	if (t.serviceModel) tags.push({ label: `${humanize(t.serviceModel)} clients` });
+	const serviceModelLabel = humanize(t.serviceModel);
+	if (serviceModelLabel) tags.push({ label: `${serviceModelLabel} clients` });
 	if (t.firmProgram) tags.push({ label: t.firmProgram });
 	if (latest?.aum) tags.push({ kind: 'ok', label: `${fmtMoney(latest.aum)} AUM` });
 	if (latest?.teamSize) tags.push({ label: `${latest.teamSize} members` });
@@ -52,14 +57,14 @@ function render(d, center, right) {
 	}));
 
 	center.appendChild(SectionCard({
-		title: `Current members (${d.currentMembers.length})`,
+		title: `Current members (${d.currentMembers.length.toLocaleString()})`,
 		body: d.currentMembers.length
 			? memberList(d.currentMembers, { showStart: true })
 			: EmptyText({ children: 'No current members.' }),
 	}));
 	if (d.pastMembers.length) {
 		center.appendChild(SectionCard({
-			title: `Past members (${d.pastMembers.length})`,
+			title: `Past members (${d.pastMembers.length.toLocaleString()})`,
 			body: memberList(d.pastMembers, { showRange: true }),
 		}));
 	}
@@ -73,13 +78,13 @@ function render(d, center, right) {
 
 	if (d.metricSnapshots.length) {
 		center.appendChild(SectionCard({
-			title: `Metric history (${d.metricSnapshots.length} snapshot${d.metricSnapshots.length === 1 ? '' : 's'})`,
-			body: SnapshotTable({ snaps: d.metricSnapshots, fmtMoney, humanize }),
+			title: `Metric history (${d.metricSnapshots.length.toLocaleString()} snapshot${d.metricSnapshots.length === 1 ? '' : 's'})`,
+			body: SnapshotTable({ snaps: d.metricSnapshots, fmtMoney, fmtDate, humanize }),
 		}));
 	}
 
 	center.appendChild(SectionCard({
-		title: `Coverage (${d.articles.length})`,
+		title: `Coverage (${d.articles.length.toLocaleString()})`,
 		body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
 	}));
 
@@ -99,7 +104,7 @@ function render(d, center, right) {
 
 	if (latest) {
 		right.appendChild(DetailsCard({
-			title: `Latest metrics (${latest.asOf})`,
+			title: `Latest metrics (${fmtDate(latest.asOf)})`,
 			pairs: [
 				['AUM',            latest.aum != null ? fmtMoney(latest.aum) : null],
 				['Annual revenue', latest.annualRevenue != null ? fmtMoney(latest.annualRevenue) : null],

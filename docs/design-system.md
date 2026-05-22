@@ -240,8 +240,8 @@ the page back populated rail elements.
 
 | Template | Layout | Build args |
 |---|---|---|
-| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. | `{ left, center, right, layout }` |
-| `mountFullWidthPage` | Single full-width column. Used by directory pages. | `{ center, layout }` |
+| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. The left rail starts with the shared Browse card so subpages keep a populated rail even when they only add center/right content. | `{ left, center, right, layout }` |
+| `mountFullWidthPage` | Single full-width column. Reserve for exceptional utility pages; public content and directory pages should use `mountThreeColumnPage`. | `{ center, layout }` |
 | `mountCenteredNarrowPage` | Single narrow centered column. Used by login. | `{ center, layout }`; accepts `maxWidth`. |
 
 All three accept `{ active, refreshMe, logout, search, build }`.
@@ -339,7 +339,7 @@ The pages have been migrated to the system:
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
-| `/firms`, `/advisors`, `/teams` (`*.html`) | `mountFullWidthPage` | `SectionCard`, `EntityList`, `EntityRow` |
+| `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
 The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,
