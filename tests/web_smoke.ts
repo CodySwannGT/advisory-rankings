@@ -12,7 +12,9 @@ import { chromium, type Browser } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
+  DEPLOYED_DATA_TIMEOUT,
   SHOTS,
+  QUICK_UI_TIMEOUT,
   authHeaders,
   check,
   closeWithChecks,
@@ -49,17 +51,19 @@ async function smokeMobile(
   const drawer = page.locator(".nav-drawer");
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(ARTICLE_CARD_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, "08-mobile-closed");
   await page.locator(".nav-burger").click();
   await page.waitForFunction(
     () => document.body.classList.contains("drawer-open"),
     null,
-    { timeout: 3000 }
+    { timeout: QUICK_UI_TIMEOUT }
   );
   await shot(page, "09-mobile-drawer-open");
   await page.locator('.nav-drawer .nav-links a:has-text("Firms")').click();
-  await page.waitForURL(/\/firms$/, { timeout: 8000 });
+  await page.waitForURL(/\/firms$/, { timeout: QUICK_UI_TIMEOUT });
 
   return await closeWithChecks(mobile, [
     check(

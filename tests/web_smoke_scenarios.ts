@@ -3,8 +3,10 @@ import {
   ARTICLE_CARD_SELECTOR,
   BASE,
   CARD_TITLE_SELECTOR,
+  DEPLOYED_DATA_TIMEOUT,
   FEED_HEADLINE_SELECTOR,
   PROFILE_HEADING_SELECTOR,
+  QUICK_UI_TIMEOUT,
   TAYLOR_GROUP_TEXT,
   check,
   cleanProfilePath,
@@ -25,10 +27,12 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   const disclosure = page.locator(".event-card.disclosure").first();
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, { timeout: 10000 });
-  await taylorCard.waitFor({ timeout: 10000 });
-  await transition.waitFor({ timeout: 5000 });
-  await disclosure.waitFor({ timeout: 5000 });
+  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await taylorCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await transition.waitFor({ timeout: QUICK_UI_TIMEOUT });
+  await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
 
   return [
@@ -94,11 +98,17 @@ export async function smokeFirm(
     .first();
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await wellsChip.click();
-  await page.waitForSelector(PROFILE_HEADING_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(PROFILE_HEADING_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await pastBlock.scrollIntoViewIfNeeded();
-  await cairnesLink.waitFor({ timeout: 10000 }).catch(() => undefined);
+  await cairnesLink
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT })
+    .catch(() => undefined);
   await shot(page, "02-firm-wells-fargo");
 
   return [await firmProfileChecks(page, pastBlock, cairnesLink), pastBlock];
@@ -166,8 +176,7 @@ export async function smokeAdvisor(
   page: Page,
   pastBlock: Locator
 ): Promise<readonly Check[]> {
-  await pastBlock.locator("a").filter({ hasText: "Cairnes" }).first().click();
-  await page.waitForSelector(PROFILE_HEADING_SELECTOR, { timeout: 10000 });
+  await navigateToCairnesAdvisor(page, pastBlock);
   await shot(page, "03-advisor-cairnes");
 
   return [
@@ -239,19 +248,36 @@ export async function smokeAdvisor(
 }
 
 /**
+ * Opens the known Cairnes advisor profile from the firm past-advisors section.
+ * @param page - Browser page used for navigation.
+ * @param pastBlock - Firm profile card containing the Cairnes link.
+ */
+async function navigateToCairnesAdvisor(
+  page: Page,
+  pastBlock: Locator
+): Promise<void> {
+  await pastBlock.locator("a").filter({ hasText: "Cairnes" }).first().click();
+  await page.waitForSelector(PROFILE_HEADING_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+}
+
+/**
  * Checks the Taylor team profile.
  * @param page - Browser page used for the scenario.
  * @returns Smoke assertions for the team profile.
  */
 export async function smokeTeam(page: Page): Promise<readonly Check[]> {
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".chip.team", { timeout: 10000 });
+  await page.waitForSelector(".chip.team", { timeout: DEPLOYED_DATA_TIMEOUT });
   await page
     .locator(".chip.team")
     .filter({ hasText: "Taylor" })
     .first()
     .click();
-  await page.waitForSelector(PROFILE_HEADING_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(PROFILE_HEADING_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, "04-team-taylor-group");
 
   return [

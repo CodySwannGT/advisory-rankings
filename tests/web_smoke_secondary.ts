@@ -2,7 +2,10 @@ import type { Page } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
+  DEPLOYED_DATA_TIMEOUT,
   FEED_HEADLINE_SELECTOR,
+  QUICK_UI_TIMEOUT,
+  TAYLOR_GROUP_TEXT,
   check,
   cleanProfilePath,
   isLocalDev,
@@ -21,7 +24,9 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
 
   if (articlePath)
     await page.goto(`${BASE}${articlePath}`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".post-headline", { timeout: 10000 });
+  await page.waitForSelector(".post-headline", {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, "05-article-detail");
 
   return [
@@ -49,35 +54,28 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
 }
 
 /**
- * Opens the feed and returns the first article path with extracted provenance.
- * @param page - Browser page used for Feed and ArticleView requests.
+ * Opens the feed and returns the Taylor transition article path.
+ *
+ * The Taylor article is the seeded regression case with extracted
+ * provenance, so using its visible feed card avoids fanning out live
+ * ArticleView requests across every feed item during deploy smoke.
+ *
+ * @param page - Browser page used for Feed requests.
  * @returns Article detail path, or an empty string if no provenance exists.
  */
 async function findArticleWithProvenance(page: Page): Promise<string> {
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, { timeout: 10000 });
-  return await page.evaluate(async () => {
-    const feed = await fetch("/Feed").then(response => response.json());
-    const matches = await Promise.all(
-      (feed.items || []).map(
-        async (item: {
-          readonly article?: { readonly id?: string };
-          readonly id?: string;
-        }) => {
-          const id = item.article?.id || item.id || "";
-          const detail = await fetch(
-            `/ArticleView/${encodeURIComponent(id)}`
-          ).then(response => response.json());
-          return detail.provenance?.length
-            ? document
-                .querySelector(`a[href*="${id}"]`)
-                ?.getAttribute("href") || `/articles/${id}`
-            : "";
-        }
-      )
-    );
-    return matches.find(Boolean) || "";
+  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  return (
+    (await page
+      .locator(ARTICLE_CARD_SELECTOR)
+      .filter({ hasText: TAYLOR_GROUP_TEXT })
+      .first()
+      .locator(".post-headline a")
+      .getAttribute("href")) || ""
+  );
 }
 
 /**
@@ -86,17 +84,35 @@ async function findArticleWithProvenance(page: Page): Promise<string> {
  * @returns Smoke assertions for public directories.
  */
 export async function smokeDirectories(page: Page): Promise<readonly Check[]> {
-  return await Promise.all(
-    ["firms", "advisors", "teams"].map(async pageName => {
-      await page.goto(`${BASE}/${pageName}`, { waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".entity-list .row", { timeout: 10000 });
-      await shot(page, `06-${pageName}`);
-      return check(
-        (await page.locator(".entity-list .row").count()) >= 1,
-        `${pageName}: rows rendered`
-      );
-    })
-  );
+  return await smokeDirectoryPages(page, ["firms", "advisors", "teams"]);
+}
+
+/**
+ * Visits public directory pages one at a time on the shared browser page.
+ * @param page - Browser page used for the scenario.
+ * @param pageNames - Remaining directory route names to verify.
+ * @returns Smoke assertions for all requested directories.
+ */
+async function smokeDirectoryPages(
+  page: Page,
+  pageNames: readonly string[]
+): Promise<readonly Check[]> {
+  const [pageName, ...remaining] = pageNames;
+  if (!pageName) return [];
+
+  await page.goto(`${BASE}/${pageName}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".entity-list .row", {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await shot(page, `06-${pageName}`);
+
+  return [
+    check(
+      (await page.locator(".entity-list .row").count()) >= 1,
+      `${pageName}: rows rendered`
+    ),
+    ...(await smokeDirectoryPages(page, remaining)),
+  ];
 }
 
 /**
@@ -106,7 +122,9 @@ export async function smokeDirectories(page: Page): Promise<readonly Check[]> {
  */
 export async function smokeAuth(page: Page): Promise<readonly Check[]> {
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   if (isLocalDev)
     return [
       check(
@@ -123,7 +141,9 @@ export async function smokeAuth(page: Page): Promise<readonly Check[]> {
     ];
 
   await page.locator('.me-spot a:has-text("Sign in")').first().click();
-  await page.waitForSelector('input[name="email"]', { timeout: 8000 });
+  await page.waitForSelector('input[name="email"]', {
+    timeout: QUICK_UI_TIMEOUT,
+  });
   await page
     .locator('input[name="email"]')
     .fill(process.env.HARPER_ADMIN_USERNAME || "cody.swann@gmail.com");
@@ -131,11 +151,13 @@ export async function smokeAuth(page: Page): Promise<readonly Check[]> {
     .locator('input[name="password"]')
     .fill(process.env.HARPER_ADMIN_PASSWORD || "");
   await page.locator('button[type="submit"]').click();
-  await page.waitForSelector(ARTICLE_CARD_SELECTOR, { timeout: 10000 });
+  await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, "07-signed-in");
   await page.locator('.me-spot button:has-text("Sign out")').click();
   await page.waitForSelector('.me-spot a:has-text("Sign in")', {
-    timeout: 8000,
+    timeout: QUICK_UI_TIMEOUT,
   });
 
   return [pass("navbar: deployed sign-in flow returns to anonymous")];
