@@ -11,19 +11,19 @@
 		// Directory page: every firm in the DB. UI from the design system.
 		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
 		import {
-			mountFullWidthPage, SectionCard, EmptyCard,
+			mountThreeColumnPage, SectionCard, EmptyCard, DetailsCard,
 			EntityList, EntityRow, Avatar,
 		} from '/design-system/index.js?v=20260521-media';
 
-		mountFullWidthPage({
+		mountThreeColumnPage({
 			active: 'firms',
 			refreshMe,
 			logout,
 			search,
-			build({ center }) {
+			build({ center, right }) {
 				api('/PublicFirms').then((rows) => {
 					center.appendChild(SectionCard({
-						title: `All firms (${rows.length})`,
+						title: `All firms (${rows.length.toLocaleString()})`,
 						body: EntityList({
 							rows: rows.map((f) => EntityRow({
 								avatar: Avatar({ initials: initials(f.name), imageUrl: f.logoUrl, alt: f.name }),
@@ -36,6 +36,17 @@
 								href: entityPath('firm', f),
 							})),
 						}),
+					}));
+					const channels = new Set(rows.map((f) => humanize(f.channel)).filter(Boolean));
+					const headquarters = rows.filter((f) => f.hqCity || f.hqState).length;
+					right.appendChild(DetailsCard({
+						title: 'Firm directory',
+						pairs: [
+							['Firms', rows.length.toLocaleString()],
+							['Channels', channels.size],
+							['Headquarters on file', headquarters],
+							['Active firms', rows.filter((f) => !f.dissolvedYear).length.toLocaleString()],
+						],
 					}));
 				}).catch((err) => {
 					center.appendChild(EmptyCard({ title: 'Could not load firms', body: String(err.message || err) }));

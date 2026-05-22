@@ -110,9 +110,10 @@ async function main() {
 	const postCount = await page.locator('article.card').count();
 	postCount >= 2 ? ok(`/ feed: ${postCount} post cards`) : fail(`/ feed: only ${postCount} cards`);
 
-	const taylorHeadline = await page.locator('article.card .post-headline')
-		.filter({ hasText: 'Morgan Stanley' }).first().textContent();
-	taylorHeadline ? ok('/ feed: Taylor article headline present') : fail('/ feed: Taylor headline missing');
+		const taylorCard = page.locator('article.card').filter({ hasText: 'The Taylor Group' }).first();
+		await taylorCard.waitFor({ timeout: 10000 });
+		const taylorHeadline = await taylorCard.locator('.post-headline').textContent();
+		taylorHeadline ? ok('/ feed: Taylor article headline present') : fail('/ feed: Taylor headline missing');
 
 	// Transition event card with from→to + AUM moved.
 	const transition = page.locator('.event-card.transition').first();
@@ -141,9 +142,8 @@ async function main() {
 		: fail('/ feed: disclosure event missing FINRA', disclosureText.slice(0, 120));
 
 	// Entity chips on the Taylor card (firm + team + advisor).
-	const taylorCard = page.locator('article.card').filter({ hasText: 'Morgan Stanley Team' }).first();
-	const chipKinds = await taylorCard.locator('.chip-row .chip').evaluateAll((els) =>
-		els.map((e) => Array.from(e.classList).find((c) => ['firm', 'team', 'advisor'].includes(c))));
+		const chipKinds = await taylorCard.locator('.chip-row .chip').evaluateAll((els) =>
+			els.map((e) => Array.from(e.classList).find((c) => ['firm', 'team', 'advisor'].includes(c))));
 	const distinctKinds = new Set(chipKinds);
 	distinctKinds.has('firm') && distinctKinds.has('team') && distinctKinds.has('advisor')
 		? ok(`/ feed: Taylor card shows firm/team/advisor chips (${chipKinds.length} total)`)
@@ -157,12 +157,10 @@ async function main() {
 	flushPageErrors('/ feed');
 
 	// ── click into a firm chip ────────────────────────────
-	// hasText: 'Wells Fargo' would match both "Wells Fargo" and the
-	// FiNet chip. Use the exact-match regex to grab the parent firm.
-	// Chip textContent is "firmWells Fargo · St. Louis, MO" (firmShort
-	// strips the trailing " Advisors") for the parent vs.
-	// "firmWells Fargo Advisors Financial Network (FiNet) ·…" for FiNet.
-	const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo·/ }).first();
+	// hasText: 'Wells Fargo' would match both the parent firm and FiNet.
+	// Use an exact-match regex to grab the parent firm while preserving
+	// the full brand name shown to users.
+		const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo(?: Advisors)?(?:·|$)/ }).first();
 	await wellsChip.click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 	cleanProfilePath('firms', page.url())
@@ -296,24 +294,39 @@ async function main() {
 	await shot('04-team-taylor-group');
 	flushPageErrors('team.html');
 
-	// ── article detail with provenance ───────────────────
-	await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-	await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
-	await page.locator('article.card .post-footer a').filter({ hasText: 'View details' }).first().click();
-	await page.waitForSelector('.post-headline', { timeout: 10000 });
+		// ── article detail with provenance ───────────────────
+		await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+		await page.waitForSelector('article.card .post-headline', { timeout: 10000 });
+		const articleWithProvenance = await page.evaluate(async () => {
+			const feed = await fetch('/Feed').then((r) => r.json());
+			for (const item of feed.items || []) {
+				const id = item.article?.id || item.id;
+				const detail = await fetch(`/ArticleView/${encodeURIComponent(id)}`).then((r) => r.json());
+				if (detail.provenance?.length) {
+					return document.querySelector(`a[href*="${id}"]`)?.getAttribute('href') || `/articles/${id}`;
+				}
+			}
+			return null;
+		});
+		articleWithProvenance
+			? ok('article.html: found feed article with provenance')
+			: fail('article.html: no feed article with provenance');
+		if (!articleWithProvenance) throw new Error('no feed article with provenance');
+		await page.goto(`${BASE}${articleWithProvenance}`, { waitUntil: 'domcontentloaded' });
+		await page.waitForSelector('.post-headline', { timeout: 10000 });
 	cleanProfilePath('articles', page.url())
 		? ok('article URL: clean /articles/... path')
 		: fail('article URL: expected clean /articles/... path', page.url());
 
-	const articleHasProvenance = await page.locator('.card').filter({ hasText: 'Field-assertion provenance' }).count();
-	articleHasProvenance >= 1
-		? ok('article.html: provenance section present')
-		: fail('article.html: missing provenance section');
+		const articleHasProvenance = await page.locator('.card').filter({ hasText: 'Extracted facts' }).count();
+		articleHasProvenance >= 1
+			? ok('article.html: extracted facts section present')
+			: fail('article.html: missing extracted facts section');
 
 	const provQuotes = await page.locator('.snap-table tbody tr').count();
-	provQuotes >= 3
-		? ok(`article.html: ${provQuotes} provenance rows`)
-		: fail(`article.html: only ${provQuotes} provenance rows (expected 3+)`);
+		provQuotes >= 3
+			? ok(`article.html: ${provQuotes} extracted fact rows`)
+			: fail(`article.html: only ${provQuotes} extracted fact rows (expected 3+)`);
 
 	await shot('05-article-detail');
 	flushPageErrors('article.html');

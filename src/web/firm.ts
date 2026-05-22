@@ -32,8 +32,10 @@ function render(d, center, right) {
 	const f = d.firm;
 	canonicalizeEntityRoute('firm', f);
 	const tags = [];
-	if (f.channel) tags.push({ label: humanize(f.channel) });
-	if (f.subChannel) tags.push({ label: humanize(f.subChannel) });
+	const channelLabel = humanize(f.channel);
+	const subChannelLabel = humanize(f.subChannel);
+	if (channelLabel) tags.push({ label: channelLabel });
+	if (subChannelLabel) tags.push({ label: subChannelLabel });
 	if (f.dissolvedYear) tags.push({ kind: 'danger', label: `dissolved ${f.dissolvedYear}` });
 	if (f.parentFirmId) tags.push({ kind: 'warn', label: 'subsidiary' });
 
@@ -59,7 +61,7 @@ function render(d, center, right) {
 	// drop a 50,000-row payload on the first paint.
 	if (d.currentAdvisorCount > 0) {
 		center.appendChild(SectionCard({
-			title: `Current advisors (${d.currentAdvisorCount})`,
+			title: `Current advisors (${d.currentAdvisorCount.toLocaleString()})`,
 			body: paginatedAdvisors(f.id, 'current', { showStart: true }),
 		}));
 	} else {
@@ -71,14 +73,14 @@ function render(d, center, right) {
 
 	if (d.pastAdvisorCount > 0) {
 		center.appendChild(SectionCard({
-			title: `Past advisors (${d.pastAdvisorCount})`,
+			title: `Past advisors (${d.pastAdvisorCount.toLocaleString()})`,
 			body: paginatedAdvisors(f.id, 'past', { showEnd: true }),
 		}));
 	}
 
 	if (d.currentTeams.length) {
 		center.appendChild(SectionCard({
-			title: `Teams currently at this firm (${d.currentTeams.length})`,
+			title: `Teams currently at this firm (${d.currentTeams.length.toLocaleString()})`,
 			body: EntityList({
 				rows: d.currentTeams.map((t) => EntityRow({
 					avatar: initials(t.name),
@@ -96,13 +98,13 @@ function render(d, center, right) {
 
 	if (d.transitionsIn.length) {
 		center.appendChild(SectionCard({
-			title: `Recent moves to ${f.short || f.name} (${d.transitionsIn.length})`,
+			title: `Recent moves to ${f.short || f.name} (${d.transitionsIn.length.toLocaleString()})`,
 			body: el('div', {}, ...d.transitionsIn.map((t) => TransitionEventCard(t, fmts))),
 		}));
 	}
 	if (d.transitionsOut.length) {
 		center.appendChild(SectionCard({
-			title: `Recent moves away from ${f.short || f.name} (${d.transitionsOut.length})`,
+			title: `Recent moves away from ${f.short || f.name} (${d.transitionsOut.length.toLocaleString()})`,
 			body: el('div', {}, ...d.transitionsOut.map((t) => TransitionEventCard(t, fmts))),
 		}));
 	}
@@ -115,7 +117,7 @@ function render(d, center, right) {
 	}
 
 	center.appendChild(SectionCard({
-		title: `Coverage (${d.articles.length})`,
+		title: `Coverage (${d.articles.length.toLocaleString()})`,
 		body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
 	}));
 
@@ -126,7 +128,7 @@ function render(d, center, right) {
 			['Sub-channel',  humanize(f.subChannel)],
 			['Headquarters', [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(', ')],
 			['Founded',      f.foundedYear],
-			['Dissolved',    f.dissolvedYear ? `${f.dissolvedYear} (${humanize(f.dissolutionReason) || 'unknown'})` : null],
+			['Dissolved',    f.dissolvedYear ? [f.dissolvedYear, humanize(f.dissolutionReason)].filter(Boolean).join(' · ') : null],
 			['FINRA CRD',    f.finraCrd],
 			['SEC filer ID', f.secFilerId],
 			['Website',      f.website ? el('a', { href: f.website, target: '_blank', rel: 'noreferrer' }, f.website) : null],
@@ -156,7 +158,7 @@ function render(d, center, right) {
 	if (d.branches.length) {
 		right.appendChild(SectionCard({
 			body: [
-				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: `Branches (${d.branches.length})` }),
+				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: `Branches (${d.branches.length.toLocaleString()})` }),
 				EntityList({
 					rows: d.branches.map((b) => EntityRow({
 						avatar: b.level === 'market' ? 'M' : b.level === 'complex' ? 'C' : 'B',

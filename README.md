@@ -279,7 +279,9 @@ AdvisorHub article URLs are listed in `research/README.md`. The
 WordPress REST API at `https://www.advisorhub.com/wp-json/wp/v2/posts`
 is the preferred ingest endpoint — `bun run crawl:wpjson -- --out
 research/wpjson` walks every public post type. (Run from a residential
-IP; Cloudflare's WAF flags datacenter ASNs.)
+IP; Cloudflare's WAF flags datacenter ASNs. Use `--browser` when the
+plain Node fetch path is blocked, and `--since YYYY-MM-DD` for bounded
+backfills.)
 
 ## License
 

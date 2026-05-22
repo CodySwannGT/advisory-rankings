@@ -440,9 +440,9 @@ body.drawer-open .nav .nav-scrim { display: block; }
 }
 .profile-head {
 	padding: 0 24px 16px;
-	margin-top: -52px;
+	margin-top: -42px;
 	display: flex;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 16px;
 	flex-wrap: wrap;
 }
@@ -471,6 +471,7 @@ body.drawer-open .nav .nav-scrim { display: block; }
 .profile-title {
 	flex: 1;
 	min-width: 220px;
+	padding-top: 58px;
 	padding-bottom: 8px;
 }
 .profile-title h1 {
@@ -482,6 +483,8 @@ body.drawer-open .nav .nav-scrim { display: block; }
 	color: var(--text-muted);
 	font-size: 14px;
 	margin-top: 2px;
+	max-width: 100%;
+	overflow-wrap: anywhere;
 }
 .profile-meta {
 	display: flex;
@@ -522,8 +525,16 @@ body.drawer-open .nav .nav-scrim { display: block; }
 }
 .entity-list .row .body { flex: 1; min-width: 0; }
 .entity-list .row .name { font-weight: 600; }
-.entity-list .row .sub { color: var(--text-muted); font-size: 12px; }
+.entity-list .row .sub { color: var(--text-muted); font-size: 12px; overflow-wrap: anywhere; }
 .entity-list .row .tail { color: var(--text-muted); font-size: 12px; text-align: right; }
+
+@media (max-width: 700px) {
+	.profile-cover { height: 110px; }
+	.profile-head { padding: 0 16px 16px; margin-top: -32px; gap: 12px; }
+	.profile-avatar { width: 80px; height: 80px; font-size: 28px; border-width: 4px; }
+	.profile-title { min-width: 0; padding-top: 42px; }
+	.profile-title h1 { font-size: 22px; }
+}
 
 /* ── Paginated list ──────────────────────────────────────────── */
 

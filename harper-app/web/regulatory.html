@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Compliance — AdvisorBook</title>
+	<link rel="stylesheet" href="/app.css?v=20260521-media" />
+</head>
+<body>
+	<script type="module">
+		import { api, refreshMe, logout, search, fmts, humanize, entityPath } from '/app.js?v=20260521-media';
+		import {
+			mountThreeColumnPage, SectionCard, EmptyCard, EntityList, EntityRow,
+			Heading, DisclosureEventCard,
+		} from '/design-system/index.js?v=20260521-media';
+
+		mountThreeColumnPage({
+			active: 'home',
+			refreshMe,
+			logout,
+			search,
+			build({ center, right }) {
+				api('/Feed').then(({ items }) => {
+					const disclosures = items
+						.flatMap((item) => (item.eventCards || []).filter((card) => card.kind === 'disclosure'))
+						.slice(0, 25);
+					center.appendChild(SectionCard({
+						title: `Compliance events (${disclosures.length.toLocaleString()})`,
+						body: disclosures.length
+							? disclosures.map((disclosure) => DisclosureEventCard(disclosure, fmts))
+							: 'No compliance events on file.',
+					}));
+					const regulators = new Set(disclosures.map((d) => humanize(d.regulator)).filter(Boolean));
+					const advisors = disclosures.filter((d) => d.advisor).slice(0, 8);
+					right.appendChild(SectionCard({
+						body: [
+							Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: 'Regulators' }),
+							regulators.size ? [...regulators].join(', ') : 'None on file',
+						],
+					}));
+					if (advisors.length) {
+						right.appendChild(SectionCard({
+							body: [
+								Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: 'Advisors' }),
+								EntityList({
+									rows: advisors.map((d) => EntityRow({
+										avatar: '⚠',
+										name: d.advisor.name,
+										sub: [humanize(d.regulator), humanize(d.disclosureType)].filter(Boolean).join(' · '),
+										href: entityPath('advisor', d.advisor),
+									})),
+								}),
+							],
+						}));
+					}
+				}).catch((err) => {
+					center.appendChild(EmptyCard({ title: 'Could not load compliance events', body: String(err.message || err) }));
+				});
+			},
+		});
+	</script>
+</body>
+</html>

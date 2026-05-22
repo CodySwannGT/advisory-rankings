@@ -48,7 +48,7 @@ export function EntityChip(entity) {
 // `source` + `initials` from `articleSource(article)` (see app.js).
 // If you see "?" / "External" in the UI, a caller forgot to wire them.
 export function PostHeader({ initials = '?', source = 'External', authors, when, category, attrs = {} } = {}) {
-	const meta = [when, category].filter(Boolean).join(' · ');
+	const meta = [when, category].filter(isUsefulMeta).join(' · ');
 	return el('div', { ...attrs, class: `post-header ${attrs.class || ''}`.trim() },
 		Avatar({ initials, size: 'md', tone: 'brand', attrs: { class: 'post-avatar' } }),
 		el('div', { class: 'post-meta' },
@@ -59,6 +59,12 @@ export function PostHeader({ initials = '?', source = 'External', authors, when,
 			meta ? el('span', { class: 'when' }, meta) : null,
 		),
 	);
+}
+
+function isUsefulMeta(value) {
+	if (value == null || value === '') return false;
+	const text = String(value).trim().toLowerCase();
+	return text && !['unknown', 'n/a', 'na', 'none', 'null', 'undefined'].includes(text);
 }
 
 // ─── EntityRow ────────────────────────────────────────────────
@@ -99,7 +105,7 @@ export function KvList(pairs, attrs = {}) {
 	const cls = `kvs ${attrs.class || ''}`.trim();
 	return el('dl', { ...attrs, class: cls },
 		...pairs.flatMap(([label, value]) => {
-			if (value == null || value === '' || value === false) return [];
+			if (value == null || value === '' || value === false || isUsefulMeta(value) === false) return [];
 			return [
 				el('dt', {}, label),
 				el('dd', {}, typeof value === 'object' ? value : String(value)),
@@ -127,7 +133,7 @@ export function DealStrip({ deal, fmtPct } = {}) {
 		'Recruiting deal: ',
 		deal.upfrontPctT12 != null ? el('strong', {}, fmtPct(deal.upfrontPctT12)) : null,
 		deal.upfrontPctT12 != null ? ' upfront on T-12 · ' : '',
-		deal.producerTier ? `tier: ${deal.producerTier}` : '',
+		deal.producerTier ? `tier: ${formatInlineLabel(deal.producerTier)}` : '',
 		deal.backendMetrics ? ` · ${deal.backendMetrics}` : '',
 	);
 }
@@ -167,6 +173,16 @@ export function FirmArrow({ fromFirm, toFirm }) {
 function arrify(x) {
 	if (x == null) return [];
 	return Array.isArray(x) ? x : [x];
+}
+
+function formatInlineLabel(value) {
+	if (value == null || value === '') return null;
+	return String(value)
+		.replace(/_+/g, ' ')
+		.toLowerCase()
+		.split(' ')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
 }
 
 // Re-export atoms used at the molecule layer for ergonomic imports.
