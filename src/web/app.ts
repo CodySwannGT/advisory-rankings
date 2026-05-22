@@ -110,7 +110,7 @@ export function fmtDate(d, { mode = 'long' } = {}) {
 	const dt = new Date(d);
 	if (Number.isNaN(dt.getTime())) return d;
 	if (mode === 'short') {
-		return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+		return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', timeZone: 'UTC' });
 	}
 	if (mode === 'rel') {
 		const today = new Date();
@@ -123,7 +123,33 @@ export function fmtDate(d, { mode = 'long' } = {}) {
 		if (diffMs < 365 * day) return `${Math.floor(diffMs / (30 * day))}mo ago`;
 		return `${Math.floor(diffMs / (365 * day))}y ago`;
 	}
-	return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+	return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+const PLACEHOLDER_VALUES = new Set(['unknown', 'n/a', 'na', 'none', 'null', 'undefined']);
+const ACRONYM_LABELS = new Map([
+	['ria', 'RIA'],
+	['ia', 'IA'],
+	['bd', 'BD'],
+	['finra', 'FINRA'],
+	['sec', 'SEC'],
+	['iard', 'IARD'],
+	['crd', 'CRD'],
+	['advisorhub', 'AdvisorHub'],
+	['usa', 'USA'],
+	['llc', 'LLC'],
+	['lp', 'LP'],
+	['lpl', 'LPL'],
+	['ubs', 'UBS'],
+	['rbc', 'RBC'],
+	['uhnw', 'UHNW'],
+	['jp', 'J.P.'],
+	['jpmorgan', 'J.P. Morgan'],
+	['aum', 'AUM'],
+]);
+
+export function isPlaceholderValue(value) {
+	return value == null || PLACEHOLDER_VALUES.has(String(value).trim().toLowerCase());
 }
 
 // Convert a snake_case / camelCase / PascalCase identifier into
@@ -134,6 +160,7 @@ export function humanize(s) {
 	if (s == null) return s;
 	const str = String(s);
 	if (!str) return str;
+	if (isPlaceholderValue(str)) return null;
 	if (str.includes(' ')) return str;
 	if (/[A-Z]/.test(str) && str === str.toUpperCase()) return str;
 	const spaced = str
@@ -142,7 +169,10 @@ export function humanize(s) {
 		.replace(/\s+/g, ' ')
 		.trim()
 		.toLowerCase();
-	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+	return spaced
+		.split(' ')
+		.map((word) => ACRONYM_LABELS.get(word) || word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
 }
 
 export function initials(name) {
@@ -222,7 +252,7 @@ export function articleSource(article) {
 
 // Convenience bag of formatters to thread through to organisms
 // (FeedPostCard, TransitionEventCard, …) without rewiring imports.
-export const fmts = { fmtMoney, fmtPct, fmtDate, humanize, articleSource };
+export const fmts = { fmtMoney, fmtPct, fmtDate, humanize, isPlaceholderValue, articleSource };
 
 // ─── mountPage — convenience shim around the template ─────────
 //

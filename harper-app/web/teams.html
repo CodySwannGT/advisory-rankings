@@ -23,7 +23,7 @@
 			build({ center, right }) {
 				api('/PublicTeams').then((teams) => {
 					center.appendChild(SectionCard({
-						title: `All teams (${teams.length})`,
+						title: `All teams (${teams.length.toLocaleString()})`,
 						body: EntityList({
 							rows: teams.map((t) => EntityRow({
 								avatar: initials(t.name),
@@ -38,9 +38,9 @@
 					right.appendChild(DetailsCard({
 						title: 'Team directory',
 						pairs: [
-							['Teams', teams.length],
-							['Current firms', firms.size],
-							['Service models', serviceModels.size],
+							['Teams', teams.length.toLocaleString()],
+							['Current firms', firms.size.toLocaleString()],
+							['Service models', serviceModels.size.toLocaleString()],
 						],
 					}));
 				}).catch((err) => {

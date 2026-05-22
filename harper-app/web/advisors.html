@@ -34,10 +34,10 @@
 				});
 				right.appendChild(stats);
 				const setStat = (label, value) => {
-					const rows = [...stats.querySelectorAll('.kv-row')];
-					const row = rows.find((r) => r.querySelector('.kv-key')?.textContent === label);
-					const val = row?.querySelector('.kv-val');
-					if (val) val.textContent = String(value);
+					const labels = [...stats.querySelectorAll('dt')];
+					const key = labels.find((dt) => dt.textContent === label);
+					const val = key?.nextElementSibling;
+					if (val) val.textContent = Number.isFinite(value) ? value.toLocaleString() : String(value);
 				};
 				const card = SectionCard({
 					title: 'All advisors',
@@ -50,7 +50,7 @@
 						empty: 'No advisors on file.',
 						onTotal: (n) => {
 							const titleEl = card.querySelector('h2.card-title');
-							if (titleEl) titleEl.textContent = `All advisors (${n})`;
+							if (titleEl) titleEl.textContent = `All advisors (${n.toLocaleString()})`;
 							setStat('Total', n);
 						},
 						renderRow: (a) => {

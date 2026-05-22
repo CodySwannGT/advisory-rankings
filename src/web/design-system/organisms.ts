@@ -106,9 +106,10 @@ export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
 		if (loading || done) return;
 		loading = true;
 		loadMoreBtn.disabled = true;
+		loadMoreBtn.textContent = firstPage ? 'Loading…' : 'Loading more…';
 		status.textContent = 'Loading…';
 		try {
-			const res = await fetchPage(cursor);
+			const res = await withTimeout(fetchPage(cursor), 12000, 'This section is taking too long to load. Try again.');
 			const items = (res && res.items) || [];
 			if (firstPage) {
 				firstPage = false;
@@ -130,7 +131,7 @@ export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
 				done = true;
 				sentinel.remove();
 				loadMoreBtn.remove();
-				status.textContent = 'End of list.';
+				status.textContent = '';
 			} else {
 				status.textContent = '';
 			}
@@ -138,7 +139,10 @@ export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
 			status.textContent = `Couldn't load more: ${err.message || err}`;
 		} finally {
 			loading = false;
-			loadMoreBtn.disabled = false;
+			if (!done) {
+				loadMoreBtn.disabled = false;
+				loadMoreBtn.textContent = 'Load more';
+			}
 		}
 	}
 
@@ -271,6 +275,12 @@ export function GlobalSearch({ search } = {}) {
 		}
 	}
 
+	function renderSearching(q) {
+		clear(dropdown);
+		dropdown.appendChild(el('div', { class: 'gs-empty' }, `Searching for "${q}"…`));
+		showDropdown();
+	}
+
 	function setActive(i) {
 		const rows = dropdown.querySelectorAll('.gs-item');
 		if (!rows.length) { activeIndex = -1; return; }
@@ -283,8 +293,9 @@ export function GlobalSearch({ search } = {}) {
 	async function runSearch(q) {
 		if (!search) return;
 		const myCall = ++inflight;
+		renderSearching(q);
 		try {
-			const res = await search(q);
+			const res = await withTimeout(search(q), 8000, 'Search is taking too long. Try again.');
 			// Drop stale responses — only render the most recent call's
 			// payload. Without this, slow connections produce a flicker
 			// of older results overwriting newer ones.
@@ -484,7 +495,7 @@ export function ArticleListBlock({ articles, fmtDate, articleSource } = {}) {
 			return EntityRow({
 				avatar: src.initials,
 				name: el('a', { href: articlePath(a) }, a.headline || a.id),
-				sub: [a.category, fmtDate ? fmtDate(a.publishedDate) : a.publishedDate].filter(Boolean).join(' · '),
+				sub: [formatInlineLabel(a.category), fmtDate ? fmtDate(a.publishedDate) : a.publishedDate].filter(Boolean).join(' · '),
 				tail: a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, `${src.source} →`) : null,
 			});
 		}),
@@ -545,7 +556,7 @@ export function CareerTimeline({ career, fmtDate } = {}) {
 						c.branch ? el('span', { class: 'role' }, ` · ${c.branch.name}`) : null,
 					),
 					el('div', { class: 'when' },
-						`${fmtDate(c.startDate, { mode: 'short' })} – ${c.endDate ? fmtDate(c.endDate, { mode: 'short' }) : 'present'}`),
+						formatCareerRange(c, fmtDate)),
 					c.roleTitle ? el('div', { class: 'role' }, c.roleTitle) : null,
 					c.reasonForLeaving === 'terminated_for_cause'
 						? Tag({ kind: 'danger', children: 'terminated for cause' })
@@ -556,9 +567,18 @@ export function CareerTimeline({ career, fmtDate } = {}) {
 	);
 }
 
+function formatCareerRange(c, fmtDate) {
+	const start = c.startDate ? fmtDate(c.startDate, { mode: 'short' }) : null;
+	const end = c.endDate ? fmtDate(c.endDate, { mode: 'short' }) : null;
+	if (start && end) return `${start} – ${end}`;
+	if (start) return `${start} – present`;
+	if (end) return `Ended ${end}`;
+	return 'Present';
+}
+
 // ─── SnapshotTable ────────────────────────────────────────────
 // Table of TeamMetricSnapshot rows on the team profile.
-export function SnapshotTable({ snaps, fmtMoney, humanize = (x) => x } = {}) {
+export function SnapshotTable({ snaps, fmtMoney, fmtDate, humanize = (x) => x } = {}) {
 	return ScrollableTable(
 		el('table', { class: 'snap-table' },
 			el('thead', {}, el('tr', {},
@@ -571,7 +591,7 @@ export function SnapshotTable({ snaps, fmtMoney, humanize = (x) => x } = {}) {
 			)),
 			el('tbody', {}, ...snaps.map((s) =>
 				el('tr', {},
-					el('td', {}, s.asOf || '?'),
+					el('td', {}, s.asOf && fmtDate ? fmtDate(s.asOf) : s.asOf || '?'),
 					el('td', { class: 'num' }, s.aum != null ? fmtMoney(s.aum) : '—'),
 					el('td', { class: 'num' }, s.annualRevenue != null ? fmtMoney(s.annualRevenue) : '—'),
 					el('td', { class: 'num' }, s.householdCount ?? '—'),
@@ -652,6 +672,41 @@ export function DetailsCard({ title, pairs }) {
 function arrify(x) {
 	if (x == null) return [];
 	return Array.isArray(x) ? x : [x];
+}
+
+function withTimeout(promise, ms, message) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error(message)), ms);
+		Promise.resolve(promise).then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+function formatInlineLabel(value) {
+	if (value == null || value === '') return null;
+	const text = String(value).trim();
+	if (!text || ['unknown', 'n/a', 'na', 'none', 'null', 'undefined'].includes(text.toLowerCase())) return null;
+	return text
+		.replace(/_+/g, ' ')
+		.toLowerCase()
+		.split(' ')
+		.map((word) => {
+			if (word === 'uhnw') return 'UHNW';
+			if (word === 'ria') return 'RIA';
+			if (word === 'bd') return 'BD';
+			if (word === 'finra') return 'FINRA';
+			if (word === 'sec') return 'SEC';
+			return word.charAt(0).toUpperCase() + word.slice(1);
+		})
+		.join(' ');
 }
 
 // Re-export EntityChip etc for ergonomic single-import usage.

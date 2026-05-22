@@ -77,7 +77,7 @@
     "oxlint": "^1.62.0",
     "oxlint-tsgolint": "^0.22.1",
     "@ast-grep/cli": "^0.40.4",
-    "@codyswann/lisa": "^2.20.0",
+    "@codyswann/lisa": "^2.19.0",
     "prettier": "^3.3.3",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
