@@ -1,6 +1,7 @@
 /* eslint-disable jsdoc/require-description, jsdoc/require-returns, jsdoc/require-param-description, no-restricted-syntax, sonarjs/slow-regex, sonarjs/no-hardcoded-passwords, functional/no-let, functional/prefer-readonly-type, functional/type-declaration-immutability -- This legacy Harper transport file was outside lint coverage before the Lisa ignore refresh; keep this PR scoped to browser backfill support. */
 import { request as httpRequest } from "node:http";
 import { Buffer } from "node:buffer";
+import { loadCreds } from "../scripts/_auth.js";
 
 /**
  *
@@ -11,6 +12,17 @@ export interface HarperConfig {
   auth: string;
 }
 
+function defaultOperationsTarget(clusterUrl: string | undefined): string {
+  const normalized = (clusterUrl ?? "").replace(/\/+$/, "");
+  if (!normalized) return "";
+  try {
+    const parsed = new URL(normalized);
+    return parsed.port ? normalized : `${normalized}:9925`;
+  } catch {
+    return normalized;
+  }
+}
+
 /**
  *
  * @param env
@@ -18,11 +30,14 @@ export interface HarperConfig {
 export function harperConfig(
   env: NodeJS.ProcessEnv = process.env
 ): HarperConfig {
-  const target = (env.HDB_TARGET_URL ?? "").replace(/\/+$/, "");
+  const creds = loadCreds(env);
+  const target = (
+    env.HDB_TARGET_URL ?? defaultOperationsTarget(creds.clusterUrl)
+  ).replace(/\/+$/, "");
   const hdbRoot = env.HDB_ROOT ?? `${env.HOME}/.harperdb`;
   const socket = `${hdbRoot}/operations-server`;
-  const user = env.HDB_ADMIN_USERNAME ?? "admin";
-  const password = env.HDB_ADMIN_PASSWORD ?? "admin-local";
+  const user = env.HDB_ADMIN_USERNAME ?? creds.username ?? "admin";
+  const password = env.HDB_ADMIN_PASSWORD ?? creds.password ?? "admin-local";
   const auth = Buffer.from(`${user}:${password}`).toString("base64");
   return { target, socket, auth };
 }

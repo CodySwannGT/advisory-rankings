@@ -2,12 +2,6 @@ export function basicAuth(user: string, password: string): string {
   return `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
 }
 
-export function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
-}
-
 export async function restGet<T = unknown>(
   base: string,
   table: string,
