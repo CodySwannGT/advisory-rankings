@@ -25,7 +25,31 @@
 import type { ViteUserConfig } from "vitest/config";
 
 const config: ViteUserConfig = {
-  // Add project-specific settings here
+  test: {
+    coverage: {
+      // CLI entrypoints depend on live services, network, or local files; keep
+      // the unit coverage threshold focused on reusable app and library code.
+      exclude: [
+        "**/*.d.ts",
+        "**/index.ts",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.claude/worktrees/**",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/*.mock.ts",
+        "**/test/**",
+        "**/tests/**",
+        "**/__tests__/**",
+        "**/__mocks__/**",
+        "**/components/ui/**",
+        "src/build/**",
+        "src/scripts/**",
+        "src/types/**",
+        "src/web/**/*.ts",
+      ],
+    },
+  },
 };
 
 export default config;
