@@ -256,6 +256,7 @@ export function GlobalSearch({ search } = {}) {
 			return;
 		}
 		items.forEach((it, i) => {
+			const sub = formatInlineLabel(it.sub);
 			const row = el('a', {
 				class: 'gs-item',
 				role: 'option',
@@ -264,7 +265,7 @@ export function GlobalSearch({ search } = {}) {
 			},
 				el('span', { class: `gs-kind gs-kind-${it.kind}` }, it.kind),
 				el('span', { class: 'gs-name' }, ...arrify(highlight(it.name, q))),
-				it.sub ? el('span', { class: 'gs-sub' }, it.sub) : null,
+				sub ? el('span', { class: 'gs-sub' }, sub) : null,
 			);
 			row.addEventListener('mousemove', () => setActive(i));
 			dropdown.appendChild(row);
