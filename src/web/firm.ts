@@ -3,6 +3,7 @@
 // All UI comes from the design system — see docs/design-system.md.
 
 import {
+  api,
   refreshMe,
   logout,
   search,
