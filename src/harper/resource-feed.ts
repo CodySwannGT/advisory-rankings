@@ -325,5 +325,16 @@ function transitionDek(card) {
   const aum = card.aumMoved
     ? ` ($${(card.aumMoved / 1e9).toFixed(2)}B AUM)`
     : "";
-  return `${card.subject ?? "Team"} moves from ${card.fromFirm?.short ?? "?"} to ${card.toFirm?.short ?? "?"}${aum}.`;
+  return `${transitionSubjectLabel(card.subject)} moves from ${card.fromFirm?.short ?? "?"} to ${card.toFirm?.short ?? "?"}${aum}.`;
+}
+
+/**
+ * Converts enriched transition subjects into the human-readable dek label.
+ * @param subject - Transition subject payload, legacy string, or missing value.
+ * @returns Display label for fallback article summary text.
+ */
+function transitionSubjectLabel(subject) {
+  if (!subject) return "Team";
+  if (typeof subject === "string") return subject;
+  return subject.name || subject.kind || subject.id || "Team";
 }
