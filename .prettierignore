@@ -23,6 +23,10 @@ src/graphql-generated
 *.sh
 *.json
 coverage
+
+# Project-specific legacy/generated surfaces that are not yet safe to
+# include in broad formatting gates. Keep these in sync with the ESLint
+# and Knip suppressions until the underlying files are paid down.
 harper-app/web
 research
 src/build/build.ts
