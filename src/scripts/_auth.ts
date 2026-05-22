@@ -46,7 +46,7 @@ function keychainSecret(service) {
 	}
 }
 
-export function loadCreds() {
+export function loadCreds(processEnv = process.env) {
 	let fileCred = {};
 	try {
 		fileCred = Object.fromEntries(
@@ -59,7 +59,7 @@ export function loadCreds() {
 		HARPER_ADMIN_USERNAME: keychainSecret(KEYCHAIN_USERNAME_SERVICE),
 		HARPER_ADMIN_PASSWORD: keychainSecret(KEYCHAIN_PASSWORD_SERVICE),
 	};
-	const env = (k, d) => process.env[k] ?? keychain[k] ?? fileCred[k] ?? d;
+	const env = (k, d) => processEnv[k] ?? keychain[k] ?? fileCred[k] ?? d;
 	return {
 		studioUrl: env('HARPER_STUDIO_URL', 'https://fabric.harper.fast'),
 		clusterUrl: env('HARPER_CLUSTER_URL', 'https://advisory-rankings-de.cody-swann-org.harperfabric.com'),
@@ -80,7 +80,7 @@ export class StudioSession {
 	async _fetch(url, init = {}) {
 		const r = await fetch(url, {
 			...init,
-			headers: { 'Content-Type': 'application/json', ...(init.headers || {}), ...(this.cookieJar ? { Cookie: this.cookieJar } : {}) },
+			headers: { 'Content-Type': 'application/json', ...init.headers, ...(this.cookieJar ? { Cookie: this.cookieJar } : {}) },
 			redirect: 'manual',
 		});
 		const sc = r.headers.getSetCookie?.() || [];

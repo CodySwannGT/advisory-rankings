@@ -9,6 +9,7 @@ import {
   slugify,
   uid,
 } from "./ids.js";
+import { harperConfig } from "./harper.js";
 
 export class HarperREST {
   base: string;
@@ -25,12 +26,17 @@ export class HarperREST {
     timeoutMs?: number;
     verbose?: boolean;
   } = {}) {
-    this.base = (opts.baseUrl ?? process.env.HDB_TARGET_URL ?? "").replace(/\/+$/, "");
+    const config = harperConfig();
+    this.base = (opts.baseUrl ?? config.target).replace(/\/+$/, "");
     if (!this.base) throw new Error("HDB_TARGET_URL required for Harper REST writes");
-    const user = (opts.user ?? process.env.HDB_ADMIN_USERNAME ?? process.env.HARPER_ADMIN_USERNAME ?? "").replace(/^[“"']+|[”"']+$/g, "");
-    const password = (opts.password ?? process.env.HDB_ADMIN_PASSWORD ?? process.env.HARPER_ADMIN_PASSWORD ?? "").replace(/^[“"']+|[”"']+$/g, "");
-    if (!user || !password) throw new Error("Harper admin credentials missing");
-    this.auth = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+    if (opts.user || opts.password) {
+      const user = (opts.user ?? "").replace(/^[“"']+|[”"']+$/g, "");
+      const password = (opts.password ?? "").replace(/^[“"']+|[”"']+$/g, "");
+      if (!user || !password) throw new Error("Harper admin credentials missing");
+      this.auth = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+    } else {
+      this.auth = `Basic ${config.auth}`;
+    }
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.verbose = opts.verbose ?? true;
   }

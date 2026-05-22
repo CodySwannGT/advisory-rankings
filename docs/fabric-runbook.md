@@ -473,6 +473,17 @@ sandbox, every cloud CI runner I've tried).
 bun run deploy
 ```
 
+Data-write scripts share the same credential lookup. `bun run ingest`,
+`bun run load:extractions`, and write-mode scraper scripts use
+`HDB_TARGET_URL` when it is explicitly set; otherwise they default to the
+Fabric cluster URL from `HARPER_CLUSTER_URL` (or the repo's dev-cluster
+default) with `:9925` for Harper operations. `HDB_ADMIN_USERNAME` and
+`HDB_ADMIN_PASSWORD` are optional when `HARPER_ADMIN_USERNAME` /
+`HARPER_ADMIN_PASSWORD`, the macOS Keychain services
+`advisory-rankings-harper-username` /
+`advisory-rankings-harper-password`, or `~/.harper-fabric-credentials`
+are populated.
+
 Output on success — restart finishes in ~2 s and `/Feed` is back up:
 
 ```

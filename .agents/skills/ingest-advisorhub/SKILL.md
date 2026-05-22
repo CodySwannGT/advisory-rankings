@@ -40,8 +40,15 @@ HDB_ADMIN_USERNAME=...
 HDB_ADMIN_PASSWORD=...
 ```
 
-`src/lib/harper.ts` uses `HDB_TARGET_URL` when present; otherwise it
-falls back to the local Harper operations socket.
+`src/lib/harper.ts` uses `HDB_TARGET_URL` when present. If it is not
+set, it defaults to `HARPER_CLUSTER_URL` (or this repo's Fabric dev URL)
+with `:9925` for the operations API. Credentials resolve from
+`HDB_ADMIN_USERNAME` / `HDB_ADMIN_PASSWORD`, then
+`HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`, then the macOS
+Keychain services `advisory-rankings-harper-username` and
+`advisory-rankings-harper-password`, then `~/.harper-fabric-credentials`.
+Do not report missing REST credentials just because the `HDB_*`
+environment variables are unset; check the default/Keychain path first.
 
 ## Crawl
 
