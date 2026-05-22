@@ -79,7 +79,7 @@ function render(d, center, right) {
 		}));
 	}
 	center.appendChild(SectionCard({
-		title: `Career (${d.career.length} firm${d.career.length === 1 ? '' : 's'})`,
+		title: `Career (${d.career.length.toLocaleString()} firm${d.career.length === 1 ? '' : 's'})`,
 		body: careerBody,
 	}));
 
@@ -123,14 +123,14 @@ function render(d, center, right) {
 			}));
 		}
 		center.appendChild(SectionCard({
-			title: `Licenses & exams (${d.licenses.length})`,
+			title: `Licenses & exams (${d.licenses.length.toLocaleString()})`,
 			body,
 		}));
 	}
 
 	if (d.designations && d.designations.length) {
 		center.appendChild(SectionCard({
-			title: `Designations (${d.designations.length})`,
+			title: `Designations (${d.designations.length.toLocaleString()})`,
 			body: EntityList({
 				rows: d.designations.map((g) => EntityRow({
 					avatar: g.code,
@@ -147,7 +147,7 @@ function render(d, center, right) {
 
 	if (d.education && d.education.length) {
 		center.appendChild(SectionCard({
-			title: `Education (${d.education.length})`,
+			title: `Education (${d.education.length.toLocaleString()})`,
 			body: EntityList({
 				rows: d.education.map((e) => EntityRow({
 					avatar: initials(e.institution || '?'),
@@ -173,7 +173,7 @@ function render(d, center, right) {
 			}));
 		}
 		center.appendChild(SectionCard({
-			title: `Disclosures (${d.disclosures.length})`,
+			title: `Disclosures (${d.disclosures.length.toLocaleString()})`,
 			body: discBody,
 		}));
 	}
@@ -205,7 +205,7 @@ function render(d, center, right) {
 	}
 
 	center.appendChild(SectionCard({
-		title: `Coverage (${d.articles.length})`,
+		title: `Coverage (${d.articles.length.toLocaleString()})`,
 		body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
 	}));
 
@@ -216,7 +216,7 @@ function render(d, center, right) {
 			['Preferred name',   a.preferredName],
 			['FINRA CRD',        a.finraCrd],
 			['SEC IARD',         a.secIard],
-			['Industry start',   a.industryStartDate],
+      ['Industry start',   a.industryStartDate ? fmtDate(a.industryStartDate) : null],
 			['Years experience', a.yearsExperience],
 			['Career status',    humanize(a.careerStatus)],
 			['Birth year',       a.birthYear],

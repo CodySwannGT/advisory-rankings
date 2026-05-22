@@ -23,7 +23,7 @@
 			build({ center, right }) {
 				api('/PublicFirms').then((rows) => {
 					center.appendChild(SectionCard({
-						title: `All firms (${rows.length})`,
+						title: `All firms (${rows.length.toLocaleString()})`,
 						body: EntityList({
 							rows: rows.map((f) => EntityRow({
 								avatar: Avatar({ initials: initials(f.name), imageUrl: f.logoUrl, alt: f.name }),
@@ -42,10 +42,10 @@
 					right.appendChild(DetailsCard({
 						title: 'Firm directory',
 						pairs: [
-							['Firms', rows.length],
+							['Firms', rows.length.toLocaleString()],
 							['Channels', channels.size],
 							['Headquarters on file', headquarters],
-							['Active firms', rows.filter((f) => !f.dissolvedYear).length],
+							['Active firms', rows.filter((f) => !f.dissolvedYear).length.toLocaleString()],
 						],
 					}));
 				}).catch((err) => {

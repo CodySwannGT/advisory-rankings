@@ -249,11 +249,7 @@ function advisorDisplayName(a) {
 
 function firmShort(name) {
 	if (!name) return name;
-	// Strip trailing entity descriptors so chips stay narrow.
-	return name
-		.replace(/\s+Wealth Management(\s+USA)?$/, '')
-		.replace(/\s+Advisors$/, '')
-		.replace(/\s+Group$/, '');
+	return name;
 }
 
 // Snapshot of every table, keyed for fast joins.  Built once per request
