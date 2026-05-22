@@ -2,18 +2,29 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const WEB_ASSET_VERSION = "20260521-media";
+const HARPER_WEB_DIR = "harper-app/web";
+const HARPER_APP_DIR = "harper-app";
 const JS_IMPORT_RE =
   /(\bfrom\s+["']|\bimport\s*\(\s*["']|\bimport\s+["'])(\.{1,2}\/[^"']+\.js)(["'])/g;
 
+/**
+ * Copies generated browser modules and adds cache-busting import versions.
+ * @returns Promise that resolves after generated web files are deploy-ready.
+ */
 async function copyGeneratedWeb(): Promise<void> {
-  await mkdir("harper-app/web", { recursive: true });
-  await cp("dist/web", "harper-app/web", {
+  await mkdir(HARPER_WEB_DIR, { recursive: true });
+  await cp("dist/web", HARPER_WEB_DIR, {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
-  await versionGeneratedWebModules("harper-app/web");
+  await versionGeneratedWebModules(HARPER_WEB_DIR);
 }
 
+/**
+ * Rewrites relative JavaScript imports so browsers pick up fresh deploy assets.
+ * @param dir - Directory to process recursively.
+ * @returns Promise that resolves after all nested modules are rewritten.
+ */
 async function versionGeneratedWebModules(dir: string): Promise<void> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -31,9 +42,21 @@ async function versionGeneratedWebModules(dir: string): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  await mkdir("harper-app", { recursive: true });
-  await cp("dist/harper/resources.js", "harper-app/resources.js");
+/**
+ * Copies all compiled Harper resource modules into the Fabric component root.
+ * @returns Promise that resolves after resource entrypoint and helpers are copied.
+ */
+async function copyHarperResources(): Promise<void> {
+  await mkdir(HARPER_APP_DIR, { recursive: true });
+  await cp("dist/harper", HARPER_APP_DIR, {
+    recursive: true,
+    filter: source => source.endsWith(".js") || !source.includes("."),
+  });
+}
+
+// Copies compiled Harper resources into the component root expected by Fabric.
+const main = async (): Promise<void> => {
+  await copyHarperResources();
   await copyGeneratedWeb();
 
   // tsc may leave empty source subdirectories in dist; keep dist readable.
@@ -47,8 +70,8 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `built Harper JS resources into ${join("harper-app", "resources.js")} and web/*.js`
+    `built Harper JS resources into ${join(HARPER_APP_DIR, "resources.js")} and web/*.js`
   );
-}
+};
 
 await main();

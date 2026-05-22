@@ -2,117 +2,264 @@
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtDate, humanize, getArticleIdParam, articleSource, canonicalizeArticleRoute } from './app.js';
 import {
-	mountThreeColumnPage, el,
-	EmptyCard, SectionCard, Card, PostHeader, ChipRow, DetailsCard,
-	TransitionEventCard, DisclosureEventCard, ScrollableTable,
-} from './design-system/index.js';
+  api,
+  refreshMe,
+  logout,
+  search,
+  fmts,
+  fmtDate,
+  humanize,
+  getArticleIdParam,
+  articleSource,
+  canonicalizeArticleRoute,
+} from "./app.js";
+import {
+  mountThreeColumnPage,
+  el,
+  EmptyCard,
+  SectionCard,
+  Card,
+  PostHeader,
+  ChipRow,
+  DetailsCard,
+  TransitionEventCard,
+  DisclosureEventCard,
+  ScrollableTable,
+} from "./design-system/index.js";
 
 mountThreeColumnPage({
-	active: 'home',
-	refreshMe,
-	logout,
-	search,
-	build({ center, right }) {
-		const id = getArticleIdParam();
-		if (!id) {
-			center.appendChild(EmptyCard({ title: 'No article selected', body: 'Pick an article from the feed.' }));
-			return;
-		}
-		api(`/ArticleView/${encodeURIComponent(id)}`)
-			.then((d) => render(d, center, right))
-			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
-	},
+  active: "home",
+  refreshMe,
+  logout,
+  search,
+  build({ center, right }) {
+    const id = getArticleIdParam();
+    if (!id) {
+      center.appendChild(
+        EmptyCard({
+          title: "No article selected",
+          body: "Pick an article from the feed.",
+        })
+      );
+      return;
+    }
+    api(`/ArticleView/${encodeURIComponent(id)}`)
+      .then(d => render(d, center, right))
+      .catch(err =>
+        center.appendChild(
+          EmptyCard({ title: "Error", body: String(err.message || err) })
+        )
+      );
+  },
 });
 
+/**
+ * Renders render into the page.
+ * @param d - d used by this operation.
+ * @param center - Main content column.
+ * @param right - Right sidebar column.
+ * @returns The rendered DOM node or section.
+ */
 function render(d, center, right) {
-	if (d.error) {
-		center.appendChild(EmptyCard({ title: 'Article not found', body: d.id || '' }));
-		return;
-	}
-	const a = d.article;
-	canonicalizeArticleRoute(a);
-	const src = articleSource(a);
+  if (d.error) {
+    center.appendChild(
+      EmptyCard({ title: "Article not found", body: d.id || "" })
+    );
+    return;
+  }
+  const a = d.article;
+  const evidenceRows = compactProvenance(d.provenance || []);
 
-	const head = Card({
-		tag: 'article',
-		children: [
-			PostHeader({
-				initials: src.initials,
-				source: src.source,
-				authors: a.authors,
-				when: fmtDate(a.publishedDate),
-				category: a.category,
-			}),
-			el('h2', { class: 'post-headline' }, a.headline || '(untitled)'),
-			a.dek ? el('div', { class: 'post-dek' }, a.dek) : null,
-			...(d.eventCards || []).map((c) =>
-				c.kind === 'transition' ? TransitionEventCard(c, fmts) :
-				c.kind === 'disclosure' ? DisclosureEventCard(c, fmts) : null
-			).filter(Boolean),
-			ChipRow({ firms: d.firms, teams: d.teams, advisors: d.advisors }),
-			el('div', { class: 'post-footer' },
-				a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer', class: 'ext-link' }, src.ctaLabel) : null),
-		],
-	});
-	center.appendChild(head);
-
-	if (d.body?.text) {
-		center.appendChild(SectionCard({
-			title: 'Article body',
-			body: el('div', {}, ...paragraphs(d.body.text)),
-		}));
-	}
-
-	const evidenceRows = compactProvenance(d.provenance || []);
-	if (evidenceRows.length) {
-		center.appendChild(SectionCard({
-			title: `Extracted facts (${evidenceRows.length})`,
-			body: ScrollableTable(
-				el('table', { class: 'snap-table' },
-					el('thead', {}, el('tr', {},
-						el('th', {}, 'Field'),
-						el('th', {}, 'Value'),
-					)),
-					el('tbody', {}, ...evidenceRows.map((p) =>
-						el('tr', {},
-							el('td', {}, p.field),
-							el('td', {}, p.value),
-						))),
-				),
-			),
-		}));
-	}
-
-	right.appendChild(DetailsCard({
-		title: 'Article metadata',
-		pairs: [
-			['Slug',      a.slug],
-			['Category',  humanize(a.category)],
-			['Published', fmtDate(a.publishedDate)],
-			['Modified',  fmtDate(a.modifiedDate)],
-			['Authors',   (a.authors || []).join(', ')],
-			['Source',    a.url ? el('a', { href: a.url, target: '_blank', rel: 'noreferrer' }, `${src.source} →`) : null],
-		],
-	}));
+  canonicalizeArticleRoute(a);
+  center.appendChild(articleHead(d, a));
+  appendIfPresent(center, articleBodyCard(d.body));
+  appendIfPresent(center, evidenceSection(evidenceRows));
+  right.appendChild(metadataSection(a));
 }
 
+/**
+ * Builds the article header card with event cards and mentioned entities.
+ * @param d - ArticleView response payload.
+ * @param article - Article metadata row.
+ * @returns Header card for the article detail page.
+ */
+function articleHead(d, article) {
+  const src = articleSource(article);
+  return Card({
+    tag: "article",
+    children: [
+      PostHeader({
+        initials: src.initials,
+        source: src.source,
+        authors: article.authors,
+        when: fmtDate(article.publishedDate),
+        category: article.category,
+      }),
+      el("h2", { class: "post-headline" }, article.headline || "(untitled)"),
+      article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
+      ...eventCards(d.eventCards || []),
+      ChipRow({ firms: d.firms, teams: d.teams, advisors: d.advisors }),
+      articleFooter(article, src),
+    ],
+  });
+}
+
+/**
+ * Converts article event payloads into matching event cards.
+ * @param cards - Transition and disclosure card payloads.
+ * @returns Rendered event card nodes.
+ */
+function eventCards(cards) {
+  return cards
+    .map(card =>
+      card.kind === "transition"
+        ? TransitionEventCard(card, fmts)
+        : card.kind === "disclosure"
+          ? DisclosureEventCard(card, fmts)
+          : null
+    )
+    .filter(Boolean);
+}
+
+/**
+ * Builds the outbound source link row for the article card.
+ * @param article - Article metadata row.
+ * @param source - Source attribution metadata.
+ * @returns Footer node with the original article link.
+ */
+function articleFooter(article, source) {
+  return el(
+    "div",
+    { class: "post-footer" },
+    article.url
+      ? el(
+          "a",
+          {
+            href: article.url,
+            target: "_blank",
+            rel: "noreferrer",
+            class: "ext-link",
+          },
+          source.ctaLabel
+        )
+      : null
+  );
+}
+
+/**
+ * Builds the optional article body section.
+ * @param body - Article body payload from ArticleView.
+ * @returns Body card or null when no text is available.
+ */
+function articleBodyCard(body) {
+  return body?.text
+    ? SectionCard({
+        title: "Article body",
+        body: el("div", {}, ...paragraphs(body.text)),
+      })
+    : null;
+}
+
+/**
+ * Builds the extracted-facts evidence section.
+ * @param rows - Deduplicated provenance rows.
+ * @returns Evidence card or null when no extracted facts exist.
+ */
+function evidenceSection(rows) {
+  return rows.length
+    ? SectionCard({
+        title: `Extracted facts (${rows.length})`,
+        body: ScrollableTable(evidenceTable(rows)),
+      })
+    : null;
+}
+
+/**
+ * Renders extracted facts in a compact table.
+ * @param rows - Deduplicated provenance rows.
+ * @returns Table node wrapped by the evidence section.
+ */
+function evidenceTable(rows) {
+  return el(
+    "table",
+    { class: "snap-table" },
+    el("thead", {}, el("tr", {}, el("th", {}, "Field"), el("th", {}, "Value"))),
+    el(
+      "tbody",
+      {},
+      ...rows.map(row =>
+        el("tr", {}, el("td", {}, row.field), el("td", {}, row.value))
+      )
+    )
+  );
+}
+
+/**
+ * Builds the article metadata sidebar card.
+ * @param article - Article metadata row.
+ * @returns Details card for the right rail.
+ */
+function metadataSection(article) {
+  const src = articleSource(article);
+  return DetailsCard({
+    title: "Article metadata",
+    pairs: [
+      ["Slug", article.slug],
+      ["Category", humanize(article.category)],
+      ["Published", fmtDate(article.publishedDate)],
+      ["Modified", fmtDate(article.modifiedDate)],
+      ["Authors", (article.authors || []).join(", ")],
+      [
+        "Source",
+        article.url
+          ? el(
+              "a",
+              { href: article.url, target: "_blank", rel: "noreferrer" },
+              `${src.source} →`
+            )
+          : null,
+      ],
+    ],
+  });
+}
+
+/**
+ * Appends a node only when the section exists.
+ * @param parent - Parent column node.
+ * @param child - Optional section node.
+ */
+function appendIfPresent(parent, child) {
+  if (child) parent.appendChild(child);
+}
+
+/**
+ * Splits article body text into paragraph nodes.
+ * @param text - Source text to parse.
+ * @returns Paragraph nodes.
+ */
 function paragraphs(text) {
-	return text.split(/\n{2,}/).map((p) => el('p', {}, p));
+  return text.split(/\n{2,}/).map(p => el("p", {}, p));
 }
 
+/**
+ * Deduplicates extracted article facts by normalized field/value pairs.
+ * @param rows - Provenance rows returned by ArticleView.
+ * @returns Compact provenance rows for display.
+ */
 function compactProvenance(rows) {
-	const seen = new Set();
-	const result = [];
-	for (const row of rows) {
-		const field = humanize(row.fieldName);
-		const value = String(row.assertedValue || row.quotePhrase || '').trim();
-		if (!field || !value) continue;
-		const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		result.push({ field, value });
-	}
-	return result;
+  return rows.reduce(
+    (acc, row) => {
+      const field = humanize(row.fieldName);
+      const value = String(row.assertedValue || row.quotePhrase || "").trim();
+      if (!field || !value) return acc;
+      const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
+      if (acc.keys.includes(key)) return acc;
+      return {
+        keys: [...acc.keys, key],
+        rows: [...acc.rows, { field, value }],
+      };
+    },
+    { keys: [], rows: [] }
+  ).rows;
 }

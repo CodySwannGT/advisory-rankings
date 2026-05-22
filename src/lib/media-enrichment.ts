@@ -1,4 +1,3 @@
-/* eslint-disable functional/immutable-data, functional/no-let, functional/prefer-readonly-type, functional/readonly-type, jsdoc/require-jsdoc, code-organization/enforce-statement-order -- HTML scraping uses mutable candidate scoring and compact helpers. */
 import * as cheerio from "cheerio";
 
 const GENERIC_IMAGE_PATTERNS = [
@@ -16,8 +15,18 @@ const GENERIC_IMAGE_PATTERNS = [
 /**
  * A candidate image discovered on a public page.
  */
-export interface MediaCandidate {
+interface MediaCandidate {
   readonly url: string;
+  readonly sourceUrl: string;
+  readonly score: number;
+  readonly reason: string;
+}
+
+/**
+ * Raw media reference and scoring metadata before URL validation.
+ */
+interface MediaCandidateInput {
+  readonly rawUrl: string | undefined;
   readonly sourceUrl: string;
   readonly score: number;
   readonly reason: string;
@@ -34,8 +43,7 @@ export function absoluteHttpUrl(raw: string | undefined, base: string) {
   try {
     const url = new URL(raw, base);
     if (!["http:", "https:"].includes(url.protocol)) return null;
-    url.hash = "";
-    return url.toString();
+    return url.toString().split("#")[0];
   } catch {
     return null;
   }
@@ -57,7 +65,7 @@ export function unwrapDuckDuckGoUrl(raw: string): string {
  * @param html DuckDuckGo HTML search result page.
  * @returns Ordered result URLs.
  */
-export function parseDuckDuckGoResults(html: string): string[] {
+export function parseDuckDuckGoResults(html: string): ReadonlyArray<string> {
   const $ = cheerio.load(html);
   return $(".result__a")
     .toArray()
@@ -67,6 +75,13 @@ export function parseDuckDuckGoResults(html: string): string[] {
     .filter(url => /^https?:\/\//.test(url));
 }
 
+/**
+ * Scores descriptive text for whether it likely points at the target media.
+ * @param value - Image attributes and URL text.
+ * @param targetName - Advisor or firm name being enriched.
+ * @param mode - Determines which media hints receive extra weight.
+ * @returns Numeric relevance score.
+ */
 function textScore(
   value: string,
   targetName: string,
@@ -74,38 +89,45 @@ function textScore(
 ) {
   const text = value.toLowerCase();
   const nameTokens = targetName.toLowerCase().split(/\s+/).filter(Boolean);
-  let score = 0;
-  if (mode === "firm" && /\blogo\b/.test(text)) score += 4;
-  if (mode === "advisor" && /\b(headshot|portrait|profile)\b/.test(text)) {
-    score += 4;
-  }
-  for (const token of nameTokens) {
-    if (token.length > 2 && text.includes(token)) score += 1;
-  }
-  return score;
+  const modeScore =
+    (mode === "firm" && /\blogo\b/.test(text)) ||
+    (mode === "advisor" && /\b(headshot|portrait|profile)\b/.test(text))
+      ? 4
+      : 0;
+  const tokenScore = nameTokens.filter(
+    token => token.length > 2 && text.includes(token)
+  ).length;
+  return modeScore + tokenScore;
 }
 
+/**
+ * Filters out known placeholder, sprite, and social-media image URLs.
+ * @param url - Absolute image URL candidate.
+ * @returns True when the URL looks too generic to be useful.
+ */
 function isGenericImage(url: string): boolean {
   return GENERIC_IMAGE_PATTERNS.some(pattern => pattern.test(url));
 }
 
-function pushCandidate(
-  candidates: MediaCandidate[],
-  input: {
-    readonly rawUrl: string | undefined;
-    readonly sourceUrl: string;
-    readonly score: number;
-    readonly reason: string;
-  }
-) {
+/**
+ * Creates a media candidate when the raw URL is usable and specific.
+ * @param input - Raw media reference and scoring metadata.
+ * @param input.rawUrl - Image URL as it appeared in HTML.
+ * @param input.sourceUrl - Page URL used to resolve relative paths.
+ * @param input.score - Candidate relevance score.
+ * @param input.reason - Selector or image descriptor that produced the row.
+ * @returns Candidate row or null when the image should be ignored.
+ */
+function mediaCandidate(input: MediaCandidateInput) {
   const url = absoluteHttpUrl(input.rawUrl, input.sourceUrl);
-  if (!url || isGenericImage(url)) return;
-  candidates.push({
-    url,
-    sourceUrl: input.sourceUrl,
-    score: input.score,
-    reason: input.reason,
-  });
+  return !url || isGenericImage(url)
+    ? null
+    : {
+        url,
+        sourceUrl: input.sourceUrl,
+        score: input.score,
+        reason: input.reason,
+      };
 }
 
 /**
@@ -121,69 +143,131 @@ export function extractMediaCandidates(
   sourceUrl: string,
   targetName: string,
   mode: "advisor" | "firm"
-): MediaCandidate[] {
+): ReadonlyArray<MediaCandidate> {
   const $ = cheerio.load(html);
-  const candidates: MediaCandidate[] = [];
+  const candidates = [
+    ...metadataCandidates($, sourceUrl, mode),
+    ...imageCandidates($, sourceUrl, targetName, mode),
+  ];
+  return bestCandidatesByUrl(candidates);
+}
 
-  for (const selector of [
+/**
+ * Reads Open Graph, Twitter, and icon metadata that often contains media.
+ * @param $ - Cheerio document loaded from the source page.
+ * @param sourceUrl - Page URL where candidates were found.
+ * @param mode - Advisor headshot or firm logo mode.
+ * @returns Candidate media rows from page metadata.
+ */
+function metadataCandidates(
+  $: ReturnType<typeof cheerio.load>,
+  sourceUrl: string,
+  mode: "advisor" | "firm"
+) {
+  const imageSelectors = [
     'meta[property="og:image"]',
     'meta[name="twitter:image"]',
     'meta[property="twitter:image"]',
-  ]) {
-    const rawUrl = $(selector).attr("content");
-    pushCandidate(candidates, {
-      rawUrl,
+  ];
+  const iconSelectors =
+    mode === "firm"
+      ? ['link[rel~="apple-touch-icon"]', 'link[rel~="icon"]']
+      : [];
+  const imageRows = imageSelectors.map(selector =>
+    mediaCandidate({
+      rawUrl: $(selector).attr("content"),
       sourceUrl,
       score: mode === "advisor" ? 3 : 2,
       reason: selector,
-    });
-  }
-
-  if (mode === "firm") {
-    for (const selector of [
-      'link[rel~="apple-touch-icon"]',
-      'link[rel~="icon"]',
-    ]) {
-      const rawUrl = $(selector).attr("href");
-      pushCandidate(candidates, {
-        rawUrl,
-        sourceUrl,
-        score: 3,
-        reason: selector,
-      });
-    }
-  }
-
-  $("img").each((_, element) => {
-    const img = $(element);
-    const rawUrl =
-      img.attr("src") ?? img.attr("data-src") ?? img.attr("data-lazy-src");
-    const descriptor = [
-      img.attr("alt"),
-      img.attr("class"),
-      img.attr("id"),
-      rawUrl,
-    ]
-      .filter(Boolean)
-      .join(" ");
-    const score = textScore(descriptor, targetName, mode);
-    if (score === 0) return;
-    pushCandidate(candidates, {
-      rawUrl,
+    })
+  );
+  const iconRows = iconSelectors.map(selector =>
+    mediaCandidate({
+      rawUrl: $(selector).attr("href"),
       sourceUrl,
-      score,
-      reason: `img:${descriptor.slice(0, 120)}`,
-    });
-  });
-
-  const byUrl = new Map<string, MediaCandidate>();
-  for (const candidate of candidates) {
-    const existing = byUrl.get(candidate.url);
-    if (!existing || candidate.score > existing.score) {
-      byUrl.set(candidate.url, candidate);
-    }
-  }
-  return [...byUrl.values()].sort((left, right) => right.score - left.score);
+      score: 3,
+      reason: selector,
+    })
+  );
+  return [...imageRows, ...iconRows].filter(isMediaCandidate);
 }
 
-/* eslint-enable functional/immutable-data, functional/no-let, functional/prefer-readonly-type, functional/readonly-type, jsdoc/require-jsdoc, code-organization/enforce-statement-order -- End scraper utility exception. */
+/**
+ * Scores ordinary `<img>` tags using alt/class/id/url hints.
+ * @param $ - Cheerio document loaded from the source page.
+ * @param sourceUrl - Page URL where candidates were found.
+ * @param targetName - Advisor or firm name being enriched.
+ * @param mode - Advisor headshot or firm logo mode.
+ * @returns Candidate media rows from image tags.
+ */
+function imageCandidates(
+  $: ReturnType<typeof cheerio.load>,
+  sourceUrl: string,
+  targetName: string,
+  mode: "advisor" | "firm"
+) {
+  return $("img")
+    .toArray()
+    .map((element: Parameters<ReturnType<typeof cheerio.load>>[0]) => {
+      const img = $(element);
+      const rawUrl =
+        img.attr("src") ?? img.attr("data-src") ?? img.attr("data-lazy-src");
+      const descriptor = [
+        img.attr("alt"),
+        img.attr("class"),
+        img.attr("id"),
+        rawUrl,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const score = textScore(descriptor, targetName, mode);
+      return score === 0
+        ? null
+        : mediaCandidate({
+            rawUrl,
+            sourceUrl,
+            score,
+            reason: `img:${descriptor.slice(0, 120)}`,
+          });
+    })
+    .filter(isMediaCandidate);
+}
+
+/**
+ * Narrows optional candidate results after URL validation.
+ * @param candidate - Candidate or null from URL validation.
+ * @returns True when a valid candidate remains.
+ */
+function isMediaCandidate(
+  candidate: MediaCandidate | null
+): candidate is MediaCandidate {
+  return Boolean(candidate);
+}
+
+/**
+ * Keeps only the highest-scoring candidate for each image URL.
+ * @param candidates - Candidate rows from metadata and image tags.
+ * @returns De-duplicated candidates ordered from strongest to weakest.
+ */
+function bestCandidatesByUrl(candidates: ReadonlyArray<MediaCandidate>) {
+  return candidates
+    .filter(
+      candidate => bestCandidateForUrl(candidates, candidate.url) === candidate
+    )
+    .sort((left, right) => right.score - left.score);
+}
+
+/**
+ * Finds the strongest candidate for one URL while preserving first-match ties.
+ * @param candidates - Candidate rows from the page.
+ * @param url - Absolute image URL to evaluate.
+ * @returns Best candidate for that URL.
+ */
+function bestCandidateForUrl(
+  candidates: ReadonlyArray<MediaCandidate>,
+  url: string
+) {
+  return candidates
+    .filter(candidate => candidate.url === url)
+    .sort((left, right) => right.score - left.score)[0];
+}

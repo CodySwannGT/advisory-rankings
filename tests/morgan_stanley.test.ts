@@ -62,8 +62,12 @@ describe("Morgan Stanley scraper mapping", () => {
     );
 
     expect(rows.Firm[0]).toMatchObject({
-      name: "Morgan Stanley Wealth Management",
+      name: "Morgan Stanley",
       logoUrl: expect.stringContaining("morgan-stanley-logo"),
+    });
+    expect(rows.FirmAlias[0]).toMatchObject({
+      firmId: rows.Firm[0].id,
+      alias: "Morgan Stanley Wealth Management",
     });
     expect(rows.Advisor[0]).toMatchObject({
       legalName: "James Howard Stern",

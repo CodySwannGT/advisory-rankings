@@ -7,7 +7,6 @@ const headers = {
 
 /**
  * Register clean directory and profile routes that serve static HTML shells.
- *
  * @param fastify Fastify instance provided by Harper.
  * @param root0 Route shell file URLs.
  * @param root0.basePath Public directory base path.

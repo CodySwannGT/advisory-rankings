@@ -13,21 +13,11 @@
     "**/dist/**",
     "**/coverage/**",
     "**/node_modules/**",
-    "tests/parity_compare.ts",
     "harper-app/resources.js",
     "harper-app/web/**/*.js"
   ],
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],
   "ignoreBinaries": ["audit", "harperdb", "knip", "playwright", "tsx"],
-  "ignoreExportsUsedInFile": true,
-  "ignoreIssues": {
-    "src/lib/brokercheck-load.ts": ["exports"],
-    "src/lib/brokercheck.ts": ["exports"],
-    "src/lib/harper.ts": ["duplicates", "exports", "types"],
-    "src/lib/ids.ts": ["exports"],
-    "src/lib/media-enrichment.ts": ["types"],
-    "src/lib/morgan-stanley.ts": ["exports"]
-  },
   "rules": {
     "devDependencies": "off"
   }

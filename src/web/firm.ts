@@ -2,209 +2,220 @@
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { api, refreshMe, logout, search, fmts, fmtMoney, fmtDate, humanize, initials, getEntityIdParam, entityPath, articleSource, canonicalizeEntityRoute } from './app.js';
 import {
-	mountThreeColumnPage, el, Avatar,
-	EmptyCard, EmptyText, ProfileHead, SectionCard, EntityList, EntityRow,
-	DetailsCard, ArticleListBlock, Tag, Heading, Paginated,
-	TransitionEventCard, DisclosureEventCard, SourceAttribution,
-} from './design-system/index.js';
+  refreshMe,
+  logout,
+  search,
+  fmts,
+  fmtMoney,
+  fmtDate,
+  humanize,
+  initials,
+  getEntityIdParam,
+  entityPath,
+  articleSource,
+  canonicalizeEntityRoute,
+} from "./app.js";
+import {
+  mountThreeColumnPage,
+  el,
+  EmptyCard,
+  EmptyText,
+  ProfileHead,
+  SectionCard,
+  EntityList,
+  EntityRow,
+  ArticleListBlock,
+  TransitionEventCard,
+  DisclosureEventCard,
+} from "./design-system/index.js";
+import {
+  firmDetailsCard,
+  regulatoryCard,
+  branchesCard,
+  firmTags,
+  firmSubtitle,
+  paginatedAdvisors,
+} from "./firm-sections.js";
 
 mountThreeColumnPage({
-	active: 'firms',
-	refreshMe,
-	logout,
-	search,
-	build({ center, right }) {
-		const id = getEntityIdParam();
-		if (!id) {
-			center.appendChild(EmptyCard({ title: 'No firm selected', body: 'Open a firm from the feed.' }));
-			return;
-		}
+  active: "firms",
+  refreshMe,
+  logout,
+  search,
+  build({ center, right }) {
+    const id = getEntityIdParam();
+    if (!id) {
+      center.appendChild(
+        EmptyCard({
+          title: "No firm selected",
+          body: "Open a firm from the feed.",
+        })
+      );
+      return;
+    }
 
-		api(`/FirmProfile/${encodeURIComponent(id)}`)
-			.then((d) => render(d, center, right))
-			.catch((err) => center.appendChild(EmptyCard({ title: 'Error', body: String(err.message || err) })));
-	},
+    api(`/FirmProfile/${encodeURIComponent(id)}`)
+      .then(d => render(d, center, right))
+      .catch(err =>
+        center.appendChild(
+          EmptyCard({ title: "Error", body: String(err.message || err) })
+        )
+      );
+  },
 });
 
+/**
+ * Renders render into the page.
+ * @param d - d used by this operation.
+ * @param center - Main content column.
+ * @param right - Right sidebar column.
+ * @returns The rendered DOM node or section.
+ */
 function render(d, center, right) {
-	const f = d.firm;
-	canonicalizeEntityRoute('firm', f);
-	const tags = [];
-	const channelLabel = humanize(f.channel);
-	const subChannelLabel = humanize(f.subChannel);
-	if (channelLabel) tags.push({ label: channelLabel });
-	if (subChannelLabel) tags.push({ label: subChannelLabel });
-	if (f.dissolvedYear) tags.push({ kind: 'danger', label: `dissolved ${f.dissolvedYear}` });
-	if (f.parentFirmId) tags.push({ kind: 'warn', label: 'subsidiary' });
+  const f = d.firm;
+  const profile = ProfileHead({
+    initialsText: initials(f.name),
+    imageUrl: f.logoUrl,
+    title: f.name,
+    subtitle: firmSubtitle(f),
+    tags: firmTags(f),
+  });
 
-	const subtitleParts = [];
-	if (f.hqCity || f.hqState) subtitleParts.push([f.hqCity, f.hqState].filter(Boolean).join(', '));
-	if (f.foundedYear) subtitleParts.push(`founded ${f.foundedYear}`);
-	if (f.finraCrd) subtitleParts.push(`FINRA CRD ${f.finraCrd}`);
-
-	center.appendChild(ProfileHead({
-		initialsText: initials(f.name),
-		imageUrl: f.logoUrl,
-		title: f.name,
-		subtitle: subtitleParts.join(' · '),
-		tags,
-	}));
-
-	if (f.notes) {
-		center.appendChild(SectionCard({ title: 'About', body: el('div', {}, f.notes) }));
-	}
-
-	// Current advisors — the sticky core: a firm's roster. Paginated
-	// via /FirmAdvisors/<id> so a firm with thousands of seats doesn't
-	// drop a 50,000-row payload on the first paint.
-	if (d.currentAdvisorCount > 0) {
-		center.appendChild(SectionCard({
-			title: `Current advisors (${d.currentAdvisorCount.toLocaleString()})`,
-			body: paginatedAdvisors(f.id, 'current', { showStart: true }),
-		}));
-	} else {
-		center.appendChild(SectionCard({
-			title: 'Current advisors (0)',
-			body: EmptyText({ children: 'No current advisors on file.' }),
-		}));
-	}
-
-	if (d.pastAdvisorCount > 0) {
-		center.appendChild(SectionCard({
-			title: `Past advisors (${d.pastAdvisorCount.toLocaleString()})`,
-			body: paginatedAdvisors(f.id, 'past', { showEnd: true }),
-		}));
-	}
-
-	if (d.currentTeams.length) {
-		center.appendChild(SectionCard({
-			title: `Teams currently at this firm (${d.currentTeams.length.toLocaleString()})`,
-			body: EntityList({
-				rows: d.currentTeams.map((t) => EntityRow({
-					avatar: initials(t.name),
-					name: t.name,
-					sub: [
-						t.serviceModel ? `${humanize(t.serviceModel)} clients` : null,
-						t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
-						t.teamSize ? `${t.teamSize} members` : null,
-					].filter(Boolean).join(' · '),
-					href: entityPath('team', t),
-				})),
-			}),
-		}));
-	}
-
-	if (d.transitionsIn.length) {
-		center.appendChild(SectionCard({
-			title: `Recent moves to ${f.short || f.name} (${d.transitionsIn.length.toLocaleString()})`,
-			body: el('div', {}, ...d.transitionsIn.map((t) => TransitionEventCard(t, fmts))),
-		}));
-	}
-	if (d.transitionsOut.length) {
-		center.appendChild(SectionCard({
-			title: `Recent moves away from ${f.short || f.name} (${d.transitionsOut.length.toLocaleString()})`,
-			body: el('div', {}, ...d.transitionsOut.map((t) => TransitionEventCard(t, fmts))),
-		}));
-	}
-
-	if (d.disclosuresAtThisFirm.length) {
-		center.appendChild(SectionCard({
-			title: `Disclosures filed while advisors were at ${f.short || f.name}`,
-			body: el('div', {}, ...d.disclosuresAtThisFirm.map((dis) => DisclosureEventCard(dis, fmts))),
-		}));
-	}
-
-	center.appendChild(SectionCard({
-		title: `Coverage (${d.articles.length.toLocaleString()})`,
-		body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
-	}));
-
-	right.appendChild(DetailsCard({
-		title: 'Firm details',
-		pairs: [
-			['Channel',      humanize(f.channel)],
-			['Sub-channel',  humanize(f.subChannel)],
-			['Headquarters', [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(', ')],
-			['Founded',      f.foundedYear],
-			['Dissolved',    f.dissolvedYear ? [f.dissolvedYear, humanize(f.dissolutionReason)].filter(Boolean).join(' · ') : null],
-			['FINRA CRD',    f.finraCrd],
-			['SEC filer ID', f.secFilerId],
-			['Website',      f.website ? el('a', { href: f.website, target: '_blank', rel: 'noreferrer' }, f.website) : null],
-		],
-	}));
-
-	if (d.brokerCheckSnapshot) {
-		right.appendChild(SectionCard({
-			body: [
-				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: 'Regulatory record' }),
-				el('div', { class: 'kv-list' },
-					_kvRow('FINRA scope (BD)', d.brokerCheckSnapshot.bcScope),
-					_kvRow('IA scope', d.brokerCheckSnapshot.iaScope),
-					_kvRow('Disclosures', d.brokerCheckSnapshot.disclosureCount ?? '—'),
-					_kvRow('State registrations', d.brokerCheckSnapshot.registeredStateCount ?? '—'),
-				),
-				SourceAttribution({
-					source: 'FINRA BrokerCheck',
-					url: `https://brokercheck.finra.org/firm/summary/${encodeURIComponent(d.brokerCheckSnapshot.subjectCrd)}`,
-					termsUrl: 'https://brokercheck.finra.org/terms',
-					fetchedAt: d.brokerCheckSnapshot.fetchedAt,
-				}),
-			],
-		}));
-	}
-
-	if (d.branches.length) {
-		right.appendChild(SectionCard({
-			body: [
-				Heading({ level: 3, attrs: { class: 'card-subtitle' }, children: `Branches (${d.branches.length.toLocaleString()})` }),
-				EntityList({
-					rows: d.branches.map((b) => EntityRow({
-						avatar: b.level === 'market' ? 'M' : b.level === 'complex' ? 'C' : 'B',
-						name: b.name || b.buildingName || '(unnamed)',
-						sub: [b.level, [b.city, b.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '),
-					})),
-				}),
-			],
-		}));
-	}
+  canonicalizeEntityRoute("firm", f);
+  center.appendChild(profile);
+  appendSections(center, firmCenterSections(d));
+  appendSections(right, firmRightSections(d));
 }
 
-function _kvRow(k, v) {
-	if (v === null || v === undefined || v === '') return el('span');
-	return el('div', { class: 'kv-row' },
-		el('span', { class: 'kv-key' }, k),
-		el('span', { class: 'kv-val' }, String(v)),
-	);
+/**
+ * Appends only present section nodes to a profile column.
+ * @param root - Column node.
+ * @param sections - Candidate sections.
+ */
+function appendSections(root, sections) {
+  sections.filter(Boolean).forEach(section => root.appendChild(section));
 }
 
-function advisorRow(r, { showStart = false, showEnd = false } = {}) {
-	const a = r.advisor;
-	const sub = [r.roleTitle, humanize(r.roleCategory)].filter(Boolean).join(' · ');
-	let tail = '';
-	if (showStart && r.startDate) tail = `since ${fmtDate(r.startDate, { mode: 'short' })}`;
-	else if (showEnd && r.endDate) tail = `${fmtDate(r.startDate, { mode: 'short' })} – ${fmtDate(r.endDate, { mode: 'short' })}`;
-	else if (r.startDate) tail = fmtDate(r.startDate, { mode: 'short' });
-	return EntityRow({
-		avatar: Avatar({ initials: initials(a.name), imageUrl: a.headshotUrl, alt: a.name }),
-		name: a.name,
-		sub,
-		tail: r.reasonForLeaving === 'terminated_for_cause'
-			? [tail, Tag({ kind: 'danger', attrs: { style: 'margin-top:2px;display:block;' }, children: 'terminated' })]
-			: tail,
-		href: entityPath('advisor', a),
-	});
+/**
+ * Builds the center-column firm sections.
+ * @param d - FirmProfile payload.
+ * @returns Ordered center-column sections.
+ */
+function firmCenterSections(d) {
+  return [
+    d.firm.notes
+      ? SectionCard({ title: "About", body: el("div", {}, d.firm.notes) })
+      : null,
+    currentAdvisorsSection(d),
+    d.pastAdvisorCount > 0
+      ? SectionCard({
+          title: `Past advisors (${d.pastAdvisorCount.toLocaleString()})`,
+          body: paginatedAdvisors(d.firm.id, "past", { showEnd: true }),
+        })
+      : null,
+    teamsSection(d.currentTeams),
+    transitionSection(
+      `Recent moves to ${d.firm.short || d.firm.name}`,
+      d.transitionsIn
+    ),
+    transitionSection(
+      `Recent moves away from ${d.firm.short || d.firm.name}`,
+      d.transitionsOut
+    ),
+    d.disclosuresAtThisFirm.length
+      ? SectionCard({
+          title: `Disclosures filed while advisors were at ${d.firm.short || d.firm.name}`,
+          body: el(
+            "div",
+            {},
+            ...d.disclosuresAtThisFirm.map(dis =>
+              DisclosureEventCard(dis, fmts)
+            )
+          ),
+        })
+      : null,
+    SectionCard({
+      title: `Coverage (${d.articles.length.toLocaleString()})`,
+      body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
+    }),
+  ];
 }
 
-function paginatedAdvisors(firmId, status, opts) {
-	return Paginated({
-		fetchPage: async (cursor) => {
-			const qs = new URLSearchParams({ status, limit: '50' });
-			if (cursor) qs.set('cursor', cursor);
-			return api(`/FirmAdvisors/${encodeURIComponent(firmId)}?${qs}`);
-		},
-		empty: status === 'past' ? 'No past advisors on file.' : 'No current advisors on file.',
-		renderRow: (r) => advisorRow(r, opts),
-	});
+/**
+ * Builds the right-rail firm sections.
+ * @param d - FirmProfile payload.
+ * @returns Ordered right-rail sections.
+ */
+function firmRightSections(d) {
+  return [
+    firmDetailsCard(d.firm),
+    regulatoryCard(d.brokerCheckSnapshot),
+    branchesCard(d.branches),
+  ];
+}
+
+/**
+ * Builds the current-advisors section with an explicit empty state.
+ * @param d - FirmProfile payload.
+ * @returns Current advisors section.
+ */
+function currentAdvisorsSection(d) {
+  return d.currentAdvisorCount > 0
+    ? SectionCard({
+        title: `Current advisors (${d.currentAdvisorCount.toLocaleString()})`,
+        body: paginatedAdvisors(d.firm.id, "current", { showStart: true }),
+      })
+    : SectionCard({
+        title: "Current advisors (0)",
+        body: EmptyText({ children: "No current advisors on file." }),
+      });
+}
+
+/**
+ * Builds the current-teams section when the firm has team rows.
+ * @param teams - Current team rows.
+ * @returns Team section or null.
+ */
+function teamsSection(teams) {
+  return teams.length
+    ? SectionCard({
+        title: `Teams currently at this firm (${teams.length.toLocaleString()})`,
+        body: EntityList({
+          rows: teams.map(t =>
+            EntityRow({
+              avatar: initials(t.name),
+              name: t.name,
+              sub: [
+                t.serviceModel ? `${humanize(t.serviceModel)} clients` : null,
+                t.aum != null ? `${fmtMoney(t.aum)} AUM` : null,
+                t.teamSize ? `${t.teamSize} members` : null,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              href: entityPath("team", t),
+            })
+          ),
+        }),
+      })
+    : null;
+}
+
+/**
+ * Builds a transition section when move events exist.
+ * @param title - Section title prefix.
+ * @param transitions - Transition event rows.
+ * @returns Transition section or null.
+ */
+function transitionSection(title, transitions) {
+  return transitions.length
+    ? SectionCard({
+        title: `${title} (${transitions.length.toLocaleString()})`,
+        body: el(
+          "div",
+          {},
+          ...transitions.map(t => TransitionEventCard(t, fmts))
+        ),
+      })
+    : null;
 }

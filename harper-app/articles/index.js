@@ -7,7 +7,6 @@ const headers = {
 
 /**
  * Register public article detail URL shells.
- *
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function articlesRoutes(fastify) {

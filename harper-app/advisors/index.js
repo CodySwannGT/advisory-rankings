@@ -2,7 +2,6 @@ import { registerEntityShells } from "../seo_shell.js";
 
 /**
  * Register public advisor directory and profile URL shells.
- *
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function advisorsRoutes(fastify) {

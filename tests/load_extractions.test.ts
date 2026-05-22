@@ -46,4 +46,53 @@ describe("AdvisorHub extraction loader", () => {
       })
     );
   });
+
+  it("resolves firm aliases for mentions and employment rows", () => {
+    const canonicalName = "Morgan Stanley";
+    const aliasName = "Morgan Stanley Wealth Management";
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/morgan-stanley-profile/",
+        headline: "Morgan Stanley profile",
+      },
+      firms: [
+        {
+          natural_key: { canonical_name: aliasName },
+          fields: { channel: "wirehouse" },
+        },
+      ],
+      advisors: [
+        {
+          natural_key: {
+            legal_name: "Alex Advisor",
+            first_employer: aliasName,
+          },
+          fields: {
+            firstName: "Alex",
+            lastName: "Advisor",
+          },
+        },
+      ],
+      employment_histories: [
+        {
+          advisor_legal_name: "Alex Advisor",
+          firm_canonical_name: aliasName,
+          fields: {
+            startDate: "2024-01-01",
+          },
+        },
+      ],
+    });
+
+    const firm = rows.Firm[0];
+    expect(firm).toMatchObject({ name: canonicalName });
+    expect(rows.ArticleFirmMention[0].firmId).toBe(firm.id);
+    expect(rows.EmploymentHistory[0].firmId).toBe(firm.id);
+    expect(rows.FirmAlias).toContainEqual(
+      expect.objectContaining({
+        firmId: firm.id,
+        alias: aliasName,
+      })
+    );
+  });
 });

@@ -14,7 +14,6 @@ const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 /**
  * Convert display names into stable path segments without storing slug state.
- *
  * @param text Display name or fallback id.
  * @returns Lowercase ASCII path segment.
  */
@@ -32,7 +31,6 @@ export function slugifyText(text) {
 
 /**
  * Build the canonical public URL for an entity profile.
- *
  * @param kind Entity kind.
  * @param entity Entity with an id and display-ish name.
  * @returns Absolute browser path for the entity profile.
@@ -51,7 +49,6 @@ export function entityPath(kind, entity) {
 
 /**
  * Build the canonical public URL for an article detail page.
- *
  * @param article Article with an id and headline-ish text.
  * @returns Absolute browser path for the article detail.
  */
@@ -63,7 +60,6 @@ export function articlePath(article) {
 
 /**
  * Read an id from a legacy query string or from a slug ending in a UUID.
- *
  * @param locationLike Browser location-like object.
  * @returns Record id, or null when none is present.
  */
@@ -77,7 +73,6 @@ function idFromLocation(locationLike = location) {
 
 /**
  * Read an entity id from the current clean URL or legacy query string.
- *
  * @param locationLike Browser location-like object.
  * @returns Entity id, or null when none is present.
  */
@@ -87,7 +82,6 @@ export function entityIdFromLocation(locationLike = location) {
 
 /**
  * Read an article id from the current clean URL or legacy query string.
- *
  * @param locationLike Browser location-like object.
  * @returns Article id, or null when none is present.
  */

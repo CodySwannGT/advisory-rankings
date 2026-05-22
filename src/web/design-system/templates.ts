@@ -10,8 +10,8 @@
 // Pages should call exactly one template and never hand-roll
 // chrome elsewhere.
 
-import { el } from './dom.js';
-import { BrowseCard, Navbar, SiteFooter } from './organisms.js';
+import { el } from "./dom.js";
+import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
 
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
@@ -23,62 +23,114 @@ import { BrowseCard, Navbar, SiteFooter } from './organisms.js';
 //     refreshMe, logout, search,        // injected from app.js
 //     build: ({ left, center, right }) => { … }
 //   })
-export function mountThreeColumnPage({ active, refreshMe, logout, search, build } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
-	const layout = el('div', { class: 'layout' });
-	document.body.appendChild(layout);
-	document.body.appendChild(SiteFooter());
+/**
+ * Handles mount three column page for this workflow.
+ * @param root0 - value used by this operation.
+ * @param root0.active - active used by this operation.
+ * @param root0.refreshMe - refresh me used by this operation.
+ * @param root0.logout - logout used by this operation.
+ * @param root0.search - search used by this operation.
+ * @param root0.build - build used by this operation.
+ * @returns The computed value.
+ */
+export function mountThreeColumnPage({
+  active,
+  refreshMe,
+  logout,
+  search,
+  build,
+} = {}) {
+  const layout = el("div", { class: "layout" });
+  const left = el("aside", { class: "left rail" });
+  const center = el("section", { class: "center" });
+  const right = el("aside", { class: "right rail" });
+  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(layout);
+  document.body.appendChild(SiteFooter());
+  left.appendChild(primaryBrowseCard());
+  layout.append(left, center, right);
 
-	const left = el('aside', { class: 'left rail' });
-	const center = el('section', { class: 'center' });
-	const right = el('aside', { class: 'right rail' });
-	left.appendChild(primaryBrowseCard());
-	layout.append(left, center, right);
-
-	build({ left, center, right, layout });
+  build({ left, center, right, layout });
 }
 
+/**
+ * Builds the left-rail browse navigation shared by public pages.
+ * @returns Browse card with the primary site sections.
+ */
 function primaryBrowseCard() {
-	return BrowseCard({
-		items: [
-			{ label: 'Home',       icon: '🏠', href: '/' },
-			{ label: 'Firms',      icon: '🏢', href: '/firms' },
-			{ label: 'Advisors',   icon: '👤', href: '/advisors' },
-			{ label: 'Teams',      icon: '🤝', href: '/teams' },
-			{ label: 'Compliance', icon: '⚖️', href: '/regulatory.html' },
-		],
-	});
+  return BrowseCard({
+    items: [
+      { label: "Home", icon: "🏠", href: "/" },
+      { label: "Firms", icon: "🏢", href: "/firms" },
+      { label: "Advisors", icon: "👤", href: "/advisors" },
+      { label: "Teams", icon: "🤝", href: "/teams" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+    ],
+  });
 }
 
 // ─── FullWidthLayout ──────────────────────────────────────────
 // Single full-width column inside the same .layout grid. Reserve this
 // for exceptional utility pages; public content should generally use
 // mountThreeColumnPage so large screens keep both rails populated.
-export function mountFullWidthPage({ active, refreshMe, logout, search, build } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
-	const layout = el('div', { class: 'layout' });
-	document.body.appendChild(layout);
-	document.body.appendChild(SiteFooter());
+/**
+ * Handles mount full width page for this workflow.
+ * @param root0 - value used by this operation.
+ * @param root0.active - active used by this operation.
+ * @param root0.refreshMe - refresh me used by this operation.
+ * @param root0.logout - logout used by this operation.
+ * @param root0.search - search used by this operation.
+ * @param root0.build - build used by this operation.
+ */
+export function mountFullWidthPage({
+  active,
+  refreshMe,
+  logout,
+  search,
+  build,
+} = {}) {
+  const layout = el("div", { class: "layout" });
+  const center = el("section", {
+    class: "center",
+    style: "grid-column: 1 / -1;",
+  });
+  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(layout);
+  document.body.appendChild(SiteFooter());
+  layout.appendChild(center);
 
-	const center = el('section', { class: 'center', style: 'grid-column: 1 / -1;' });
-	layout.appendChild(center);
-
-	build({ center, layout });
+  build({ center, layout });
 }
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
 // Single narrow centered column (used by login.html).
-export function mountCenteredNarrowPage({ active, refreshMe, logout, search, build, maxWidth = 420 } = {}) {
-	document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
-	const layout = el('div', { class: 'layout' });
-	document.body.appendChild(layout);
-	document.body.appendChild(SiteFooter());
+/**
+ * Mounts a narrow centered page shell for forms such as login.
+ * @param root0 - value used by this operation.
+ * @param root0.active - active used by this operation.
+ * @param root0.refreshMe - refresh me used by this operation.
+ * @param root0.logout - logout used by this operation.
+ * @param root0.search - search used by this operation.
+ * @param root0.build - build used by this operation.
+ * @param root0.maxWidth - max width used by this operation.
+ */
+export function mountCenteredNarrowPage({
+  active,
+  refreshMe,
+  logout,
+  search,
+  build,
+  maxWidth = 420,
+} = {}) {
+  const layout = el("div", { class: "layout" });
+  const center = el("section", {
+    class: "center",
+    style: `grid-column: 1 / -1; max-width: ${maxWidth}px; margin: 32px auto;`,
+  });
+  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(layout);
+  document.body.appendChild(SiteFooter());
+  layout.appendChild(center);
 
-	const center = el('section', {
-		class: 'center',
-		style: `grid-column: 1 / -1; max-width: ${maxWidth}px; margin: 32px auto;`,
-	});
-	layout.appendChild(center);
-
-	build({ center, layout });
+  build({ center, layout });
 }

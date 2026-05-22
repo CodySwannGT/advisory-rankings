@@ -47,6 +47,29 @@ type Firm @table @export {
   updatedAt: Date @updatedTime
 }
 
+type FirmAlias @table @export {
+  id: ID @primaryKey
+  firmId: ID! @indexed
+  alias: String! @indexed
+  normalizedAlias: String! @indexed
+  sourceType: String @indexed # curated, brokercheck, advisorhub_article, ...
+  sourceRef: String
+  confidence: String @indexed # approved, candidate
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
+type FirmMergeAudit @table @export {
+  id: ID @primaryKey
+  oldFirmId: ID! @indexed
+  canonicalFirmId: ID! @indexed
+  oldName: String
+  canonicalName: String
+  reason: String @indexed
+  mergedPayload: String
+  createdAt: Date @createdTime
+}
+
 type FirmSuccession @table @export {
   id: ID @primaryKey
   predecessorFirmId: ID! @indexed
