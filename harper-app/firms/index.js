@@ -2,7 +2,6 @@ import { registerEntityShells } from "../seo_shell.js";
 
 /**
  * Register public firm directory and profile URL shells.
- *
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function firmsRoutes(fastify) {

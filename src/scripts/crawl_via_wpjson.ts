@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable jsdoc/require-description, jsdoc/require-returns, jsdoc/require-param-description, @typescript-eslint/no-explicit-any, functional/no-let -- This legacy crawler was outside lint coverage before the Lisa ignore refresh; keep this PR scoped to browser backfill support. */
 // @ts-nocheck
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -13,9 +12,10 @@ const DEFAULT_USER_AGENT =
   "Chrome/125.0.0.0 Safari/537.36";
 
 /**
- *
- * @param name
- * @param fallback
+ * Reads a named CLI option, falling back when the flag is absent.
+ * @param name - Flag name such as `--out`.
+ * @param fallback - Value used when the flag is not present.
+ * @returns CLI value or fallback.
  */
 function opt(name: string, fallback: string): string {
   const i = process.argv.indexOf(name);
@@ -23,24 +23,27 @@ function opt(name: string, fallback: string): string {
 }
 
 /**
- *
- * @param name
+ * Checks whether a boolean CLI flag was provided.
+ * @param name - Flag name such as `--browser`.
+ * @returns True when the flag appears in argv.
  */
 function flag(name: string): boolean {
   return process.argv.includes(name);
 }
 
 /**
- *
- * @param ms
+ * Waits between WordPress requests to avoid hammering AdvisorHub.
+ * @param ms - Pause length in milliseconds.
+ * @returns Promise that resolves after the pause.
  */
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
- *
- * @param value
+ * Parses the `--since` lower bound as a UTC day.
+ * @param value - ISO date without time.
+ * @returns Date at UTC midnight, or undefined when the option is empty.
  */
 function parseSince(value: string): Date | undefined {
   if (!value) return undefined;
@@ -51,8 +54,9 @@ function parseSince(value: string): Date | undefined {
 }
 
 /**
- *
- * @param row
+ * Extracts the publication date field emitted by WordPress REST rows.
+ * @param row - WordPress row with `date_gmt` or `date`.
+ * @returns Parsed publication date, or undefined when unavailable.
  */
 function rowDate(row: Record<string, unknown>): Date | undefined {
   const value =
@@ -63,11 +67,12 @@ function rowDate(row: Record<string, unknown>): Date | undefined {
 }
 
 /**
- *
- * @param url
- * @param userAgent
+ * Fetches one WordPress REST page with AdvisorHub-compatible headers.
+ * @param url - WordPress REST page URL.
+ * @param userAgent - Browser-like user agent sent to AdvisorHub.
+ * @returns Parsed JSON payload.
  */
-async function fetchJson(url: string, userAgent: string): Promise<any> {
+async function fetchJson(url: string, userAgent: string): Promise<unknown> {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json,text/plain,*/*",
@@ -84,11 +89,12 @@ async function fetchJson(url: string, userAgent: string): Promise<any> {
 }
 
 /**
- *
- * @param url
- * @param page
+ * Fetches one WordPress REST page through Playwright when direct fetch is blocked.
+ * @param url - WordPress REST page URL.
+ * @param page - Playwright page with AdvisorHub-compatible context.
+ * @returns Parsed JSON payload.
  */
-async function fetchJsonWithBrowser(url: string, page): Promise<any> {
+async function fetchJsonWithBrowser(url: string, page): Promise<unknown> {
   const response = await page.goto(url, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
@@ -110,7 +116,6 @@ const userAgent = opt(
 );
 const useBrowser = flag("--browser");
 const since = parseSince(opt("--since", ""));
-let requests = 0;
 
 const browser = useBrowser
   ? await chromium.launch({ headless: true })
@@ -119,49 +124,139 @@ const context = browser ? await browser.newContext({ userAgent }) : undefined;
 const browserPage = context ? await context.newPage() : undefined;
 
 try {
-  for (const type of TYPES) {
-    const dir = join(out, type);
-    await mkdir(dir, { recursive: true });
-    let reachedSince = false;
-    for (let page = 1; ; page++) {
-      if (maxPages && page > maxPages) break;
-      if (maxRequests && requests >= maxRequests) break;
-      if (reachedSince) break;
-      const url = `${BASE}/${type}?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia`;
-      try {
-        const rows = browserPage
-          ? await fetchJsonWithBrowser(url, browserPage)
-          : await fetchJson(url, userAgent);
-        requests++;
-        if (!Array.isArray(rows) || rows.length === 0) break;
-        const freshRows = since
-          ? rows.filter(row => {
-              const date = rowDate(row);
-              if (date && date < since) reachedSince = true;
-              return !date || date >= since;
-            })
-          : rows;
-        for (const row of freshRows) {
-          await writeFile(
-            join(dir, `post_${row.id}.json`),
-            `${JSON.stringify(row, null, 2)}\n`
-          );
-        }
-        console.error(
-          `[${type}] page ${page}: ${freshRows.length}/${rows.length}${
-            reachedSince ? " (since cutoff reached)" : ""
-          }`
-        );
-        if (!reachedSince) await sleep(sleepSeconds * 1000);
-      } catch (error) {
-        console.error(`[${type}] stop page ${page}: ${String(error)}`);
-        break;
-      }
-    }
-  }
+  const finalState = await crawlTypes({ requests: 0 });
+  console.error(`\n[done] ${finalState.requests} requests made`);
 } finally {
   await browser?.close();
 }
 
-console.error(`\n[done] ${requests} requests made`);
-/* eslint-enable jsdoc/require-description, jsdoc/require-returns, jsdoc/require-param-description, @typescript-eslint/no-explicit-any, functional/no-let -- Re-enable rules disabled for this legacy crawler file. */
+/**
+ * Crawls each configured WordPress type in order.
+ * @param state - Running request count carried across types.
+ * @returns Final request count.
+ */
+async function crawlTypes(state) {
+  return TYPES.reduce(
+    async (previous, type) => crawlType(type, await previous),
+    Promise.resolve(state)
+  );
+}
+
+/**
+ * Prepares the output directory for one WordPress content type.
+ * @param type - WordPress endpoint segment.
+ * @param state - Running request count carried across types.
+ * @returns Updated request count after this type completes.
+ */
+async function crawlType(type, state) {
+  const dir = join(out, type);
+  await mkdir(dir, { recursive: true });
+  return crawlPage({ type, dir, page: 1, requests: state.requests });
+}
+
+/**
+ * Recursively crawls WordPress pages until limits, empty rows, or since cutoff.
+ * @param input - Crawl state for the current page.
+ * @returns Updated request count after the page and its descendants complete.
+ */
+async function crawlPage(input) {
+  if (shouldStop(input)) return { requests: input.requests };
+  const url = `${BASE}/${input.type}?per_page=${perPage}&page=${input.page}&_embed=wp:featuredmedia`;
+  try {
+    const rows = await readRows(url);
+    const requests = input.requests + 1;
+    if (!Array.isArray(rows) || rows.length === 0) return { requests };
+    const { freshRows, reachedSince } = filterFreshRows(rows);
+    await writeRows(input.dir, freshRows);
+    console.error(
+      pageSummary(
+        input.type,
+        input.page,
+        freshRows.length,
+        rows.length,
+        reachedSince
+      )
+    );
+    if (reachedSince) return { requests };
+    await sleep(sleepSeconds * 1000);
+    return crawlPage({ ...input, page: input.page + 1, requests });
+  } catch (error) {
+    console.error(`[${input.type}] stop page ${input.page}: ${String(error)}`);
+    return { requests: input.requests };
+  }
+}
+
+/**
+ * Checks configured page and request limits before each request.
+ * @param input - Crawl state for the current page.
+ * @returns True when no more requests should be made.
+ */
+function shouldStop(input) {
+  return Boolean(
+    (maxPages && input.page > maxPages) ||
+    (maxRequests && input.requests >= maxRequests)
+  );
+}
+
+/**
+ * Reads one page with either direct fetch or browser fallback.
+ * @param url - WordPress REST page URL.
+ * @returns Parsed JSON payload.
+ */
+function readRows(url) {
+  return browserPage
+    ? fetchJsonWithBrowser(url, browserPage)
+    : fetchJson(url, userAgent);
+}
+
+/**
+ * Applies the optional `--since` cutoff without mutating loop state.
+ * @param rows - WordPress rows returned for one page.
+ * @returns Rows to write and whether the cutoff was reached.
+ */
+function filterFreshRows(rows) {
+  if (!since) return { freshRows: rows, reachedSince: false };
+  const freshRows = rows.filter(row => {
+    const date = rowDate(row);
+    return !date || date >= since;
+  });
+  return {
+    freshRows,
+    reachedSince: rows.some(row => {
+      const date = rowDate(row);
+      return Boolean(date && date < since);
+    }),
+  };
+}
+
+/**
+ * Persists each fetched WordPress row as an individual JSON fixture.
+ * @param dir - Output directory for the content type.
+ * @param rows - Fresh rows that passed the optional cutoff.
+ * @returns Promise that resolves when all rows are written.
+ */
+function writeRows(dir, rows) {
+  return Promise.all(
+    rows.map(row =>
+      writeFile(
+        join(dir, `post_${row.id}.json`),
+        `${JSON.stringify(row, null, 2)}\n`
+      )
+    )
+  );
+}
+
+/**
+ * Formats one progress line for stderr logs.
+ * @param type - WordPress endpoint segment.
+ * @param page - Page number fetched.
+ * @param freshCount - Rows retained after cutoff filtering.
+ * @param totalCount - Rows returned by WordPress.
+ * @param reachedSince - Whether the since cutoff stopped this type.
+ * @returns Human-readable progress summary.
+ */
+function pageSummary(type, page, freshCount, totalCount, reachedSince) {
+  return `[${type}] page ${page}: ${freshCount}/${totalCount}${
+    reachedSince ? " (since cutoff reached)" : ""
+  }`;
+}

@@ -33,6 +33,10 @@ bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
 bun run media:backfill -- --target firms --max 10
                      # find missing firm logo/advisor headshot URLs
+bun run firms:merge-aliases
+                     # dry-run curated firm alias merges and duplicate report
+bun run firms:merge-aliases -- --write
+                     # rewrite canonical firm IDs and remove merged aliases
 bun run preview       # render the /Feed JSON locally (sandbox-friendly)
 bun run dev:server    # serve harper-app/web/ + custom resources locally
 bun run smoke         # Playwright suite (BASE_URL=… for prod)
@@ -160,7 +164,7 @@ harper-app/
   config.yaml                Harper component config (graphqlSchema +
                              rest + jsResource + Fastify clean routes +
                              static web/)
-  schema.graphql             35 entity types as GraphQL SDL with
+  schema.graphql             37 entity types as GraphQL SDL with
                              @table @export directives
   resources.js               generated custom JS resources backing the UI:
                              /Feed, /ArticleView/<id>, /FirmProfile/<id>,
@@ -224,16 +228,17 @@ research/
 src/
   build/build.ts             copies compiled Harper/browser JS into
                              harper-app/ for deploy
-  data/seed-data.json        canonical 99-record seed fixture
+  data/seed-data.json        canonical 101-record seed fixture
   harper/resources.ts        TypeScript source for Harper custom
                              resources
   lib/                       shared IDs, Harper clients, BrokerCheck
                              parser/loader/client helpers
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
-                             media backfill, Morgan Stanley locator
-                             scraping, advisor research queues, token,
-                             preview, and dev server commands
+                             media backfill, firm alias merges, Morgan
+                             Stanley locator scraping, advisor research
+                             queues, token, preview, and dev server
+                             commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 

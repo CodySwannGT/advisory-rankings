@@ -232,7 +232,7 @@
   "ArticleFirmMention": [
     {
       "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
-      "firmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "firmId": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
       "id": "8929a0ad-181d-5ebf-8b11-8b2d22031523"
     },
     {
@@ -325,7 +325,7 @@
       "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
       "id": "500696fc-861b-545b-9fcf-b768742b4607",
       "level": "branch",
-      "name": "Wells Fargo Advisors \u2013 GM Building",
+      "name": "Wells Fargo Advisors – GM Building",
       "parentBranchId": "acbcd2d4-4328-5092-a7f9-90f5aa8cd0d2",
       "state": "NY"
     }
@@ -409,7 +409,7 @@
     {
       "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
       "allegationText": "FINRA arbitration panel ordered Cairnes to pay Wells Fargo $180,000 over two promissory notes signed when he joined the firm in 2009 from Stanford Financial.",
-      "awardAmount": 180000.0,
+      "awardAmount": 180000,
       "clusterId": "2cc86dc2-3e69-5d95-bc39-773d606805a7",
       "dateResolved": "2025-08-01",
       "disclosureType": "civil_judicial",
@@ -476,7 +476,7 @@
     {
       "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
       "endDate": "2026-05-01",
-      "firmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "firmId": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
       "id": "0c75e3c4-eba1-5b99-b035-2d863e63465c",
       "reasonForLeaving": "voluntary",
       "roleCategory": "lead_advisor",
@@ -596,15 +596,6 @@
   "Firm": [
     {
       "channel": "wirehouse",
-      "hqCity": "New York",
-      "hqCountry": "US",
-      "hqState": "NY",
-      "id": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
-      "name": "Morgan Stanley Wealth Management",
-      "subChannel": "Morgan_Stanley_Private_Wealth"
-    },
-    {
-      "channel": "wirehouse",
       "hqCity": "St. Louis",
       "hqCountry": "US",
       "hqState": "MO",
@@ -670,12 +661,21 @@
       "hqState": "NY",
       "id": "0a0bef38-2656-55e0-b1bf-8d443dbeaa5f",
       "name": "J.P. Morgan Advisors"
+    },
+    {
+      "id": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
+      "name": "Morgan Stanley",
+      "channel": "wirehouse",
+      "hqCity": "New York",
+      "hqCountry": "US",
+      "hqState": "NY",
+      "subChannel": "Morgan_Stanley_Private_Wealth"
     }
   ],
   "OutsideBusinessActivity": [
     {
       "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
-      "compensationAmountMin": 175000.0,
+      "compensationAmountMin": 175000,
       "compensationReceived": true,
       "disclosedToFirm": false,
       "endDate": "2023-04-30",
@@ -710,7 +710,7 @@
   ],
   "Sanction": [
     {
-      "amount": 25000.0,
+      "amount": 25000,
       "disclosureId": "5fc6b643-bac7-5141-8326-5d27d136a0b4",
       "effectiveDate": "2025-10-01",
       "id": "74641232-8156-585b-90fd-e02fcb4ac2ab",
@@ -811,16 +811,16 @@
   "TeamMetricSnapshot": [
     {
       "asOf": "2023-12-31",
-      "aum": 1200000000.0,
+      "aum": 1200000000,
       "id": "488ba4e2-431c-5383-b105-560530c8f805",
       "sourceRef": "Barron's profile, 2023",
       "sourceType": "barrons_profile",
       "teamId": "255c0204-86d8-53f7-8d6f-e76482fbf621"
     },
     {
-      "annualRevenue": 18600000.0,
+      "annualRevenue": 18600000,
       "asOf": "2026-05-01",
-      "aum": 5940000000.0,
+      "aum": 5940000000,
       "id": "9ad4d3b0-1d64-5d3d-8f8f-464d77124fcf",
       "sourceRef": "https://www.advisorhub.com/6b-morgan-stanley-team-jumps-to-wells-fargo-advisors-in-nyc/",
       "sourceType": "advisorhub_article",
@@ -831,18 +831,40 @@
   "TransitionEvent": [
     {
       "announcedDate": "2026-05-01",
-      "aumMoved": 5940000000.0,
-      "fromFirmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "aumMoved": 5940000000,
+      "fromFirmId": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
       "headcountMoved": 19,
       "id": "02763eb8-239f-5160-bde7-5ece39b0671f",
       "isBreakaway": false,
       "isReturn": false,
       "moveDate": "2026-05-01",
-      "productionT12": 18600000.0,
+      "productionT12": 18600000,
       "recruitingDealId": "66d1c92b-7e0c-58b4-b0ab-28d86b8795c8",
       "subjectTeamId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
       "toBranchId": "500696fc-861b-545b-9fcf-b768742b4607",
       "toFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d"
+    }
+  ],
+  "FirmAlias": [
+    {
+      "id": "68e35dd7-ed75-54a6-9ea2-417545e25f17",
+      "firmId": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
+      "alias": "Morgan Stanley Wealth Management",
+      "normalizedAlias": "morgan stanley wealth management",
+      "sourceType": "curated_merge",
+      "sourceRef": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "confidence": "approved"
+    }
+  ],
+  "FirmMergeAudit": [
+    {
+      "id": "a9f2142b-abd8-5ca3-ad3f-f105ceda163e",
+      "oldFirmId": "e82bd15d-c55a-5ef8-ae35-02c12485a85b",
+      "canonicalFirmId": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
+      "oldName": "Morgan Stanley Wealth Management",
+      "canonicalName": "Morgan Stanley",
+      "reason": "curated_alias",
+      "mergedPayload": "{\"channel\":\"wirehouse\",\"hqCity\":\"New York\",\"hqCountry\":\"US\",\"hqState\":\"NY\",\"id\":\"e82bd15d-c55a-5ef8-ae35-02c12485a85b\",\"name\":\"Morgan Stanley Wealth Management\",\"subChannel\":\"Morgan_Stanley_Private_Wealth\"}"
     }
   ]
 }

@@ -1,150 +1,295 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import { mkdir, readdir, readFile, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import {
-  advisorId,
   articleId,
   disclosureId,
   employmentHistoryId,
-  firmId,
   sanctionId,
   uid,
 } from "../lib/ids.js";
+import {
+  canonicalFirmId,
+  canonicalFirmName,
+  curatedFirmAliasRows,
+} from "../lib/firm-identity.js";
 import { describeTarget, upsert } from "../lib/harper.js";
+import {
+  advisorKey,
+  advisorLookup,
+  advisorName,
+  asRecord,
+  extractionRows,
+  firmLookup,
+  firmPairsFor,
+  firmSourceName,
+  firmSourceRows,
+  mergeGroups,
+  stringValue,
+  uniqueById,
+  type Row,
+} from "./load_extractions_helpers.js";
 
 const EXTRACT_DIR = "research/extractions";
 const LOADED_DIR = join(EXTRACT_DIR, ".loaded");
 
-function opt(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
+const opt = (name: string): string | undefined => {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+};
 
-function arr<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : [];
-}
-
-async function files(): Promise<string[]> {
-  if (opt("--wpid")) return [join(EXTRACT_DIR, `${opt("--wpid")}.json`)];
+const extractionFiles = async (): Promise<ReadonlyArray<string>> => {
+  const wpId = opt("--wpid");
+  if (wpId) return [join(EXTRACT_DIR, `${wpId}.json`)];
   if (!existsSync(EXTRACT_DIR)) return [];
-  return (await readdir(EXTRACT_DIR)).filter(f => f.endsWith(".json")).map(f => join(EXTRACT_DIR, f));
-}
+  return (await readdir(EXTRACT_DIR))
+    .filter(file => file.endsWith(".json"))
+    .map(file => join(EXTRACT_DIR, file));
+};
 
-export function buildRows(ex: any): Record<string, any[]> {
-  const rows: Record<string, any[]> = {};
-  const push = (table: string, row: any) => {
-    rows[table] ??= [];
-    rows[table].push(row);
-  };
-  const article = ex.article ?? {};
-  const aid = articleId(article.url ?? String(article.wpId ?? ""));
-  push("Article", {
-    id: aid,
-    wpId: article.wpId,
-    wpPostType: article.wpPostType ?? "post",
-    url: article.url,
-    slug: article.slug,
-    headline: article.headline,
-    publishedDate: article.publishedDate,
-    modifiedDate: article.modifiedDate,
-    authors: article.authors ?? [],
-    category: article.category ?? "unknown",
-    wpCategories: article.wpCategories ?? [],
-    wpTags: article.wpTags ?? [],
+/**
+ * Builds Harper rows from one extracted AdvisorHub article payload.
+ * @param extraction - Parsed extraction JSON from research/extractions.
+ * @returns Rows grouped by Harper table name for idempotent upserts.
+ */
+export const buildRows = (extraction: unknown) => {
+  const ex = asRecord(extraction);
+  const article = asRecord(ex.article);
+  const aid = articleId(stringValue(article.url) || String(article.wpId ?? ""));
+  const context = buildContext(aid, ex);
+  return mergeGroups(
+    { Article: [articleRow(aid, article)] },
+    { FirmAlias: curatedFirmAliasRows().map(row => ({ ...row })) },
+    firmRows(ex, context),
+    advisorRows(ex, context),
+    disclosureRows(ex, context),
+    employmentRows(ex, context),
+    sanctionRows(ex, context),
+    outsideBusinessRows(ex, context),
+    fieldAssertionRows(ex, aid)
+  );
+};
+
+const buildContext = (aid: string, ex: Row) => {
+  const firmPairs = firmSourceRows(ex).flatMap(firmPairsFor);
+  const advisorPairs = extractionRows(ex.advisors).map(advisor => ({
+    name: advisorName(advisor),
+    id: advisorKey(advisor),
+  }));
+  return { aid, firmPairs, advisorPairs };
+};
+
+const articleRow = (aid: string, article: Row): Row => ({
+  id: aid,
+  wpId: article.wpId,
+  wpPostType: article.wpPostType ?? "post",
+  url: article.url,
+  slug: article.slug,
+  headline: article.headline,
+  publishedDate: article.publishedDate,
+  modifiedDate: article.modifiedDate,
+  authors: article.authors ?? [],
+  category: article.category ?? "unknown",
+  wpCategories: article.wpCategories ?? [],
+  wpTags: article.wpTags ?? [],
+});
+
+const firmRows = (ex: Row, context: ReturnType<typeof buildContext>) => {
+  const firms = firmSourceRows(ex).map(firm => {
+    const sourceName = firmSourceName(firm);
+    return {
+      id: canonicalFirmId(sourceName),
+      ...asRecord(firm.fields),
+      name: canonicalFirmName(sourceName),
+    };
   });
-  const advisorByName = new Map<string, string>();
-  const firmByName = new Map<string, string>();
-  for (const f of arr(ex.firms)) {
-    const name = f.natural_key?.canonical_name ?? f.fields?.name;
-    const id = firmId(name);
-    firmByName.set(name, id);
-    push("Firm", { id, name, ...f.fields });
-  }
-  for (const a of arr(ex.advisors)) {
-    const name = a.natural_key?.legal_name ?? a.fields?.legalName;
-    const id = advisorId(name, a.natural_key?.first_employer ?? String(a.natural_key?.career_start_year ?? ""));
-    advisorByName.set(name, id);
-    push("Advisor", { id, legalName: name, ...a.fields });
-    push("ArticleAdvisorMention", { id: uid(`aam:${aid}:${id}`), articleId: aid, advisorId: id });
-  }
-  for (const [name, id] of firmByName) {
-    push("ArticleFirmMention", { id: uid(`afm:${aid}:${id}`), articleId: aid, firmId: id });
-  }
-  const disclosureByLocal = new Map<string, string>();
-  for (const d of arr(ex.disclosures)) {
-    const advId = advisorByName.get(d.advisor_legal_name) ?? advisorId(d.advisor_legal_name ?? "", "");
-    const fields = d.fields ?? {};
-    const id = disclosureId(advId, fields.disclosureType ?? d.natural_key?.disclosure_type ?? "", fields.dateInitiated ?? fields.dateResolved ?? "", fields.regulator ?? d.natural_key?.regulator ?? "");
-    disclosureByLocal.set(d.local_key, id);
-    push("Disclosure", { id, advisorId: advId, ...fields });
-    push("ArticleDisclosureMention", { id: uid(`adm:${aid}:${id}`), articleId: aid, disclosureId: id });
-  }
-  for (const eh of arr(ex.employment_histories)) {
-    const advId = advisorByName.get(eh.advisor_legal_name) ?? advisorId(eh.advisor_legal_name ?? "", "");
-    const fid = firmByName.get(eh.firm_canonical_name) ?? firmId(eh.firm_canonical_name ?? "");
-    push("EmploymentHistory", {
-      id: employmentHistoryId(advId, fid, eh.fields?.startDate ?? ""),
-      advisorId: advId,
-      firmId: fid,
-      ...eh.fields,
-    });
-  }
-  for (const s of arr(ex.sanctions)) {
-    const did = disclosureByLocal.get(s.disclosure_local_key);
-    if (!did) continue;
-    const fields = s.fields ?? {};
-    push("Sanction", {
-      id: sanctionId(did, fields.sanctionType ?? "", String(fields.amount ?? ""), String(fields.durationMonths ?? "")),
-      disclosureId: did,
+  const mentions = uniqueById(
+    context.firmPairs.map(({ id }) => ({
+      id: uid(`afm:${context.aid}:${id}`),
+      articleId: context.aid,
+      firmId: id,
+    }))
+  );
+  return { Firm: uniqueById(firms), ArticleFirmMention: mentions };
+};
+
+const advisorRows = (ex: Row, context: ReturnType<typeof buildContext>) => {
+  const advisors = extractionRows(ex.advisors).map(advisor => ({
+    id: advisorKey(advisor),
+    legalName: advisorName(advisor),
+    ...asRecord(advisor.fields),
+  }));
+  const mentions = context.advisorPairs.map(({ id }) => ({
+    id: uid(`aam:${context.aid}:${id}`),
+    articleId: context.aid,
+    advisorId: id,
+  }));
+  return { Advisor: advisors, ArticleAdvisorMention: mentions };
+};
+
+const disclosureRows = (ex: Row, context: ReturnType<typeof buildContext>) => {
+  const disclosures = extractionRows(ex.disclosures).map(disclosure =>
+    disclosureRow(disclosure, context)
+  );
+  return {
+    Disclosure: disclosures,
+    ArticleDisclosureMention: disclosures.map(row => ({
+      id: uid(`adm:${context.aid}:${row.id}`),
+      articleId: context.aid,
+      disclosureId: row.id,
+    })),
+  };
+};
+
+const employmentRows = (ex: Row, context: ReturnType<typeof buildContext>) => ({
+  EmploymentHistory: extractionRows(ex.employment_histories).map(employment => {
+    const advisor = advisorLookup(
+      context.advisorPairs,
+      stringValue(employment.advisor_legal_name)
+    );
+    const firm = firmLookup(
+      context.firmPairs,
+      stringValue(employment.firm_canonical_name)
+    );
+    const fields = asRecord(employment.fields);
+    return {
+      id: employmentHistoryId(advisor, firm, stringValue(fields.startDate)),
+      advisorId: advisor,
+      firmId: firm,
       ...fields,
-    });
-  }
-  for (const oba of arr(ex.outside_business_activities)) {
-    const advId = advisorByName.get(oba.advisor_legal_name) ?? advisorId(oba.advisor_legal_name ?? "", "");
-    push("OutsideBusinessActivity", {
-      id: uid(`oba:${advId}:${oba.fields?.name ?? ""}`),
-      advisorId: advId,
-      ...oba.fields,
-    });
-  }
-  for (const fa of arr(ex.field_assertions)) {
-    push("FieldAssertion", {
-      id: uid(`fa:${aid}:${fa.target_table}:${fa.field}:${JSON.stringify(fa.value)}`),
-      articleId: aid,
-      targetTable: fa.target_table,
-      fieldName: fa.field,
-      assertedValue: JSON.stringify(fa.value),
-      quotePhrase: fa.quote,
-      confidence: fa.confidence ?? "asserted",
-    });
-  }
-  return rows;
-}
+    };
+  }),
+});
 
-async function main(): Promise<void> {
-  console.error(`[load_extractions] target: ${describeTarget()}`);
-  const dryRun = process.argv.includes("--dry-run");
-  await mkdir(LOADED_DIR, { recursive: true });
+const sanctionRows = (ex: Row, context: ReturnType<typeof buildContext>) => ({
+  Sanction: extractionRows(ex.sanctions).flatMap(sanction => {
+    const disclosure = disclosureIdForLocal(
+      ex,
+      context,
+      stringValue(sanction.disclosure_local_key)
+    );
+    if (!disclosure) return [];
+    const fields = asRecord(sanction.fields);
+    return [
+      {
+        id: sanctionId(
+          disclosure,
+          stringValue(fields.sanctionType),
+          String(fields.amount ?? ""),
+          String(fields.durationMonths ?? "")
+        ),
+        disclosureId: disclosure,
+        ...fields,
+      },
+    ];
+  }),
+});
 
-  for (const file of await files()) {
-    const ex = JSON.parse(await readFile(file, "utf8"));
-    const rows = buildRows(ex);
-    const summary: Record<string, number> = {};
-    for (const [table, tableRows] of Object.entries(rows)) {
-      summary[table] = dryRun
-        ? tableRows.length
-        : await upsert(table, tableRows);
+const outsideBusinessRows = (
+  ex: Row,
+  context: ReturnType<typeof buildContext>
+) => ({
+  OutsideBusinessActivity: extractionRows(ex.outside_business_activities).map(
+    activity => {
+      const advisor = advisorLookup(
+        context.advisorPairs,
+        stringValue(activity.advisor_legal_name)
+      );
+      const fields = asRecord(activity.fields);
+      return {
+        id: uid(`oba:${advisor}:${fields.name ?? ""}`),
+        advisorId: advisor,
+        ...fields,
+      };
     }
-    console.log(`${file}: ${JSON.stringify(summary)}`);
-    if (!dryRun) await rename(file, join(LOADED_DIR, file.split("/").pop()!));
-  }
-}
+  ),
+});
+
+const fieldAssertionRows = (ex: Row, aid: string) => ({
+  FieldAssertion: extractionRows(ex.field_assertions).map(assertion => ({
+    id: uid(
+      `fa:${aid}:${assertion.target_table}:${assertion.field}:${JSON.stringify(assertion.value)}`
+    ),
+    articleId: aid,
+    targetTable: assertion.target_table,
+    fieldName: assertion.field,
+    assertedValue: JSON.stringify(assertion.value),
+    quotePhrase: assertion.quote,
+    confidence: assertion.confidence ?? "asserted",
+  })),
+});
+
+const disclosureRow = (
+  disclosure: Row,
+  context: ReturnType<typeof buildContext>
+): Row => {
+  const advisor = advisorLookup(
+    context.advisorPairs,
+    stringValue(disclosure.advisor_legal_name)
+  );
+  const fields = asRecord(disclosure.fields);
+  const naturalKey = asRecord(disclosure.natural_key);
+  return {
+    id: disclosureId(
+      advisor,
+      stringValue(fields.disclosureType ?? naturalKey.disclosure_type),
+      stringValue(fields.dateInitiated ?? fields.dateResolved),
+      stringValue(fields.regulator ?? naturalKey.regulator)
+    ),
+    advisorId: advisor,
+    localKey: disclosure.local_key,
+    ...fields,
+  };
+};
+
+const disclosureIdForLocal = (
+  ex: Row,
+  context: ReturnType<typeof buildContext>,
+  localKey: string
+): string | null => {
+  const disclosure = extractionRows(ex.disclosures).find(
+    row => row.local_key === localKey
+  );
+  return disclosure ? stringValue(disclosureRow(disclosure, context).id) : null;
+};
+
+const loadFile = async (file: string, dryRun: boolean): Promise<void> => {
+  const rows = buildRows(JSON.parse(await readFile(file, "utf8")) as unknown);
+  const summary = Object.fromEntries(
+    await Promise.all(
+      Object.entries(rows).map(async ([table, tableRows]) => [
+        table,
+        dryRun
+          ? tableRows.length
+          : await upsert(
+              table,
+              tableRows.map(row => ({ ...row }))
+            ),
+      ])
+    )
+  );
+  console.log(`${file}: ${JSON.stringify(summary)}`);
+  if (!dryRun)
+    await rename(
+      file,
+      join(LOADED_DIR, file.split("/").at(-1) ?? "loaded.json")
+    );
+};
+
+const main = async (): Promise<void> => {
+  const dryRun = process.argv.includes("--dry-run");
+  console.error(`[load_extractions] target: ${describeTarget()}`);
+  await mkdir(LOADED_DIR, { recursive: true });
+  await Promise.all(
+    (await extractionFiles()).map(file => loadFile(file, dryRun))
+  );
+};
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch(error => {
+  await main().catch(error => {
     console.error(error);
     process.exitCode = 1;
   });

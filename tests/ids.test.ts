@@ -4,8 +4,8 @@ import { articleId, firmId, slugify, uid } from "../src/lib/ids.js";
 describe("deterministic ids", () => {
   it("matches the established UUIDv5 namespace", () => {
     expect(uid("advisor:cjt")).toBe("4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea");
-    expect(firmId("Morgan Stanley Wealth Management")).toBe(
-      "e82bd15d-c55a-5ef8-ae35-02c12485a85b"
+    expect(firmId("Morgan Stanley")).toBe(
+      "8e106b7e-efcc-5aed-8827-fd0ea645b6df"
     );
     expect(
       articleId(

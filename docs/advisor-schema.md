@@ -250,7 +250,7 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | id | |
-| `name` | str | "Morgan Stanley Wealth Management" |
+| `name` | str | Canonical display name, e.g. "Morgan Stanley" |
 | `legal_name?` | str | |
 | `parent_firm_id?` | id | Merrill ⊂ Bank of America |
 | `channel` | enum (`wirehouse`, `regional_bd`, `independent_bd`, `hybrid_bd`, `insurance_bd`, `bank`, `pure_ria`, `hybrid_ria`, `family_office`, `incubator`) | |
@@ -269,6 +269,41 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `is_aggregator?` | bool | Beacon Pointe, Focus, Hightower, Wealthcare, Steward |
 | `website?` | url | |
 | `logo_url?` | url | Public firm logo captured from scraped source metadata or firm-bio pages. |
+
+### 4.5a `FirmAlias`
+
+Firm aliases preserve source-specific names while keeping one canonical
+firm entity. Curated aliases are the only mappings that automatically
+merge records; heuristic duplicate detection produces review candidates.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | id | deterministic from `(firm_id, normalized_alias)` |
+| `firm_id` | id | canonical `Firm` row |
+| `alias` | str | source/display variant, e.g. `Morgan Stanley Wealth Management` |
+| `normalized_alias` | str | lowercase punctuation/legal-suffix-normalized lookup key |
+| `source_type?` | enum (`curated`, `brokercheck`, `advisorhub_article`, ...) | |
+| `source_ref?` | str | merge source, article id, snapshot id, etc. |
+| `confidence?` | enum (`approved`, `candidate`) | only `approved` aliases auto-resolve |
+
+### 4.5b `FirmMergeAudit`
+
+Append-only merge provenance for canonicalization backfills. Before an
+alias `Firm` row is removed, the source row is serialized here and every
+firm foreign key is rewritten to the canonical firm id. For example,
+`Morgan Stanley Wealth Management` is stored as an alias of canonical
+`Morgan Stanley`, while employment histories, teams, branches, article
+mentions, disclosures, transitions, rankings, BrokerCheck snapshots, and
+firm hierarchy references point to `Morgan Stanley`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | id | deterministic from `(old_firm_id, canonical_firm_id)` |
+| `old_firm_id` | id | duplicate/alias row that was merged |
+| `canonical_firm_id` | id | surviving `Firm` row |
+| `old_name` / `canonical_name` | str | display names at merge time |
+| `reason` | str | e.g. `curated_alias` |
+| `merged_payload` | text | JSON copy of the removed row for no-data-loss audit |
 
 ### 4.6 `Branch` / `Office`
 

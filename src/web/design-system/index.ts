@@ -13,26 +13,60 @@
 // molecules.js, or organisms.js (whichever fits its complexity)
 // and re-export it from this file. See docs/design-system.md.
 
-export { el, $, clear } from './dom.js';
+export { el, $, clear } from "./dom.js";
 
 export {
-	Button, Avatar, Tag, Skeleton, EmptyText, Heading,
-	TextInput, FormLabel, Icon, SourceAttribution,
-} from './atoms.js';
+  Button,
+  Avatar,
+  Tag,
+  Skeleton,
+  EmptyText,
+  Heading,
+  TextInput,
+  FormLabel,
+  Icon,
+  SourceAttribution,
+} from "./atoms.js";
 
 export {
-	EntityChip, PostHeader, EntityRow, KvList, SanctionPill,
-	DealStrip, EventStat, NavRow, LabeledField, FirmArrow,
-} from './molecules.js';
+  EntityChip,
+  PostHeader,
+  EntityRow,
+  KvList,
+  SanctionPill,
+  DealStrip,
+  EventStat,
+  NavRow,
+  LabeledField,
+  FirmArrow,
+} from "./molecules.js";
 
 export {
-	Card, SectionCard, EmptyCard, ChipRow, EntityList, Paginated,
-	ProfileHead, Navbar, SiteFooter, GlobalSearch,
-	TransitionEventCard, DisclosureEventCard, ArticleListBlock,
-	FeedPostCard, CareerTimeline, SnapshotTable, ScrollableTable,
-	SkeletonCard, BrowseCard, RollupCard, DetailsCard,
-} from './organisms.js';
+  Card,
+  SectionCard,
+  EmptyCard,
+  ChipRow,
+  EntityList,
+  Paginated,
+  ProfileHead,
+  Navbar,
+  SiteFooter,
+  GlobalSearch,
+  TransitionEventCard,
+  DisclosureEventCard,
+  ArticleListBlock,
+  FeedPostCard,
+  CareerTimeline,
+  SnapshotTable,
+  ScrollableTable,
+  SkeletonCard,
+  BrowseCard,
+  RollupCard,
+  DetailsCard,
+} from "./organisms.js";
 
 export {
-	mountThreeColumnPage, mountFullWidthPage, mountCenteredNarrowPage,
-} from './templates.js';
+  mountThreeColumnPage,
+  mountFullWidthPage,
+  mountCenteredNarrowPage,
+} from "./templates.js";
