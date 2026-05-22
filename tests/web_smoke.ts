@@ -132,22 +132,25 @@ async function runScenarios(
 async function main(): Promise<void> {
   const extraHTTPHeaders = await authHeaders();
   const browser = await chromium.launch({ headless: true });
-  const context = await newContext(
-    browser,
-    { width: 1280, height: 900 },
-    extraHTTPHeaders
-  );
-  const page = await context.newPage();
+  try {
+    const context = await newContext(
+      browser,
+      { width: 1280, height: 900 },
+      extraHTTPHeaders
+    );
+    const page = await context.newPage();
 
-  await mkdir(SHOTS, { recursive: true });
-  console.log(
-    "▶ smoke against",
-    BASE,
-    extraHTTPHeaders ? "(JWT bearer)" : "(anonymous, as a real visitor)"
-  );
-  printResults(await runScenarios(browser, page, extraHTTPHeaders));
-  await context.close();
-  await browser.close();
+    await mkdir(SHOTS, { recursive: true });
+    console.log(
+      "▶ smoke against",
+      BASE,
+      extraHTTPHeaders ? "(JWT bearer)" : "(anonymous, as a real visitor)"
+    );
+    printResults(await runScenarios(browser, page, extraHTTPHeaders));
+    await context.close();
+  } finally {
+    await browser.close();
+  }
 }
 
 main().catch((err: unknown) => {

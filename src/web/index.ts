@@ -100,7 +100,7 @@ function renderLeft(root, items) {
     title: "Recent transitions",
     rows: recentTransitions,
     renderRow: t => ({
-      name: t.subject || "Move",
+      name: transitionSubjectName(t.subject),
       sub: el(
         "div",
         { class: "sub" },
@@ -115,6 +115,17 @@ function renderLeft(root, items) {
   clear(root);
   root.appendChild(browseCard);
   root.appendChild(transitionsCard);
+}
+
+/**
+ * Returns a readable label for a transition subject.
+ * @param subject - Transition subject from the feed resource.
+ * @returns Subject display name, falling back to a generic move label.
+ */
+function transitionSubjectName(subject) {
+  if (!subject) return "Move";
+  if (typeof subject === "string") return subject;
+  return subject.name || subject.id || "Move";
 }
 
 /**
