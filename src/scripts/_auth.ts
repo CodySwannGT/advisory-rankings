@@ -57,19 +57,20 @@ function keychainSecret(service) {
 }
 
 /**
- * Loads creds from the configured source.
- * @returns The loaded result.
+ * Loads Harper Fabric and cluster credentials from env, keychain, or the local credentials file.
+ * @param processEnv - Environment map to read before keychain and file fallbacks.
+ * @returns Studio, cluster, and admin credential values for deploy and data-plane auth.
  */
-export function loadCreds() {
+export function loadCreds(processEnv = process.env) {
   const fileCred = (() => {
     try {
       return Object.fromEntries(
         readFileSync(`${homedir()}/.harper-fabric-credentials`, "utf8")
           .split("\n")
           .filter(Boolean)
-          .map(l => {
-            const i = l.indexOf("=");
-            return [l.slice(0, i), l.slice(i + 1)];
+          .map(line => {
+            const index = line.indexOf("=");
+            return [line.slice(0, index), line.slice(index + 1)];
           })
       );
     } catch {
@@ -80,7 +81,8 @@ export function loadCreds() {
     HARPER_ADMIN_USERNAME: keychainSecret(KEYCHAIN_USERNAME_SERVICE),
     HARPER_ADMIN_PASSWORD: keychainSecret(KEYCHAIN_SECRET_SERVICE),
   };
-  const env = (k, d) => process.env[k] ?? keychain[k] ?? fileCred[k] ?? d;
+  const env = (key, fallback) =>
+    processEnv[key] ?? keychain[key] ?? fileCred[key] ?? fallback;
   return {
     studioUrl: env("HARPER_STUDIO_URL", "https://fabric.harper.fast"),
     clusterUrl: env(
@@ -96,12 +98,11 @@ export function loadCreds() {
 /** Studio session cookie helper (control plane). */
 export class StudioSession {
   /**
-   * Handles constructor for this workflow.
-   * @param root0 - value used by this operation.
-   * @param root0.studioUrl - studio url used by this operation.
-   * @param root0.username - username used by this operation.
-   * @param root0.password - Password for authentication.
-   * @returns The computed value.
+   * Creates a Studio session wrapper that stores cookies returned by Fabric.
+   * @param root0 - Studio endpoint and login credentials.
+   * @param root0.studioUrl - Harper Studio base URL.
+   * @param root0.username - Harper Studio username.
+   * @param root0.password - Harper Studio password.
    */
   constructor({ studioUrl, username, password }) {
     this.studioUrl = studioUrl;
@@ -109,14 +110,15 @@ export class StudioSession {
     this.password = password;
     this.cookieJar = "";
   }
+
   /**
-   * Handles fetch for this workflow.
-   * @param url - URL to request or normalize.
+   * Fetches a Studio URL while preserving returned session cookies.
+   * @param url - Studio URL to request.
    * @param init - Fetch options.
-   * @returns The computed value.
+   * @returns Studio response with cookie jar updated.
    */
   async _fetch(url, init = {}) {
-    const r = await fetch(url, {
+    const response = await fetch(url, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -125,52 +127,56 @@ export class StudioSession {
       },
       redirect: "manual",
     });
-    const sc = r.headers.getSetCookie?.() || [];
-    for (const s of sc) {
-      const [pair] = s.split(";");
+    const setCookies = response.headers.getSetCookie?.() || [];
+    for (const cookie of setCookies) {
+      const [pair] = cookie.split(";");
       const [name] = pair.split("=");
       const existing = this.cookieJar
         .split("; ")
         .filter(Boolean)
-        .filter(p => !p.startsWith(`${name}=`));
+        .filter(entry => !entry.startsWith(`${name}=`));
       this.cookieJar = [...existing, pair].join("; ");
     }
-    return r;
+    return response;
   }
+
   /**
    * Authenticates with Harper Studio and stores returned session cookies.
-   * @returns The computed value.
+   * @returns This authenticated session.
    */
   async login() {
     if (!this.username || !this.password)
       throw new Error("missing username/password for Studio login");
-    const r = await this._fetch(`${this.studioUrl}/Login/`, {
+    const response = await this._fetch(`${this.studioUrl}/Login/`, {
       method: "POST",
       body: JSON.stringify({ email: this.username, password: this.password }),
     });
-    if (r.status !== 200) {
-      const t = await r.text();
-      throw new Error(`Studio login failed: ${r.status} ${t.slice(0, 200)}`);
+    if (response.status !== 200) {
+      const text = await response.text();
+      throw new Error(
+        `Studio login failed: ${response.status} ${text.slice(0, 200)}`
+      );
     }
     return this;
   }
+
   /**
-   * POST a cluster operation through Studio's proxy (Fabric control plane).
+   * POSTs a cluster operation through Studio's Fabric control-plane proxy.
    * @param clusterId - Harper Fabric cluster id.
-   * @param operation - Operation callback to retry.
+   * @param operation - Operation name to run.
    * @param extra - Additional operation parameters.
-   * @returns The computed value.
+   * @returns Status and parsed JSON response body.
    */
   async clusterOp(clusterId, operation, extra = {}) {
-    const r = await this._fetch(
+    const response = await this._fetch(
       `${this.studioUrl}/Cluster/${clusterId}/operation/`,
       {
         method: "POST",
         body: JSON.stringify({ operation, ...extra }),
       }
     );
-    const body = await r.json().catch(() => null);
-    return { status: r.status, body };
+    const body = await response.json().catch(() => null);
+    return { status: response.status, body };
   }
 }
 

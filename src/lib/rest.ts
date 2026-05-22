@@ -9,23 +9,11 @@ export function basicAuth(user: string, password: string): string {
 }
 
 /**
- * Handles required env for this workflow.
- * @param name - Display name or option name.
- * @returns The computed value.
- */
-export function requiredEnv(name: string): string {
-  const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;
-  const value = env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
-}
-
-/**
- * Handles rest get for this workflow.
- * @param base - Base URL for relative resolution.
+ * Reads all rows from a Harper REST table endpoint.
+ * @param base - Harper REST base URL.
  * @param table - Harper table name.
- * @param auth - auth used by this operation.
- * @returns The computed value.
+ * @param auth - Prebuilt Basic auth header.
+ * @returns Rows returned by the table endpoint, or an empty list on failure.
  */
 export async function restGet<T = unknown>(
   base: string,

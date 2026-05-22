@@ -81,6 +81,16 @@ curl -H "Authorization: Bearer $TOKEN" \
 session cookie for the Fabric control plane. The auth split is in
 `src/scripts/_auth.ts`.
 
+For scripts that write through the Harper operations API (`bun run ingest`,
+`bun run load:extractions`, `bun run scrape:morgan-stanley -- --write`),
+`HDB_TARGET_URL` is optional. When unset, the repo defaults to the Fabric
+dev cluster operations URL derived from `HARPER_CLUSTER_URL` (or the
+checked-in dev URL) plus `:9925`. `HDB_ADMIN_USERNAME` and
+`HDB_ADMIN_PASSWORD` are also optional when the same credentials are
+available as `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`, in the
+macOS Keychain services `advisory-rankings-harper-username` and
+`advisory-rankings-harper-password`, or in `~/.harper-fabric-credentials`.
+
 ## Web UI — AdvisorBook (Facebook-style activity feed)
 
 The Harper component ships a small static web app branded

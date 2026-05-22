@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import seedData from "../data/seed-data.json" with { type: "json" };
-import { basicAuth, requiredEnv, restPut } from "../lib/rest.js";
+import { harperConfig } from "../lib/harper.js";
+import { restPut } from "../lib/rest.js";
 
-const base = requiredEnv("HDB_TARGET_URL");
-const auth = basicAuth(
-  requiredEnv("HDB_ADMIN_USERNAME"),
-  requiredEnv("HDB_ADMIN_PASSWORD")
-);
+const config = harperConfig();
+const base = config.target;
+const auth = `Basic ${config.auth}`;
+
+if (!base) throw new Error("Harper REST target is required");
 
 console.error(`[seed_via_rest] target: REST ${base}`);
 

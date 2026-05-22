@@ -1,5 +1,6 @@
 import { request as httpRequest } from "node:http";
 import { Buffer } from "node:buffer";
+import { loadCreds } from "../scripts/_auth.js";
 
 /**
  * Connection settings for Harper operations and fallback REST writes.
@@ -8,6 +9,22 @@ interface HarperConfig {
   readonly auth: string;
   readonly socket: string;
   readonly target: string;
+}
+
+/**
+ * Builds the operations endpoint from a cluster data-plane URL.
+ * @param clusterUrl - Harper cluster HTTPS URL from Fabric credentials.
+ * @returns Operations endpoint URL with the default Harper operations port.
+ */
+function defaultOperationsTarget(clusterUrl: string | undefined): string {
+  const normalized = stripTrailingSlashes(clusterUrl ?? "");
+  if (!normalized) return "";
+  try {
+    const parsed = new URL(normalized);
+    return parsed.port ? normalized : `${normalized}:9925`;
+  } catch {
+    return normalized;
+  }
 }
 
 /**
@@ -43,11 +60,15 @@ function localAdminPassword(): string {
 export function harperConfig(
   env: NodeJS.ProcessEnv = currentEnv()
 ): HarperConfig {
-  const target = stripTrailingSlashes(env.HDB_TARGET_URL ?? "");
+  const creds = loadCreds(env);
+  const target = stripTrailingSlashes(
+    env.HDB_TARGET_URL ?? defaultOperationsTarget(creds.clusterUrl)
+  );
   const hdbRoot = env.HDB_ROOT ?? `${env.HOME}/.harperdb`;
   const socket = `${hdbRoot}/operations-server`;
-  const user = env.HDB_ADMIN_USERNAME ?? "admin";
-  const password = env.HDB_ADMIN_PASSWORD ?? localAdminPassword();
+  const user = env.HDB_ADMIN_USERNAME ?? creds.username ?? "admin";
+  const password =
+    env.HDB_ADMIN_PASSWORD ?? creds.password ?? localAdminPassword();
   const auth = Buffer.from(`${user}:${password}`).toString("base64");
   return { target, socket, auth };
 }
