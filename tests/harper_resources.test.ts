@@ -410,6 +410,55 @@ describe("Harper feed and profile builders", () => {
     expect(payload.articles[0]).toMatchObject({ id: "article-a" });
   });
 
+  it("covers advisor fallback dates and optional credential groups", async () => {
+    const db = await resourceData.loadAll();
+    db.disclosures = [
+      ...db.disclosures,
+      {
+        id: "disclosure-resolved",
+        advisorId: "advisor-a",
+        dateResolved: "2021-01-01",
+        disclosureType: "regulatory",
+      },
+    ];
+    db.education = [
+      { id: "education-undated", advisorId: "advisor-a" },
+      {
+        id: "education-dated",
+        advisorId: "advisor-a",
+        graduationYear: 2010,
+      },
+    ];
+
+    const withOptionalRows = advisorResource.advisorProfilePayload(
+      db,
+      db.byAdvisor.get("advisor-a")
+    );
+    expect(withOptionalRows.disclosures.map((row: any) => row.id)).toEqual([
+      "disclosure-resolved",
+      "disclosure-a",
+    ]);
+    expect(withOptionalRows.education.map((row: any) => row.id)).toEqual([
+      "education-undated",
+      "education-dated",
+    ]);
+
+    const withoutCredentialTables = advisorResource.advisorProfilePayload(
+      {
+        ...db,
+        designations: undefined,
+        education: undefined,
+        licenses: undefined,
+      },
+      db.byAdvisor.get("advisor-a")
+    );
+    expect(withoutCredentialTables).toMatchObject({
+      designations: [],
+      education: [],
+      licenses: [],
+    });
+  });
+
   it("builds firm roster rows and counts current versus past advisors", async () => {
     const db = await resourceData.loadAll();
 
@@ -430,9 +479,72 @@ describe("Harper feed and profile builders", () => {
       }),
     ]);
   });
+
+  it("covers fallback feed summaries and missing entity chips", async () => {
+    const db = await resourceData.loadAll();
+
+    expect(feed.advisorChip(null, db)).toBeNull();
+    expect(feed.firmChip(null)).toBeNull();
+    expect(feed.teamChip(null, db)).toBeNull();
+    expect(feed.deriveDek({ dek: "Manual dek" }, [])).toBe("Manual dek");
+    expect(
+      feed.deriveDek({}, [
+        {
+          kind: "transition",
+          subject: { kind: "firm", name: "Example Wealth" },
+          fromFirm: { short: "Old" },
+          toFirm: { short: "New" },
+          aumMoved: 2_500_000_000,
+        },
+      ])
+    ).toBe("Example Wealth moves from Old to New ($2.50B AUM).");
+    expect(
+      feed.deriveDek({}, [
+        {
+          advisor: { name: "Avery Stone" },
+          disclosureType: "customer",
+          kind: "disclosure",
+          regulator: "FINRA",
+        },
+      ])
+    ).toBe("Avery Stone: FINRA customer.");
+    expect(feed.deriveDek({}, [])).toBe("");
+    expect(feed.summarizeArticle({ id: "article-without-events" }, db)).toEqual(
+      []
+    );
+    expect(
+      feed.deriveDek({}, [
+        {
+          kind: "transition",
+          subject: "Legacy Team",
+        },
+      ])
+    ).toBe("Legacy Team moves from ? to ?.");
+    expect(feed.deriveDek({}, [{ kind: "disclosure" }])).toBe(
+      "Advisor: regulatory matter."
+    );
+    expect(feed.transitionRow({ id: "empty-subject" }, db)?.subject).toBeNull();
+    expect(
+      feed.transitionRow({ id: "firm-subject", subjectFirmId: "firm-a" }, db)
+        ?.subject
+    ).toMatchObject({ kind: "firm", name: "Example Wealth Management" });
+  });
 });
 
 describe("Harper resource endpoints", () => {
+  it("marks public resources as readable", () => {
+    expect(new (resources as any).Feed().allowRead()).toBe(true);
+    expect(new (resources as any).ArticleView().allowRead()).toBe(true);
+    expect(new (resources as any).FirmProfile().allowRead()).toBe(true);
+    expect(new (resources as any).FirmAdvisors().allowRead()).toBe(true);
+    expect(new (resources as any).AdvisorProfile().allowRead()).toBe(true);
+    expect(new (resources as any).TeamProfile().allowRead()).toBe(true);
+    expect(new (resources as any).PublicFirms().allowRead()).toBe(true);
+    expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
+    expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
+    expect(new (resources as any).Search().allowRead()).toBe(true);
+  });
+
   it("serves feed, article, firm, advisor, and team profiles", async () => {
     const feedResponse = await new (resources as any).Feed().get();
     const article = await new (resources as any).ArticleView().get(
@@ -492,6 +604,17 @@ describe("Harper resource endpoints", () => {
       items: [],
       nextCursor: null,
     });
+    await expect(
+      new (resources as any).FirmProfile().get("unknown")
+    ).resolves.toEqual({ error: "not found", id: "unknown" });
+    await expect(new (resources as any).TeamProfile().get("")).resolves.toEqual(
+      {
+        error: "missing team id",
+      }
+    );
+    await expect(
+      new (resources as any).TeamProfile().get("unknown")
+    ).resolves.toEqual({ error: "not found", id: "unknown" });
   });
 });
 
@@ -529,6 +652,36 @@ describe("Harper directory and search resources", () => {
       "advisor",
       "team",
     ]);
+  });
+
+  it("handles optional aliases, team firm misses, and capped search results", async () => {
+    setRows("FirmAlias", []);
+    setRows("Team", [
+      { id: "team-z", name: "Zeta Team" },
+      { id: "team-a", name: "Alpha Team", currentFirmId: "missing-firm" },
+    ]);
+    setRows(
+      "Advisor",
+      Array.from({ length: 25 }, (_, index) => ({
+        id: `advisor-${index}`,
+        firstName: "Stone",
+        lastName: `Advisor ${index}`,
+      }))
+    );
+
+    const firms = await new (resources as any).PublicFirms().get();
+    const teams = await new (resources as any).PublicTeams().get();
+    const result = await new (resources as any).Search().get(
+      routeTarget("", { limit: "50", q: "stone" })
+    );
+
+    expect(firms).toHaveLength(2);
+    expect(teams).toEqual([
+      expect.objectContaining({ currentFirmName: null, id: "team-a" }),
+      expect.objectContaining({ currentFirmName: null, id: "team-z" }),
+    ]);
+    expect(result.items).toHaveLength(20);
+    expect(result.counts.advisors).toBe(25);
   });
 
   it("scores search helper results and short query responses", async () => {
