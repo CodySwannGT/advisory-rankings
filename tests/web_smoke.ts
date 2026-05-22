@@ -160,7 +160,7 @@ async function main() {
 	// hasText: 'Wells Fargo' would match both the parent firm and FiNet.
 	// Use an exact-match regex to grab the parent firm while preserving
 	// the full brand name shown to users.
-		const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo Advisors(?:·|$)/ }).first();
+		const wellsChip = taylorCard.locator('.chip.firm').filter({ hasText: /^firmWells Fargo(?: Advisors)?(?:·|$)/ }).first();
 	await wellsChip.click();
 	await page.waitForSelector('.profile-head h1', { timeout: 10000 });
 	cleanProfilePath('firms', page.url())
