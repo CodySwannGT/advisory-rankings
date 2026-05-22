@@ -23,6 +23,8 @@ src/graphql-generated
 *.sh
 *.json
 coverage
+harper-app/web
+research
 
 # Amplify CLI auto-generates files in a format Prettier disallows
 # (quoted keys, commas instead of semicolons in TS object types,
