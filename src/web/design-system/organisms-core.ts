@@ -2,6 +2,7 @@
 import { el } from "./dom.js";
 import { Avatar, Tag, EmptyText, Heading } from "./atoms.js";
 import { EntityRow, EntityChip, KvList, NavRow } from "./molecules.js";
+import { APP_VERSION } from "../version.js";
 
 const SKELETON_CLASS = "ab-skeleton";
 const CARD_SUBTITLE_CLASS = "card-subtitle";
@@ -177,7 +178,8 @@ export function SiteFooter() {
         rel: "noreferrer",
       },
       "source"
-    )
+    ),
+    el("span", { class: "site-version" }, `v${APP_VERSION}`)
   );
 }
 

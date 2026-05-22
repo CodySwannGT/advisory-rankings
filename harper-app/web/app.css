@@ -625,3 +625,8 @@ footer.site-footer {
 	font-size: 12px;
 	padding: 24px 0 40px;
 }
+
+.site-version {
+	margin-left: 8px;
+	font-variant-numeric: tabular-nums;
+}

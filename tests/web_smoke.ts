@@ -15,6 +15,7 @@ import {
   DEPLOYED_DATA_TIMEOUT,
   SHOTS,
   QUICK_UI_TIMEOUT,
+  SITE_VERSION_SELECTOR,
   authHeaders,
   check,
   closeWithChecks,
@@ -54,6 +55,8 @@ async function smokeMobile(
   await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  const versionText =
+    (await page.locator(SITE_VERSION_SELECTOR).textContent()) ?? "";
   await shot(page, "08-mobile-closed");
   await page.locator(".nav-burger").click();
   await page.waitForFunction(
@@ -71,6 +74,11 @@ async function smokeMobile(
       "mobile: hamburger visible"
     ),
     check(await drawer.isVisible(), "mobile: drawer opens"),
+    check(
+      /^v\d+\.\d+\.\d+/.test(versionText),
+      "mobile: footer shows app version",
+      versionText
+    ),
     check(
       page.url().endsWith("/firms"),
       "mobile: drawer link navigates to Firms"

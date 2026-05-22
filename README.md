@@ -64,8 +64,9 @@ TypeScript rather than stale checked-in JavaScript. It reads
 then macOS Keychain services `advisory-rankings-harper-username` and
 `advisory-rankings-harper-password`, then
 `~/.harper-fabric-credentials` (chmod 600). Auto-deploy on
-merge to `main` runs the same script via
-`.github/workflows/deploy.yml` and gates the merge on the Playwright
+merge to `main` runs through Lisa's release workflow first so
+`package.json` is version-bumped, then runs the same deploy script via
+`.github/workflows/deploy.yml` and gates the release on the Playwright
 smoke against the live cluster URL.
 
 For ad-hoc data-plane calls, use the Harper-native JWT:

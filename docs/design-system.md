@@ -195,7 +195,7 @@ Self-contained UI sections.
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
 | `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. |
 | `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
-| `SiteFooter()` | Footer with source link. |
+| `SiteFooter()` | Footer with source link and package version. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
 | `DisclosureEventCard(d, fmts)` | Red-bordered event card for a `Disclosure`. |
 | `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.ts` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |

@@ -1,33 +1,81 @@
-name: Deploy to Fabric
-
-# When `main` advances we package up `harper-app/` and push it to the
-# Fabric cluster via Studio's operations proxy.  Same code path that
-# `bun run deploy` uses locally — see src/scripts/deploy.ts and the
-# fabric-runbook §6 for why we go through Studio's :443 instead of the
-# cluster's :9925 (firewalled from datacenter egress).
-#
-# After deploy, we run the Playwright smoke suite against the live
-# cluster URL with basic-auth.  If any check fails the workflow fails.
+name: Release and Deploy
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+          - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  determine_environment:
+    name: Determine Environment
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: Set environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
+  release:
+    name: Release
+    needs: [determine_environment]
+    uses: CodySwannGT/lisa/.github/workflows/release.yml@main
+    with:
+      environment: ${{ needs.determine_environment.outputs.environment }}
+      release_strategy: 'standard-version'
+      skip_jobs: 'test:e2e,test:integration'
+      require_approval: false
+      require_signatures: false
+      generate_sbom: true
+      override_blackout: true
+      node_version: '22.21.1'
+      package_manager: 'bun'
+    secrets:
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+      SIGNING_KEY_PASSPHRASE: ${{ secrets.SIGNING_KEY_PASSPHRASE }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
+  deploy_fabric:
+    name: Deploy to Fabric
+    runs-on: ubuntu-latest
+    needs: [determine_environment, release]
+    if: needs.release.result == 'success'
+    timeout-minutes: 15
     env:
       HARPER_STUDIO_URL: https://fabric.harper.fast
       HARPER_CLUSTER_URL: https://advisory-rankings-de.cody-swann-org.harperfabric.com
       HARPER_CLUSTER_ID: clu-nzeaqmqh1c5zrp9w
       HARPER_ADMIN_USERNAME: ${{ secrets.HARPER_ADMIN_USERNAME }}
       HARPER_ADMIN_PASSWORD: ${{ secrets.HARPER_ADMIN_PASSWORD }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout released branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:
@@ -44,10 +92,10 @@ jobs:
             exit 1
           fi
 
-      - name: Install Bun dependencies (needed for `playwright` JS module)
+      - name: Install Bun dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build and deploy harper-app/ to Fabric (deploy_component + restart)
+      - name: Build and deploy harper-app to Fabric
         run: bun run deploy
 
       - name: Install Playwright Chromium browser
@@ -65,3 +113,6 @@ jobs:
           name: smoke-screenshots
           path: tests/screenshots/
           if-no-files-found: ignore
+
+      - name: Report deployed version
+        run: echo "Deployed version ${{ needs.release.outputs.version }} to ${{ needs.determine_environment.outputs.environment }}"
