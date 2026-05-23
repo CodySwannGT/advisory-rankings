@@ -156,6 +156,9 @@ docs/
                                touching anything visual.
   fabric-runbook.md            ops log: cluster, schema reloads, every
                                workaround, every failed alternative
+  firm-source-adapters.md      reusable contract, CLI flags, fixture
+                               layout, and docs checklist for public
+                               firm advisor-locator imports
   brokercheck-spike.md         feasibility study for adding FINRA
                                BrokerCheck as a regulator-of-record
                                source alongside AdvisorHub (research,
