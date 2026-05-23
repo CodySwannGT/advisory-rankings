@@ -27,6 +27,9 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
   await page.waitForSelector(".post-headline", {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  await page.locator(".snap-table tbody tr").first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, "05-article-detail");
 
   return [
@@ -40,10 +43,7 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
       page.url()
     ),
     check(
-      (await page
-        .locator(".card")
-        .filter({ hasText: "Extracted facts" })
-        .count()) >= 1,
+      (await page.locator(".card:has(.snap-table)").count()) >= 1,
       "article.html: extracted facts section present"
     ),
     check(
@@ -59,7 +59,6 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
  * The Taylor article is the seeded regression case with extracted
  * provenance, so using its visible feed card avoids fanning out live
  * ArticleView requests across every feed item during deploy smoke.
- *
  * @param page - Browser page used for Feed requests.
  * @returns Article detail path, or an empty string if no provenance exists.
  */
