@@ -1,0 +1,52 @@
+{
+  "viewtype": "faview",
+  "resultCount": 216,
+  "langcode": "en",
+  "currentPage": 1,
+  "itemsPerPage": 16,
+  "resultStartPoint": 1,
+  "distance_unit": "mi",
+  "distance_radius": 50,
+  "results": [
+    {
+      "faName": "Rolland Bravo",
+      "faEntityId": 1798657,
+      "fid": 609881,
+      "address": "825 Third Avenue Suite 2500, New York, NY 10022",
+      "faUrl": "/us-en/financial-advisor/rolland-bravo",
+      "faContactUrl": "/us-en/financial-advisor/rolland-bravo/contact",
+      "faImage": "https://edwardjoneslive.pc.cdn.bitgravity.com/assets/fa-pictures/600x900/1798657.jpg",
+      "phone": "7183881768",
+      "degreeSuffix": "",
+      "certification": "AAMS\u00ae",
+      "focusArea": "Wealth Strategies, Employee Stock Options, Entrepreneurs & Business Owners, Business Retirement Plans, Intergenerational Planning, Estate & Legacy Strategies",
+      "distance": 0.22,
+      "lat": 40.756225,
+      "lon": -73.970716,
+      "faCity": "New York",
+      "faState": "NY",
+      "faCountry": "US",
+      "faZipCode": "10022"
+    },
+    {
+      "faName": "Will Frank",
+      "faEntityId": 1931118,
+      "fid": 661716,
+      "address": "825 Third Avenue Suite 2500, New York, NY 10022",
+      "faUrl": "/us-en/financial-advisor/will-frank",
+      "faContactUrl": "/us-en/financial-advisor/will-frank/contact",
+      "faImage": "https://edwardjoneslive.pc.cdn.bitgravity.com/assets/fa-pictures/600x900/1931118.jpg",
+      "phone": "2122042952",
+      "degreeSuffix": "MBA",
+      "certification": "CEPA\u00ae",
+      "focusArea": "Entrepreneurs & Business Owners, Business Retirement Plans, Wealth Strategies, Intergenerational Planning, Estate & Legacy Strategies",
+      "distance": 0.22,
+      "lat": 40.755873,
+      "lon": -73.970001,
+      "faCity": "New York",
+      "faState": "NY",
+      "faCountry": "US",
+      "faZipCode": "10022"
+    }
+  ]
+}

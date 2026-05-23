@@ -32,6 +32,7 @@
     "media:backfill": "bun run build && node dist/scripts/backfill_media.js",
     "scrape:rbc": "bun run build && node dist/scripts/scrape_rbc.js",
     "scrape:raymond-james": "bun run build && node dist/scripts/scrape_raymond_james.js",
+    "scrape:edward-jones": "bun run build && node dist/scripts/scrape_edward_jones.js",
     "scrape:merrill": "bun run build && node dist/scripts/scrape_merrill.js",
     "scrape:morgan-stanley": "bun run build && node dist/scripts/scrape_morgan_stanley.js",
     "scrape:wells-fargo": "bun run build && node dist/scripts/scrape_wells_fargo.js",
