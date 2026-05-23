@@ -20,6 +20,34 @@ const initializeRequest = {
   },
 };
 
+const READ_ONLY_TOOL_NAMES = [
+  "search_advisorbook",
+  "get_feed",
+  "get_advisor_profile",
+  "get_firm_profile",
+  "get_team_profile",
+  "get_article",
+];
+
+const FORBIDDEN_TOOL_TERMS = [
+  "admin",
+  "auth",
+  "credential",
+  "delete",
+  "ingest",
+  "insert",
+  "mutation",
+  "raw",
+  "refresh",
+  "scrape",
+  "sql",
+  "table",
+  "token",
+  "update",
+  "upsert",
+  "write",
+];
+
 describe("MCP transport", () => {
   it("accepts anonymous initialize requests", async () => {
     const endpoint = new (mcpResource as any).mcp();
@@ -67,24 +95,40 @@ describe("MCP transport", () => {
   });
 
   it("lists only curated read-only AdvisorBook tools", async () => {
-    await expect(
-      mcpResource.handleMcpRequest({
-        jsonrpc: "2.0",
-        id: "tools-1",
-        method: "tools/list",
-      })
-    ).resolves.toMatchObject({
+    const response = await mcpResource.handleMcpRequest({
+      jsonrpc: "2.0",
+      id: "tools-1",
+      method: "tools/list",
+    });
+
+    expect(response).toMatchObject({
       jsonrpc: "2.0",
       id: "tools-1",
       result: {
-        tools: [
-          { name: "search_advisorbook" },
-          { name: "get_feed" },
-          { name: "get_advisor_profile" },
-          { name: "get_firm_profile" },
-          { name: "get_team_profile" },
-          { name: "get_article" },
-        ],
+        tools: READ_ONLY_TOOL_NAMES.map(name => ({ name })),
+      },
+    });
+    expect(toolNames(response)).toEqual(READ_ONLY_TOOL_NAMES);
+    for (const tool of response.result.tools) {
+      expect(tool.inputSchema).toMatchObject({ type: "object" });
+      expect(readOnlyCatalogText(tool)).not.toMatch(forbiddenToolTermPattern());
+    }
+  });
+
+  it("returns a predictable error for unknown tool calls", async () => {
+    await expect(
+      mcpResource.handleMcpRequest({
+        jsonrpc: "2.0",
+        id: "invalid-tool-1",
+        method: "tools/call",
+        params: { name: "delete_everything", arguments: {} },
+      })
+    ).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: "invalid-tool-1",
+      error: {
+        code: -32603,
+        message: "Unknown tool: delete_everything",
       },
     });
   });
@@ -131,3 +175,29 @@ describe("MCP transport", () => {
     ]);
   });
 });
+
+/**
+ * Extracts listed tool names from a JSON-RPC tools/list response.
+ * @param response - JSON-RPC tools/list response.
+ * @returns Tool names in advertised order.
+ */
+function toolNames(response: any) {
+  return response.result.tools.map((tool: any) => tool.name);
+}
+
+/**
+ * Joins public tool catalog text that could reveal unsafe capabilities.
+ * @param tool - MCP tool definition.
+ * @returns Lowercase searchable text.
+ */
+function readOnlyCatalogText(tool: any) {
+  return [tool.name, tool.title, tool.description].join(" ").toLowerCase();
+}
+
+/**
+ * Builds a whole-word forbidden term matcher for MCP tool catalog text.
+ * @returns Forbidden tool term regular expression.
+ */
+function forbiddenToolTermPattern() {
+  return new RegExp(`\\b(${FORBIDDEN_TOOL_TERMS.join("|")})\\b`, "u");
+}
