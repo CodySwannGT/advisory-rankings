@@ -13,6 +13,7 @@
     "eslint.config.ts",
     "eslint.config.local.ts",
     "eslint.slow.config.ts",
+    "jest.config.local.ts",
     "vitest.config.ts",
     "vitest.config.local.ts"
   ],

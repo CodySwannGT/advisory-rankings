@@ -20,5 +20,7 @@
  * @module eslint.config.local
  */
 export default [
-  // Add project-specific rules here
+  {
+    ignores: ["wiki/lisa-wiki.config.json"],
+  },
 ];

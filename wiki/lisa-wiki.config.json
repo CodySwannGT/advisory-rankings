@@ -1,0 +1,81 @@
+{
+  "$schema": "../node_modules/@codyswann/lisa/plugins/lisa-wiki/schema/lisa-wiki-config.schema.json",
+  "schemaVersion": "1.0.0",
+  "org": "CodySwannGT/advisory-rankings",
+  "displayName": "Advisory Rankings Operational Brain",
+  "purpose": "The purpose of this wiki is the be the entire operational brain for this project.",
+  "mode": "embedded",
+  "wikiRoot": "wiki",
+  "frontmatter": true,
+  "categories": [
+    "concepts",
+    "entities",
+    "decisions",
+    "architecture",
+    "requirements",
+    "playbooks",
+    "open-questions",
+    "projects"
+  ],
+  "sources": {
+    "layout": "by-system",
+    "buckets": ["git", "documentation", "memory", "roles"]
+  },
+  "git": {
+    "prPerIngestion": false,
+    "autoMerge": false,
+    "targetBranch": "main",
+    "branchPrefix": "codex/wiki-ingest/"
+  },
+  "sensitivity": {
+    "enabled": true,
+    "default": "internal"
+  },
+  "sourceRetention": "raw-ok",
+  "readme": {
+    "mode": "stub"
+  },
+  "documentation": {
+    "absorb": false,
+    "keepInPlace": [
+      "LICENSE*",
+      "SECURITY.md",
+      "CODE_OF_CONDUCT.md",
+      "CONTRIBUTING.md",
+      "CHANGELOG.md",
+      "NOTICE*",
+      "SUPPORT.md",
+      "GOVERNANCE.md",
+      ".github/**",
+      "docs/**",
+      "specs/**",
+      "research/**",
+      "harper-app/README.md"
+    ]
+  },
+  "onboarding": {
+    "allowAudienceNote": true
+  },
+  "connectors": {
+    "git": {
+      "enabled": true,
+      "sideEffects": "read-only-ingest"
+    },
+    "documentation": {
+      "enabled": true,
+      "sideEffects": "read-only-ingest"
+    },
+    "memory": {
+      "enabled": true,
+      "sideEffects": "read-only-ingest"
+    },
+    "roles": {
+      "enabled": true,
+      "sideEffects": "read-only-ingest"
+    }
+  },
+  "customConnectors": [],
+  "staff": [],
+  "contaminationTerms": []
+}
+

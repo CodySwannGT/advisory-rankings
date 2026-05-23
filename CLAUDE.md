@@ -1,5 +1,12 @@
 # Working in this repo
 
+## LLM Wiki
+
+This repo has a Lisa LLM Wiki at `wiki/`. Treat
+`wiki/schema/llm-wiki-contract.md` as the durable operating contract for wiki
+ingestion, querying, linting, setup, migration, and onboarding. Use the
+`lisa-wiki-*` skills for wiki operations.
+
 This is the first Harper/Fabric project managed by Lisa's
 `harper-fabric` project type. Reusable stack rules live in Lisa; this
 file keeps only advisory-rankings-specific operational facts.
