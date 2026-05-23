@@ -144,3 +144,28 @@ Bounded dry run:
 ```bash
 bun run scrape:rbc -- --query 10022 --max-advisors 5 --json
 ```
+
+## Raymond James
+
+Raymond James exposes a public finder shell, but direct search/feed behavior was
+not stable from the build runner. Public branch roster pages expose advisor
+cards with profile URLs, headshot URLs, email/tel links, role titles, and branch
+address fields:
+
+- Locator URL: `https://www.raymondjames.com/find-an-advisor`
+- Sample branch roster:
+  `https://www.raymondjames.com/manhattan-branch`
+- Supported bounded sample: `--query 10022`, which resolves to the Manhattan
+  branch roster discovered for New York, NY 10022.
+- Direct branch URL input is supported, for example
+  `--query https://www.raymondjames.com/manhattan-branch`.
+- Limitation: direct `raymondjames.com` requests from this runner timed out or
+  failed with HTTP/2 protocol errors, so the scraper tries direct fetch first
+  and falls back to public `r.jina.ai` markdown rendering for branch pages.
+- Fixture path: `tests/fixtures/firm-sources/raymond-james/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:raymond-james -- --query 10022 --max-advisors 5 --json
+```

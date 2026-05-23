@@ -35,6 +35,8 @@ bun run scrape:wells-fargo -- --query 10022 --max-advisors 5 --json
                      # dry-run Wells Fargo Advisors HTML locator import
 bun run scrape:rbc -- --query 10022 --max-advisors 5 --json
                      # dry-run RBC Wealth Management AJAX locator import
+bun run scrape:raymond-james -- --query 10022 --max-advisors 5 --json
+                     # dry-run Raymond James public branch roster import
 bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
 bun run media:backfill -- --target firms --max 10
@@ -246,10 +248,10 @@ src/
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
                              media backfill, firm alias merges,
-                             Morgan Stanley, Merrill, Wells Fargo, and
-                             RBC locator scraping, advisor research
-                             queues, token, preview, and dev server
-                             commands
+                             Morgan Stanley, Merrill, Wells Fargo, RBC,
+                             and Raymond James locator scraping, advisor
+                             research queues, token, preview, and dev
+                             server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 
