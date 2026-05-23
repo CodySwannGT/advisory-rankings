@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // @ts-nocheck
 import {
-  buildMorganStanleySearchUrl,
+  DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
+  DEFAULT_FIRM_SOURCE_PAGE_SIZE,
   emptyMorganStanleyRows,
   mapMorganStanleyLocations,
   mergeMorganStanleyRows,
+  MORGAN_STANLEY_SOURCE_ADAPTER,
+  type FirmSourceRunOptions,
+  type FirmSourceTable,
   type MorganStanleyRows,
   type MorganStanleyYextLocation,
 } from "../lib/morgan-stanley.js";
@@ -35,7 +39,7 @@ const TABLE_ORDER = [
   "Team",
   "TeamMembership",
   "AdvisorResearchCheck",
-] as const satisfies ReadonlyArray<keyof MorganStanleyRows>;
+] as const satisfies ReadonlyArray<FirmSourceTable & keyof MorganStanleyRows>;
 const MAX_YEXT_OFFSET_LIMIT = 10_000;
 const FABRIC_UPSERT_BATCH_SIZE = 100;
 const FABRIC_UPSERT_RETRIES = 3;
@@ -231,39 +235,49 @@ async function writeRows(
  * @returns Resolves after all selected query inputs are fetched and reported.
  */
 async function main(): Promise<void> {
-  const write = has("--write");
-  const maxAdvisors = numberArg("--max-advisors", 100);
-  const pageSize = Math.min(numberArg("--page-size", 50), 50);
-  const checkedAt =
-    arg("--checked-at") ?? new Date().toISOString().slice(0, 10);
+  const options = runOptions();
   const rows = await collectRows(
-    queryInputs(),
-    maxAdvisors,
-    pageSize,
-    checkedAt
+    options.queries,
+    options.maxAdvisors,
+    options.pageSize,
+    options.checkedAt
   );
 
   const counts = Object.fromEntries(
     TABLE_ORDER.map(table => [table, rows[table].length])
   );
-  if (has("--json")) {
-    console.log(JSON.stringify({ write, counts, rows }, null, 2));
+  if (options.json) {
+    console.log(
+      JSON.stringify({ write: options.write, counts, rows }, null, 2)
+    );
     return;
   }
 
   console.log(
-    `[morgan-stanley] target: ${write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
+    `[morgan-stanley] target: ${options.write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
   );
   for (const table of TABLE_ORDER) {
     const tableRows = rows[table] as readonly Record<string, unknown>[];
-    const touched = write
+    const touched = options.write
       ? await writeRows(table, tableRows)
       : tableRows.length;
     console.log(
-      `  ${write ? "upsert" : "dry"} ${table}: ${tableRows.length} (${touched} ${write ? "touched" : "mapped"})`
+      `  ${options.write ? "upsert" : "dry"} ${table}: ${tableRows.length} (${touched} ${options.write ? "touched" : "mapped"})`
     );
   }
 }
+
+const runOptions = (): FirmSourceRunOptions => ({
+  write: has("--write"),
+  json: has("--json"),
+  maxAdvisors: numberArg("--max-advisors", DEFAULT_FIRM_SOURCE_MAX_ADVISORS),
+  pageSize: Math.min(
+    numberArg("--page-size", DEFAULT_FIRM_SOURCE_PAGE_SIZE),
+    DEFAULT_FIRM_SOURCE_PAGE_SIZE
+  ),
+  checkedAt: arg("--checked-at") ?? new Date().toISOString().slice(0, 10),
+  queries: queryInputs(),
+});
 
 const collectLocationPages = async (
   state: LocationPageState
@@ -290,11 +304,11 @@ const fetchLocationPage = async (
     remainingYextWindow
   );
   const json = await fetchJson(
-    buildMorganStanleySearchUrl({
-      input: state.input,
+    MORGAN_STANLEY_SOURCE_ADAPTER.buildSearchUrl(
+      state.input,
       limit,
-      offset: state.offset,
-    })
+      state.offset
+    )
   );
   return {
     total: json.response?.resultsCount ?? 0,

@@ -1,3 +1,5 @@
+import { FirmSourceRows } from "./firm-source-adapter.js";
+
 /** Flexible Yext row shape used by the Morgan Stanley locator mapper. */
 export interface MorganStanleyYextLocation {
   readonly [key: string]: unknown;
@@ -14,14 +16,4 @@ export interface YextImage {
 }
 
 /** Harper rows produced from Morgan Stanley locator data, grouped by table. */
-export class MorganStanleyRows {
-  readonly Firm: ReadonlyArray<Record<string, unknown>> = [];
-  readonly FirmAlias: ReadonlyArray<Record<string, unknown>> = [];
-  readonly Branch: ReadonlyArray<Record<string, unknown>> = [];
-  readonly Advisor: ReadonlyArray<Record<string, unknown>> = [];
-  readonly EmploymentHistory: ReadonlyArray<Record<string, unknown>> = [];
-  readonly Designation: ReadonlyArray<Record<string, unknown>> = [];
-  readonly Team: ReadonlyArray<Record<string, unknown>> = [];
-  readonly TeamMembership: ReadonlyArray<Record<string, unknown>> = [];
-  readonly AdvisorResearchCheck: ReadonlyArray<Record<string, unknown>> = [];
-}
+export class MorganStanleyRows extends FirmSourceRows {}

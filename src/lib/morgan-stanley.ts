@@ -1,12 +1,32 @@
-export {
+import {
   emptyMorganStanleyRows,
   mapMorganStanleyLocations,
   mergeMorganStanleyRows,
 } from "./morgan-stanley-rows.js";
+import type {
+  FirmSourceAdapter,
+  FirmSourceDiscovery,
+} from "./firm-source-adapter.js";
+import { FIRM_SOURCE_SAMPLE_LIMIT } from "./firm-source-adapter.js";
+export {
+  DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
+  DEFAULT_FIRM_SOURCE_PAGE_SIZE,
+} from "./firm-source-adapter.js";
+export type {
+  FirmSourceRunOptions,
+  FirmSourceTable,
+} from "./firm-source-adapter.js";
 export type {
   MorganStanleyRows,
   MorganStanleyYextLocation,
 } from "./morgan-stanley-types.js";
+import type { MorganStanleyYextLocation } from "./morgan-stanley-types.js";
+
+export {
+  emptyMorganStanleyRows,
+  mapMorganStanleyLocations,
+  mergeMorganStanleyRows,
+};
 
 const MORGAN_STANLEY_YEXT_ENDPOINT =
   "https://prod-cdn.us.yextapis.com/v2/accounts/me/search/vertical/query";
@@ -42,6 +62,23 @@ export function buildMorganStanleySearchUrl(
   }
   return url.toString();
 }
+
+/** Adapter metadata and pure mapping hooks for the Morgan Stanley source. */
+export const MORGAN_STANLEY_SOURCE_ADAPTER: FirmSourceAdapter<MorganStanleyYextLocation> =
+  {
+    firmName: "Morgan Stanley",
+    sourceType: "morgan_stanley_yext",
+    buildSearchUrl: (query, limit, offset) =>
+      buildMorganStanleySearchUrl({ input: query, limit, offset }),
+    discover: (): FirmSourceDiscovery => ({
+      locatorUrl: "https://advisor.morganstanley.com/",
+      feedUrl: MORGAN_STANLEY_YEXT_ENDPOINT,
+      requestShape:
+        "Yext vertical query with experienceKey=ms-search-locator and verticalKey=locations",
+      pagination: `Offset/limit window; use --max-advisors ${FIRM_SOURCE_SAMPLE_LIMIT} for bounded proof runs.`,
+    }),
+    mapRows: mapMorganStanleyLocations,
+  };
 
 const searchParams = (
   opts: MorganStanleySearchOptions
