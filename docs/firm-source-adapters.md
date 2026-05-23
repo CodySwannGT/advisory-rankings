@@ -122,3 +122,25 @@ Bounded dry run:
 ```bash
 bun run scrape:wells-fargo -- --query 10022 --max-advisors 5 --json
 ```
+
+## RBC Wealth Management
+
+RBC Wealth Management's U.S. advisor finder is a WordPress page with public
+AJAX actions:
+
+- Locator URL: `https://www.rbcwealthmanagement.com/en-us/find-an-advisor`
+- Feed URL:
+  `https://www.rbcwealthmanagement.com/en-us/wp-admin/admin-ajax.php`
+- Branch request: `action=rbcwm_get_advisors_branches`, page `nonce`,
+  `location_string`, and `data_source=us`.
+- Advisor request: `action=rbcwm_get_advisors_by_branch`, page `nonce`,
+  `branch_id`, and `data_source=us`.
+- Limitation: responses are HTML fragments, not structured JSON records, and
+  the nonce must be parsed from the finder page before bounded runs.
+- Fixture path: `tests/fixtures/firm-sources/rbc/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:rbc -- --query 10022 --max-advisors 5 --json
+```
