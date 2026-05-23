@@ -1,0 +1,74 @@
+{
+  "Entity": [
+    {
+      "ProfileId": 938038,
+      "UniqueId": "UBS - steven.a.smith",
+      "ProfileType": "Individual",
+      "Company": "Steven Smith",
+      "FirstName": null,
+      "LastName": null,
+      "Addresses": [
+        {
+          "AddressType": "Office",
+          "Address1": "One Tower Lane",
+          "Address2": "Oakbrook Terrace Tower, Suite 1700",
+          "City": "Oakbrook Terrace",
+          "Region": "IL",
+          "PostalCode": "60181",
+          "Country": "USA"
+        }
+      ],
+      "AdditionalData": {
+        "EntityId": "161256",
+        "UniqueId": "UBS - steven.a.smith",
+        "SiteName": "steven.a.smith",
+        "Emails": "steven.a.smith@ubs.com",
+        "LocalNumber": "630-572-2273",
+        "MarketingName": "Steven Smith",
+        "LinkedInUrl": "https://www.linkedin.com/in/steven-a-smith-5a40924",
+        "ParentMarketingName": "Oakbrook Terrace, IL Branch Office",
+        "ParentEntityId": "163791",
+        "ParentSiteUrl": "//local.ubs.com/oakbrook-il",
+        "JobTitle": "Financial Advisor",
+        "RankTitle": "Senior Vice President-Wealth Management",
+        "TeamSiteNames": "Oakbrook Terrace Wealth Team",
+        "TeamSiteUrls": "https://advisors.ubs.com/oakbrook-terrace-wealth-team/"
+      },
+      "Distance": -1.0
+    },
+    {
+      "ProfileId": 539921,
+      "UniqueId": "UBS - jane.smith",
+      "ProfileType": "Individual",
+      "Company": "Jane Smith",
+      "FirstName": "Jane",
+      "LastName": "Smith",
+      "Addresses": [
+        {
+          "AddressType": "Office",
+          "Address1": "299 Park Avenue",
+          "City": "New York",
+          "Region": "NY",
+          "PostalCode": "10171",
+          "Country": "USA"
+        }
+      ],
+      "AdditionalData": {
+        "EntityId": "221199",
+        "SiteName": "jane.smith",
+        "Emails": "jane.smith@ubs.com",
+        "LocalNumber": "212-555-1000",
+        "MarketingName": "Jane Smith",
+        "ParentMarketingName": "New York, NY Branch Office",
+        "ParentEntityId": "887766",
+        "ParentSiteUrl": "//local.ubs.com/new-york-ny",
+        "JobTitle": "Financial Advisor"
+      }
+    },
+    {
+      "ProfileId": 1,
+      "ProfileType": "Team",
+      "Company": "Ignored Team"
+    }
+  ]
+}

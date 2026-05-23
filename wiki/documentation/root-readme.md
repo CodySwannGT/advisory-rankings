@@ -41,6 +41,8 @@ bun run scrape:edward-jones -- --query 10022 --max-advisors 5 --json
                      # dry-run Edward Jones JSON locator import
 bun run scrape:stifel -- --query ny --max-advisors 5 --json
                      # dry-run Stifel server-rendered HTML locator import
+bun run scrape:ubs -- --query smith --max-advisors 5 --json
+                     # dry-run UBS Broadridge Presenter locator import
 bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
 bun run media:backfill -- --target firms --max 10
@@ -291,7 +293,7 @@ src/
                              deploy, crawlers, ingest, BrokerCheck,
                              media backfill, firm alias merges,
                              Morgan Stanley, Merrill, Wells Fargo, RBC,
-                             Raymond James, Edward Jones, and Stifel locator scraping, advisor
+                             Raymond James, Edward Jones, Stifel, and UBS locator scraping, advisor
                              research queues, token, preview, and dev
                              server commands
   web/                       TypeScript source for AdvisorBook pages
