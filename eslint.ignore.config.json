@@ -3,9 +3,6 @@
     "sgconfig.yml",
     "build/**",
     "dist/**",
-    "harper-app/resource-*.js",
-    "harper-app/resources.js",
-    "harper-app/web/**/*.js",
     ".build/**",
     ".esbuild/**",
     ".serverless/**",
@@ -76,6 +73,8 @@
 
     "lib/**/*.js",
     "cdk.out/**",
+    "harper-app/*.js",
+    "harper-app/web/**/*.js",
 
     "audit.ignore.config.json",
     "audit.ignore.local.json",

@@ -32,9 +32,3 @@ firebase-web-prod.json:gcp-api-key:2
 
 # Quality workflow curl uses $SONAR_TOKEN variable reference, not a real secret
 .github/workflows/quality.yml:curl-auth-user:1093
-
-# Advisory Rankings accepted false positives.
-# Local dev-only README credentials are not used outside localhost examples.
-harper-app/README.md:curl-auth-user:27
-# Saved third-party article HTML contains a public telemetry token blob.
-research/articles/01-taylor-group-wells-fargo.html:generic-api-key:1587
