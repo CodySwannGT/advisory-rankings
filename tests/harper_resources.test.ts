@@ -565,7 +565,10 @@ describe("Harper resource endpoints", () => {
       id: "init-1",
       result: {
         protocolVersion: "2025-06-18",
-        capabilities: { tools: { listChanged: false } },
+        capabilities: {
+          tools: { listChanged: false },
+          resources: { subscribe: false, listChanged: false },
+        },
         serverInfo: { name: "advisorbook", title: "AdvisorBook" },
       },
     });
@@ -734,6 +737,41 @@ describe("Harper resource endpoints", () => {
       resource: "advisorbook://article/article-a",
     });
     expect(articleResult.url).toContain("/articles/");
+  });
+
+  it("reads AdvisorBook MCP resources with public payloads", async () => {
+    const endpoint = new (resources as any).mcp();
+    const readResource = async (uri: string) => {
+      const response = await endpoint.post({
+        jsonrpc: "2.0",
+        id: uri,
+        method: "resources/read",
+        params: { uri },
+      });
+      return response.result.structuredContent;
+    };
+
+    const feed = await readResource("advisorbook://feed");
+    const advisor = await readResource("advisorbook://advisor/avery-stone");
+    const firm = await readResource(
+      "advisorbook://firm/Example%20Wealth%20LLC"
+    );
+    const team = await readResource("advisorbook://team/stone-group");
+    const article = await readResource(
+      "advisorbook://article/stone-joins-example"
+    );
+
+    expect(feed).toMatchObject({ count: 2 });
+    expect(advisor).toMatchObject({
+      advisor: { id: "advisor-a" },
+      displayName: "Avery Stone",
+    });
+    expect(firm).toMatchObject({ firm: { id: "firm-a" } });
+    expect(team).toMatchObject({ team: { id: "team-a" } });
+    expect(article).toMatchObject({
+      article: { id: "article-a" },
+      provenance: [{ targetTable: "Advisor", targetId: "advisor-a" }],
+    });
   });
 
   it("returns route errors for missing or unknown profile ids", async () => {
