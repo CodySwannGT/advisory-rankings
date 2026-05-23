@@ -44,12 +44,28 @@ Once the server is up:
   name match across firms / advisors / teams, returns
   `{ q, items: [{ kind, id, name, sub, score }], counts }`.
   Query strings under 2 characters short-circuit to an empty list.
-- **MCP transport** at `http://127.0.0.1:9926/mcp` accepts unauthenticated
-  JSON-RPC POST requests. Harper maps resource export names directly to
-  routes, so this is implemented as a lowercase `mcp` JS resource class.
-  The first slice supports `initialize` and standard JSON-RPC errors for
-  unsupported methods; tools and resource templates are added by later MCP
-  tickets.
+- **MCP transport** at `http://127.0.0.1:9926/mcp` locally and
+  `https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp` on
+  Fabric accepts unauthenticated Streamable HTTP JSON-RPC POST requests.
+  Harper maps resource export names directly to routes, so this is
+  implemented as a lowercase `mcp` JS resource class. The server is
+  intentionally read-only and exposes no raw table, write, admin, or
+  credential surface.
+
+  Supported MCP methods are `initialize`, `tools/list`, `tools/call`,
+  `resources/templates/list`, and `resources/read`. Curated tools are
+  `search_advisorbook`, `get_feed`, `get_advisor_profile`,
+  `get_firm_profile`, `get_team_profile`, and `get_article`. Resource
+  templates are `advisorbook://feed`, `advisorbook://advisor/{id}`,
+  `advisorbook://firm/{id}`, `advisorbook://team/{id}`, and
+  `advisorbook://article/{id}`.
+
+  Remote MCP clients can use the root `server.json` manifest or add a
+  Streamable HTTP server pointing at the Fabric `/mcp` URL above; no
+  headers, variables, secrets, or auth tokens are required. For Inspector
+  verification, run `npx -y @modelcontextprotocol/inspector`, select
+  Streamable HTTP, connect to the local or Fabric `/mcp` URL, then confirm
+  the Tools and Resources tabs list the curated surfaces above.
 - **Paginated lists**:
   - `/PublicAdvisors?cursor=…&limit=50` — directory page.
     Returns `{ items, nextCursor, total }`. `nextCursor` is null on the
