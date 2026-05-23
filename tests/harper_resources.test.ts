@@ -543,6 +543,62 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
     expect(new (resources as any).Search().allowRead()).toBe(true);
+    expect(new (resources as any).mcp().allowCreate()).toBe(true);
+  });
+
+  it("handles MCP initialize and unsupported methods as JSON-RPC", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: "init-1",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "vitest", version: "1.0.0" },
+        },
+      })
+    ).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "init-1",
+      result: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        serverInfo: { name: "advisorbook", title: "AdvisorBook" },
+      },
+    });
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/list",
+      })
+    ).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: 2,
+      error: {
+        code: -32601,
+        message: "Method not found: tools/list",
+      },
+    });
+  });
+
+  it("returns MCP JSON-RPC errors for malformed requests", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(endpoint.post(undefined)).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Parse error" },
+    });
+    await expect(endpoint.post({ jsonrpc: "2.0" })).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32600, message: "Invalid Request" },
+    });
   });
 
   it("serves feed, article, firm, advisor, and team profiles", async () => {
