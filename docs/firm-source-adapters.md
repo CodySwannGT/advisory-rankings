@@ -228,8 +228,7 @@ curl -H 'content-type: application/json' \
 
 ## Stifel
 
-Stifel exposes a public server-rendered advisor finder. Source triage in #77
-created implementation follow-up #104.
+Stifel exposes a public server-rendered advisor finder.
 
 - Locator URL: `https://www.stifel.com/fa/search`
 - Bounded state sample: `https://www.stifel.com/fa/search?state=ny`
@@ -243,9 +242,20 @@ created implementation follow-up #104.
 - Pagination behavior: the form carries hidden `PageNumber`, `LastName`,
   `State`, `Zipcode`, and `Distance`; next-page navigation posts
   `PageNumber` and `btnNextPage`.
+- Supported first-slice scraper inputs: two-letter state codes, ZIP codes, and
+  advisor name fragments. The scraper uses bounded GET result pages and maps
+  public rows into `Firm`, `Branch`, `Advisor`, `EmploymentHistory`,
+  `Designation`, and `AdvisorResearchCheck`.
 - Limitation: no structured JSON feed was observed. The adapter should parse
-  HTML and treat empty, changed, or blocked markup as a graceful no-result or
-  source-change error.
+  HTML and treat empty markup as zero results. POST pagination is documented
+  but not walked in the first implementation.
+- Fixture path: `tests/fixtures/firm-sources/stifel/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:stifel -- --query ny --max-advisors 5 --json
+```
 
 ## Ameriprise
 
