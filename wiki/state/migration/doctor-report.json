@@ -1,0 +1,82 @@
+{
+  "tool": "verify-migration",
+  "deterministic": true,
+  "wikiRoot": "wiki",
+  "mode": "embedded",
+  "migration": false,
+  "generatedAt": "2026-05-23T13:49:19.351Z",
+  "verdict": "READY",
+  "subset": "deterministic",
+  "note": "Deterministic subset only. Groups C (no-loss/parity), D (runtime surfaces), E (functional smoke), and G (git/CI/distribution) are completed by the lisa-wiki-doctor skill, which merges its results into this report.",
+  "groups": {
+    "A": [
+      {
+        "id": "config-valid",
+        "status": "PASS",
+        "message": "config validates"
+      },
+      {
+        "id": "schema-version",
+        "status": "PASS",
+        "message": "schemaVersion 1.0.0"
+      },
+      {
+        "id": "readme-mode",
+        "status": "PASS",
+        "message": "readme.mode stub"
+      },
+      {
+        "id": "purpose",
+        "status": "PASS",
+        "message": "purpose set"
+      },
+      {
+        "id": "structure",
+        "status": "PASS",
+        "message": "structure conforms to the manifest"
+      }
+    ],
+    "B": [
+      {
+        "id": "integrity",
+        "status": "PASS",
+        "message": "no integrity/safety findings"
+      }
+    ],
+    "C": [
+      {
+        "id": "no-loss",
+        "status": "SKIP",
+        "message": "no-loss/parity needs the migration manifest from /migrate; dangling-link check is covered in B"
+      }
+    ],
+    "D": [
+      {
+        "id": "runtime",
+        "status": "SKIP",
+        "message": "runtime surfaces (commands/skills/subagents/MCP) verified by the lisa-wiki-doctor skill"
+      }
+    ],
+    "E": [
+      {
+        "id": "smoke",
+        "status": "SKIP",
+        "message": "functional smoke tests (ingest/query/lint/onboard) performed by the lisa-wiki-doctor skill"
+      }
+    ],
+    "F": [
+      {
+        "id": "mode",
+        "status": "PASS",
+        "message": "mode: embedded; wikiRoot resolves"
+      }
+    ],
+    "G": [
+      {
+        "id": "git-ci-dist",
+        "status": "SKIP",
+        "message": "git/CI/distribution checks performed by the lisa-wiki-doctor skill and CI"
+      }
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+---
+type: source
+created: 2026-05-23
+updated: 2026-05-23
+related: []
+sources: []
+source_system: git
+project: advisory-rankings
+---
+
+# git history — advisory-rankings (2026-05-23)
+
+- Repo: `/Users/cody/.codex/worktrees/e98f/advisory-rankings`
+- HEAD: `af60905303d58ca596c75540e44453612c80c94e`
+- Total commits on HEAD: 135
+- New commits since last ingest (first run): 135
+- Merged PRs: 20 recent merged PR(s) in CodySwannGT/advisory-rankings; latest #62 "test: keep mobile smoke focused on drawer"
+
+## New commits
+- af60905 · 2026-05-23 · chore(release): 0.1.8 [skip ci]
+- 802089f · 2026-05-23 · Merge pull request #62 from CodySwannGT/codex/remove-mobile-footer-smoke
+- b2f819e · 2026-05-23 · test: keep mobile smoke focused on drawer
+- 0f28dfe · 2026-05-23 · chore(release): 0.1.7 [skip ci]
+- 1f314da · 2026-05-23 · Merge pull request #61 from CodySwannGT/codex/fix-mobile-smoke-footer
+- e560065 · 2026-05-23 · test: harden Harper smoke formatting
+- ce83a96 · 2026-05-23 · chore(release): 0.1.6 [skip ci]
+- 9c069d8 · 2026-05-23 · Merge pull request #60 from CodySwannGT/codex/remove-jest-local
+- 360f964 · 2026-05-23 · chore: remove stale Jest local config
+- 39eb21c · 2026-05-23 · chore(release): 0.1.5 [skip ci]
+- 0a3bfe1 · 2026-05-23 · Merge pull request #59 from CodySwannGT/codex/update-lisa-2-25-2
+- 1480bab · 2026-05-23 · chore: update lisa to 2.25.2
+- bc559be · 2026-05-23 · chore(release): 0.1.4 [skip ci]
+- ee98bf7 · 2026-05-23 · Merge pull request #58 from CodySwannGT/codex/fix-deploy-smoke-after-search
+- b9d7aac · 2026-05-23 · test: harden deployed smoke checks
+- bf34db0 · 2026-05-23 · chore(release): 0.1.3 [skip ci]
+- 4d537a9 · 2026-05-23 · Merge pull request #57 from CodySwannGT/codex/fix-search-timeout
+- 33df6c0 · 2026-05-23 · fix: speed up global search
+- 08c9ffe · 2026-05-22 · chore(release): 0.1.2 [skip ci]
+- b13a95d · 2026-05-22 · Merge pull request #56 from CodySwannGT/chore/vitest-coverage-75
+- b100765 · 2026-05-22 · chore(release): 0.1.1 [skip ci]
+- 51bb237 · 2026-05-22 · Merge pull request #55 from CodySwannGT/codex/fix-release-deploy-startup
+- 2ec9597 · 2026-05-22 · test: raise vitest coverage threshold to 75
+- 30fd119 · 2026-05-22 · fix: make release deploy workflow self-contained
+- 7626da0 · 2026-05-22 · Merge pull request #54 from CodySwannGT/codex/fix-release-workflow-quality
+- 22c1a4d · 2026-05-22 · fix: provide quality workflow for release
+- b868206 · 2026-05-22 · Merge pull request #53 from CodySwannGT/codex/consolidate-fabric-deploy
+- e8d06cc · 2026-05-22 · feat: fold fabric deploy into release workflow
+- 5a6c85e · 2026-05-22 · Merge pull request #52 from CodySwannGT/chore/vitest-coverage-50
+- 2eaf904 · 2026-05-22 · test: raise vitest coverage threshold
+- 03d07c8 · 2026-05-22 · fix: canonicalize stale firm aliases in resources (#51)
+- 3d80c3d · 2026-05-22 · fix: harden deployed smoke timing (#50)
+- f997b2b · 2026-05-22 · fix: load firm profiles after deploy (#49)
+- 71febda · 2026-05-22 · fix: restore deploy smoke checks (#48)
+- 333b8a6 · 2026-05-22 · Merge pull request #47 from CodySwannGT/codex/firm-alias-canonicalization
+- bc5e7f5 · 2026-05-22 · chore: fix formatting gate
+- e41846d · 2026-05-22 · Merge remote-tracking branch 'origin/main' into codex/firm-alias-canonicalization
+- 267f2d9 · 2026-05-22 · feat: canonicalize firm aliases
+- e0f3416 · 2026-05-22 · Merge pull request #46 from CodySwannGT/codex/harper-credential-defaults
+- 3e884a2 · 2026-05-22 · chore: merge main into credential defaults
+- ae17452 · 2026-05-22 · chore: remove unused REST env helper
+- 837da43 · 2026-05-22 · fix: use Harper credential defaults for operations
+- 1c4fbf5 · 2026-05-22 · Merge pull request #40 from CodySwannGT/codex/verify-rest-keychain-defaults
+- cbf3076 · 2026-05-22 · chore: merge main into wpjson browser crawl fix
+- 496c3d3 · 2026-05-22 · chore: update @codyswann/lisa to 2.23.1 (#44)
+- 92c0858 · 2026-05-22 · chore: document required format suppressions (#45)
+- fb9981a · 2026-05-22 · test: stabilize deployed Wells Fargo smoke selector
+- ee9c6fc · 2026-05-22 · fix: hide placeholder search subtitles
+- 830e06a · 2026-05-22 · fix: polish advisory UI presentation
+- fbc04e4 · 2026-05-22 · fix(crawl): honor --browser in wp-json crawler
+- 3616366 · 2026-05-21 · revert: remove GitHub tracker workflow setup
+- f418d09 · 2026-05-21 · feat: add browser AdvisorHub backfill
+- e074d09 · 2026-05-21 · chore: configure GitHub tracker workflow
+- c449fe3 · 2026-05-21 · test: stabilize live web smoke selectors
+- a807a70 · 2026-05-21 · test: stabilize live web smoke selectors
+- 1681efc · 2026-05-21 · fix: use three-column layout on directory pages
+- e1f4d1c · 2026-05-21 · fix: use three-column layout on directory pages
+- 35cb826 · 2026-05-21 · Merge pull request #34 from CodySwannGT/codex/verify-rest-keychain-defaults
+- 60932a3 · 2026-05-21 · fix: make verify:rest use Keychain-backed defaults
+- 1d93417 · 2026-05-21 · fix: time out stalled avatar images (#33)
+- bc33087 · 2026-05-21 · fix: time out stalled avatar images
+- b7a2121 · 2026-05-21 · fix: replace stalled avatar images (#32)
+- b0ed3ab · 2026-05-21 · fix: fall back when avatar images fail (#31)
+- d3034ef · 2026-05-21 · Merge pull request #30 from CodySwannGT/codex/morgan-stanley-scraper
+- 4d924cc · 2026-05-21 · feat: add Morgan Stanley advisor scraper
+- 0ce9abf · 2026-05-21 · fix: resolve profile slugs (#29)
+- 5045004 · 2026-05-21 · fix: canonicalize profile routes (#28)
+- ed996da · 2026-05-21 · fix: version web module assets (#27)
+- 59ae191 · 2026-05-21 · fix: bust firm page module cache (#26)
+- 3b1d896 · 2026-05-21 · Fix slugged firm resource lookups (#25)
+- f09c39e · 2026-05-21 · Stabilize smoke test for external avatars (#24)
+- f62d155 · 2026-05-21 · fix: render media avatars (#23)
+- f365b58 · 2026-05-21 · feat: add media URL enrichment (#22)
+- 13d6f17 · 2026-05-21 · fix: add seo article detail urls (#21)
+- 7dc9efb · 2026-05-21 · fix: scope SEO route shells
+- 32c3408 · 2026-05-21 · feat: add SEO-friendly entity URLs
+- 5409b5b · 2026-05-21 · ci: run smoke tests from TypeScript sources
+- 6012736 · 2026-05-21 · ci: install bun in fabric deploy workflow
+- b5ceb19 · 2026-05-21 · feat: add advisor web research queue
+- 213973c · 2026-05-21 · chore: sync Lisa lockfile spec [skip ci]
+- 0303eb8 · 2026-05-21 · chore: update advisory to Lisa 2.20 [skip ci]
+- 24f3074 · 2026-05-21 · chore: apply harper fabric Lisa rules (#13)
+- a8207d1 · 2026-05-21 · Merge pull request #12 from CodySwannGT/codex/typescript-migration
+- 5476268 · 2026-05-21 · Migrate advisory rankings to TypeScript
+- fb8a3dc · 2026-05-21 · Migrate agent instructions to Codex (#11)
+- bf05e00 · 2026-05-03 · Merge pull request #10 from CodySwannGT/claude/fix-header-search-Ke8iO
+- e35efa1 · 2026-05-03 · ui(navbar): wire the global search box (was a dead input)
+- 92a8ab7 · 2026-05-03 · Merge pull request #9 from CodySwannGT/claude/advisor-skill-creation-6kaZr
+- 0ce12fb · 2026-05-03 · brokercheck(parse): dedupe BD+IA registrations into one tenure
+- 586c31e · 2026-05-03 · ui(advisor): surface BrokerCheck licenses/exams + Designations + Education
+- db264cb · 2026-05-03 · ui: neutralize remaining AdvisorHub hardcodes (footer + fallbacks)
+- 4036bc7 · 2026-05-03 · ui: fix double-last-name on chips and hardcoded AdvisorHub publisher
+- 11c9211 · 2026-05-03 · skill(upsert-advisor): single-advisor upsert via BrokerCheck + AdvisorHub + deep research
+- 041174a · 2026-05-03 · Merge pull request #8 from CodySwannGT/claude/fix-card-title-bug-MYSVV
+- 5e636a0 · 2026-05-03 · feat(advisors): cursor pagination for /PublicAdvisors and per-firm advisor lists
+- e2c8f88 · 2026-05-03 · ui(SectionCard): lift card-title out of card-body so body-clear keeps the title
+- 552ff2c · 2026-05-02 · Merge pull request #7 from CodySwannGT/claude/research-broker-check-KxA6W
+- 949ac0e · 2026-05-02 · brokercheck: harden client + add wave-1 crawl orchestrator
+- 4ca2383 · 2026-05-02 · brokercheck: wave-1 crawl orchestrator + gitignore runtime files
+- f88529d · 2026-05-02 · brokercheck: idempotent scraper + UI integration, end-to-end
+- 8220d3b · 2026-05-02 · docs: feasibility spike for BrokerCheck as a complementary source
+- ae1b5dc · 2026-05-02 · Merge pull request #6 from CodySwannGT/claude/deploy-harper-fabric-dxaVf
+- 2926d4e · 2026-05-02 · deploy: ship harper-app + fix CI playwright resolution
+- 3d3a080 · 2026-05-02 · Merge pull request #5 from CodySwannGT/claude/format-labels-mobile-scroll-XkGAt
+- 50c1034 · 2026-05-02 · docs: require Playwright verification for every UI change
+- bc41466 · 2026-05-02 · ui: humanize raw enum labels and make wide tables scroll on mobile
+- 2b1b081 · 2026-05-02 · Merge pull request #4 from CodySwannGT/claude/advisor-book-design-system-xznPb
+- 792d62e · 2026-05-02 · deploy: ship AdvisorBook + design-system to advisory-rankings-dev
+- cd7409c · 2026-05-02 · ui: keep Tag / EmptyText emitting legacy class names for back-compat
+- 11f13da · 2026-05-02 · ui: rebrand to AdvisorBook + extract Atomic Design system
+- 279fb0a · 2026-05-02 · Merge pull request #3 from CodySwannGT/claude/facebook-style-feed-0TwUc
+- 54e909e · 2026-05-02 · auth: cookie-session login + mobile drawer
+- 4aabf1a · 2026-05-02 · fix(auth): make the data-plane public so the feed loads anonymously
+- a9d3cb2 · 2026-05-02 · auth: use Harper-native JWT bearer for the data plane
+- a7993a3 · 2026-05-02 · deploy: push-deploy via Studio proxy + auto-deploy on merge
+- cb09169 · 2026-05-02 · tests: Playwright smoke test for the web/ UI (29 checks)
+- 1245447 · 2026-05-02 · scripts: add dev_server.mjs (local bridge for sandbox preview, see fabric-runbook §8)
+- 8a5fb35 · 2026-05-02 · feat(web): Facebook-style activity feed with sticky entity profiles
+- 972ccef · 2026-05-02 · Merge pull request #2 from CodySwannGT/claude/automate-harperdb-signup-EDSkB
+- 98350b1 · 2026-05-02 · Add CLAUDE.md: keep docs in sync with reality
+- 9ec93e6 · 2026-05-02 · docs: add Fabric runbook + REST-based seed/verify wrappers
+- 39d6397 · 2026-05-02 · Remove dead workflow: GITHUB_TOKEN can't add deploy keys (admin:public_key required, see docs/fabric-runbook.md §4)
+- dc92b45 · 2026-05-01 · ci: rework workflow with debug output committed back to repo
+- d6e24dd · 2026-05-01 · ci: workflow to add Harper Fabric deploy key
+- 3754b5a · 2026-05-01 · ci: add Fabric deploy key public material
+- 794037d · 2026-05-01 · Merge pull request #1 from CodySwannGT/claude/research-advisor-schema-RLV0N
+- b3eaec4 · 2026-05-01 · Add Harper Fabric deployment guide + HDB_TARGET_URL transport
+- 5d7aa8d · 2026-05-01 · Add extract-advisorhub-articles skill: LLM extraction → Harper
+- fa94655 · 2026-05-01 · Add ingest-advisorhub skill + idempotent ingestion pipeline
+- eabb3a7 · 2026-05-01 · Make the Harper app fully clone-and-runnable
+- 96c9bb1 · 2026-05-01 · Implement schema on HarperDB with seed + verify scripts
+- f0e8b15 · 2026-05-01 · Add data model decisions doc with Postgres DDL
+- 825d4f7 · 2026-05-01 · Make wp-json crawler much more polite to avoid WAF blocks
+- d2a712b · 2026-05-01 · Propose advisor data schema from AdvisorHub research
+- e7f74cb · 2026-05-01 · Initial commit
