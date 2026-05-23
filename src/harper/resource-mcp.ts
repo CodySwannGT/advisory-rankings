@@ -1,4 +1,12 @@
 // @ts-nocheck
+import {
+  callMcpTool,
+  MCP_TOOL_CAPABILITIES,
+  MCP_TOOL_DEFINITIONS,
+  toolErrorMessage,
+  toolResult,
+} from "./resource-mcp-tools.js";
+
 const MCP_PROTOCOL_VERSION = "2025-06-18";
 const SERVER_INFO = {
   name: "advisorbook",
@@ -9,7 +17,9 @@ const SERVER_INFO = {
 const JSON_RPC_VERSION = "2.0";
 const PARSE_ERROR = -32700;
 const INVALID_REQUEST = -32600;
+const INVALID_PARAMS = -32602;
 const METHOD_NOT_FOUND = -32601;
+const INTERNAL_ERROR = -32603;
 
 /**
  * Public Streamable HTTP MCP endpoint.
@@ -51,7 +61,7 @@ export function extractJsonRpcBody(args) {
  * @param body - JSON-RPC request object or batch array.
  * @returns JSON-RPC response object, batch response, or null for notifications.
  */
-export function handleMcpRequest(body) {
+export async function handleMcpRequest(body) {
   if (body === undefined)
     return errorResponse(null, PARSE_ERROR, "Parse error");
   if (Array.isArray(body)) return handleBatch(body);
@@ -63,12 +73,12 @@ export function handleMcpRequest(body) {
  * @param batch - Request array.
  * @returns Batch response array, error response, or null when all were notifications.
  */
-function handleBatch(batch) {
+async function handleBatch(batch) {
   if (batch.length === 0)
     return errorResponse(null, INVALID_REQUEST, "Invalid Request");
-  const responses = batch
-    .map(handleSingle)
-    .filter(response => response !== null);
+  const responses = (
+    await Promise.all(batch.map(request => handleSingle(request)))
+  ).filter(response => response !== null);
   return responses.length > 0 ? responses : null;
 }
 
@@ -77,7 +87,7 @@ function handleBatch(batch) {
  * @param request - Request payload.
  * @returns JSON-RPC response or null for notifications.
  */
-function handleSingle(request) {
+async function handleSingle(request) {
   if (!isJsonRpcRequest(request))
     return errorResponse(
       requestId(request),
@@ -87,6 +97,10 @@ function handleSingle(request) {
   if (isNotification(request)) return null;
   if (request.method === "initialize")
     return successResponse(request.id, initializeResult(request.params));
+  if (request.method === "tools/list")
+    return successResponse(request.id, { tools: MCP_TOOL_DEFINITIONS });
+  if (request.method === "tools/call")
+    return handleToolCallRequest(request.id, request.params);
   return errorResponse(
     request.id,
     METHOD_NOT_FOUND,
@@ -95,14 +109,31 @@ function handleSingle(request) {
 }
 
 /**
- * Builds the initialize result with only currently implemented capabilities.
+ * Calls one curated AdvisorBook MCP tool.
+ * @param id - JSON-RPC request id.
+ * @param params - MCP tools/call params.
+ * @returns JSON-RPC response for the tool call.
+ */
+async function handleToolCallRequest(id, params) {
+  if (!params || typeof params.name !== "string")
+    return errorResponse(id, INVALID_PARAMS, "Invalid tool call params");
+  try {
+    const result = await callMcpTool(params.name, params.arguments ?? {});
+    return successResponse(id, toolResult(result));
+  } catch (error) {
+    return errorResponse(id, INTERNAL_ERROR, toolErrorMessage(error));
+  }
+}
+
+/**
+ * Builds the initialize result with current capabilities.
  * @param params - Client initialize params.
  * @returns MCP initialize result.
  */
 function initializeResult(params) {
   return {
     protocolVersion: requestedProtocolVersion(params),
-    capabilities: {},
+    capabilities: MCP_TOOL_CAPABILITIES,
     serverInfo: SERVER_INFO,
   };
 }

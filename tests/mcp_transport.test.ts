@@ -30,7 +30,7 @@ describe("MCP transport", () => {
       id: "init-1",
       result: {
         protocolVersion: PROTOCOL_VERSION,
-        capabilities: {},
+        capabilities: { tools: { listChanged: false } },
         serverInfo: {
           name: "advisorbook",
           title: "AdvisorBook",
@@ -40,43 +40,68 @@ describe("MCP transport", () => {
     });
   });
 
-  it("returns standard JSON-RPC errors for malformed and unsupported calls", () => {
-    expect(mcpResource.handleMcpRequest(undefined)).toEqual({
+  it("returns standard JSON-RPC errors for malformed and unsupported calls", async () => {
+    await expect(mcpResource.handleMcpRequest(undefined)).resolves.toEqual({
       jsonrpc: "2.0",
       id: null,
       error: { code: -32700, message: "Parse error" },
     });
-    expect(mcpResource.handleMcpRequest({ jsonrpc: "2.0" })).toEqual({
+    await expect(
+      mcpResource.handleMcpRequest({ jsonrpc: "2.0" })
+    ).resolves.toEqual({
       jsonrpc: "2.0",
       id: null,
       error: { code: -32600, message: "Invalid Request" },
     });
-    expect(
+    await expect(
       mcpResource.handleMcpRequest({
         jsonrpc: "2.0",
         id: "unsupported-1",
-        method: "tools/list",
+        method: "resources/list",
       })
-    ).toEqual({
+    ).resolves.toEqual({
       jsonrpc: "2.0",
       id: "unsupported-1",
-      error: { code: -32601, message: "Method not found: tools/list" },
+      error: { code: -32601, message: "Method not found: resources/list" },
     });
   });
 
-  it("handles batches and notifications without response leakage", () => {
-    expect(mcpResource.handleMcpRequest([])).toEqual({
+  it("lists only curated read-only AdvisorBook tools", async () => {
+    await expect(
+      mcpResource.handleMcpRequest({
+        jsonrpc: "2.0",
+        id: "tools-1",
+        method: "tools/list",
+      })
+    ).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "tools-1",
+      result: {
+        tools: [
+          { name: "search_advisorbook" },
+          { name: "get_feed" },
+          { name: "get_advisor_profile" },
+          { name: "get_firm_profile" },
+          { name: "get_team_profile" },
+          { name: "get_article" },
+        ],
+      },
+    });
+  });
+
+  it("handles batches and notifications without response leakage", async () => {
+    await expect(mcpResource.handleMcpRequest([])).resolves.toEqual({
       jsonrpc: "2.0",
       id: null,
       error: { code: -32600, message: "Invalid Request" },
     });
-    expect(
+    await expect(
       mcpResource.handleMcpRequest({
         jsonrpc: "2.0",
         method: "notifications/initialized",
       })
-    ).toBeNull();
-    expect(
+    ).resolves.toBeNull();
+    await expect(
       mcpResource.handleMcpRequest([
         {
           jsonrpc: "2.0",
@@ -89,13 +114,13 @@ describe("MCP transport", () => {
           params: { protocolVersion: PROTOCOL_VERSION },
         },
       ])
-    ).toEqual([
+    ).resolves.toEqual([
       {
         jsonrpc: "2.0",
         id: "init-2",
         result: {
           protocolVersion: PROTOCOL_VERSION,
-          capabilities: {},
+          capabilities: { tools: { listChanged: false } },
           serverInfo: {
             name: "advisorbook",
             title: "AdvisorBook",

@@ -565,7 +565,7 @@ describe("Harper resource endpoints", () => {
       id: "init-1",
       result: {
         protocolVersion: "2025-06-18",
-        capabilities: {},
+        capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "advisorbook", title: "AdvisorBook" },
       },
     });
@@ -574,14 +574,39 @@ describe("Harper resource endpoints", () => {
       endpoint.post({
         jsonrpc: "2.0",
         id: 2,
-        method: "tools/list",
+        method: "resources/list",
       })
     ).resolves.toEqual({
       jsonrpc: "2.0",
       id: 2,
       error: {
         code: -32601,
-        message: "Method not found: tools/list",
+        message: "Method not found: resources/list",
+      },
+    });
+  });
+
+  it("lists curated read-only MCP tools", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: "tools-1",
+        method: "tools/list",
+      })
+    ).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "tools-1",
+      result: {
+        tools: [
+          { name: "search_advisorbook" },
+          { name: "get_feed" },
+          { name: "get_advisor_profile" },
+          { name: "get_firm_profile" },
+          { name: "get_team_profile" },
+          { name: "get_article" },
+        ],
       },
     });
   });
@@ -642,6 +667,73 @@ describe("Harper resource endpoints", () => {
       currentMembers: [{ advisor: { id: "advisor-a" } }],
       pastMembers: [{ advisor: { id: "advisor-b" } }],
     });
+  });
+
+  it("calls curated MCP tools with public resource links", async () => {
+    const endpoint = new (resources as any).mcp();
+    const callTool = async (name: string, args: Record<string, unknown>) => {
+      const response = await endpoint.post({
+        jsonrpc: "2.0",
+        id: name,
+        method: "tools/call",
+        params: { name, arguments: args },
+      });
+      return response.result.structuredContent;
+    };
+
+    const searchResult = await callTool("search_advisorbook", {
+      query: "stone",
+    });
+    const feedResult = await callTool("get_feed", { limit: 1 });
+    const advisorResult = await callTool("get_advisor_profile", {
+      id: "avery-stone",
+    });
+    const firmResult = await callTool("get_firm_profile", {
+      id: "Example Wealth LLC",
+    });
+    const teamResult = await callTool("get_team_profile", {
+      id: "stone-group",
+    });
+    const articleResult = await callTool("get_article", {
+      id: "stone-joins-example",
+    });
+
+    expect(searchResult.items).toEqual([
+      expect.objectContaining({
+        kind: "advisor",
+        resource: "advisorbook://advisor/advisor-a",
+      }),
+      expect.objectContaining({
+        kind: "team",
+        resource: "advisorbook://team/team-a",
+      }),
+    ]);
+    expect(feedResult).toMatchObject({
+      count: 2,
+      items: [
+        expect.objectContaining({
+          resource: "advisorbook://article/article-a",
+        }),
+      ],
+    });
+    expect(advisorResult).toMatchObject({
+      advisor: { id: "advisor-a" },
+      resource: "advisorbook://advisor/advisor-a",
+    });
+    expect(firmResult).toMatchObject({
+      firm: { id: "firm-a" },
+      resource: "advisorbook://firm/firm-a",
+    });
+    expect(teamResult).toMatchObject({
+      team: { id: "team-a" },
+      resource: "advisorbook://team/team-a",
+    });
+    expect(articleResult).toMatchObject({
+      article: { id: "article-a" },
+      provenance: [{ targetTable: "Advisor", targetId: "advisor-a" }],
+      resource: "advisorbook://article/article-a",
+    });
+    expect(articleResult.url).toContain("/articles/");
   });
 
   it("returns route errors for missing or unknown profile ids", async () => {
