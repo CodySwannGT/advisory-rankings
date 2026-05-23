@@ -55,6 +55,9 @@ async function smokeMobile(
   await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  await page.waitForSelector(SITE_VERSION_SELECTOR, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   const versionText =
     (await page.locator(SITE_VERSION_SELECTOR).textContent()) ?? "";
   await shot(page, "08-mobile-closed");
