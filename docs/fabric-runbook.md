@@ -614,6 +614,27 @@ If the smoke fails, CI uploads `tests/screenshots/` as a
 build artifact. The workflow also runs on `workflow_dispatch` for
 manual releases/deploys.
 
+### Firm source import automation
+
+`.github/workflows/firm-source-imports.yml` is the Codex/GitHub Actions path
+for running all production-ready firm source adapters without a local operator.
+It runs every Tuesday and Friday at 08:23 UTC and dispatches a bounded matrix
+for Morgan Stanley, Merrill / Bank of America, Wells Fargo Advisors, RBC Wealth
+Management, Raymond James, Edward Jones, Stifel, and UBS Wealth Management USA.
+
+Scheduled runs write to the dev Fabric cluster with `--write` and default to 25
+advisors per source. Manual workflow dispatch defaults to dry-run; set
+`write=true` and tune `max_advisors` for a larger controlled import. The
+workflow uses the same `HARPER_ADMIN_USERNAME` and `HARPER_ADMIN_PASSWORD`
+secrets as deploy, limits source pressure with `max-parallel: 2`, and uploads a
+per-firm JSON artifact for review.
+
+This workflow is separate from `bun run load:extractions`. The extraction
+loader expects local files under `research/extractions/*.json`, then archives
+loaded files into `research/extractions/.loaded/`; if a future automation
+creates those files, call `bun run load:extractions` in that extraction-specific
+job rather than in the firm locator matrix.
+
 > **Don't drop the `bun install` step — symptom: smoke fails with
 > `Cannot find module '/opt/node22/lib/node_modules/playwright'`.**
 > Root cause: `tests/web_smoke.ts` imports the `playwright` JS

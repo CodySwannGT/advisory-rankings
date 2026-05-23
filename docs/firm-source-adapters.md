@@ -55,6 +55,30 @@ Bounded proof runs should use:
 bun run scrape:<firm-slug> -- --max-advisors 5 --json
 ```
 
+## GitHub Actions Automation
+
+`.github/workflows/firm-source-imports.yml` runs the production-ready firm
+source adapters on a bounded schedule. The workflow covers Morgan Stanley,
+Merrill / Bank of America, Wells Fargo Advisors, RBC Wealth Management, Raymond
+James, Edward Jones, Stifel, and UBS Wealth Management USA.
+
+- Schedule: Tuesday and Friday at 08:23 UTC.
+- Scheduled behavior: write mode is enabled and each adapter is capped at 25
+  advisors by default.
+- Manual behavior: `workflow_dispatch` defaults to dry-run; set `write=true`
+  to upsert normalized rows into Fabric and adjust `max_advisors` when a larger
+  bounded run is needed.
+- Credentials: the workflow requires `HARPER_ADMIN_USERNAME` and
+  `HARPER_ADMIN_PASSWORD` repo secrets and targets the dev Fabric cluster.
+- Evidence: every matrix job uploads a `firm-source-<slug>` JSON artifact with
+  counts and mapped rows.
+
+The workflow intentionally does not call `bun run load:extractions` because
+that loader consumes local `research/extractions/*.json` files and moves them
+to `research/extractions/.loaded/`. When an upstream extraction automation
+produces those files, run `bun run load:extractions` as a separate follow-up
+step so the loader can preserve its file lifecycle.
+
 ## Fixtures
 
 Fixtures live under `tests/fixtures/firm-sources/<firm-slug>/`.

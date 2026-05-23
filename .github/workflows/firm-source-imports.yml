@@ -1,0 +1,120 @@
+name: Firm Source Imports
+
+on:
+  schedule:
+    - cron: '23 8 * * 2,5'
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Write normalized rows to Fabric'
+        required: true
+        default: false
+        type: boolean
+      max_advisors:
+        description: 'Maximum advisors per firm source'
+        required: true
+        default: '25'
+        type: string
+
+concurrency:
+  group: firm-source-imports
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    name: ${{ matrix.firm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - firm: Morgan Stanley
+            slug: morgan-stanley
+            script: dist/scripts/scrape_morgan_stanley.js
+            query: '10022'
+          - firm: Merrill / Bank of America
+            slug: merrill
+            script: dist/scripts/scrape_merrill.js
+            query: '10022'
+          - firm: Wells Fargo Advisors
+            slug: wells-fargo
+            script: dist/scripts/scrape_wells_fargo.js
+            query: '10022'
+          - firm: RBC Wealth Management
+            slug: rbc
+            script: dist/scripts/scrape_rbc.js
+            query: '10022'
+          - firm: Raymond James
+            slug: raymond-james
+            script: dist/scripts/scrape_raymond_james.js
+            query: '10022'
+          - firm: Edward Jones
+            slug: edward-jones
+            script: dist/scripts/scrape_edward_jones.js
+            query: '10022'
+          - firm: Stifel
+            slug: stifel
+            script: dist/scripts/scrape_stifel.js
+            query: 'ny'
+          - firm: UBS Wealth Management USA
+            slug: ubs
+            script: dist/scripts/scrape_ubs.js
+            query: 'smith'
+    env:
+      HARPER_STUDIO_URL: https://fabric.harper.fast
+      HARPER_CLUSTER_URL: https://advisory-rankings-de.cody-swann-org.harperfabric.com
+      HARPER_CLUSTER_ID: clu-nzeaqmqh1c5zrp9w
+      HARPER_ADMIN_USERNAME: ${{ secrets.HARPER_ADMIN_USERNAME }}
+      HARPER_ADMIN_PASSWORD: ${{ secrets.HARPER_ADMIN_PASSWORD }}
+      MAX_ADVISORS: ${{ github.event_name == 'workflow_dispatch' && inputs.max_advisors || '25' }}
+      WRITE_MODE: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.write) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.1'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.11'
+
+      - name: Verify required secrets are wired
+        run: |
+          if [ -z "${HARPER_ADMIN_USERNAME}" ] || [ -z "${HARPER_ADMIN_PASSWORD}" ]; then
+            echo "::error::HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD secrets are not set on the repo." >&2
+            exit 1
+          fi
+
+      - name: Install Bun dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build TypeScript
+        run: bun run build
+
+      - name: Run firm source importer
+        run: |
+          set -euo pipefail
+          write_flag=()
+          if [ "${WRITE_MODE}" = "true" ]; then
+            write_flag=(--write)
+          fi
+          node "${{ matrix.script }}" \
+            --query "${{ matrix.query }}" \
+            --max-advisors "${MAX_ADVISORS}" \
+            --json \
+            "${write_flag[@]}" \
+            > "firm-source-${{ matrix.slug }}.json"
+
+      - name: Upload importer output
+        uses: actions/upload-artifact@v4
+        with:
+          name: firm-source-${{ matrix.slug }}
+          path: firm-source-${{ matrix.slug }}.json
+          if-no-files-found: error
