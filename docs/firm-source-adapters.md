@@ -169,3 +169,27 @@ Bounded dry run:
 ```bash
 bun run scrape:raymond-james -- --query 10022 --max-advisors 5 --json
 ```
+
+## Edward Jones
+
+Edward Jones exposes a public Preact search app backed by a JSON results feed:
+
+- Locator URL:
+  `https://www.edwardjones.com/us-en/search/financial-advisor/results`
+- Feed URL:
+  `https://www.edwardjones.com/api/v3/financial-advisor/results`
+- Required parameters for bounded ZIP search: `q`, `distance`,
+  `distance_unit`, `page`, `matchblock`, and `searchtype`.
+- Optional parameter: `pageSize`, used by bounded scraper runs.
+- Pagination: `currentPage`, `itemsPerPage`, `resultStartPoint`, and
+  `resultCount`.
+- Limitation: the locale-prefixed `/us-en/api/v3/...` path returns HTTP 401.
+  The root `/api/v3/...` feed works when requested with a browser-like
+  referer from the search page.
+- Fixture path: `tests/fixtures/firm-sources/edward-jones/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:edward-jones -- --query 10022 --max-advisors 5 --json
+```
