@@ -727,5 +727,27 @@ describe("Harper directory and search resources", () => {
       counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
     });
   });
+
+  it("builds current-employment subtitles without repeated full-table scans", () => {
+    const employments = [
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2020-01-01" },
+      { advisorId: "advisor-a", firmId: "firm-b", startDate: "2024-01-01" },
+      { advisorId: "advisor-b", firmId: "firm-c", startDate: "2023-01-01" },
+      {
+        advisorId: "advisor-b",
+        firmId: "firm-d",
+        startDate: "2021-01-01",
+        endDate: "2022-01-01",
+      },
+    ];
+    employments.filter = () => {
+      throw new Error("current employment lookup should not rescan rows");
+    };
+
+    const current = search.currentEmploymentByAdvisor(employments);
+
+    expect(current.get("advisor-a")).toMatchObject({ firmId: "firm-b" });
+    expect(current.get("advisor-b")).toMatchObject({ firmId: "firm-c" });
+  });
 });
 /* eslint-enable max-lines, sonarjs/no-duplicate-string -- Re-enable fixture-only suppressions. */
