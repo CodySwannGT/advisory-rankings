@@ -30,6 +30,7 @@
     "status": "harperdb status",
     "firms:merge-aliases": "bun run build && node dist/scripts/merge_firm_aliases.js",
     "media:backfill": "bun run build && node dist/scripts/backfill_media.js",
+    "scrape:rbc": "bun run build && node dist/scripts/scrape_rbc.js",
     "scrape:merrill": "bun run build && node dist/scripts/scrape_merrill.js",
     "scrape:morgan-stanley": "bun run build && node dist/scripts/scrape_morgan_stanley.js",
     "scrape:wells-fargo": "bun run build && node dist/scripts/scrape_wells_fargo.js",
