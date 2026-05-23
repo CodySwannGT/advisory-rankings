@@ -143,16 +143,17 @@ export async function smokeAuth(page: Page): Promise<readonly Check[]> {
   if ((await page.locator('.me-spot button:has-text("Sign out")').count()) > 0)
     return await authenticatedSmokeCheck(page);
 
+  const username = process.env.HARPER_ADMIN_USERNAME;
+  const password = process.env.HARPER_ADMIN_PASSWORD;
+  if (!username || !password)
+    return [pass("navbar: deployed sign-in flow skipped without admin creds")];
+
   await page.locator('.me-spot a:has-text("Sign in")').first().click();
   await page.waitForSelector('input[name="email"]', {
     timeout: QUICK_UI_TIMEOUT,
   });
-  await page
-    .locator('input[name="email"]')
-    .fill(process.env.HARPER_ADMIN_USERNAME || "cody.swann@gmail.com");
-  await page
-    .locator('input[name="password"]')
-    .fill(process.env.HARPER_ADMIN_PASSWORD || "");
+  await page.locator('input[name="email"]').fill(username);
+  await page.locator('input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
   const loginResult = await waitForSignedInFeed(page);
   if (loginResult !== "feed")
