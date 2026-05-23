@@ -83,6 +83,12 @@ merge to `main` runs through the Lisa-style release stage first so
 `.github/workflows/deploy.yml` and gates the release on the Playwright
 smoke against the live cluster URL.
 
+Firm source imports are automated separately by
+`.github/workflows/firm-source-imports.yml`. The scheduled run executes every
+Tuesday and Friday at 08:23 UTC, writes bounded imports for all production-ready
+firm source adapters, and uploads per-firm JSON artifacts. Manual dispatch
+defaults to dry-run unless `write=true` is selected.
+
 For ad-hoc data-plane calls, use the Harper-native JWT:
 
 ```bash
