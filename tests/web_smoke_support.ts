@@ -10,7 +10,6 @@ export const PROFILE_HEADING_SELECTOR = ".profile-head h1";
 export const DEPLOYED_DATA_TIMEOUT = 30000;
 export const QUICK_UI_TIMEOUT = 8000;
 export const CARD_TITLE_SELECTOR = ".card h2.card-title";
-export const SITE_VERSION_SELECTOR = ".site-footer .site-version";
 export const TAYLOR_GROUP_TEXT = "The Taylor Group";
 export const isLocalDev = /^http:\/\/(127\.0\.0\.1|localhost)/.test(BASE);
 
