@@ -65,7 +65,9 @@ Once the server is up:
   headers, variables, secrets, or auth tokens are required. For Inspector
   verification, run `npx -y @modelcontextprotocol/inspector`, select
   Streamable HTTP, connect to the local or Fabric `/mcp` URL, then confirm
-  the Tools and Resources tabs list the curated surfaces above.
+  the Tools and Resources tabs list the curated surfaces above. The full
+  local/dev procedure and negative capability check live in
+  `docs/mcp-inspector-verification.md`.
 - **Paginated lists**:
   - `/PublicAdvisors?cursor=…&limit=50` — directory page.
     Returns `{ items, nextCursor, total }`. `nextCursor` is null on the
