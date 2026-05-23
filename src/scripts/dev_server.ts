@@ -19,6 +19,7 @@
  *   - GET /AdvisorProfile/<id>     → resources.js AdvisorProfile.get(id)
  *   - GET /TeamProfile/<id>        → resources.js TeamProfile.get(id)
  *   - GET /Search?q=…              → resources.js Search.get()
+ *   - POST /mcp                    → resources.js mcp.post(body)
  *   - GET /<TableName>/            → operations-API SQL passthrough
  *
  * Backend store is the running local Harper, accessed exclusively
@@ -156,10 +157,11 @@ async function loadTableShim() {
 
 /**
  * Loads generated resources.js with a Harper-like global Resource context.
+ * @param opts - Whether route handling needs table-backed resources.
  * @returns Imported resources module.
  */
-async function loadResources() {
-  const tables = await loadTableShim();
+async function loadResources(opts = { loadTables: true }) {
+  const tables = opts.loadTables ? await loadTableShim() : {};
   /**
    * Handles resource for this workflow.
    */
@@ -312,9 +314,47 @@ async function handle(req, res) {
  */
 async function routeRequest(req, res, url) {
   if (await handleAuthRoute(req, res, url.pathname)) return;
+  if (await handleMcpRoute(req, res, url.pathname)) return;
   if (await handleResourceRoute(res, url)) return;
   if (await handleTableRoute(res, url.pathname)) return;
   await serveStatic(req, res);
+}
+
+/**
+ * Handles the local MCP POST bridge.
+ * @param req - Incoming HTTP request.
+ * @param res - HTTP response.
+ * @param path - Request pathname.
+ * @returns Whether the route was handled.
+ */
+async function handleMcpRoute(req, res, path) {
+  if (path !== "/mcp") return false;
+  if (req.method !== "POST")
+    return sendJsonHandled(res, 405, { error: "method not allowed" });
+  const r = await loadResources({ loadTables: false });
+  if (!r?.mcp) return sendJsonHandled(res, 500, { error: "mcp unavailable" });
+  const instance = Reflect.construct(r.mcp, []);
+  return sendJsonHandled(
+    res,
+    200,
+    await instance.post(await readJsonBody(req))
+  );
+}
+
+/**
+ * Reads a JSON request body, returning undefined for parse errors.
+ * @param req - Incoming HTTP request.
+ * @returns Parsed JSON body or undefined when malformed.
+ */
+async function readJsonBody(req) {
+  const chunks = await Array.fromAsync(req, chunk => Buffer.from(chunk));
+  const text = Buffer.concat(chunks).toString("utf8");
+  if (!text.trim()) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return undefined;
+  }
 }
 
 /**
