@@ -197,7 +197,6 @@ bun run scrape:edward-jones -- --query 10022 --max-advisors 5 --json
 ## UBS
 
 UBS exposes a public React finder backed by Broadridge Presenter JSON APIs.
-Source triage in #77 created implementation follow-up #105.
 
 - Locator URL: `https://advisors.ubs.com/find-an-advisor/`
 - Feed URL:
@@ -208,13 +207,25 @@ Source triage in #77 created implementation follow-up #105.
 - Location behavior: the finder searches branch profiles by city/state or
   postal code, then expands nearby branches into advisor/team profiles with
   geo coordinates or a `ParentMarketingName` requirement.
+- Supported first-slice scraper input: bounded advisor name fragments through
+  the direct Broadridge Presenter `Search` JSON endpoint. The scraper maps
+  public individual profiles into `Firm`, `Branch`, `Advisor`,
+  `EmploymentHistory`, and `AdvisorResearchCheck`.
 - Response fields observed: `ProfileId`, `UniqueId`, `ProfileType`,
   `Company`, `Addresses`, `Emails`, `LocalNumber`, `MarketingName`,
   `LinkedInUrl`, `ParentMarketingName`, `ParentEntityId`, `ParentSiteUrl`,
   `JobTitle`, `RankTitle`, `TeamSiteNames`, `TeamSiteUrls`, and
   `AdditionalData.EntityId`.
 - Limitation: ZIP-style advisor discovery requires reproducing the app's
-  branch-expansion sequence; bounded name search is directly usable.
+  branch-expansion sequence. Team fields are retained in advisor notes for
+  this slice rather than normalized into `Team` / `TeamMembership`.
+- Fixture path: `tests/fixtures/firm-sources/ubs/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:ubs -- --query smith --max-advisors 5 --json
+```
 
 Bounded discovery fetch:
 
