@@ -102,6 +102,38 @@ available as `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`, in the
 macOS Keychain services `advisory-rankings-harper-username` and
 `advisory-rankings-harper-password`, or in `~/.harper-fabric-credentials`.
 
+## AdvisorBook MCP
+
+AdvisorBook also exposes a public read-only MCP server over Streamable
+HTTP at:
+
+```text
+https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp
+```
+
+The server accepts unauthenticated JSON-RPC POST requests and requires no
+headers, variables, secrets, or Harper token. The root `server.json`
+manifest registers the same remote endpoint for MCP clients that can
+consume registry-style server manifests.
+
+Supported methods are `initialize`, `tools/list`, `tools/call`,
+`resources/templates/list`, and `resources/read`. Tools are
+`search_advisorbook`, `get_feed`, `get_advisor_profile`,
+`get_firm_profile`, `get_team_profile`, and `get_article`. Resource
+templates are `advisorbook://feed`, `advisorbook://advisor/{id}`,
+`advisorbook://firm/{id}`, `advisorbook://team/{id}`, and
+`advisorbook://article/{id}`.
+
+To inspect the deployed server, run:
+
+```bash
+npx -y @modelcontextprotocol/inspector
+```
+
+In Inspector, choose the Streamable HTTP transport, connect to the
+Fabric `/mcp` URL, and verify that the Tools and Resources tabs list
+only the curated read-only AdvisorBook surfaces above.
+
 ## Web UI — AdvisorBook (Facebook-style activity feed)
 
 The Harper component ships a small static web app branded
@@ -185,7 +217,8 @@ harper-app/
                              /AdvisorProfile/<id>, /TeamProfile/<id>,
                              cursor-paginated /PublicAdvisors and
                              /FirmAdvisors/<id> (?status&cursor&limit),
-                             plus /Search?q=… for the navbar search box
+                             /Search?q=… for the navbar search box, and
+                             read-only MCP POST /mcp
   firms/ advisors/ teams/    Fastify route shells for /firms,
   articles/ seo_shell.js     /advisors, /teams, /articles, and slug URLs
   web/                       static AdvisorBook UI served at /.
@@ -256,6 +289,9 @@ src/
                              server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
+
+server.json                  MCP remote server manifest for the public
+                             AdvisorBook Streamable HTTP endpoint
 
 scripts/
   bootstrap.sh               clone-and-run installer

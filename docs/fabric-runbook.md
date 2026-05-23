@@ -118,7 +118,9 @@ Browser                                              app routes :443
 ─────                                                ─────────────
    ─────────────────────────────────────────────►   /          (web UI, see §6)
                                                     /<TableName>/   (REST CRUD)
-                                                    HTTP basic auth.
+                                                    /mcp      (MCP JSON-RPC)
+                                                    Public UI/MCP routes plus
+                                                    auth-gated raw tables.
 ```
 
 The app component declares its URL surface in `config.yaml` at the
@@ -140,12 +142,13 @@ That gives us, on `:443`:
   them; 23 currently have rows).
 - Custom resources from generated `resources.js` that pre-join across
   tables for the UI: `/Feed`, `/ArticleView/<id>`,
-  `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`.
-  Doing the joins server-side keeps the page-load to one round-trip.
+  `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, plus
+  public read-only MCP at `POST /mcp`. Doing the joins server-side keeps
+  the page-load to one round-trip.
 - A Facebook-style activity-feed UI under `/` (HTML + CSS tracked in
   `web/`, JavaScript generated from `src/web/**/*.ts`).
-- HTTP-basic auth required on every route under the same realm; one
-  prompt covers both static assets and REST.
+- Public UI and MCP routes are explicitly allowed by their JS resources.
+  Raw table REST routes remain Harper-authenticated.
 
 ---
 
@@ -484,8 +487,9 @@ Everything else still requires auth.
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
+| `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
-| `PUT/POST/DELETE` anywhere | ❌ 401 | Same. The custom resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. |
+| `PUT/POST/DELETE` anywhere else | ❌ 401 | Same. The custom UI resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. `/mcp` is the one public POST route and its JSON-RPC handler exposes no write/admin methods. |
 
 If a future change needs to lock the public routes back down, drop
 the `allowRead() { return true; }` overrides — they're flagged in a
@@ -498,7 +502,7 @@ hack:
 
 | Plane | Surface | Auth |
 |---|---|---|
-| **Data plane** — REST routes on the cluster (`/<TableName>/`, `/Feed`, `/FirmProfile/<id>`, …) | `https://<cluster>/` (`:443`) | **Native Harper JWT bearer.** Mint with the `create_authentication_tokens` operation: returns `operation_token` (sub:`operation`, ~24h) and `refresh_token` (sub:`refresh`, ~30d). Pass the op token as `Authorization: Bearer <jwt>`. Basic auth also works but bearer is the documented convention. |
+| **Data plane** — REST routes on the cluster (`/<TableName>/`, `/Feed`, `/FirmProfile/<id>`, `/mcp`, …) | `https://<cluster>/` (`:443`) | **Native Harper JWT bearer for protected raw table routes.** Mint with the `create_authentication_tokens` operation: returns `operation_token` (sub:`operation`, ~24h) and `refresh_token` (sub:`refresh`, ~30d). Pass the op token as `Authorization: Bearer <jwt>`. Basic auth also works but bearer is the documented convention. Public UI resources and read-only MCP do not require auth. |
 | **Control plane on Fabric** — `deploy_component`, `restart_service`, `get_components`, `list_users`, … | `https://fabric.harper.fast/Cluster/<id>/operation/` | **Studio session cookie.** `POST /Login/` with email + password → cookie. Fabric does not expose a long-lived API token (verified: `/User/tokens`, `/APIKey`, `/APIToken`, `/Token`, `/AccessToken` all 404). The cluster's own ops API at `:9925` accepts the same Bearer JWTs but is firewalled (§5); the cluster's `:443` returns 404 for ops calls. |
 
 `src/scripts/_auth.ts` exposes both: `createAuthTokens(creds)` for the
@@ -884,11 +888,24 @@ defined in `src/harper/resources.ts`:
 | `GET /FirmProfile/<id>` | `FirmProfile` | Employments → advisors, current vs. past; teams; transitions in / out; branches; disclosures at firm; mention articles. |
 | `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
+| `POST /mcp` | `mcp` | Streamable HTTP JSON-RPC transport for curated read-only AdvisorBook tools and resources. |
 
 The classes in `src/harper/resources.ts` extend Harper's globally-injected
 `Resource` and use `tables.X.search({})` for the underlying reads.
 Updating any page's data shape means editing the matching method
 **and** the matching `src/web/<page>.ts` renderer in the same change.
+
+The MCP endpoint is composed from `src/harper/resource-mcp*.ts` and emitted
+through the same `resources.js` bundle. Supported JSON-RPC methods are
+`initialize`, `tools/list`, `tools/call`, `resources/templates/list`, and
+`resources/read`. The tool list is `search_advisorbook`, `get_feed`,
+`get_advisor_profile`, `get_firm_profile`, `get_team_profile`, and
+`get_article`. Resource templates are `advisorbook://feed`,
+`advisorbook://advisor/{id}`, `advisorbook://firm/{id}`,
+`advisorbook://team/{id}`, and `advisorbook://article/{id}`. The root
+`server.json` manifest points remote clients at
+`https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp` and
+does not require auth headers or secrets.
 
 ### Auth
 
