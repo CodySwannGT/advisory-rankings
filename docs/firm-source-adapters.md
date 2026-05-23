@@ -79,3 +79,22 @@ When adding a new firm source:
   conventions change.
 - Keep `docs/brokercheck-spike.md` unchanged unless BrokerCheck parsing,
   loading, fetching, or crawl orchestration changes.
+
+## Merrill / Bank of America
+
+Merrill's public advisor directory uses a Yext Answers vertical query:
+
+- Locator URL: `https://advisor.ml.com/search`
+- Feed URL: `https://liveapi-cached.yext.com/v2/accounts/me/answers/vertical/query`
+- Required parameters: `experienceKey=merrill_answers`,
+  `verticalKey=financial_professionals`, `version=PRODUCTION`, `locale=en`,
+  `v=20240101`, `input`, `limit`, and `offset`.
+- Pagination: offset/limit. Blank input returned more than 10,000 rows during
+  discovery; ZIP/city input narrows the result set.
+- Fixture path: `tests/fixtures/firm-sources/merrill/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
+```
