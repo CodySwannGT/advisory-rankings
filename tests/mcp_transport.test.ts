@@ -48,6 +48,19 @@ const FORBIDDEN_TOOL_TERMS = [
   "write",
 ];
 
+const MCP_CAPABILITIES = {
+  tools: { listChanged: false },
+  resources: { subscribe: false, listChanged: false },
+};
+
+const RESOURCE_TEMPLATE_URIS = [
+  "advisorbook://feed",
+  "advisorbook://advisor/{id}",
+  "advisorbook://firm/{id}",
+  "advisorbook://team/{id}",
+  "advisorbook://article/{id}",
+];
+
 describe("MCP transport", () => {
   it("accepts anonymous initialize requests", async () => {
     const endpoint = new (mcpResource as any).mcp();
@@ -58,7 +71,7 @@ describe("MCP transport", () => {
       id: "init-1",
       result: {
         protocolVersion: PROTOCOL_VERSION,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: MCP_CAPABILITIES,
         serverInfo: {
           name: "advisorbook",
           title: "AdvisorBook",
@@ -91,6 +104,25 @@ describe("MCP transport", () => {
       jsonrpc: "2.0",
       id: "unsupported-1",
       error: { code: -32601, message: "Method not found: resources/list" },
+    });
+  });
+
+  it("lists AdvisorBook resource templates", async () => {
+    const response = await mcpResource.handleMcpRequest({
+      jsonrpc: "2.0",
+      id: "templates-1",
+      method: "resources/templates/list",
+    });
+
+    expect(response).toMatchObject({
+      jsonrpc: "2.0",
+      id: "templates-1",
+      result: {
+        resourceTemplates: RESOURCE_TEMPLATE_URIS.map(uriTemplate => ({
+          uriTemplate,
+          mimeType: "application/json",
+        })),
+      },
     });
   });
 
@@ -164,7 +196,7 @@ describe("MCP transport", () => {
         id: "init-2",
         result: {
           protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: { listChanged: false } },
+          capabilities: MCP_CAPABILITIES,
           serverInfo: {
             name: "advisorbook",
             title: "AdvisorBook",

@@ -6,6 +6,11 @@ import {
   toolErrorMessage,
   toolResult,
 } from "./resource-mcp-tools.js";
+import {
+  MCP_RESOURCE_CAPABILITIES,
+  MCP_RESOURCE_TEMPLATES,
+  readMcpResource,
+} from "./resource-mcp-resources.js";
 
 const MCP_PROTOCOL_VERSION = "2025-06-18";
 const SERVER_INFO = {
@@ -101,11 +106,33 @@ async function handleSingle(request) {
     return successResponse(request.id, { tools: MCP_TOOL_DEFINITIONS });
   if (request.method === "tools/call")
     return handleToolCallRequest(request.id, request.params);
+  if (request.method === "resources/templates/list")
+    return successResponse(request.id, {
+      resourceTemplates: MCP_RESOURCE_TEMPLATES,
+    });
+  if (request.method === "resources/read")
+    return handleResourceReadRequest(request.id, request.params);
   return errorResponse(
     request.id,
     METHOD_NOT_FOUND,
     `Method not found: ${request.method}`
   );
+}
+
+/**
+ * Reads one AdvisorBook MCP resource.
+ * @param id - JSON-RPC request id.
+ * @param params - MCP resources/read params.
+ * @returns JSON-RPC response for the resource read.
+ */
+async function handleResourceReadRequest(id, params) {
+  if (!params || typeof params.uri !== "string")
+    return errorResponse(id, INVALID_PARAMS, "Invalid resource read params");
+  try {
+    return successResponse(id, await readMcpResource(params.uri));
+  } catch (error) {
+    return errorResponse(id, INTERNAL_ERROR, toolErrorMessage(error));
+  }
 }
 
 /**
@@ -133,7 +160,7 @@ async function handleToolCallRequest(id, params) {
 function initializeResult(params) {
   return {
     protocolVersion: requestedProtocolVersion(params),
-    capabilities: MCP_TOOL_CAPABILITIES,
+    capabilities: { ...MCP_TOOL_CAPABILITIES, ...MCP_RESOURCE_CAPABILITIES },
     serverInfo: SERVER_INFO,
   };
 }
