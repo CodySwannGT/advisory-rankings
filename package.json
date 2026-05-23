@@ -32,6 +32,7 @@
     "media:backfill": "bun run build && node dist/scripts/backfill_media.js",
     "scrape:merrill": "bun run build && node dist/scripts/scrape_merrill.js",
     "scrape:morgan-stanley": "bun run build && node dist/scripts/scrape_morgan_stanley.js",
+    "scrape:wells-fargo": "bun run build && node dist/scripts/scrape_wells_fargo.js",
     "research:advisors": "bun run build && node dist/scripts/research_advisors.js",
     "reset": "harperdb stop || true; [ -n \"$HOME\" ] && rm -rf \"$HOME/.harperdb\" && bun run bootstrap && bun run seed && bun run verify",
     "lint": "oxlint && eslint . --quiet",
