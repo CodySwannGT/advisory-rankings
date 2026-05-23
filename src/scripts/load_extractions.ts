@@ -69,7 +69,7 @@ export const buildRows = (extraction: unknown) => {
     employmentRows(ex, context),
     sanctionRows(ex, context),
     outsideBusinessRows(ex, context),
-    fieldAssertionRows(ex, aid)
+    fieldAssertionRows(ex, context)
   );
 };
 
@@ -208,19 +208,47 @@ const outsideBusinessRows = (
   ),
 });
 
-const fieldAssertionRows = (ex: Row, aid: string) => ({
-  FieldAssertion: extractionRows(ex.field_assertions).map(assertion => ({
-    id: uid(
-      `fa:${aid}:${assertion.target_table}:${assertion.field}:${JSON.stringify(assertion.value)}`
-    ),
-    articleId: aid,
-    targetTable: assertion.target_table,
-    fieldName: assertion.field,
-    assertedValue: JSON.stringify(assertion.value),
-    quotePhrase: assertion.quote,
-    confidence: assertion.confidence ?? "asserted",
-  })),
+const fieldAssertionRows = (
+  ex: Row,
+  context: ReturnType<typeof buildContext>
+) => ({
+  FieldAssertion: extractionRows(ex.field_assertions).flatMap(assertion => {
+    const targetId = fieldAssertionTargetId(ex, context, assertion);
+    const field = stringValue(assertion.field);
+    if (!targetId || !field) return [];
+    return [
+      {
+        id: uid(
+          `fa:${context.aid}:${assertion.target_table}:${field}:${JSON.stringify(assertion.value)}`
+        ),
+        articleId: context.aid,
+        targetTable: assertion.target_table,
+        targetId,
+        fieldName: field,
+        assertedValue: JSON.stringify(assertion.value),
+        quotePhrase: assertion.quote,
+        confidence: assertion.confidence ?? "asserted",
+      },
+    ];
+  }),
 });
+
+const fieldAssertionTargetId = (
+  ex: Row,
+  context: ReturnType<typeof buildContext>,
+  assertion: Row
+): string | null => {
+  const targetRef = stringValue(assertion.target_ref);
+  if (!targetRef) return null;
+  const targetTable = stringValue(assertion.target_table);
+  if (targetTable === "Advisor")
+    return advisorLookup(context.advisorPairs, targetRef);
+  if (targetTable === "Firm") return firmLookup(context.firmPairs, targetRef);
+  if (targetTable === "Disclosure")
+    return disclosureIdForLocal(ex, context, targetRef);
+  if (targetTable === "Article") return context.aid;
+  return uid(`fa-target:${targetTable || "unknown"}:${targetRef}`);
+};
 
 const disclosureRow = (
   disclosure: Row,
