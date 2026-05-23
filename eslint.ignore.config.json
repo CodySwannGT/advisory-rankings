@@ -3,7 +3,6 @@
     "sgconfig.yml",
     "build/**",
     "dist/**",
-    "harper-app/**/*.js",
     ".build/**",
     ".esbuild/**",
     ".serverless/**",
