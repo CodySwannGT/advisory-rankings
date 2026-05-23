@@ -29,12 +29,3 @@ coverage
 # no trailing newline). Keep its scaffolding out of format gates.
 # No-op for projects that don't use Amplify.
 amplify
-
-# BEGIN: AI GUARDRAILS HARPER-FABRIC
-
-# Harper/Fabric generated web output and scraped research captures are not
-# source formatting inputs.
-harper-app/web/
-research/articles/
-
-# END: AI GUARDRAILS HARPER-FABRIC
