@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.40.4",
-    "@codyswann/lisa": "^2.25.2",
+    "@codyswann/lisa": "^2.26.1",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",
