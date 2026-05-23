@@ -272,6 +272,7 @@ const baseRows = () => {
     {
       id: "article-a",
       headline: "Stone joins Example",
+      url: "https://www.advisorhub.com/stone-joins-example/",
       slug: "stone-joins-example",
       publishedDate: "2025-02-01",
       bodyText:
@@ -543,6 +544,90 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
     expect(new (resources as any).Search().allowRead()).toBe(true);
+    expect(new (resources as any).mcp().allowCreate()).toBe(true);
+  });
+
+  it("handles MCP initialize and unsupported methods as JSON-RPC", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: "init-1",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "vitest", version: "1.0.0" },
+        },
+      })
+    ).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "init-1",
+      result: {
+        protocolVersion: "2025-06-18",
+        capabilities: {
+          tools: { listChanged: false },
+          resources: { subscribe: false, listChanged: false },
+        },
+        serverInfo: { name: "advisorbook", title: "AdvisorBook" },
+      },
+    });
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "resources/list",
+      })
+    ).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: 2,
+      error: {
+        code: -32601,
+        message: "Method not found: resources/list",
+      },
+    });
+  });
+
+  it("lists curated read-only MCP tools", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(
+      endpoint.post({
+        jsonrpc: "2.0",
+        id: "tools-1",
+        method: "tools/list",
+      })
+    ).resolves.toMatchObject({
+      jsonrpc: "2.0",
+      id: "tools-1",
+      result: {
+        tools: [
+          { name: "search_advisorbook" },
+          { name: "get_feed" },
+          { name: "get_advisor_profile" },
+          { name: "get_firm_profile" },
+          { name: "get_team_profile" },
+          { name: "get_article" },
+        ],
+      },
+    });
+  });
+
+  it("returns MCP JSON-RPC errors for malformed requests", async () => {
+    const endpoint = new (resources as any).mcp();
+
+    await expect(endpoint.post(undefined)).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Parse error" },
+    });
+    await expect(endpoint.post({ jsonrpc: "2.0" })).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32600, message: "Invalid Request" },
+    });
   });
 
   it("serves feed, article, firm, advisor, and team profiles", async () => {
@@ -586,6 +671,124 @@ describe("Harper resource endpoints", () => {
       currentMembers: [{ advisor: { id: "advisor-a" } }],
       pastMembers: [{ advisor: { id: "advisor-b" } }],
     });
+  });
+
+  it("calls curated MCP tools with public resource links", async () => {
+    const endpoint = new (resources as any).mcp();
+    const callTool = async (name: string, args: Record<string, unknown>) => {
+      const response = await endpoint.post({
+        jsonrpc: "2.0",
+        id: name,
+        method: "tools/call",
+        params: { name, arguments: args },
+      });
+      return response.result.structuredContent;
+    };
+
+    const searchResult = await callTool("search_advisorbook", {
+      query: "stone",
+    });
+    const feedResult = await callTool("get_feed", { limit: 1 });
+    const advisorResult = await callTool("get_advisor_profile", {
+      id: "avery-stone",
+    });
+    const firmResult = await callTool("get_firm_profile", {
+      id: "Example Wealth LLC",
+    });
+    const teamResult = await callTool("get_team_profile", {
+      id: "stone-group",
+    });
+    const articleResult = await callTool("get_article", {
+      id: "stone-joins-example",
+    });
+
+    expect(searchResult.items).toEqual([
+      expect.objectContaining({
+        kind: "advisor",
+        resource: "advisorbook://advisor/advisor-a",
+      }),
+      expect.objectContaining({
+        kind: "team",
+        resource: "advisorbook://team/team-a",
+      }),
+    ]);
+    expect(feedResult).toMatchObject({
+      count: 2,
+      items: [
+        expect.objectContaining({
+          resource: "advisorbook://article/article-a",
+        }),
+      ],
+    });
+    expect(advisorResult).toMatchObject({
+      advisor: { id: "advisor-a" },
+      resource: "advisorbook://advisor/advisor-a",
+    });
+    expect(firmResult).toMatchObject({
+      firm: { id: "firm-a" },
+      resource: "advisorbook://firm/firm-a",
+    });
+    expect(teamResult).toMatchObject({
+      team: { id: "team-a" },
+      resource: "advisorbook://team/team-a",
+    });
+    expect(articleResult).toMatchObject({
+      article: { id: "article-a" },
+      provenance: [{ targetTable: "Advisor", targetId: "advisor-a" }],
+      resource: "advisorbook://article/article-a",
+    });
+    expect(articleResult.url).toContain("/articles/");
+  });
+
+  it("reads AdvisorBook MCP resources with public payloads", async () => {
+    const endpoint = new (resources as any).mcp();
+    const readResource = async (uri: string) => {
+      const response = await endpoint.post({
+        jsonrpc: "2.0",
+        id: uri,
+        method: "resources/read",
+        params: { uri },
+      });
+      return response.result.structuredContent;
+    };
+
+    const feed = await readResource("advisorbook://feed");
+    const advisor = await readResource("advisorbook://advisor/avery-stone");
+    const firm = await readResource(
+      "advisorbook://firm/Example%20Wealth%20LLC"
+    );
+    const team = await readResource("advisorbook://team/stone-group");
+    const article = await readResource(
+      "advisorbook://article/stone-joins-example"
+    );
+
+    expect(feed).toMatchObject({ count: 2 });
+    expect(advisor).toMatchObject({
+      advisor: { id: "advisor-a" },
+      displayName: "Avery Stone",
+    });
+    expect(firm).toMatchObject({ firm: { id: "firm-a" } });
+    expect(team).toMatchObject({ team: { id: "team-a" } });
+    expect(article).toMatchObject({
+      article: {
+        id: "article-a",
+        url: "https://www.advisorhub.com/stone-joins-example/",
+      },
+      body: {
+        text: "Avery Stone joined Example Wealth Management with a large team and client base.",
+      },
+      provenance: [
+        {
+          targetTable: "Advisor",
+          targetId: "advisor-a",
+          fieldName: "legalName",
+        },
+      ],
+    });
+
+    await expect(
+      readResource("advisorbook://article/missing-article")
+    ).resolves.toEqual({ error: "not found", id: "missing-article" });
   });
 
   it("returns route errors for missing or unknown profile ids", async () => {
@@ -726,6 +929,28 @@ describe("Harper directory and search resources", () => {
       items: [],
       counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
     });
+  });
+
+  it("builds current-employment subtitles without repeated full-table scans", () => {
+    const employments = [
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2020-01-01" },
+      { advisorId: "advisor-a", firmId: "firm-b", startDate: "2024-01-01" },
+      { advisorId: "advisor-b", firmId: "firm-c", startDate: "2023-01-01" },
+      {
+        advisorId: "advisor-b",
+        firmId: "firm-d",
+        startDate: "2021-01-01",
+        endDate: "2022-01-01",
+      },
+    ];
+    employments.filter = () => {
+      throw new Error("current employment lookup should not rescan rows");
+    };
+
+    const current = search.currentEmploymentByAdvisor(employments);
+
+    expect(current.get("advisor-a")).toMatchObject({ firmId: "firm-b" });
+    expect(current.get("advisor-b")).toMatchObject({ firmId: "firm-c" });
   });
 });
 /* eslint-enable max-lines, sonarjs/no-duplicate-string -- Re-enable fixture-only suppressions. */

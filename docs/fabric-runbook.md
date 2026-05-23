@@ -594,9 +594,8 @@ fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
 ### Auto-deploy on merge to `main` (CI)
 
 `.github/workflows/deploy.yml` follows Lisa's release-and-deploy shape:
-determine the target environment, call
-`CodySwannGT/lisa/.github/workflows/release.yml@main` for the
-standard-version bump, then check out the released branch and run
+determine the target environment, bump `package.json`, commit/tag the
+release with `[skip ci]`, then check out the released branch and run
 `bun install` -> `bun run deploy` -> `bunx playwright install --with-deps chromium`
 -> Playwright smoke (`bun run smoke`, backed by `tests/web_smoke.ts`)
 against the live cluster URL. Required repo secrets:

@@ -1,0 +1,16 @@
+{
+  "connector": "git",
+  "profile": "advisory-rankings",
+  "lastSuccessfulRunAt": "2026-05-23T13:48:27Z",
+  "cursor": {
+    "lastCommit": "af60905303d58ca596c75540e44453612c80c94e",
+    "lastPr": 62
+  },
+  "sourceNotes": ["wiki/sources/git/2026-05-23-advisory-rankings-git.md"],
+  "synthesisPages": [
+    "wiki/architecture/project-architecture.md",
+    "wiki/projects/git-history.md"
+  ],
+  "schemaVersion": "1.0.0"
+}
+

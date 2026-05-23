@@ -1,0 +1,36 @@
+{
+  "response": {
+    "resultsCount": 1,
+    "results": [
+      {
+        "data": {
+          "id": "a_3597631122",
+          "slug": "sites/fl/tampa-fl/aidan.santorsa",
+          "address": {
+            "line1": "101 E Kennedy Blvd",
+            "city": "Tampa",
+            "region": "FL",
+            "postalCode": "33602",
+            "countryCode": "US"
+          },
+          "name": "Aidan Santorsa",
+          "certifications": ["PIA"],
+          "c_advisorFirstName": "Aidan",
+          "c_advisorLastName": "Santorsa",
+          "c_businessUnit": "WM",
+          "c_currentPositionStartDate": "2024-01-01",
+          "c_displayTeamName": "Tampa Financial Center",
+          "c_jobTitle": "FSA - Merrill",
+          "c_languagesV2": ["English"],
+          "c_marketingName": "Aidan Santorsa",
+          "c_pagesURL": "https://advisor.ml.com/sites/fl/tampa-fl/aidan.santorsa",
+          "c_profilePicture": {
+            "url": "https://a.mktgcdn.com/p/Furgu8kruGM8OOBm4hqqbYN1gFKvFUtKTyLmDJtq3Oo/300x300.png"
+          },
+          "emails": ["aidan.santorsa@ml.com"],
+          "mainPhone": "(813) 273-8635"
+        }
+      }
+    ]
+  }
+}

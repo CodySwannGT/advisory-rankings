@@ -1,0 +1,34 @@
+{
+  "connector": "documentation",
+  "profile": "initial-project-docs",
+  "lastSuccessfulRunAt": "2026-05-23T13:48:27Z",
+  "cursor": {
+    "sourceSet": [
+      "package.json",
+      "wiki/documentation/root-readme.md",
+      "docs/advisor-schema.md",
+      "docs/data-model-decisions.md",
+      "docs/deploy-to-harper-fabric.md",
+      "docs/fabric-runbook.md",
+      "docs/design-system.md",
+      "docs/brokercheck-spike.md",
+      "harper-app/README.md",
+      "harper-app/config.yaml",
+      "harper-app/schema.graphql",
+      "research/README.md"
+    ]
+  },
+  "sourceNotes": [
+    "wiki/sources/documentation/2026-05-23-initial-project-docs.md"
+  ],
+  "synthesisPages": [
+    "wiki/architecture/project-architecture.md",
+    "wiki/architecture/harper-fabric-operations.md",
+    "wiki/architecture/web-ui-design-system.md",
+    "wiki/entities/advisor-domain-model.md",
+    "wiki/decisions/data-model-decisions.md",
+    "wiki/playbooks/local-operations.md",
+    "wiki/playbooks/brokercheck-operations.md"
+  ],
+  "schemaVersion": "1.0.0"
+}

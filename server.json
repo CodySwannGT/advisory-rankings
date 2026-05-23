@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.codyswanngt/advisory-rankings",
+  "title": "AdvisorBook",
+  "description": "Read-only public AdvisorBook MCP server for advisor, firm, team, article, and feed context.",
+  "version": "0.1.23",
+  "websiteUrl": "https://advisory-rankings-de.cody-swann-org.harperfabric.com/",
+  "repository": {
+    "url": "https://github.com/CodySwannGT/advisory-rankings",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp"
+    }
+  ]
+}

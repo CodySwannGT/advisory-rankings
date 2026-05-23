@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildRows } from "../src/scripts/load_extractions.js";
 
+const EXAMPLE_ADVISOR_NAME = "Alex Example";
+
 describe("AdvisorHub extraction loader", () => {
   it("keeps scraped advisor headshots and firm logos on entity rows", () => {
     const firmName = "Example Wealth";
@@ -21,7 +23,7 @@ describe("AdvisorHub extraction loader", () => {
       advisors: [
         {
           natural_key: {
-            legal_name: "Alex Example",
+            legal_name: EXAMPLE_ADVISOR_NAME,
             first_employer: firmName,
           },
           fields: {
@@ -35,7 +37,7 @@ describe("AdvisorHub extraction loader", () => {
 
     expect(rows.Advisor).toContainEqual(
       expect.objectContaining({
-        legalName: "Alex Example",
+        legalName: EXAMPLE_ADVISOR_NAME,
         headshotUrl: "https://example.com/assets/alex-example.jpg",
       })
     );
@@ -94,5 +96,90 @@ describe("AdvisorHub extraction loader", () => {
         alias: aliasName,
       })
     );
+  });
+
+  it("resolves field assertions to public target ids", () => {
+    const firmName = "Example Wealth";
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/example-provenance/",
+        headline: "Example provenance",
+      },
+      firms: [
+        {
+          natural_key: { canonical_name: firmName },
+          fields: { channel: "pure_ria" },
+        },
+      ],
+      advisors: [
+        {
+          natural_key: {
+            legal_name: EXAMPLE_ADVISOR_NAME,
+            first_employer: firmName,
+          },
+          fields: { firstName: "Alex", lastName: "Example" },
+        },
+      ],
+      disclosures: [
+        {
+          local_key: "disc-1",
+          advisor_legal_name: EXAMPLE_ADVISOR_NAME,
+          fields: {
+            disclosureType: "customer_dispute",
+            dateInitiated: "2025-01-01",
+            regulator: "FINRA",
+          },
+        },
+      ],
+      field_assertions: [
+        {
+          target_table: "Advisor",
+          target_ref: EXAMPLE_ADVISOR_NAME,
+          field: "legalName",
+          value: EXAMPLE_ADVISOR_NAME,
+        },
+        {
+          target_table: "Firm",
+          target_ref: firmName,
+          field: "channel",
+          value: "pure_ria",
+        },
+        {
+          target_table: "Disclosure",
+          target_ref: "disc-1",
+          field: "status",
+          value: "pending",
+        },
+        {
+          target_table: "Article",
+          target_ref: "self",
+          field: "headline",
+          value: "Example provenance",
+        },
+      ],
+    });
+
+    expect(rows.FieldAssertion).toEqual([
+      expect.objectContaining({
+        targetTable: "Advisor",
+        targetId: rows.Advisor[0].id,
+        fieldName: "legalName",
+      }),
+      expect.objectContaining({
+        targetTable: "Firm",
+        targetId: rows.Firm[0].id,
+        fieldName: "channel",
+      }),
+      expect.objectContaining({
+        targetTable: "Disclosure",
+        targetId: rows.Disclosure[0].id,
+        fieldName: "status",
+      }),
+      expect.objectContaining({
+        targetTable: "Article",
+        targetId: rows.Article[0].id,
+        fieldName: "headline",
+      }),
+    ]);
   });
 });

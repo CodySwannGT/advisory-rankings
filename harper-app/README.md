@@ -8,7 +8,7 @@ The advisor schema running on Harper (formerly HarperDB).
 |---|---|
 | `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, registers clean URL Fastify routes, and serves `web/**` as a static site. |
 | `schema.graphql` | 35 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
-| `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, and `/Search?q=…` for the navbar global search box. |
+| `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, `/Search?q=…` for the navbar global search box, and public MCP POST `/mcp`. |
 | `firms/`, `advisors/`, `teams/`, `articles/`, `seo_shell.js` | Fastify route shells for SEO-friendly URLs. `/firms`, `/advisors`, and `/teams` serve directory HTML; `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, `/teams/<slug>-<id>`, and `/articles/<slug>-<id>` serve the matching detail shell. |
 | `web/` | AdvisorBook static SPA. HTML/CSS are tracked here; browser `.js` modules are generated from `src/web/**/*.ts` by `bun run build`. UI is composed from the Atomic Design library under `src/web/design-system/` and emitted to `web/design-system/` — see `docs/design-system.md`. |
 
@@ -44,6 +44,12 @@ Once the server is up:
   name match across firms / advisors / teams, returns
   `{ q, items: [{ kind, id, name, sub, score }], counts }`.
   Query strings under 2 characters short-circuit to an empty list.
+- **MCP transport** at `http://127.0.0.1:9926/mcp` accepts unauthenticated
+  JSON-RPC POST requests. Harper maps resource export names directly to
+  routes, so this is implemented as a lowercase `mcp` JS resource class.
+  The first slice supports `initialize` and standard JSON-RPC errors for
+  unsupported methods; tools and resource templates are added by later MCP
+  tickets.
 - **Paginated lists**:
   - `/PublicAdvisors?cursor=…&limit=50` — directory page.
     Returns `{ items, nextCursor, total }`. `nextCursor` is null on the

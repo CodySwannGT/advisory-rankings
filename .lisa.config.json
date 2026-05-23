@@ -27,5 +27,10 @@
         "sentinel": "prd-intake-feedback"
       }
     }
+  },
+  "deploy": {
+    "branches": {
+      "production": "main"
+    }
   }
 }
