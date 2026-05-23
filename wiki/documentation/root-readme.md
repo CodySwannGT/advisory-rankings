@@ -132,7 +132,9 @@ npx -y @modelcontextprotocol/inspector
 
 In Inspector, choose the Streamable HTTP transport, connect to the
 Fabric `/mcp` URL, and verify that the Tools and Resources tabs list
-only the curated read-only AdvisorBook surfaces above.
+only the curated read-only AdvisorBook surfaces above. The repeatable
+local/dev procedure and negative capability check live in
+[`docs/mcp-inspector-verification.md`](../../docs/mcp-inspector-verification.md).
 
 ## Web UI — AdvisorBook (Facebook-style activity feed)
 
@@ -198,6 +200,9 @@ docs/
                                touching anything visual.
   fabric-runbook.md            ops log: cluster, schema reloads, every
                                workaround, every failed alternative
+  mcp-inspector-verification.md
+                               repeatable MCP Inspector UI and CLI checks
+                               for the public read-only endpoint
   firm-source-adapters.md      reusable contract, CLI flags, fixture
                                layout, and docs checklist for public
                                firm advisor-locator imports

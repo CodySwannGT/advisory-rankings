@@ -331,7 +331,7 @@ async function handleMcpRoute(req, res, path) {
   if (path !== "/mcp") return false;
   if (req.method !== "POST")
     return sendJsonHandled(res, 405, { error: "method not allowed" });
-  const r = await loadResources({ loadTables: false });
+  const r = await loadResources({ loadTables: true });
   if (!r?.mcp) return sendJsonHandled(res, 500, { error: "mcp unavailable" });
   const instance = Reflect.construct(r.mcp, []);
   return sendJsonHandled(
