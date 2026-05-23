@@ -106,9 +106,7 @@ export async function smokeFirm(
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await pastBlock.scrollIntoViewIfNeeded();
-  await cairnesLink
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT })
-    .catch(() => undefined);
+  await cairnesLink.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "02-firm-wells-fargo");
 
   return [await firmProfileChecks(page, pastBlock, cairnesLink), pastBlock];
