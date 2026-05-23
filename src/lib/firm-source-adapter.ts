@@ -2,7 +2,6 @@
  * Firm-source adapters ingest public locator data into the same Harper tables
  * regardless of the firm's feed shape. The contract keeps future scrapers
  * compatible with the Morgan Stanley importer without coupling them to Yext.
- *
  * @module firm-source-adapter
  */
 
@@ -19,11 +18,8 @@ export const FIRM_SOURCE_TABLES = [
   "AdvisorResearchCheck",
 ] as const;
 
-/** Name of a Harper table emitted by a firm-source adapter. */
-export type FirmSourceTable = (typeof FIRM_SOURCE_TABLES)[number];
-
 /** Harper row bundle produced by a firm-source adapter. */
-export class FirmSourceRows {
+class FirmSourceRows {
   readonly Firm: ReadonlyArray<Record<string, unknown>> = [];
   readonly FirmAlias: ReadonlyArray<Record<string, unknown>> = [];
   readonly Branch: ReadonlyArray<Record<string, unknown>> = [];
@@ -35,43 +31,6 @@ export class FirmSourceRows {
   readonly AdvisorResearchCheck: ReadonlyArray<Record<string, unknown>> = [];
 }
 
-/** Public-source discovery notes captured before implementing a scraper. */
-export interface FirmSourceDiscovery {
-  readonly locatorUrl: string;
-  readonly feedUrl?: string;
-  readonly requestShape: string;
-  readonly pagination: string;
-  readonly limitation?: string;
-}
-
-/** Shared command-line options expected on firm-source scraper scripts. */
-export class FirmSourceRunOptions {
-  readonly checkedAt = "";
-  readonly json = false;
-  readonly maxAdvisors = DEFAULT_FIRM_SOURCE_MAX_ADVISORS;
-  readonly pageSize = DEFAULT_FIRM_SOURCE_PAGE_SIZE;
-  readonly queries: readonly string[] = [];
-  readonly write = false;
-}
-
-/** Pure adapter surface shared by public firm locator imports. */
-export interface FirmSourceAdapter<RawRow = unknown> {
-  readonly firmName: string;
-  readonly sourceType: string;
-  readonly buildSearchUrl: (
-    query: string,
-    limit: number,
-    offset: number
-  ) => string;
-  readonly discover: () => FirmSourceDiscovery;
-  readonly mapRows: (
-    rows: ReadonlyArray<RawRow>,
-    checkedAt: string
-  ) => FirmSourceRows;
-}
-
-export const DEFAULT_FIRM_SOURCE_MAX_ADVISORS = 100;
-export const DEFAULT_FIRM_SOURCE_PAGE_SIZE = 50;
 export const FIRM_SOURCE_SAMPLE_LIMIT = 5;
 
 /**

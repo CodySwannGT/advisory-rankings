@@ -1,4 +1,4 @@
-# Fabric runbook — `advisory-rankings-dev`
+# Fabric runbook — `<HARPER_CLUSTER_NAME>`
 
 The companion to `docs/deploy-to-harper-fabric.md`. That doc is the
 *plan*; this one is the *log* — what actually happened deploying this
@@ -7,7 +7,9 @@ operating it.
 
 > The Fabric account, organization, and cluster were created on
 > **2026-05-02** by an automated Playwright pass. If you are picking
-> this up later, every ID and URL below is real and reachable.
+> this up later, resolve the placeholders below from Fabric Studio,
+> GitHub settings, or the local credential loader instead of committing
+> environment-specific values to this file.
 
 ---
 
@@ -16,22 +18,78 @@ operating it.
 | What | Value |
 |---|---|
 | Fabric console | <https://fabric.harper.fast/> |
-| Fabric login | `cody.swann@gmail.com` |
-| Org name / id | "Cody Swann Org" / `org-q31yvqoihmulbrks` |
-| Cluster name / id | `advisory-rankings-dev` / `clu-nzeaqmqh1c5zrp9w` |
-| Cluster URL (app) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com/` |
-| Cluster URL (ops API) | `https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/` |
-| Cluster admin username | `cody.swann@gmail.com` *(set via the Fabric Finish-Setup wizard; `HDB_ADMIN` is also present internally but our app-level ops use the email user)* |
-| Cluster admin password | aligned with the Studio password (§9). Stored locally in macOS Keychain services `advisory-rankings-harper-username` / `advisory-rankings-harper-password`; `~/.harper-fabric-credentials` is the fallback. Rotate before anything sensitive lives on this cluster. |
+| Fabric login | `<FABRIC_LOGIN_EMAIL>` |
+| Org name / id | "<FABRIC_ORG_NAME>" / `<FABRIC_ORG_ID>` |
+| Cluster name / id | `<HARPER_CLUSTER_NAME>` / `<HARPER_CLUSTER_ID>` |
+| Cluster URL (app) | `<HARPER_CLUSTER_APP_URL>` |
+| Cluster URL (ops API) | `<HARPER_CLUSTER_OPS_URL>` |
+| Cluster admin username | `<FABRIC_LOGIN_EMAIL>` *(set via the Fabric Finish-Setup wizard; `HDB_ADMIN` is also present internally but our app-level ops use the email user)* |
+| Cluster admin password | aligned with the Studio password (§9). Stored locally in macOS Keychain services `<KEYCHAIN_USERNAME_SERVICE>` / `<KEYCHAIN_PASSWORD_SERVICE>`; `<LOCAL_CREDENTIALS_FILE>` is the fallback. Rotate before anything sensitive lives on this cluster. |
 | Plan | `fabric-block-level-0` (free tier, 6-month license, expires **2026-11-02**) |
 | Instances | 2 — `us-east1-b-1` + `us-west1-a-1`, replicated |
 | Component | `advisor-app`, deployed from `fabric-deploy` branch |
-| Source repo | `CodySwannGT/advisory-rankings` (private) |
+| Source repo | `CodySwannGT/advisory-rankings` |
 
 > **Treat macOS Keychain as the local source of truth for secrets.**
-> The flat-file `~/.harper-fabric-credentials` is still supported as
+> The flat-file `<LOCAL_CREDENTIALS_FILE>` is still supported as
 > a chmod 600 fallback outside the repo. The runbook here only repeats
 > what's safe to keep in version control.
+
+### Resolving Placeholders
+
+Agents should resolve placeholders at runtime instead of hard-coding
+the resolved values here. Prefer non-secret environment variables and
+GitHub repository variables; use secrets only by presence/name, never
+by printing values.
+
+1. Check the repo workflow and GitHub configuration:
+
+   ```bash
+   rg -n "HARPER_|FABRIC_|DEPLOY_KEY" .github src docs README.md
+   gh variable list
+   gh secret list
+   ```
+
+   `gh secret list` only prints secret names. If a needed value is
+   present only as a secret, use the workflow or script that consumes
+   it rather than trying to reveal it.
+
+2. Check local non-secret/default resolution in `src/scripts/_auth.ts`:
+
+   ```bash
+   rg -n "HARPER_STUDIO_URL|HARPER_CLUSTER_URL|HARPER_CLUSTER_ID|KEYCHAIN|credentials" src/scripts/_auth.ts
+   ```
+
+   This identifies the environment variable names, Keychain service
+   names, and optional fallback file path that local scripts use. Do
+   not print the fallback file contents.
+
+3. If Fabric Studio access is available, find Fabric-owned identifiers
+   there:
+
+   - `<FABRIC_LOGIN_EMAIL>`: account profile or the admin user shown in
+     the cluster's Config -> Users page.
+   - `<FABRIC_ORG_NAME>` / `<FABRIC_ORG_ID>`: select the organization;
+     the browser hash route includes the org id.
+   - `<HARPER_CLUSTER_NAME>` / `<HARPER_CLUSTER_ID>`: select the
+     cluster; the browser hash route includes the cluster id.
+   - `<HARPER_CLUSTER_APP_URL>`: cluster or application overview.
+   - `<FABRIC_SSH_KEY_NAME>`: cluster Config -> SSH Keys.
+
+4. Derive `<HARPER_CLUSTER_OPS_URL>` only when needed by appending the
+   Harper operations port to `<HARPER_CLUSTER_APP_URL>`. Verify network
+   reachability before using direct operations calls:
+
+   ```bash
+   curl -sk -m 6 -o /dev/null -w '%{http_code}\n' <HARPER_CLUSTER_OPS_URL>
+   ```
+
+   `401` means the endpoint is reachable and rejected empty auth. `000`
+   usually means the network cannot reach the operations port; use the
+   Studio proxy path instead.
+
+Do not paste resolved passwords, bearer tokens, private deploy keys,
+session cookies, or local credential file contents into this document.
 
 ---
 
@@ -40,9 +98,9 @@ operating it.
 ```
 GitHub                Fabric Studio                 Harper cluster
 ─────────             ──────────────                ──────────────
-codyswanngt/          fabric.harper.fast            advisory-rankings-de
-  advisory-rankings    │                            .cody-swann-org
-  (private)            │                            .harperfabric.com
+codyswanngt/          fabric.harper.fast            <HARPER_CLUSTER_APP_URL>
+  advisory-rankings    │
+                       │
                        │                              │
                        │  pull-deploy via SSH         │
    fabric-deploy ──────┼──────────────────────────►  /home/harperdb/harper
@@ -183,7 +241,7 @@ keys under **Config → SSH Keys**; that's the path we used.
 
 2. Upload the **private** key to Fabric:
    - Fabric → cluster → **Config → SSH Keys → + Add**
-   - Name: `advisory-rankings-deploy`
+   - Name: `<FABRIC_SSH_KEY_NAME>`
    - Key: paste the contents of `fabric-deploy-key`
    - Host: `advisory-rankings.github.com`  *(the alias we use in the
      git URL — gives Fabric a hostname-to-key mapping in its SSH
@@ -194,7 +252,7 @@ keys under **Config → SSH Keys**; that's the path we used.
 
 3. Add the **public** key to GitHub:
    - <https://github.com/CodySwannGT/advisory-rankings/settings/keys/new>
-   - Title: `Harper Fabric (advisory-rankings-dev)`
+   - Title: `Harper Fabric (<HARPER_CLUSTER_NAME>)`
    - Key: paste `fabric-deploy-key.pub`
    - **Allow write access: unchecked** — read-only is sufficient.
 
@@ -255,16 +313,16 @@ rather than calling `:9925` directly.
 **From a residential network** (home wifi, phone hotspot, coffee
 shop), `:9925` is reachable and the standard tooling works:
 ```bash
-export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/
-export HDB_ADMIN_USERNAME=cody.swann@gmail.com
-export HDB_ADMIN_PASSWORD=…   # from ~/.harper-fabric-credentials
+export HDB_TARGET_URL=<HARPER_CLUSTER_OPS_URL>
+export HDB_ADMIN_USERNAME=<FABRIC_LOGIN_EMAIL>
+export HDB_ADMIN_PASSWORD=…   # from <LOCAL_CREDENTIALS_FILE>
 bun run seed
 bun run verify
 ```
 
 If you're unsure whether your network can reach :9925:
 ```bash
-curl -sk -m 6 -o /dev/null -w '%{http_code}\n' https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/
+curl -sk -m 6 -o /dev/null -w '%{http_code}\n' <HARPER_CLUSTER_OPS_URL>
 # 401 → your network is fine, the cluster just rejected the empty auth
 # 000 → port is blocked; use the REST workarounds in §7
 ```
@@ -468,7 +526,7 @@ sandbox, every cloud CI runner I've tried).
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
-# then macOS Keychain, then ~/.harper-fabric-credentials.
+# then macOS Keychain, then <LOCAL_CREDENTIALS_FILE>.
 # Tarball excludes node_modules, .git, .harperdb, tests/screenshots.
 bun run deploy
 ```
@@ -480,14 +538,14 @@ Fabric cluster URL from `HARPER_CLUSTER_URL` (or the repo's dev-cluster
 default) with `:9925` for Harper operations. `HDB_ADMIN_USERNAME` and
 `HDB_ADMIN_PASSWORD` are optional when `HARPER_ADMIN_USERNAME` /
 `HARPER_ADMIN_PASSWORD`, the macOS Keychain services
-`advisory-rankings-harper-username` /
-`advisory-rankings-harper-password`, or `~/.harper-fabric-credentials`
+`<KEYCHAIN_USERNAME_SERVICE>` /
+`<KEYCHAIN_PASSWORD_SERVICE>`, or `<LOCAL_CREDENTIALS_FILE>`
 are populated.
 
 Output on success — restart finishes in ~2 s and `/Feed` is back up:
 
 ```
-▶ login as cody.swann@gmail.com
+▶ login as <FABRIC_LOGIN_EMAIL>
 ▶ packaging harper-app/
   package: 31.5KB → 42.0KB base64
 ▶ deploy_component project=advisor-app
@@ -503,9 +561,9 @@ Output on success — restart finishes in ~2 s and `/Feed` is back up:
 
 | Date | What | Result |
 |---|---|---|
-| 2026-05-21 | Switched the Lisa `harper-fabric` project type and this repo from npm-managed scripts to Bun-managed scripts. `package.json` now pins `packageManager: bun@1.3.11`, CI passes `package_manager: 'bun'`, and `.github/workflows/deploy.yml` runs `bun install --frozen-lockfile`, `bun run deploy`, `bunx playwright install`, and `bun run smoke`. Deployed with `bun run deploy`: package 53.7 KB → 71.6 KB base64, `deploy_component` HTTP 200, `/Feed` back after 2 s with count=5. Fabric again reported the known `self-signed certificate in certificate chain` replication warning for `oju-us-west1-a-1`; app URL verified with `BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com bun run smoke` (40/40). | OK with known replication warning |
-| 2026-05-21 | Applied Lisa's new `harper-fabric` project type locally. Lisa now manages the TypeScript/Bun toolchain, generated-artifact ignores, Codex/Claude project files, and generic Harper/Fabric rules while this repo keeps only project-specific facts in `AGENTS.md` / `CLAUDE.md`. Re-deployed with `bun run deploy`: package 53.7 KB → 71.6 KB base64, `deploy_component` HTTP 200, `/Feed` back after 2 s with count=5. Fabric again reported the known `self-signed certificate in certificate chain` replication warning for `oju-us-west1-a-1`; app URL verified with `BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com bun run smoke` (40/40). | OK with known replication warning |
-| 2026-05-21 | Added macOS Keychain credential lookup (`advisory-rankings-harper-username` / `advisory-rankings-harper-password`) ahead of the legacy `~/.harper-fabric-credentials` fallback. First TypeScript build deploy via Studio proxy returned HTTP 200 and restarted Harper; Studio reported replication failure on `oju-us-west1-a-1` with `self-signed certificate in certificate chain`, but the primary app URL remained reachable and is verified by the Playwright smoke. | OK with replication warning |
+| 2026-05-21 | Switched the Lisa `harper-fabric` project type and this repo from npm-managed scripts to Bun-managed scripts. `package.json` now pins `packageManager: bun@1.3.11`, CI passes `package_manager: 'bun'`, and `.github/workflows/deploy.yml` runs `bun install --frozen-lockfile`, `bun run deploy`, `bunx playwright install`, and `bun run smoke`. Deployed with `bun run deploy`: package 53.7 KB → 71.6 KB base64, `deploy_component` HTTP 200, `/Feed` back after 2 s with count=5. Fabric again reported the known `self-signed certificate in certificate chain` replication warning for `oju-us-west1-a-1`; app URL verified with `BASE_URL=<HARPER_CLUSTER_APP_URL> bun run smoke` (40/40). | OK with known replication warning |
+| 2026-05-21 | Applied Lisa's new `harper-fabric` project type locally. Lisa now manages the TypeScript/Bun toolchain, generated-artifact ignores, Codex/Claude project files, and generic Harper/Fabric rules while this repo keeps only project-specific facts in `AGENTS.md` / `CLAUDE.md`. Re-deployed with `bun run deploy`: package 53.7 KB → 71.6 KB base64, `deploy_component` HTTP 200, `/Feed` back after 2 s with count=5. Fabric again reported the known `self-signed certificate in certificate chain` replication warning for `oju-us-west1-a-1`; app URL verified with `BASE_URL=<HARPER_CLUSTER_APP_URL> bun run smoke` (40/40). | OK with known replication warning |
+| 2026-05-21 | Added macOS Keychain credential lookup (`<KEYCHAIN_USERNAME_SERVICE>` / `<KEYCHAIN_PASSWORD_SERVICE>`) ahead of the legacy `<LOCAL_CREDENTIALS_FILE>` fallback. First TypeScript build deploy via Studio proxy returned HTTP 200 and restarted Harper; Studio reported replication failure on `oju-us-west1-a-1` with `self-signed certificate in certificate chain`, but the primary app URL remained reachable and is verified by the Playwright smoke. | OK with replication warning |
 | 2026-05-21 | TypeScript migration. `src/` is now source of truth; `harper-app/resources.js` and `harper-app/web/**/*.js` are generated by `bun run build` and ignored by git. Deploy workflow now runs `bun run deploy`, which builds before packaging `harper-app/`. | OK |
 | 2026-05-02 | AdvisorBook rebrand + Atomic Design refactor (commits `11f13da`, `cd7409c`). First deploy left `/design-system/*` returning 404 because `static.files: 'web/*'` was non-recursive; changed to `web/**` and redeployed. Verified with `tests/parity_compare.ts`: 9 pages × 18 selector counts = 215 matches, 0 mismatches against local. | OK |
 | 2026-05-02 | Re-deploy of `harper-app/` at branch tip (no code delta vs. origin/main). `bun run deploy` from sandbox via Studio proxy. Package 45.7 KB → 60.9 KB base64. Replicated to `oju-us-west1-a-1`. `/Feed` back after 2 s, HTTP 200, count=2. | OK |
@@ -520,7 +578,7 @@ fetch('https://fabric.harper.fast/Login/', {
 });
 
 // 2. deploy_component via Studio's cluster-ops proxy
-fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
+fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
   method: 'POST', credentials: 'include',
   headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({
@@ -546,7 +604,7 @@ against the live cluster URL. Required repo secrets:
 | Secret | Source |
 |---|---|
 | `DEPLOY_KEY` | GitHub deploy key used by Lisa's release workflow to push version bumps. |
-| `HARPER_ADMIN_USERNAME` | `cody.swann@gmail.com` |
+| `HARPER_ADMIN_USERNAME` | `<FABRIC_LOGIN_EMAIL>` |
 | `HARPER_ADMIN_PASSWORD` | GitHub Actions secret, matching the local Keychain value |
 
 If the smoke fails, CI uploads `tests/screenshots/` as a
@@ -571,8 +629,8 @@ the upstream Harper CLI still works:
 ./node_modules/.bin/harperdb deploy_component \
   project=advisor-app \
   package='git@advisory-rankings.github.com:CodySwannGT/advisory-rankings.git#fabric-deploy' \
-  target=https://advisory-rankings-de.cody-swann-org.harperfabric.com:9925/ \
-  username=cody.swann@gmail.com \
+  target=<HARPER_CLUSTER_OPS_URL> \
+  username=<FABRIC_LOGIN_EMAIL> \
   password=<HARPER_ADMIN_PASSWORD> \
   restart=true \
   replicated=true
@@ -610,7 +668,7 @@ broken state. Workaround: call `drop_component` via the Studio
 operations proxy, then re-import. We did this from Playwright but
 you can do it from any logged-in browser:
 ```js
-fetch('https://fabric.harper.fast/Cluster/clu-nzeaqmqh1c5zrp9w/operation/', {
+fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
   method: 'POST',
   credentials: 'include',
   headers: {'Content-Type': 'application/json'},
@@ -631,9 +689,9 @@ on `:443`, which means they work from anywhere a browser can reach
 Harper.
 
 ```bash
-export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
-export HDB_ADMIN_USERNAME=cody.swann@gmail.com
-export HDB_ADMIN_PASSWORD=…   # from ~/.harper-fabric-credentials
+export HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>
+export HDB_ADMIN_USERNAME=<FABRIC_LOGIN_EMAIL>
+export HDB_ADMIN_PASSWORD=…   # from <LOCAL_CREDENTIALS_FILE>
 
 bun run seed:rest                    # PUTs each canonical record via /<TableName>/<id>
 bun run verify:rest                  # GETs each table and joins client-side
@@ -677,7 +735,7 @@ endpoint. It uses the same REST PUT-by-id transport as
 Common entry points:
 
 ```bash
-export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+export HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>
 
 # Backfill CRDs onto every Advisor row that lacks one:
 bun run brokercheck -- --enrich --max 20
@@ -703,9 +761,9 @@ uses before and after targeted public searches that follow the
 `upsert-advisor` skill.
 
 ```bash
-export HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
-export HDB_ADMIN_USERNAME=cody.swann@gmail.com
-export HDB_ADMIN_PASSWORD=…   # from ~/.harper-fabric-credentials
+export HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>
+export HDB_ADMIN_USERNAME=<FABRIC_LOGIN_EMAIL>
+export HDB_ADMIN_PASSWORD=…   # from <LOCAL_CREDENTIALS_FILE>
 
 # Pick the next five advisors whose web research is missing/stale.
 bun run research:advisors -- due --max 5 --stale-days 30 --json
@@ -779,7 +837,7 @@ subtitle text, or console errors. Brand swaps (logo
 allowed deltas; everything else is a mismatch.
 
 ```bash
-BASELINE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+BASELINE_URL=<HARPER_CLUSTER_APP_URL> \
 NEW_URL=http://127.0.0.1:8765 \
   bun run build && node dist/tests/parity_compare.js
 ```
@@ -876,17 +934,17 @@ automation (and are in conversation transcripts). **Treat them as
 compromised; rotate before anything sensitive lives on it.**
 
 1. **Admin password.** Sign in to Fabric Studio →
-   advisory-rankings-dev → **Config → Users** → edit the
-   `cody.swann@gmail.com` user → set a fresh password from a
+   <HARPER_CLUSTER_NAME> → **Config → Users** → edit the
+   `<FABRIC_LOGIN_EMAIL>` user → set a fresh password from a
    secrets manager. Update local Keychain services
-   `advisory-rankings-harper-username` and
-   `advisory-rankings-harper-password`, plus the GitHub Actions
+   `<KEYCHAIN_USERNAME_SERVICE>` and
+   `<KEYCHAIN_PASSWORD_SERVICE>`, plus the GitHub Actions
    secrets. Same for `HDB_ADMIN` if it's still active (we set the
    email user; the bootstrap `HDB_ADMIN` may still hold the cluster's
    original temp password — check via Config → Users).
 
 2. **GitHub deploy key.** New keypair (§4 step 1). New private to
-   Fabric (Config → SSH Keys → edit `advisory-rankings-deploy`).
+   Fabric (Config → SSH Keys → edit `<FABRIC_SSH_KEY_NAME>`).
    New public to GitHub (Settings → Deploy keys → add new, then
    delete the old). Cluster will pick up the new key on its next
    pull.
@@ -896,7 +954,7 @@ compromised; rotate before anything sensitive lives on it.**
 4. **Use a secret manager.** Local scripts read env first, then macOS
    Keychain, then the flat-file fallback. CI uses GitHub Actions
    secrets. For production, prefer Keychain / 1Password CLI / Doppler
-   / AWS Secrets Manager over `~/.harper-fabric-credentials`.
+   / AWS Secrets Manager over `<LOCAL_CREDENTIALS_FILE>`.
 
 ---
 
@@ -933,15 +991,15 @@ Some operations route through Studio because the local CLI can't
 reach `:9925`. Useful URLs (all live behind the org+cluster prefix):
 
 ```
-Cluster home          /#/org-q31yvqoihmulbrks/clu-nzeaqmqh1c5zrp9w
-Applications          /#/org-q31yvqoihmulbrks/clu-nzeaqmqh1c5zrp9w (default tab)
+Cluster home          /#/<FABRIC_ORG_ID>/<HARPER_CLUSTER_ID>
+Applications          /#/<FABRIC_ORG_ID>/<HARPER_CLUSTER_ID> (default tab)
 Databases (data browser)  same URL → "Databases" tab
 APIs                  same URL → "APIs" tab
 Status                same URL → "Status" tab
 Logs                  same URL → "Logs" tab
 Config (this-instance) same URL → "Config" tab
-Config → Users        /#/org-q31yvqoihmulbrks/clu-nzeaqmqh1c5zrp9w/config/users
-Config → SSH Keys     /#/org-q31yvqoihmulbrks/clu-nzeaqmqh1c5zrp9w/config/ssh-keys
+Config → Users        /#/<FABRIC_ORG_ID>/<HARPER_CLUSTER_ID>/config/users
+Config → SSH Keys     /#/<FABRIC_ORG_ID>/<HARPER_CLUSTER_ID>/config/ssh-keys
 ```
 
 The "* Restart Requested" banner that shows after every config change
