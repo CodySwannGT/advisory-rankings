@@ -98,3 +98,27 @@ Bounded dry run:
 ```bash
 bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
 ```
+
+## Wells Fargo Advisors
+
+Wells Fargo Advisors exposes advisor lists through server-rendered HTML rather
+than a public JSON feed:
+
+- Locator URL: `https://www.wellsfargo.com/locator/wellsfargoadvisors/`
+- Search URL:
+  `https://www.wellsfargo.com/locator/wellsfargoadvisors/search`
+- Required parameters for bounded ZIP search: `zip5`, `chkWFA=001`,
+  `chkFNet=072`, and `chkBIS=020`.
+- Profile pages: location rows may link to
+  `https://home.wellsfargoadvisors.com/<branch-code>`. Those branch pages
+  include an `Our Financial Advisors` list with advisor profile links.
+- Limitation: no structured advisor API was observed. Branches without public
+  profile links are skipped because the locator row itself only identifies a
+  location, not individual advisors.
+- Fixture path: `tests/fixtures/firm-sources/wells-fargo/`.
+
+Bounded dry run:
+
+```bash
+bun run scrape:wells-fargo -- --query 10022 --max-advisors 5 --json
+```

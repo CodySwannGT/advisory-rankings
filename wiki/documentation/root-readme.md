@@ -31,6 +31,8 @@ bun run scrape:morgan-stanley -- --write --max-advisors 500
                      # upsert via Fabric using env/Keychain credentials
 bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
                      # dry-run Merrill / Bank of America locator import
+bun run scrape:wells-fargo -- --query 10022 --max-advisors 5 --json
+                     # dry-run Wells Fargo Advisors HTML locator import
 bun run research:advisors -- due --max 5 --stale-days 30
                      # pick advisors due for public-web research
 bun run media:backfill -- --target firms --max 10
@@ -242,9 +244,9 @@ src/
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
                              media backfill, firm alias merges,
-                             Morgan Stanley and Merrill locator
-                             scraping, advisor research queues, token,
-                             preview, and dev server commands
+                             Morgan Stanley, Merrill, and Wells Fargo
+                             locator scraping, advisor research queues,
+                             token, preview, and dev server commands
   web/                       TypeScript source for AdvisorBook pages
                              and design-system modules
 
