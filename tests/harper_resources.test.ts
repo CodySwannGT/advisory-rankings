@@ -272,6 +272,7 @@ const baseRows = () => {
     {
       id: "article-a",
       headline: "Stone joins Example",
+      url: "https://www.advisorhub.com/stone-joins-example/",
       slug: "stone-joins-example",
       publishedDate: "2025-02-01",
       bodyText:
@@ -769,9 +770,25 @@ describe("Harper resource endpoints", () => {
     expect(firm).toMatchObject({ firm: { id: "firm-a" } });
     expect(team).toMatchObject({ team: { id: "team-a" } });
     expect(article).toMatchObject({
-      article: { id: "article-a" },
-      provenance: [{ targetTable: "Advisor", targetId: "advisor-a" }],
+      article: {
+        id: "article-a",
+        url: "https://www.advisorhub.com/stone-joins-example/",
+      },
+      body: {
+        text: "Avery Stone joined Example Wealth Management with a large team and client base.",
+      },
+      provenance: [
+        {
+          targetTable: "Advisor",
+          targetId: "advisor-a",
+          fieldName: "legalName",
+        },
+      ],
     });
+
+    await expect(
+      readResource("advisorbook://article/missing-article")
+    ).resolves.toEqual({ error: "not found", id: "missing-article" });
   });
 
   it("returns route errors for missing or unknown profile ids", async () => {
