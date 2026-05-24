@@ -25,14 +25,9 @@ file keeps only advisory-rankings-specific operational facts.
 
 ## PR merge handling
 
-GitHub auto-merge cannot currently be enabled for this private repo
-because the account does not have the required GitHub Pro/Team/Enterprise
-feature. Attempts to enable it returned:
-
-`Upgrade to GitHub Pro or make this repository public to enable this feature.`
-
-When an agent opens a PR for this repo, merge the PR manually once it is
-mergeable instead of relying on repository auto-merge.
+GitHub auto-merge is available for this repo. When an agent opens a PR,
+enable auto-merge (`gh pr merge <n> --auto`) so it merges once CI passes,
+instead of merging manually.
 
 ## Documentation map
 
