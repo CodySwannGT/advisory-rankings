@@ -54,6 +54,45 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
 }
 
 /**
+ * Checks the public compliance page for regulatory disclosure content.
+ * @param page - Browser page used for the scenario.
+ * @returns Smoke assertions for the compliance page.
+ */
+export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
+  const complianceCard = page
+    .locator(".card")
+    .filter({ hasText: /Compliance events/i })
+    .first();
+  const disclosureCard = page.locator(".event-card.disclosure").first();
+  const loadError = page.locator(".ab-empty", {
+    hasText: /Could not load compliance events/i,
+  });
+
+  await page.goto(`${BASE}/regulatory.html`, { waitUntil: "domcontentloaded" });
+  await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await shot(page, "06-compliance");
+
+  return [
+    check(await complianceCard.isVisible(), "regulatory.html: compliance card"),
+    check(
+      (await page.locator(".event-card.disclosure").count()) >= 1,
+      "regulatory.html: disclosure events rendered"
+    ),
+    check(
+      /FINRA|regulatory|disclosure/i.test(
+        (await disclosureCard.textContent()) ?? ""
+      ),
+      "regulatory.html: event shows regulatory context"
+    ),
+    check(
+      (await loadError.count()) === 0,
+      "regulatory.html: no compliance load error"
+    ),
+  ];
+}
+
+/**
  * Opens the feed and returns the Taylor transition article path.
  *
  * The Taylor article is the seeded regression case with extracted

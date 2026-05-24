@@ -25,6 +25,7 @@ import {
 import {
   smokeArticle,
   smokeAuth,
+  smokeCompliance,
   smokeDirectories,
   smokeFeed,
   smokeFirm,
@@ -124,6 +125,7 @@ async function runScenarios(
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
+    ...(await smokeCompliance(page)),
     ...(await smokeDirectories(page)),
     ...(await smokeAuth(page)),
     ...(await smokeMobile(browser, extraHTTPHeaders)),
