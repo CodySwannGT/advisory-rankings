@@ -1,12 +1,13 @@
 import type { Browser, Locator, Page } from "playwright";
 import {
   BASE,
-  DEPLOYED_DATA_TIMEOUT,
   FEED_HEADLINE_SELECTOR,
   QUICK_UI_TIMEOUT,
   check,
   closeWithChecks,
   newContext,
+  smokeGoto,
+  smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
 
@@ -96,10 +97,8 @@ async function smokeBreakpoint(
   );
   const page = await context.newPage();
 
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
 
   const burger = page.locator(BURGER_SELECTOR);
   const checks = [

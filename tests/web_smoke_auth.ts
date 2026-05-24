@@ -9,6 +9,8 @@ import {
   isLocalDev,
   pass,
   shot,
+  smokeGoto,
+  smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
 
@@ -18,10 +20,8 @@ import {
  * @returns Smoke assertions for auth UI.
  */
 export async function smokeAuth(page: Page): Promise<readonly Check[]> {
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   if (isLocalDev)
     return [
       check(

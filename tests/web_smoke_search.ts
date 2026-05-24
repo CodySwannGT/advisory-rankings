@@ -6,6 +6,8 @@ import {
   check,
   cleanProfilePath,
   shot,
+  smokeGoto,
+  smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
 
@@ -21,10 +23,8 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   const input = page.locator("#global-search");
   const results = page.locator("#global-search-results .gs-item");
 
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await input.fill("wells");
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "02-global-search");
