@@ -33,6 +33,7 @@ import {
   smokeAdvisor,
 } from "./web_smoke_scenarios.js";
 import { smokeGlobalSearch } from "./web_smoke_search.js";
+import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
 
 /**
  * Checks the mobile navigation drawer.
@@ -166,6 +167,7 @@ async function runScenarios(
     ...(await smokeCompliance(page)),
     ...(await smokeDirectories(page)),
     ...(await smokeAuth(page)),
+    ...(await smokeBreakpoints(browser, extraHTTPHeaders)),
     ...(await smokeMobile(browser, extraHTTPHeaders)),
   ];
 }
