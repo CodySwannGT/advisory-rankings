@@ -30,7 +30,14 @@ import {
   ArticleListBlock,
   SnapshotTable,
   TransitionEventCard,
+  clear,
 } from "./design-system/index.js";
+import {
+  DetailErrorCard,
+  PartialFailureCard,
+  renderDetailLoading,
+  resourceRows,
+} from "./detail-state.js";
 
 mountThreeColumnPage({
   active: "teams",
@@ -48,13 +55,18 @@ mountThreeColumnPage({
       );
       return;
     }
+    renderDetailLoading({ center, right, label: "team profile" });
     api(`/TeamProfile/${encodeURIComponent(id)}`)
-      .then(d => render(d, center, right))
-      .catch(err =>
-        center.appendChild(
-          EmptyCard({ title: "Error", body: String(err.message || err) })
-        )
-      );
+      .then(d => {
+        clear(center);
+        clear(right);
+        render(d, center, right);
+      })
+      .catch(err => {
+        clear(center);
+        clear(right);
+        center.appendChild(DetailErrorCard("Could not load team", err));
+      });
   },
 });
 
@@ -73,20 +85,25 @@ function render(d, center, right) {
     return;
   }
   const t = d.team;
-  const latest = d.metricSnapshots[d.metricSnapshots.length - 1];
+  const metricSnapshots = resourceRows(d.metricSnapshots);
+  const currentMembers = resourceRows(d.currentMembers);
+  const pastMembers = resourceRows(d.pastMembers);
+  const transitions = resourceRows(d.transitions);
+  const articles = resourceRows(d.articles);
+  const latest = metricSnapshots[metricSnapshots.length - 1];
   const profile = ProfileHead({
     initialsText: initials(t.name),
     title: t.name,
     subtitle: teamSubtitle(d),
     tags: teamTags(t, latest),
   });
-  const currentMembers = currentMembersCard(d.currentMembers);
-  const pastMembers = pastMembersCard(d.pastMembers);
-  const transitions = transitionsCard(d.transitions);
-  const metrics = metricHistoryCard(d.metricSnapshots);
+  const currentMembersSection = currentMembersCard(currentMembers);
+  const pastMembersSection = pastMembersCard(pastMembers);
+  const transitionsSection = transitionsCard(transitions);
+  const metrics = metricHistoryCard(metricSnapshots);
   const coverage = SectionCard({
-    title: `Coverage (${d.articles.length.toLocaleString()})`,
-    body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
+    title: `Coverage (${articles.length.toLocaleString()})`,
+    body: ArticleListBlock({ articles, fmtDate, articleSource }),
   });
   const details = teamDetailsCard(t, d.currentFirm);
   const latestMetrics = latestMetricsCard(latest);
@@ -94,11 +111,16 @@ function render(d, center, right) {
   canonicalizeEntityRoute("team", t);
   appendSections(center, [
     profile,
-    currentMembers,
-    pastMembers,
-    transitions,
+    currentMembersSection,
+    PartialFailureCard("Current members", d.currentMembers),
+    pastMembersSection,
+    PartialFailureCard("Past members", d.pastMembers),
+    transitionsSection,
+    PartialFailureCard("Team transitions", d.transitions),
     metrics,
+    PartialFailureCard("Metric history", d.metricSnapshots),
     coverage,
+    PartialFailureCard("Coverage", d.articles),
   ]);
   appendSections(right, [details, latestMetrics]);
 }

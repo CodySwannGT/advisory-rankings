@@ -23,7 +23,14 @@ import {
   SectionCard,
   ArticleListBlock,
   TransitionEventCard,
+  clear,
 } from "./design-system/index.js";
+import {
+  DetailErrorCard,
+  PartialFailureCard,
+  renderDetailLoading,
+  resourceRows,
+} from "./detail-state.js";
 import {
   careerSection,
   designationsSection,
@@ -52,13 +59,18 @@ mountThreeColumnPage({
       );
       return;
     }
+    renderDetailLoading({ center, right, label: "advisor profile" });
     api(`/AdvisorProfile/${encodeURIComponent(id)}`)
-      .then(d => render(d, center, right))
-      .catch(err =>
-        center.appendChild(
-          EmptyCard({ title: "Error", body: String(err.message || err) })
-        )
-      );
+      .then(d => {
+        clear(center);
+        clear(right);
+        render(d, center, right);
+      })
+      .catch(err => {
+        clear(center);
+        clear(right);
+        center.appendChild(DetailErrorCard("Could not load advisor", err));
+      });
   },
 });
 
@@ -156,28 +168,38 @@ function advisorSubtitle(d) {
  * @returns Ordered center-column sections.
  */
 function advisorCenterSections(d) {
+  const transitions = resourceRows(d.transitions);
+  const articles = resourceRows(d.articles);
   return [
     careerSection(d),
-    teamsSection(d.teams),
-    licensesSection(d.licenses, d.brokerCheckSnapshot),
-    designationsSection(d.designations),
-    educationSection(d.education),
-    disclosuresSection(d.disclosures, d.brokerCheckSnapshot),
-    outsideActivitiesSection(d.outsideBusinessActivities),
-    d.transitions.length
+    teamsSection(resourceRows(d.teams)),
+    PartialFailureCard("Teams", d.teams),
+    licensesSection(resourceRows(d.licenses), d.brokerCheckSnapshot),
+    PartialFailureCard("Licenses", d.licenses),
+    designationsSection(resourceRows(d.designations)),
+    PartialFailureCard("Designations", d.designations),
+    educationSection(resourceRows(d.education)),
+    PartialFailureCard("Education", d.education),
+    disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
+    PartialFailureCard("Disclosures", d.disclosures),
+    outsideActivitiesSection(resourceRows(d.outsideBusinessActivities)),
+    PartialFailureCard("Outside activities", d.outsideBusinessActivities),
+    transitions.length
       ? SectionCard({
           title: "Transitions involving this advisor",
           body: el(
             "div",
             {},
-            ...d.transitions.map(t => TransitionEventCard(t, fmts))
+            ...transitions.map(t => TransitionEventCard(t, fmts))
           ),
         })
       : null,
+    PartialFailureCard("Transitions involving this advisor", d.transitions),
     SectionCard({
-      title: `Coverage (${d.articles.length.toLocaleString()})`,
-      body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
+      title: `Coverage (${articles.length.toLocaleString()})`,
+      body: ArticleListBlock({ articles, fmtDate, articleSource }),
     }),
+    PartialFailureCard("Coverage", d.articles),
   ];
 }
 
@@ -189,6 +211,7 @@ function advisorCenterSections(d) {
 function advisorRightSections(d) {
   return [
     identityCard(d.advisor),
-    registrationApplicationsSection(d.registrationApplications),
+    registrationApplicationsSection(resourceRows(d.registrationApplications)),
+    PartialFailureCard("Registration applications", d.registrationApplications),
   ];
 }

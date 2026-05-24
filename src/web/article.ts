@@ -26,7 +26,14 @@ import {
   TransitionEventCard,
   DisclosureEventCard,
   ScrollableTable,
+  clear,
 } from "./design-system/index.js";
+import {
+  DetailErrorCard,
+  PartialFailureCard,
+  renderDetailLoading,
+  resourceRows,
+} from "./detail-state.js";
 
 mountThreeColumnPage({
   active: "home",
@@ -44,13 +51,18 @@ mountThreeColumnPage({
       );
       return;
     }
+    renderDetailLoading({ center, right, label: "article" });
     api(`/ArticleView/${encodeURIComponent(id)}`)
-      .then(d => render(d, center, right))
-      .catch(err =>
-        center.appendChild(
-          EmptyCard({ title: "Error", body: String(err.message || err) })
-        )
-      );
+      .then(d => {
+        clear(center);
+        clear(right);
+        render(d, center, right);
+      })
+      .catch(err => {
+        clear(center);
+        clear(right);
+        center.appendChild(DetailErrorCard("Could not load article", err));
+      });
   },
 });
 
@@ -69,12 +81,18 @@ function render(d, center, right) {
     return;
   }
   const a = d.article;
-  const evidenceRows = compactProvenance(d.provenance || []);
+  const evidenceRows = compactProvenance(resourceRows(d.provenance));
 
   canonicalizeArticleRoute(a);
   center.appendChild(articleHead(d, a));
+  appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
+  appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));
+  appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
+  appendIfPresent(center, PartialFailureCard("Mentioned advisors", d.advisors));
   appendIfPresent(center, articleBodyCard(d.body));
+  appendIfPresent(center, PartialFailureCard("Article body", d.body));
   appendIfPresent(center, evidenceSection(evidenceRows));
+  appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
   right.appendChild(metadataSection(a));
 }
 
@@ -86,6 +104,7 @@ function render(d, center, right) {
  */
 function articleHead(d, article) {
   const src = articleSource(article);
+  const eventCardRows = resourceRows(d.eventCards);
   return Card({
     tag: "article",
     children: [
@@ -98,8 +117,12 @@ function articleHead(d, article) {
       }),
       el("h2", { class: "post-headline" }, article.headline || "(untitled)"),
       article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
-      ...eventCards(d.eventCards || []),
-      ChipRow({ firms: d.firms, teams: d.teams, advisors: d.advisors }),
+      ...eventCards(eventCardRows),
+      ChipRow({
+        firms: resourceRows(d.firms),
+        teams: resourceRows(d.teams),
+        advisors: resourceRows(d.advisors),
+      }),
       articleFooter(article, src),
     ],
   });
