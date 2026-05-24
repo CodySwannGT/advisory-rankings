@@ -308,7 +308,7 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
 
 export {
   smokeArticle,
-  smokeAuth,
   smokeCompliance,
   smokeDirectories,
 } from "./web_smoke_secondary.js";
+export { smokeAuth } from "./web_smoke_auth.js";
