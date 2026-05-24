@@ -12,7 +12,6 @@ import { chromium, type Browser } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
-  DEPLOYED_DATA_TIMEOUT,
   SHOTS,
   QUICK_UI_TIMEOUT,
   authHeaders,
@@ -20,6 +19,8 @@ import {
   closeWithChecks,
   newContext,
   shot,
+  smokeGoto,
+  smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
 import {
@@ -54,10 +55,8 @@ async function smokeMobile(
   const drawer = page.locator(".nav-drawer");
   const search = page.locator(".nav .search");
 
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, ARTICLE_CARD_SELECTOR);
   const closedMetrics = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
     searchWidth:

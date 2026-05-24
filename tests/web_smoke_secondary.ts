@@ -3,11 +3,15 @@ import {
   ARTICLE_CARD_SELECTOR,
   BASE,
   DEPLOYED_DATA_TIMEOUT,
+  DISCLOSURE_CARD_SELECTOR,
   FEED_HEADLINE_SELECTOR,
   TAYLOR_GROUP_TEXT,
   check,
   cleanProfilePath,
+  retryAsync,
   shot,
+  smokeGoto,
+  smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
 
@@ -24,11 +28,8 @@ const ADVISOR_STATS_TITLE = "Advisor directory";
 export async function smokeArticle(page: Page): Promise<readonly Check[]> {
   const articlePath = await findArticleWithProvenance(page);
 
-  if (articlePath)
-    await page.goto(`${BASE}${articlePath}`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".post-headline", {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  if (articlePath) await smokeGoto(page, `${BASE}${articlePath}`);
+  await smokeWaitForSelector(page, ".post-headline");
   await page.locator(".snap-table tbody tr").first().waitFor({
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
@@ -65,25 +66,40 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     .locator(".card")
     .filter({ hasText: /Compliance events/i })
     .first();
-  const disclosureCard = page.locator(".event-card.disclosure").first();
+  const disclosureCard = page.locator(DISCLOSURE_CARD_SELECTOR).first();
+  const regulatoryDisclosure = page
+    .locator(DISCLOSURE_CARD_SELECTOR)
+    .filter({ hasText: /FINRA|regulatory/i })
+    .first();
   const loadError = page.locator(".ab-empty", {
     hasText: /Could not load compliance events/i,
   });
 
-  await page.goto(`${BASE}/regulatory.html`, { waitUntil: "domcontentloaded" });
-  await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await smokeGoto(page, `${BASE}/regulatory.html`);
+  await retryAsync(
+    async () => {
+      await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+    },
+    2,
+    1500
+  ).catch(async error => {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+    return error;
+  });
   await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await regulatoryDisclosure.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "06-compliance");
 
   return [
     check(await complianceCard.isVisible(), "regulatory.html: compliance card"),
     check(
-      (await page.locator(".event-card.disclosure").count()) >= 1,
+      (await page.locator(DISCLOSURE_CARD_SELECTOR).count()) >= 1,
       "regulatory.html: disclosure events rendered"
     ),
     check(
       /FINRA|regulatory|disclosure/i.test(
-        (await disclosureCard.textContent()) ?? ""
+        (await regulatoryDisclosure.textContent()) ?? ""
       ),
       "regulatory.html: event shows regulatory context"
     ),
@@ -104,10 +120,8 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
  * @returns Article detail path, or an empty string if no provenance exists.
  */
 async function findArticleWithProvenance(page: Page): Promise<string> {
-  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(FEED_HEADLINE_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   return (
     (await page
       .locator(ARTICLE_CARD_SELECTOR)
@@ -143,10 +157,8 @@ async function smokeDirectoryPages(
   const [pageName, ...remaining] = pageNames;
   if (!pageName) return [];
 
-  await page.goto(`${BASE}/${pageName}`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(ENTITY_ROW_SELECTOR, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
+  await smokeGoto(page, `${BASE}/${pageName}`);
+  await smokeWaitForSelector(page, ENTITY_ROW_SELECTOR);
   await shot(page, `06-${pageName}`);
 
   return [
@@ -176,7 +188,7 @@ async function smokeAdvisorDirectoryPagination(
     .filter({ hasText: ADVISOR_STATS_TITLE })
     .first();
 
-  await page.goto(`${BASE}/advisors`, { waitUntil: "domcontentloaded" });
+  await smokeGoto(page, `${BASE}/advisors`);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await waitForAdvisorLoadedCount(page, 50);
   await waitForAdvisorTotalCount(page);
