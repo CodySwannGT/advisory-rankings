@@ -87,27 +87,6 @@ Handles the complete release lifecycle:
 | `staging` | staging | staging |
 | `main` | production | production |
 
-### Firm Source Imports (`firm-source-imports.yml`)
-
-**Triggers**: Tuesday and Friday at 08:23 UTC; manual dispatch
-
-Runs the production-ready public firm source adapters against the dev Fabric
-cluster:
-
-- Morgan Stanley
-- Merrill / Bank of America
-- Wells Fargo Advisors
-- RBC Wealth Management
-- Raymond James
-- Edward Jones
-- Stifel
-- UBS Wealth Management USA
-
-Scheduled runs write bounded imports with a default cap of 25 advisors per
-source. Manual dispatch defaults to dry-run; set `write=true` to upsert rows and
-use `max_advisors` to adjust the cap. Each matrix job uploads a JSON artifact
-named `firm-source-<slug>`.
-
 ### EAS Build (`build.yml`)
 
 **Triggers**: Changes to `app.config.ts`, manual dispatch, workflow call
