@@ -99,9 +99,12 @@ function createBurger(onClick) {
  */
 function renderMe({ meSpot, me, logout }) {
   clear(meSpot);
-  me?.authenticated
-    ? renderSignedInUser({ meSpot, me, logout })
-    : renderSignInLink(meSpot);
+  if (me?.authenticated) {
+    renderSignedInUser({ meSpot, me, logout });
+    return;
+  }
+  if (me?.authUnavailable) renderSessionFallback(meSpot, me.message);
+  renderSignInLink(meSpot);
 }
 
 /**
@@ -139,6 +142,21 @@ function renderSignedInUser({ meSpot, me, logout }) {
 function renderSignInLink(meSpot) {
   meSpot.appendChild(
     el("a", { class: "me-action", href: "/login.html" }, "Sign in")
+  );
+}
+
+/**
+ * Renders safe recovery guidance when the session check fails.
+ * @param meSpot - Container reserved for auth controls.
+ * @param message - Public-facing fallback copy.
+ */
+function renderSessionFallback(meSpot, message) {
+  meSpot.appendChild(
+    el(
+      "span",
+      { class: "me-session-note", role: "status" },
+      message || "Session status is temporarily unavailable."
+    )
   );
 }
 

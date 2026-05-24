@@ -84,7 +84,11 @@ export async function refreshMe() {
   if (!meState.promise) {
     Object.assign(meState, {
       promise: api("/Me")
-        .catch(() => ({ authenticated: false }))
+        .catch(error => ({
+          authenticated: false,
+          authUnavailable: true,
+          message: sessionFallbackMessage(error),
+        }))
         .then(m => {
           Object.assign(meState, { cache: m, promise: null });
           return m;
@@ -92,6 +96,26 @@ export async function refreshMe() {
     });
   }
   return meState.promise;
+}
+
+/**
+ * Returns safe session recovery copy without exposing auth internals.
+ * @param error - Failed `/Me` request.
+ * @returns Public-facing fallback message.
+ */
+function sessionFallbackMessage(error) {
+  return isAuthFailure(error)
+    ? "We couldn't confirm your session. Sign in again or continue browsing public pages."
+    : "Session status is temporarily unavailable. Public pages remain available.";
+}
+
+/**
+ * Detects auth/permission responses from the shared REST error format.
+ * @param error - Error thrown by api().
+ * @returns Whether this was an auth or permission failure.
+ */
+export function isAuthFailure(error) {
+  return /\b(401|403)\b/.test(String(error?.message || error));
 }
 // ─── global search ────────────────────────────────────────────
 // Wraps `/Search?q=…` so the navbar's `GlobalSearch` organism can

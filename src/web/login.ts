@@ -2,7 +2,7 @@
 // Sign-in page.
 // All UI comes from the design system — see docs/design-system.md.
 
-import { postJson, refreshMe, search } from "./app.js";
+import { isAuthFailure, postJson, refreshMe, search } from "./app.js";
 import {
   mountCenteredNarrowPage,
   el,
@@ -136,8 +136,8 @@ function setSubmitting(controls, submitting) {
  */
 function setError(controls, error) {
   const message = error
-    ? /401/.test(String(error))
-      ? "Invalid email or password."
+    ? isAuthFailure(error)
+      ? "Sign in failed. Check your account access or return to public pages."
       : String(error.message || error)
     : "";
   Object.assign(controls.error, { textContent: message });
