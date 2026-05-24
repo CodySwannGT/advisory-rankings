@@ -45,16 +45,24 @@ async function smokeMobile(
 ): Promise<readonly Check[]> {
   const mobile = await newContext(
     browser,
-    { width: 390, height: 844 },
+    { width: 320, height: 740 },
     extraHTTPHeaders
   );
   const page = await mobile.newPage();
   const drawer = page.locator(".nav-drawer");
+  const search = page.locator(".nav .search");
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(ARTICLE_CARD_SELECTOR, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  const closedMetrics = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    searchWidth:
+      document.querySelector(".nav .search")?.getBoundingClientRect().width ??
+      0,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
   await shot(page, "08-mobile-closed");
   await page.locator(".nav-burger").click();
   await page.waitForFunction(
@@ -62,16 +70,44 @@ async function smokeMobile(
     null,
     { timeout: QUICK_UI_TIMEOUT }
   );
+  const drawerLinkLabels = await page
+    .locator(".nav-drawer .nav-links a, .nav-drawer .me-action")
+    .evaluateAll(nodes =>
+      nodes.map(node => node.textContent?.trim()).filter(Boolean)
+    );
+  const openMetrics = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
   await shot(page, "09-mobile-drawer-open");
   await page.locator('.nav-drawer .nav-links a:has-text("Firms")').click();
   await page.waitForURL(/\/firms$/, { timeout: QUICK_UI_TIMEOUT });
 
   return await closeWithChecks(mobile, [
     check(
+      closedMetrics.searchWidth >= 220,
+      "mobile: search readable at 320px",
+      `width ${Math.round(closedMetrics.searchWidth)}px`
+    ),
+    check(await search.isVisible(), "mobile: search remains visible"),
+    check(
+      closedMetrics.scrollWidth <= closedMetrics.clientWidth &&
+        openMetrics.scrollWidth <= openMetrics.clientWidth,
+      "mobile: no horizontal overflow at 320px",
+      `closed ${closedMetrics.scrollWidth}/${closedMetrics.clientWidth}, open ${openMetrics.scrollWidth}/${openMetrics.clientWidth}`
+    ),
+    check(
       await page.locator(".nav-burger").isVisible(),
       "mobile: hamburger visible"
     ),
     check(await drawer.isVisible(), "mobile: drawer opens"),
+    check(
+      ["Home", "Firms", "Advisors", "Teams", "Sign in"].every(label =>
+        drawerLinkLabels.includes(label)
+      ),
+      "mobile: drawer links visible at 320px",
+      drawerLinkLabels.join(", ")
+    ),
     check(
       page.url().endsWith("/firms"),
       "mobile: drawer link navigates to Firms"

@@ -152,11 +152,11 @@ body.drawer-open .nav .nav-burger span:nth-child(3) { transform: translateY(-6px
 body.drawer-open .nav .nav-scrim { display: block; }
 
 /* Mobile breakpoint (≤700px): the entire .nav-drawer (links + me-spot)
-   collapses into a right-side sliding panel. The navbar shows just
-   hamburger + logo + search. */
+   collapses into a right-side sliding panel. The navbar keeps the
+   hamburger + logo row compact and gives search a readable full row. */
 @media (max-width: 700px) {
-	.nav { gap: 8px; padding: 8px 12px; }
-	.nav .search { max-width: none; }
+	.nav { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+	.nav .search { flex-basis: 100%; max-width: none; order: 2; }
 	.nav .nav-burger { display: flex; }
 	.nav-drawer {
 		position: fixed;
