@@ -133,6 +133,7 @@ not own state and do not fetch.
 | `Tag` | `{ kind, children, attrs }` | `kind`: `default`, `danger`, `warn`, `ok`. |
 | `Skeleton` | `{ width, height, attrs }` | Loading shimmer. |
 | `EmptyText` | `{ children, attrs }` | Italic muted "no data" text. |
+| `InlineStatus` | `{ kind, children, attrs }` | Compact async feedback inside an existing region. `kind`: `loading`, `empty`, `error`. |
 | `Heading` | `{ level, children, attrs }` | Levels 1–3 mapped to `h1`/`h2`/`h3` with consistent type sizes. |
 | `TextInput` | `(attrs)` | Pass-through to `<input>`. |
 | `FormLabel` | `{ label, control, attrs }` | Block-level label wrapping a control. |
@@ -189,6 +190,7 @@ Self-contained UI sections.
 | `Card({ children, attrs })` | Every white surface. |
 | `SectionCard({ title, body, attrs })` | The most common container — title + padded body. The `card-title` is a sibling of `.card-body` (not a child) so page code that re-renders by clearing `.card-body` keeps the title. |
 | `EmptyCard({ title, body })` | Error / empty-state shorthand. |
+| `AsyncStateCard({ kind, title, body, actionLabel, onAction, attrs })` | Canonical full-card fallback for empty, not-found, permission/auth, transient, and partial-resource states. Use optional `actionLabel` / `onAction` for retry or sign-in actions. |
 | `ChipRow({ firms, teams, advisors })` | Mentioned-entities row under feed posts. |
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
 | `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `/advisors` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
@@ -230,6 +232,27 @@ tokens (FINRA, SEC, LLC, TX) and already-spaced strings pass
 through unchanged so we don't mangle acronyms. Use it anywhere
 the UI would otherwise render a snake_case / camelCase /
 PascalCase value straight from the database.
+
+### Async-state patterns
+
+Use the smallest component that covers the state. Pages should not
+invent one-off loading or error copy when one of these rows applies.
+
+| State | Component | Required copy/action |
+|---|---|---|
+| Page or card loading | `SkeletonCard()` for feed/detail cards; `InlineStatus({ kind: "loading" })` for rows, search, pagination, and rail refreshes | Do not show explanatory prose while loading. Keep layout stable and replace the skeleton/status when data resolves. |
+| Empty collection | `AsyncStateCard({ kind: "empty" })` or `EntityList({ rows, empty })` inside an existing section | Explain that there is no data yet, not that an error happened. Do not offer retry unless the user can change filters or refresh. |
+| Not found | `AsyncStateCard({ kind: "not-found" })` | Say the record was not found or may not be loaded. Do not expose raw backend ids unless the route already displays them for debugging. |
+| Permission or auth failure | `AsyncStateCard({ kind: "permission", actionLabel: "Sign in", onAction })` for protected pages; navbar uses its built-in sign-in fallback for `/Me` failures | Use safe recovery copy. Never surface raw 401/403 internals in public UI. |
+| Transient request failure | `AsyncStateCard({ kind: "transient", actionLabel: "Try again", onAction })` | Primary action retries the same request. Body can include a concise public error label, but not stack traces or internal policy text. |
+| Partial-resource failure | `AsyncStateCard({ kind: "partial", actionLabel: "Retry section", onAction })` inside the failed section while keeping the rest of the page visible | Keep successfully loaded profile/feed content in place and scope the failure to the supporting section. |
+
+`AsyncStateCard` owns full-card fallback layout. `InlineStatus`
+owns compact feedback in an already framed region. `EmptyCard`
+remains available for legacy/simple empty states, but new async
+fallbacks should choose an explicit `AsyncStateCard.kind` so copy,
+roles, and actions stay consistent across feed, detail, profile,
+and inline surfaces.
 
 ---
 

@@ -143,6 +143,34 @@ export function EmptyText({ children, attrs = {} } = {}) {
   return el("div", { ...attrs, class: cls }, ...arrify(children));
 }
 
+// ─── Inline status ────────────────────────────────────────────
+// Compact async feedback for inline regions such as search,
+// pagination, and rail refreshes. Use AsyncStateCard for full-card
+// fallbacks.
+/**
+ * Renders compact loading, empty, or error feedback inside an existing region.
+ * @param root0 - Inline status rendering options.
+ * @param root0.kind - Status role.
+ * @param root0.children - Human-readable status copy.
+ * @param root0.attrs - Element attributes.
+ * @returns Rendered DOM node.
+ */
+export function InlineStatus({
+  kind = "loading",
+  children = "Loading...",
+  attrs = {},
+} = {}) {
+  const cls =
+    `ab-inline-status ab-inline-status--${kind} ${attrs.class || ""}`.trim();
+  const role = kind === "error" ? "alert" : "status";
+  const ariaLive = kind === "loading" ? "polite" : undefined;
+  return el(
+    "div",
+    { ...attrs, class: cls, role, "aria-live": attrs["aria-live"] || ariaLive },
+    ...arrify(children)
+  );
+}
+
 // ─── Heading ──────────────────────────────────────────────────
 // Use for card titles / subtitles. Levels 1-3 supported.
 //   level 1 → page hero headline (.ab-heading-1)
