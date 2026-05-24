@@ -32,6 +32,7 @@ import {
   smokeTeam,
   smokeAdvisor,
 } from "./web_smoke_scenarios.js";
+import { smokeGlobalSearch } from "./web_smoke_search.js";
 
 /**
  * Checks the mobile navigation drawer.
@@ -158,6 +159,7 @@ async function runScenarios(
 ): Promise<readonly Check[]> {
   return [
     ...(await smokeFeed(page)),
+    ...(await smokeGlobalSearch(page)),
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
