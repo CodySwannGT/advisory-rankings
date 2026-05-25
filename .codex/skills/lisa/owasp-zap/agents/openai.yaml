@@ -1,4 +1,4 @@
-display_name: 'OWASP ZAP'
-short_description: ''
+display_name: "OWASP ZAP"
+short_description: ""
 default_prompt:
-  - 'Use $owasp-zap'
+  - "Use $owasp-zap"

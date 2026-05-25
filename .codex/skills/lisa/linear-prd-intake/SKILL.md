@@ -1,6 +1,6 @@
 ---
 name: linear-prd-intake
-description: "Scans a Linear workspace (or a specific team) for projects carrying the configured `ready` PRD label and runs each one through the dry-run validation pipeline. Projects that pass every gate get tickets written and the label flipped to the configured `ticketed` label; projects that fail get clarifying-question comments (on a sentinel feedback issue under the project) and the label flipped to the configured `blocked` label. Linear counterpart of `lisa:notion-prd-intake` and `lisa:confluence-prd-intake` — the workflow is identical; only the source-of-truth tools differ. Composes existing skills (linear-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
+description: "Scans a Linear workspace (or a specific team) for projects carrying the configured `ready` PRD label and runs the first eligible one through the dry-run validation pipeline. A project that passes every gate gets tickets written and the label flipped to the configured `ticketed` label; a project that fails gets clarifying-question comments (on a sentinel feedback issue under the project) and the label flipped to the configured `blocked` label. Linear counterpart of `lisa:notion-prd-intake` and `lisa:confluence-prd-intake` — the workflow is identical; only the source-of-truth tools differ. Composes existing skills (linear-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
 allowed-tools: ["Skill", "Bash", "mcp__linear-server__list_projects", "mcp__linear-server__get_project", "mcp__linear-server__save_project", "mcp__linear-server__list_project_labels", "mcp__linear-server__list_issues", "mcp__linear-server__get_issue", "mcp__linear-server__save_issue", "mcp__linear-server__list_comments", "mcp__linear-server__save_comment", "mcp__linear-server__list_issue_labels", "mcp__linear-server__create_issue_label", "mcp__linear-server__list_documents", "mcp__linear-server__get_document", "mcp__linear-server__list_teams"]
 ---
 
@@ -12,7 +12,7 @@ allowed-tools: ["Skill", "Bash", "mcp__linear-server__list_projects", "mcp__line
 - A Linear **team** URL or team key — scans every project on the team whose labels include the configured `ready` label. Example: `https://linear.app/acme/team/ENG/projects` or bare `ENG`.
 - The literal token `linear` — equivalent to "the default Linear workspace"; only valid if `linear.workspace` is configured in `.lisa.config.json`.
 
-Run one intake cycle against that scope. Each project with the `ready` label is claimed, validated, and routed to either the `blocked` label (with clarifying comments on a sentinel feedback issue) or the `ticketed` label (with destination tickets created).
+Run one intake cycle against that scope. The first eligible project with the `ready` label is claimed, validated, routed to either the `blocked` label (with clarifying comments on a sentinel feedback issue) or the `ticketed` label (with destination tickets created), then the cycle exits. Remaining ready projects stay queued for later scheduler invocations.
 
 ## Workflow resolution
 
@@ -55,7 +55,7 @@ The **PRD closure rollup phase (3f)** transitions a `$TICKETED` PRD project to `
 
 ## Confirmation policy
 
-Do NOT ask the caller whether to proceed. Once invoked with a workspace/team scope, run the cycle to completion — claim, validate, branch to `$BLOCKED` or `$TICKETED`, write the summary. The caller (a human or a cron) has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background batch.
+Do NOT ask the caller whether to proceed. Once invoked with a workspace/team scope, run the cycle to completion for the first eligible project — claim, validate, branch to `$BLOCKED` or `$TICKETED`, write the summary, and exit. The caller (a human or a cron) has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background queue.
 
 Specifically forbidden:
 
@@ -81,7 +81,7 @@ draft → ready → in_review → blocked | ticketed → shipped → verified
 
 (Defaults: `prd-draft` / `prd-ready` / `prd-in-review` / `prd-blocked` / `prd-ticketed` / `prd-shipped` / `prd-verified`.)
 
-`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification reuses `blocked` rather than introducing a separate `verifying` / `verification-failed` state. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never sets, clears, or otherwise touches it. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
+`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification does **not** use `blocked`; `/lisa:verify-prd` re-opens the PRD `shipped → ticketed` and creates build-ready fix tickets that auto-build and trigger a re-verify (the self-healing loop), introducing no `verifying` / `verification-failed` state. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never sets, clears, or otherwise touches it. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
 
 This skill transitions:
 
@@ -128,9 +128,9 @@ If the secondary query shows zero projects carrying any PRD lifecycle label → 
 
 If the secondary query shows projects with other PRD lifecycle labels but none with `$READY` → the queue is genuinely empty (all PRDs are already in `in_review`, `blocked`, `ticketed`, or `shipped`). Exit cleanly with `"No Linear projects labelled $READY. Nothing to do."`
 
-### Phase 3 — Process each ready PRD
+### Phase 3 — Process the first eligible ready PRD
 
-For each project (process serially to keep label transitions auditable):
+Select the first ready project returned by Phase 2 and process only that project. Later scheduler invocations process the remaining ready projects.
 
 #### 3a. Claim
 
@@ -219,9 +219,9 @@ Use these exact badge labels — they are the validator's category values transl
 
 After all comments are posted (anchored groups + the optional sentinel-issue summary), transition labels: remove `$IN_REVIEW`, add `$BLOCKED` via `save_project`. Do NOT write any destination tickets.
 
-#### 3d. Continue
+#### 3d. Stop
 
-Move to the next ready PRD. One PRD failing does not affect others.
+Stop immediately after the claimed PRD is ticketed, blocked, or recorded as an error.
 
 #### 3e. Coverage audit (mandatory after $TICKETED)
 
@@ -232,7 +232,7 @@ Per-ticket gates prove each ticket is well-formed; they do NOT prove the *set* o
 
    | Verdict | Action |
    |---------|--------|
-   | `COMPLETE` | Done. Leave label as `$TICKETED`. Move to next PRD. |
+   | `COMPLETE` | Done. Leave label as `$TICKETED`. End the cycle. |
    | `COMPLETE_WITH_SCOPE_CREEP` | Post an advisory comment on the sentinel feedback issue naming the scope-creep tickets (so product can decide whether to close them as out-of-scope). Leave label as `$TICKETED`. |
    | `GAPS_FOUND` | The created ticket set is incomplete. (a) For each gap, post a comment using the same product-facing template as Phase 3c.3 — anchored on the relevant sub-issue when `prd_anchor` is non-null, on the sentinel feedback issue otherwise; category badge from the gap's `category` field; `What's unclear` and `Recommendation` from the audit report's `what` and `recommendation` fields. Apply the same forbidden-language rules from Phase 3c.5. (b) Post one summary comment on the sentinel feedback issue listing the tickets that *were* successfully created (so product knows what to keep vs. what to extend). (c) Transition labels from `$TICKETED` back to `$BLOCKED` via `save_project`. |
    | `NO_TICKETS_FOUND` | Should not happen if step 2 succeeded. If it does, log it as an Error in the cycle summary and leave label as `$TICKETED` with a comment flagging the audit failure for human review. |
@@ -296,9 +296,19 @@ The set of **required** children for the all-terminal check is the top-level chi
 
 This phase implements exactly one PRD-lifecycle hop — `$TICKETED → $SHIPPED` — and the optional config-gated archive that follows it. All terminal-state semantics, the generated-top-level-work boundary, and the dedupe-by-child-ref idempotency come from the `prd-lifecycle-rollup` rule; this skill is its Linear implementation, not a second source of truth.
 
+#### 3g. PRD verification dispatch (close the loop on shipped PRDs)
+
+`shipped` and `verified` are distinct facts about a PRD (see the `prd-lifecycle-rollup` rule's "PRD-level verification vs ticket verification" and "Closing the loop" sections). Rollup (3f) only reaches `$SHIPPED`; the `shipped → verified` (pass) / `shipped → ticketed` (fail) hops are owned by `/lisa:verify-prd`. This phase **closes that loop** by dispatching the initiative-level acceptance gate for shipped PRDs. It never performs the verification transition itself — the "never sets the verification outcome" invariant holds: `lisa:verify-prd`, not this skill, sets `verified` (or, on failure, re-opens the PRD to `ticketed`).
+
+Re-query the projects currently carrying the `$SHIPPED` label via `mcp__linear-server__list_projects` (filtered by the `$SHIPPED` project label, **including archived projects** — so PRDs archived on ship via `linear.labels.prd.rollup.closeOnShipped = true` are still dispatched to `lisa:verify-prd` for the shipped→verified progression). Pick the **first** one and invoke `lisa:verify-prd <project-url>`. Process **one shipped PRD per cycle** — `lisa:verify-prd` is a heavy full flow (spec-conformance + empirical verification + fix-issue creation), so it is bounded exactly like the single-ready-PRD claim in Phase 3; the scheduler drains the rest.
+
+**Per-cycle combined bound:** each scheduler cycle dispatches at most one ready PRD (the Phase 3 single-ready-PRD claim) **and** at most one shipped PRD for verification (this Phase 3g dispatch), for a maximum of two PRD operations per cycle. Ready intake runs first (Phase 3), then shipped verify (Phase 3g).
+
+`lisa:verify-prd` owns the outcome: on a CONFORMS verdict with all empirical checks passing it transitions `$SHIPPED → verified` and posts evidence; on a conformance miss or a failing/unavailable check it **re-opens the PRD `$SHIPPED → ticketed`** (never `blocked`) and creates **build-ready** fix tickets registered as the PRD's generated work, then posts a failure report — the fix tickets auto-build, rollup (3f) re-ships the PRD once they are terminal, and a later cycle re-verifies (the self-healing loop). Either branch moves the PRD out of `$SHIPPED`, so it is not re-picked this cycle; a PRD whose generated work is not actually terminal is guard-stopped by `lisa:verify-prd` (left `$SHIPPED`) — that is verify-prd's gate, not this skill's. This phase, like 3f, is **behaviorally identical across all four intake skills** (`github-prd-intake`, `linear-prd-intake`, `notion-prd-intake`, `confluence-prd-intake`) — only the `$SHIPPED` query surface differs; keep them aligned. Record the dispatched PRD + verify-prd's verdict in the summary.
+
 ### Phase 4 — Summary report
 
-After processing every ready PRD, emit a summary:
+After processing the single selected PRD, emit a summary:
 
 ```text
 ## linear-prd-intake summary
@@ -341,10 +351,10 @@ Idempotency: the helper finds-or-creates. Re-runs of the cycle reuse the same se
 
 ## Idempotency & safety
 
-- **Single-cycle scope**: this skill processes the ready set as it exists at the start of Phase 2. New `$READY` projects added mid-cycle are picked up next run.
+- **One item per cycle**: this skill processes the first eligible ready project from Phase 2, then exits. New or remaining `$READY` projects are picked up by later scheduler invocations.
 - **No writes outside the lifecycle**: this skill only ever writes to the destination tracker via `lisa:linear-to-tracker` (which delegates to `lisa:tracker-write`), only ever changes Linear project labels among `$IN_REVIEW`, `$BLOCKED`, `$TICKETED`, and `$SHIPPED` (the last via the rollup phase 3f only), only ever creates/comments on the sentinel feedback issue (never any other Linear issue). It never edits project descriptions, never edits Linear documents, never touches the `draft` label, and never deletes projects. It sets the `$SHIPPED` label and may archive the PRD project **only** through the config-gated rollup phase (3f).
 - **Claim-first ordering**: the label flip to `$IN_REVIEW` happens BEFORE validation runs, so a re-entrant call won't double-process.
-- **Failure isolation**: an exception processing one project must not stop the cycle. Catch, record under "Errors" in the summary, continue to the next project. The project that errored is left labelled `$IN_REVIEW` — the human investigates from there.
+- **Failure handling**: an exception processing the selected project is caught and recorded under "Errors" in the summary, then the cycle exits. The project that errored is left labelled `$IN_REVIEW` — the human investigates from there.
 - **Single-label invariant**: after every transition, verify exactly one lifecycle label is present on the project. If two are present (rare race), surface as an Error and skip — do NOT auto-resolve, the human decides.
 - **Rollup idempotency**: rollup (Phase 3f) is a no-op on a PRD project already carrying `$SHIPPED` (and already archived when `closeOnShipped` is `true`) — no duplicate transition, no duplicate archive, no duplicate comment. The all-terminal condition is a pure function of the children's current states (deduped by child-ref identity), so recomputing it is safe to re-run. Archival NEVER precedes the all-terminal condition.
 
@@ -388,4 +398,4 @@ Before this skill can run against a Linear workspace or team, the team must adop
 3. (Optional but recommended) Add the `draft` and `shipped` labels (defaults: `prd-draft`, `prd-shipped`) for in-progress PRDs and delivered work respectively, so the full lifecycle is visible at a glance.
 4. The labels must exist as **project labels** in Linear (`list_project_labels` should return them). Issue-level labels with the same names won't work; Linear keeps the two label kinds separate.
 
-If the workspace hasn't adopted these labels, the first run exits with a label-convention error (not the idle empty-set message) — this distinguishes a setup issue from a genuinely empty queue so operators know to apply the convention rather than assuming the queue is drained. See Phase 2 for how the skill detects this case.
+If the workspace hasn't adopted these labels, the first run exits with a label-convention error (not the idle empty-set message) — this distinguishes a setup issue from a genuinely empty queue so operators know to apply the convention rather than assuming there is no work. See Phase 2 for how the skill detects this case.

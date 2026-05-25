@@ -21,6 +21,16 @@
  */
 export default [
   {
-    ignores: ["wiki/lisa-wiki.config.json"],
+    ignores: [
+      "wiki/lisa-wiki.config.json",
+      // Generated Harper deploy artifacts: the build emits one
+      // `harper-app/resource-<name>.js` per resource alongside
+      // `harper-app/resources.js`. They are gitignored build output, not
+      // source. Kept here (create-only) so the ignore survives Lisa updates
+      // that overwrite eslint.ignore.config.json. Upstreamed to Lisa's
+      // harper-fabric defaultHarperFabricIgnores.
+      "harper-app/resource-*.js",
+      "harper-app/resources.js",
+    ],
   },
 ];

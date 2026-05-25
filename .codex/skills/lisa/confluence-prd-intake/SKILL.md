@@ -1,6 +1,6 @@
 ---
 name: confluence-prd-intake
-description: "Scans a Confluence space (or a parent page) for PRD pages currently parented under the configured `ready` lifecycle page and runs each one through the dry-run validation pipeline. PRDs that pass every gate get tickets written and are re-parented under the `ticketed` lifecycle page; PRDs that fail get clarifying-question comments and are re-parented under the `blocked` lifecycle page. Confluence counterpart of `lisa:notion-prd-intake` — the workflow is identical; only the source-of-truth tools and the state encoding differ (parent-page re-parenting instead of a status property). Composes existing skills (confluence-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
+description: "Scans a Confluence space (or a parent page) for PRD pages currently parented under the configured `ready` lifecycle page and runs the first eligible one through the dry-run validation pipeline. A PRD that passes every gate gets tickets written and is re-parented under the `ticketed` lifecycle page; a PRD that fails gets clarifying-question comments and is re-parented under the `blocked` lifecycle page. Confluence counterpart of `lisa:notion-prd-intake` — the workflow is identical; only the source-of-truth tools and the state encoding differ (parent-page re-parenting instead of a status property). Composes existing skills (confluence-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
 allowed-tools: ["Skill", "Bash"]
 ---
 
@@ -11,10 +11,10 @@ All Atlassian operations in this skill go through `lisa:atlassian-access`. Do no
 `$ARGUMENTS` is one of:
 
 - A Confluence **space** URL or space key — used as the surrounding scope sanity check. Example: `https://mycompany.atlassian.net/wiki/spaces/PRD` or `PRD`.
-- A Confluence **parent page** URL or page ID — overrides the configured `confluence.parents.ready` page for this run (useful when an operator wants to drain an alternative lifecycle parent). Example: `https://mycompany.atlassian.net/wiki/spaces/PRD/pages/123456789/PRDs`.
+- A Confluence **parent page** URL or page ID — overrides the configured `confluence.parents.ready` page for this run (useful when an operator wants to target an alternative lifecycle parent). Example: `https://mycompany.atlassian.net/wiki/spaces/PRD/pages/123456789/PRDs`.
 - Empty — use `confluence.parents.ready` from `.lisa.config.json` as the scope.
 
-Run one intake cycle against the resolved `ready` lifecycle parent. Each direct child of that parent is treated as a PRD currently in the `ready` state. Each PRD is claimed (re-parented to `in_review`), validated, and routed to either the `blocked` parent (with clarifying comments) or the `ticketed` parent (with destination tickets created).
+Run one intake cycle against the resolved `ready` lifecycle parent. Each direct child of that parent is treated as a PRD currently in the `ready` state. The first eligible PRD is claimed (re-parented to `in_review`), validated, routed to either the `blocked` parent (with clarifying comments) or the `ticketed` parent (with destination tickets created), then the cycle exits. Remaining ready PRDs stay queued for later scheduler invocations.
 
 ## Why parent pages, not labels
 
@@ -82,7 +82,7 @@ The **PRD closure rollup phase (3f)** re-parents a `ticketed` PRD to the `shippe
 
 ## Confirmation policy
 
-Do NOT ask the caller whether to proceed. Once invoked, run the cycle to completion — claim, validate, branch to the `blocked` or `ticketed` parent, write the summary. The caller (a human or a cron) has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background batch.
+Do NOT ask the caller whether to proceed. Once invoked, run the cycle to completion for the first eligible PRD — claim, validate, branch to the `blocked` or `ticketed` parent, write the summary, and exit. The caller (a human or a cron) has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background queue.
 
 Specifically forbidden:
 
@@ -108,7 +108,7 @@ draft → ready → in_review → blocked | ticketed → shipped → verified
 
 (Each role corresponds to a dedicated parent page; the `verified` parent is resolved from `confluence.parents.verified`.)
 
-`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification re-parents back under `blocked` rather than introducing a separate `verifying` / `verification-failed` parent. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never re-parents a PRD into or out of the `verified` parent. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
+`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification does **not** use `blocked`; `/lisa:verify-prd` re-parents the PRD `shipped → ticketed` and creates build-ready fix tickets that auto-build and trigger a re-verify (the self-healing loop), introducing no `verifying` / `verification-failed` parent. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never re-parents a PRD into or out of the `verified` parent. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
 
 A PRD's current state is determined entirely by which lifecycle parent it sits under. Re-parenting is the transition.
 
@@ -151,9 +151,9 @@ If the result set is empty, run a sanity probe across the other lifecycle parent
 - If every lifecycle parent has zero direct children → the lifecycle scaffolding is provisioned but unused, OR PRDs are still parented under the legacy structure. Surface: `"No PRDs found under any of the configured lifecycle parent pages (ready, in_review, blocked, ticketed). If this is a new project, move PRDs that are ready for ticketing under the configured 'ready' parent page (see Adoption section)."` Exit with an error — this is a setup / migration issue, not a normal idle cycle.
 - If any non-ready parent has children → the queue is genuinely empty (PRDs exist but are in `in_review`, `blocked`, `ticketed`, or `shipped`). Exit cleanly with `"No PRDs currently parented under the 'ready' lifecycle page. Nothing to do."`
 
-### Phase 3 — Process each ready PRD
+### Phase 3 — Process the first eligible ready PRD
 
-For each PRD page (process serially to keep transitions auditable):
+Select the first ready PRD page returned by Phase 2 and process only that page. Later scheduler invocations process the remaining ready PRDs.
 
 #### 3a. Claim
 
@@ -277,9 +277,9 @@ Use these exact badge labels — they are the validator's category values transl
 
 After all comments are posted (anchored groups + the optional footer summary), re-parent the PRD to the `blocked` lifecycle parent: `transition_prd "$PRD_ID" blocked`. Do NOT write any destination tickets.
 
-#### 3d. Continue
+#### 3d. Stop
 
-Move to the next ready PRD. One PRD failing does not affect others.
+Stop immediately after the claimed PRD is ticketed, blocked, or recorded as an error.
 
 #### 3e. Coverage audit (mandatory after re-parenting to `ticketed`)
 
@@ -290,7 +290,7 @@ Per-ticket gates prove each ticket is well-formed; they do NOT prove the *set* o
 
    | Verdict | Action |
    |---------|--------|
-   | `COMPLETE` | Done. Leave PRD under `ticketed` parent. Move to next PRD. |
+   | `COMPLETE` | Done. Leave PRD under `ticketed` parent. End the cycle. |
    | `COMPLETE_WITH_SCOPE_CREEP` | Post an advisory footer comment naming the scope-creep tickets (so product can decide whether to close them as out-of-scope). Leave PRD under `ticketed` parent. |
    | `GAPS_FOUND` | The created ticket set is incomplete. (a) For each gap, post a comment using the same product-facing template as Phase 3c.3 — inline-anchored when `prd_anchor` is non-null, footer otherwise; category badge from the gap's `category` field; `What's unclear` and `Recommendation` from the audit report's `what` and `recommendation` fields. Apply the same forbidden-language rules from Phase 3c.5. (b) Post one footer summary comment listing the tickets that *were* successfully created (so product knows what to keep vs. what to extend). (c) Re-parent the PRD from `ticketed` back to `blocked`: `transition_prd "$PRD_ID" blocked`. |
    | `NO_TICKETS_FOUND` | Should not happen if step 2 succeeded. If it does, log it as an Error in the cycle summary and leave the PRD under `ticketed` with a comment flagging the audit failure for human review. |
@@ -352,9 +352,19 @@ The set of **required** children for the all-terminal check is the top-level chi
 
 This phase implements exactly one PRD-lifecycle hop — `ticketed → shipped` — and the optional config-gated archive that follows it. All terminal-state semantics, the generated-top-level-work boundary, and the dedupe-by-child-ref idempotency come from the `prd-lifecycle-rollup` rule; this skill is its Confluence implementation, not a second source of truth.
 
+#### 3g. PRD verification dispatch (close the loop on shipped PRDs)
+
+`shipped` and `verified` are distinct facts about a PRD (see the `prd-lifecycle-rollup` rule's "PRD-level verification vs ticket verification" and "Closing the loop" sections). Rollup (3f) only reaches the shipped parent; the `shipped → verified` (pass) / `shipped → ticketed` (fail) hops are owned by `/lisa:verify-prd`. This phase **closes that loop** by dispatching the initiative-level acceptance gate for shipped PRDs. It never performs the verification transition itself — the "never sets the verification outcome" invariant holds: `lisa:verify-prd`, not this skill, sets `verified` (or, on failure, re-opens the PRD to `ticketed`).
+
+Re-query the PRDs currently parented under the shipped lifecycle parent via `lisa:atlassian-access` `operation: read-page-descendants id: <confluence.parents.shipped>`. Pick the **first** one and invoke `lisa:verify-prd <page-url>`. Process **one shipped PRD per cycle** — `lisa:verify-prd` is a heavy full flow (spec-conformance + empirical verification + fix-issue creation), so it is bounded exactly like the single-ready-PRD claim in Phase 3; the scheduler drains the rest.
+
+**Per-cycle combined bound:** each scheduler cycle dispatches at most one ready PRD (the Phase 3 single-ready-PRD claim) **and** at most one shipped PRD for verification (this Phase 3g dispatch), for a maximum of two PRD operations per cycle. Ready intake runs first (Phase 3), then shipped verify (Phase 3g).
+
+`lisa:verify-prd` owns the outcome: on a CONFORMS verdict with all empirical checks passing it transitions the PRD to the verified parent and posts evidence; on a conformance miss or a failing/unavailable check it **re-parents the PRD shipped → ticketed** (never the blocked parent) and creates **build-ready** fix tickets registered as the PRD's generated work, then posts a failure report — the fix tickets auto-build, rollup (3f) re-ships the PRD once they are terminal, and a later cycle re-verifies (the self-healing loop). Either branch moves the PRD out of the shipped parent, so it is not re-picked this cycle; a PRD whose generated work is not actually terminal is guard-stopped by `lisa:verify-prd` (left under shipped) — that is verify-prd's gate, not this skill's. A PRD archived on ship (`confluence.rollup.closeOnShipped = true`) is out of the open verification queue. This phase, like 3f, is **behaviorally identical across all four intake skills** (`github-prd-intake`, `linear-prd-intake`, `notion-prd-intake`, `confluence-prd-intake`) — only the `$SHIPPED` query surface differs; keep them aligned. Record the dispatched PRD + verify-prd's verdict in the summary.
+
 ### Phase 4 — Summary report
 
-After processing every ready PRD, emit a summary:
+After processing the single selected PRD, emit a summary:
 
 ```text
 ## confluence-prd-intake summary
@@ -379,10 +389,10 @@ Print to the agent's output. Do not write this summary to Confluence or the dest
 
 ## Idempotency & safety
 
-- **Single-cycle scope**: this skill processes the ready set as it exists at the start of Phase 2. New PRDs moved under the `ready` parent mid-cycle are picked up next run.
+- **One item per cycle**: this skill processes the first eligible ready PRD from Phase 2, then exits. New or remaining PRDs under the `ready` parent are picked up by later scheduler invocations.
 - **No writes outside the lifecycle**: this skill only ever writes to the destination tracker via `lisa:confluence-to-tracker` (which delegates to `lisa:tracker-write`), and only ever re-parents PRDs among `in_review`, `blocked`, `ticketed`, and `shipped` (the last via the rollup phase 3f only) via `lisa:atlassian-access` `operation: write-page`. It never edits PRD body content, never re-parents into or out of `draft`, never deletes pages. It re-parents under `shipped` and may archive the PRD page **only** through the config-gated rollup phase (3f).
 - **Claim-first ordering**: the re-parent to `in_review` happens BEFORE validation runs, so a re-entrant call won't double-process.
-- **Failure isolation**: an exception processing one PRD must not stop the cycle. Catch, record under "Errors" in the summary, continue to the next PRD. The PRD that errored is left under whatever parent it currently occupies (usually `in_review` if claim succeeded) — the human investigates from there.
+- **Failure handling**: an exception processing the selected PRD is caught and recorded under "Errors" in the summary, then the cycle exits. The PRD that errored is left under whatever parent it currently occupies (usually `in_review` if claim succeeded) — the human investigates from there.
 - **Single-parent invariant**: a page has exactly one parent by construction in Confluence — the multi-state ambiguity that label-based systems can hit (two `prd-*` labels simultaneously) cannot occur here. After every transition, re-read the page and confirm `parentId` matches the expected role; if not, surface as an Error and skip.
 - **Rollup idempotency**: rollup (Phase 3f) is a no-op on a PRD already parented under `$SHIPPED_PARENT` (and already archived when `closeOnShipped` is `true`) — no duplicate re-parent, no duplicate archive, no duplicate comment. The all-terminal condition is a pure function of the children's current states (deduped by child-ref identity), so recomputing it is safe to re-run. Archival NEVER precedes the all-terminal condition.
 
@@ -425,4 +435,4 @@ Before this skill can run against a project, the project must adopt the lifecycl
 3. Move each existing PRD page under the appropriate lifecycle parent based on its current state. Product moves PRDs from `draft` → `ready` when they are ready for ticketing (replaces the Notion `Status = Ready` flip).
 4. Reserve the `in_review`, `blocked`, and `ticketed` parents for this skill — humans should not re-parent PRDs into them manually except to recover from an error.
 
-If the project hasn't adopted these parent pages, the first run exits with a provisioning error (not the idle empty-set message) — this distinguishes a setup issue from a genuinely empty queue so operators know to run `/lisa:setup:confluence` rather than assuming the queue is drained. See Phase 2 for how the skill detects this case.
+If the project hasn't adopted these parent pages, the first run exits with a provisioning error (not the idle empty-set message) — this distinguishes a setup issue from a genuinely empty queue so operators know to run `/lisa:setup:confluence` rather than assuming there is no work. See Phase 2 for how the skill detects this case.

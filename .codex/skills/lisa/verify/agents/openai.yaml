@@ -1,4 +1,4 @@
-display_name: 'Verify'
-short_description: 'Ship and verify code'
+display_name: "Verify"
+short_description: "Ship and verify code"
 default_prompt:
-  - 'Use $verify: Ship and verify code.'
+  - "Use $verify: Ship and verify code."

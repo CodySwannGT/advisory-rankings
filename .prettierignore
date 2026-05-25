@@ -30,6 +30,12 @@ coverage
 # No-op for projects that don't use Amplify.
 amplify
 
+# Lisa regenerates the Codex distribution mirror (.codex/) on every run with
+# generated YAML/markdown (double-quoted scalars) that does not satisfy this
+# project's Prettier config. It is generated output, not a formatting input.
+# Upstreamed to Lisa's TypeScript-base .prettierignore.
+.codex
+
 # BEGIN: AI GUARDRAILS HARPER-FABRIC
 
 # Harper/Fabric generated web output and scraped research captures are not

@@ -10,7 +10,7 @@ The first two are the same idea seen from opposite ends: a parent never enters t
 
 ## Why this exists
 
-Build intake claims and implements whatever carries the build-ready role (the `ready` role — see `config-resolution`). A parent container (an Epic, a Story, a Linear Project, any issue with child work) is not a unit of implementation; it organizes work. If a parent is marked build-ready, an agent will try to implement the container itself — the wrong permission and lifecycle boundary. This surfaced in real PRD intake: a PRD decomposed into an Epic, Stories, and Sub-tasks, and *every* item received the build-ready label, so a subsequent build pass would have tried to "implement" the Epic.
+Build intake processes whatever carries the build-ready role (the `ready` role — see `config-resolution`). A parent container (an Epic, a Story, a Linear Project, any issue with child work) is not a unit of implementation; it organizes work. If a parent is marked build-ready, an agent may try to implement the container itself unless intake gates it first — the wrong permission and lifecycle boundary. This surfaced in real PRD intake: a PRD decomposed into an Epic, Stories, and Sub-tasks, and *every* item received the build-ready label, so a subsequent build pass would have tried to "implement" the Epic.
 
 The fix is not vendor-specific. It belongs here, in a cross-vendor rule, and every writer / validator / intake path enforces it.
 
@@ -43,7 +43,7 @@ Where a vendor lacks native hierarchy for a given pair, a text link or metadata 
 
 - **At decomposition / write time** — when a PRD decomposes into a hierarchy, only the leaf work units receive the `ready` role (status/label). Parent containers (Epic, Story, Project, and any parent issue that has child work) are created in their normal non-ready state and never receive the build-ready role directly. The leaves are what downstream build intake will claim.
 - **At validate time** — the `*-validate-*` gate FAILs any container carrying the build-ready role. This is the symmetric write-side guard: a stale or hand-applied build-ready role on a parent is a lifecycle error.
-- **At claim time** — build intake scans for the `ready` role but claims **only leaf work units**. A container that still carries a stale build-ready role (e.g. applied before this rule existed) is **not claimed**: intake either skips it or safely blocks it with a clear lifecycle-repair message (move the role to the leaves; roll the parent up). Intake never silently implements a container.
+- **At claim time** — build intake scans for the `ready` role but dispatches **only leaf work units**. A container that still carries a stale build-ready role (e.g. applied before this rule existed) is **not dispatched**: intake either moves it into the vendor's parent/container progress state or safely blocks it with a clear lifecycle-repair message. Intake never silently implements a container.
 
 The permission boundary is the maintainer-applied build-ready role, not authorship — do not add author-based guards (PRD #522 non-goal). This rule narrows *what* may carry that role, not *who* may apply it.
 
@@ -81,7 +81,7 @@ Notes:
 
 The terminal rollup state is whatever the project configures for `done` — which is **env-keyed** (`config-resolution` "Env-keyed `done`"): a `done` map keyed by environment (`dev`, `staging`, `production`), resolved from the merged PR's base branch. This rule does **not** hardcode a `dev → staging → prod` promotion chain as required — that is a project-specific deploy topology. A downstream project with dev/staging/prod environments rolls a parent up to whichever terminal `done` value matches the environment its leaves shipped to. The rule stays generic and multi-env capable.
 
-**Single-environment collapse (this repo).** Lisa's own deploy has only `main`/`production` (no dev/staging), so `done` is a single value, not a map, and the build lifecycle collapses to one chain: `ready → claimed (in-progress) → review (code-review) → done`. The rollup terminal state is simply `done`. This is the *collapsed* case of the generic rule, not a different rule — projects with more environments keep the env-keyed map.
+**Single-environment collapse (this repo).** Lisa's own deploy has only `main`/`production` (no dev/staging), so `done` is a single value, not a map. For GitHub, the build lifecycle collapses to one chain: `ready → claimed (in-progress) → done`. The rollup terminal state is simply `done`. This is the *collapsed* case of the generic rule, not a different rule — projects with more environments keep the env-keyed map.
 
 ## Terminal native closure
 
@@ -108,7 +108,7 @@ Skills that enforce this invariant or perform rollup cite this rule by slug (the
 
 - **Decomposition / write** (`*-to-tracker`, `*-write-*`) — apply the `ready` role to leaves only; never to containers.
 - **Validate** (`*-validate-*`) — FAIL a container carrying the build-ready role; FAIL a childless Epic/Story/Spike marked build-ready.
-- **Build intake** (`*-build-intake`, `tracker-build-intake`) — claim leaves only; skip or safe-block containers with stale build-ready roles.
+- **Build intake** (`*-build-intake`, `tracker-build-intake`) — dispatch leaves only; move or safe-block containers with stale build-ready roles according to vendor lifecycle semantics.
 - **Rollup** — derive parent state from children per the state machine above.
 - **Terminal native closure** (`*-build-intake`, terminal helpers) — after a leaf reaches the true terminal `done` role, finalize it through the provider's native close / complete / resolve mechanism where available; never do this for intermediate env states.
 

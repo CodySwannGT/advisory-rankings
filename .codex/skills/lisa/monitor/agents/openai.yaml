@@ -1,4 +1,4 @@
-display_name: 'Monitor'
-short_description: 'Monitor application health across environments'
+display_name: "Monitor"
+short_description: "Monitor application health across environments"
 default_prompt:
-  - 'Use $monitor: Monitor application health across environments.'
+  - "Use $monitor: Monitor application health across environments."
