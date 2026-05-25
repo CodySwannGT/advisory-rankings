@@ -82,6 +82,10 @@ src/web/
                                 ScrollableTable,
                                 SkeletonCard, BrowseCard,
                                 RollupCard, DetailsCard
+    async-states.ts             canonical loading, empty, error,
+                                not-found, permission, and
+                                partial-resource fallback contract
+                                plus reusable state renderers
     templates.ts                mountThreeColumnPage,
                                 mountFullWidthPage,
                                 mountCenteredNarrowPage
@@ -193,7 +197,7 @@ Self-contained UI sections.
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
 | `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `/advisors` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
-| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. At the mobile breakpoint, the drawer collapses behind the hamburger and the search control wraps to a full-width row so 320px phones keep discovery readable. |
+| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. Shows a safe sign-in fallback when `/Me` fails without blocking public content. At the mobile breakpoint, the drawer collapses behind the hamburger and the search control wraps to a full-width row so 320px phones keep discovery readable. |
 | `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
 | `SiteFooter()` | Footer with source link and package version. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
@@ -207,6 +211,76 @@ Self-contained UI sections.
 | `BrowseCard({ items })` | Left-rail Browse navigation. |
 | `RollupCard({ title, rows, renderRow })` | Small rail card listing items. |
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
+
+## 7. Async State Patterns
+
+Every async route or section must render one of the canonical
+state patterns from `src/web/design-system/index.ts`. Pages import
+the helpers from the runtime barrel:
+
+```js
+import {
+	AsyncStateNotice,
+	LoadingState,
+	resolveAsyncStateFallback,
+} from './design-system/index.js';
+```
+
+Do not import `async-states.ts` directly from page code. The
+barrel export keeps page imports stable when the internal tier
+changes.
+
+### Canonical Fallback Contract
+
+`ASYNC_STATE_FALLBACKS` preserves PRD #141's behavior table. Route
+code may refine the displayed title, body, or action label for a
+specific surface, but must not change the message intent, primary
+action, or retry rule.
+
+| Failure type | Design-system kind | Message intent | Primary action | Retry rule | Required treatment |
+|---|---|---|---|---|---|
+| Loading | `loading` | Content is loading. | Wait for the request to resolve | None | Use skeletons that reserve final layout space. |
+| Transient network or server failure | `error` | We couldn't load this right now. | Retry the failed request | Required | Keep the user on the current surface and preserve surrounding layout. |
+| Empty data response | `empty` | No results are available yet. | Refresh or adjust search/filter if one exists | Optional refresh only | Empty is not an error; use empty-state styling, not error styling. |
+| Not-found data | `notFound` | This item could not be found. | Return to the feed or previous navigable surface | Never retry | Do not loop retry for stable not-found responses. |
+| Permission/auth failure | `permission` | You don't have access to this content. Sign in again to continue. | Sign in again or return to a safe surface | No automatic retry | Do not expose internal authorization details. |
+| Partial related-resource failure | `partial` | Some details couldn't be loaded. | Retry the affected section when practical | Retry failed section only | Preserve loaded content and isolate the failed region. |
+
+### Loading Guidance
+
+Use `LoadingState({ surface, rows })` while a request is pending.
+`surface: 'list'` is for feed and directory rows, `surface:
+'detail'` is for profile/article pages, and `surface: 'inline'`
+is for small async regions where full skeleton cards would be
+noisy. Feed/list and detail/profile/article surfaces should use
+skeleton rows or section-level skeleton blocks sized to the final
+content layout so resolution does not shift the page.
+
+### Non-loading Guidance
+
+Use `AsyncStateNotice({ kind, title, body, actionLabel, onAction })`
+for `empty`, `error`, `notFound`, `permission`, and `partial`
+states. The component annotates the card with
+`data-async-state` and `data-retry-rule` so route tests and future
+instrumentation can assert behavior without depending on one-off
+copy.
+
+Use `resolveAsyncStateFallback(kind, overrides)` when a route needs
+to decide behavior before rendering, such as choosing whether to
+show a retry button. Overrides are for display copy only; the
+canonical `kind`, `primaryAction`, and `retryRule` remain tied to
+the PRD fallback.
+
+### Surface Mapping
+
+| Surface type | Loading pattern | Empty/error pattern |
+|---|---|---|
+| Feed/list surfaces | `LoadingState({ surface: 'list', rows })` or existing `SkeletonCard()` when card-shaped rows match final layout | `AsyncStateNotice({ kind: 'empty' \| 'error' })`; retry only for transient failures. |
+| Detail/profile/article surfaces | `LoadingState({ surface: 'detail' })` inside the affected section or stable section skeletons | `notFound` returns to the previous public surface; `error` retries the failed request. |
+| Small inline async regions | `LoadingState({ surface: 'inline' })` or compact progress text when skeletons add visual noise | Isolate the affected region; use `partial` if surrounding content loaded. |
+| Account/session-dependent regions | Preserve public content and render `permission` in the gated region | Offer sign-in again or a safe public route; never show raw auth/backend details. |
+
+---
 
 `fmts = { fmtMoney, fmtPct, fmtDate, humanize, articleSource }` is
 exported from `app.ts` and threaded through to organisms that need
@@ -233,7 +307,7 @@ PascalCase value straight from the database.
 
 ---
 
-## 7. Templates (`design-system/templates.ts`)
+## 8. Templates (`design-system/templates.ts`)
 
 Templates own the global chrome (Navbar + footer + grid) and hand
 the page back populated rail elements.
@@ -271,7 +345,7 @@ the build callback.
 
 ---
 
-## 8. How to add a new component
+## 9. How to add a new component
 
 1. **Decide the tier.** Single element with variants → atom.
    Composition of 2–3 atoms → molecule. Self-contained section
@@ -304,7 +378,7 @@ the build callback.
 
 ---
 
-## 9. Anti-patterns
+## 10. Anti-patterns
 
 These are the things that this library exists to prevent.
 
@@ -323,12 +397,15 @@ These are the things that this library exists to prevent.
 - **Direct imports from `molecules.ts` or `organisms.ts`** in
   page files. Always go through `design-system/index.js`. (The
   internal cross-tier imports are fine *inside* the system.)
+- **Direct imports from `async-states.ts`** in page files. Import
+  async state helpers through `design-system/index.js` so the
+  reusable fallback contract stays centralized.
 - **Hand-rolling navigation chrome** in a page. Use one of the
   three `mount*Page` templates.
 
 ---
 
-## 10. Migration status
+## 11. Migration status
 
 The pages have been migrated to the system:
 

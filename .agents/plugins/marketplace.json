@@ -87,6 +87,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Coding"
+    },
+    {
+      "name": "lisa-wiki",
+      "source": {
+        "source": "local",
+        "path": "./node_modules/@codyswann/lisa/plugins/lisa-wiki"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
     }
   ]
 }

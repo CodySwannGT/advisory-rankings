@@ -1,0 +1,332 @@
+import { createServer, type Server } from "node:http";
+import { existsSync } from "node:fs";
+import { mkdir, readFile } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
+import { extname, join, normalize, resolve, sep } from "node:path";
+import { chromium, type Browser } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const WEB_ROOT = resolve("harper-app/web");
+const SHOTS = resolve("tests/screenshots");
+const QUICK_TIMEOUT = 4_000;
+const ME_ROUTE = "**/Me";
+const FEED_ROUTE = "**/Feed";
+const NO_ARTICLES_TEXT = "No articles yet";
+const FEED_ERROR_TITLE = "Could not load feed";
+const EVIDENCE_VIEWPORTS = [
+  { name: "desktop", width: 1280, height: 900 },
+  { name: "mobile", width: 320, height: 740 },
+] as const;
+const browserDescribe =
+  process.env.RUN_WEB_ASYNC_STATES === "1" &&
+  existsSync(chromium.executablePath())
+    ? describe.sequential
+    : describe.skip;
+
+browserDescribe("web async states", () => {
+  let browser: Browser;
+  let server: Server;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    server = await startStaticServer();
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
+    await mkdir(SHOTS, { recursive: true });
+    browser = await chromium.launch({ headless: true });
+  });
+
+  afterAll(async () => {
+    await browser?.close();
+    await new Promise<void>((resolveClose, rejectClose) => {
+      server.close(error => (error ? rejectClose(error) : resolveClose()));
+    });
+  });
+
+  it("shows safe sign-in recovery copy for auth failures", async () => {
+    const page = await browser.newPage();
+    let loginRequested = false;
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route("**/Login", async route => {
+      loginRequested = true;
+      await route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "internal authorization policy denied" }),
+      });
+    });
+
+    await page.goto(`${baseUrl}/login.html`, { waitUntil: "domcontentloaded" });
+    await page.locator('input[name="email"]').fill("user@example.test");
+    await page.locator('input[name="password"]').fill("bad-password");
+    await page.locator("form").evaluate(form => {
+      (form as HTMLFormElement).requestSubmit();
+    });
+
+    await page
+      .getByText(/Check your account access or return to public pages/u)
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    expect(loginRequested).toBe(true);
+    expect(await page.getByText("internal authorization policy").count()).toBe(
+      0
+    );
+    await page.close();
+  }, 30_000);
+
+  it("shows feed loading skeletons before a delayed response resolves", async () => {
+    const page = await browser.newPage();
+    let releaseFeed: () => void = () => {};
+    const feedReleased = new Promise<void>(resolveRelease => {
+      releaseFeed = resolveRelease;
+    });
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      await feedReleased;
+      await route.fulfill({ json: { items: [] } });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+
+    const skeletons = page.locator(".ab-skeleton");
+    await skeletons.first().waitFor({ timeout: QUICK_TIMEOUT });
+    expect(await skeletons.count()).toBe(8);
+
+    releaseFeed();
+    await page.getByText(NO_ARTICLES_TEXT).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.close();
+  });
+
+  it("renders a recoverable feed error when the response fails", async () => {
+    const page = await browser.newPage();
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "temporary outage" }),
+      });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+
+    await page.getByText(FEED_ERROR_TITLE).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.getByText(/GET \/Feed .* 503/).waitFor();
+    expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(1);
+    await page.locator(".nav a", { hasText: "Home" }).waitFor();
+    await page.close();
+  });
+
+  it("shows session recovery guidance while preserving public content", async () => {
+    const page = await browser.newPage();
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "permission denied" }),
+      });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      await route.fulfill({ json: { items: [] } });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+
+    await page.getByText(NO_ARTICLES_TEXT).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page
+      .getByText("Sign in again or continue browsing public pages")
+      .waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    expect(await page.getByText("permission denied").count()).toBe(0);
+    await page.close();
+  });
+
+  it("captures desktop and mobile feed async evidence", async () => {
+    const evidenceFiles: string[] = [];
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      await captureFeedLoadingEvidence(browser, baseUrl, viewport);
+      await captureFeedErrorEvidence(browser, baseUrl, viewport);
+      evidenceFiles.push(
+        evidencePath(viewport.name, "feed-loading"),
+        evidencePath(viewport.name, "feed-empty"),
+        evidencePath(viewport.name, "feed-error")
+      );
+    }
+    expect(evidenceFiles.every(filePath => existsSync(filePath))).toBe(true);
+  }, 30_000);
+});
+
+/**
+ * Captures the feed skeleton and resolved empty state for one viewport.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @param viewport - Evidence viewport metadata.
+ */
+async function captureFeedLoadingEvidence(
+  browser: Browser,
+  baseUrl: string,
+  viewport: (typeof EVIDENCE_VIEWPORTS)[number]
+): Promise<void> {
+  const page = await browser.newPage({ viewport });
+  let releaseFeed: () => void = () => {};
+  const feedReleased = new Promise<void>(resolveRelease => {
+    releaseFeed = resolveRelease;
+  });
+
+  await page.route(ME_ROUTE, async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route(FEED_ROUTE, async route => {
+    await feedReleased;
+    await route.fulfill({ json: { items: [] } });
+  });
+
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+  await page.locator(".ab-skeleton").first().waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-loading"),
+    fullPage: true,
+  });
+
+  releaseFeed();
+  await page.getByText(NO_ARTICLES_TEXT).waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-empty"),
+    fullPage: true,
+  });
+  await page.close();
+}
+
+/**
+ * Captures the feed error state for one viewport.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @param viewport - Evidence viewport metadata.
+ */
+async function captureFeedErrorEvidence(
+  browser: Browser,
+  baseUrl: string,
+  viewport: (typeof EVIDENCE_VIEWPORTS)[number]
+): Promise<void> {
+  const page = await browser.newPage({ viewport });
+
+  await page.route(ME_ROUTE, async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route(FEED_ROUTE, async route => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "temporary outage" }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+  await page.getByText(FEED_ERROR_TITLE).waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-error"),
+    fullPage: true,
+  });
+  await page.close();
+}
+
+/**
+ * Builds a deterministic screenshot evidence path.
+ * @param viewportName - Evidence viewport name.
+ * @param stateName - Async state being captured.
+ * @returns Absolute screenshot path.
+ */
+function evidencePath(viewportName: string, stateName: string): string {
+  return join(SHOTS, `async-${viewportName}-${stateName}.png`);
+}
+
+/**
+ * Starts a static server rooted at generated web assets.
+ * @returns Local static server for browser tests.
+ */
+async function startStaticServer(): Promise<Server> {
+  const server = createServer(async (request, response) => {
+    const filePath = request.url?.split("?")[0] || "/";
+    const resolvedPath = resolveStaticPath(filePath);
+
+    try {
+      const file = await readFile(resolvedPath);
+      response.writeHead(200, { "Content-Type": contentType(resolvedPath) });
+      response.end(file);
+    } catch {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Not found");
+    }
+  });
+
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", rejectListen);
+      resolveListen();
+    });
+  });
+
+  return server;
+}
+
+/**
+ * Resolves a request path to a generated asset path.
+ * @param urlPath - Request URL path.
+ * @returns Absolute static file path.
+ */
+function resolveStaticPath(urlPath: string): string {
+  const cleanPath = normalize(decodeURIComponent(urlPath)).replace(
+    /^(\.\.(\/|\\|$))+/,
+    ""
+  );
+  const relativePath =
+    cleanPath === sep || cleanPath === "." || cleanPath === "/"
+      ? "index.html"
+      : cleanPath.replace(/^[/\\]+/, "");
+  const candidate = resolve(WEB_ROOT, relativePath);
+  if (!candidate.startsWith(`${WEB_ROOT}${sep}`) && candidate !== WEB_ROOT) {
+    return join(WEB_ROOT, "404.html");
+  }
+  return candidate;
+}
+
+/**
+ * Maps static file extensions to browser content types.
+ * @param filePath - Static file path.
+ * @returns HTTP content type.
+ */
+function contentType(filePath: string): string {
+  switch (extname(filePath)) {
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    default:
+      return "application/octet-stream";
+  }
+}

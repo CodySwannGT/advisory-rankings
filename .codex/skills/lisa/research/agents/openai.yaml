@@ -1,0 +1,4 @@
+display_name: 'Research'
+short_description: 'Research a problem space and produce a PRD'
+default_prompt:
+  - 'Use $research: Research a problem space and produce a PRD.'
