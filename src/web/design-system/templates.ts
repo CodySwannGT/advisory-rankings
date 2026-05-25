@@ -62,6 +62,7 @@ function primaryBrowseCard() {
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
+      { label: "Recruiting", icon: "↔", href: "/recruiting" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
       { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },

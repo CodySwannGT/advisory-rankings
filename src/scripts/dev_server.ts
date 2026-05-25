@@ -11,6 +11,7 @@
  *   - Static GET for /             → web/index.html
  *   - Static GET for /<file>       → web/<file>
  *   - Static GET for /firms        → web/firms.html
+ *   - Static GET for /recruiting   → web/recruiting.html
  *   - Static GET for /firms/<slug> → web/firm.html
  *   - Static GET for /articles/<slug> → web/article.html
  *   - GET /Feed                    → resources.js Feed.get()
@@ -19,6 +20,7 @@
  *   - GET /AdvisorProfile/<id>     → resources.js AdvisorProfile.get(id)
  *   - GET /TeamProfile/<id>        → resources.js TeamProfile.get(id)
  *   - GET /Search?q=…              → resources.js Search.get()
+ *   - GET /RecruitingMarket        → resources.js RecruitingMarket.get()
  *   - POST /mcp                    → resources.js mcp.post(body)
  *   - GET /<TableName>/            → operations-API SQL passthrough
  *
@@ -231,6 +233,7 @@ async function serveStatic(req, res) {
 function staticPath(path) {
   if (path === "/") return "/index.html";
   if (path === "/firms") return "/firms.html";
+  if (path === "/recruiting") return "/recruiting.html";
   if (path.startsWith("/firms/")) return "/firm.html";
   if (path === "/advisors") return "/advisors.html";
   if (path.startsWith("/advisors/")) return "/advisor.html";
@@ -365,7 +368,7 @@ async function readJsonBody(req) {
  */
 async function handleResourceRoute(res, url) {
   const noArgMatch =
-    /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search)$/.exec(
+    /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket)$/.exec(
       url.pathname
     );
   const profileMatch =
