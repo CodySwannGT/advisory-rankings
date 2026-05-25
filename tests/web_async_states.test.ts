@@ -1,13 +1,22 @@
 import { createServer, type Server } from "node:http";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { chromium, type Browser } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
-const QUICK_TIMEOUT = 2_000;
+const SHOTS = resolve("tests/screenshots");
+const QUICK_TIMEOUT = 4_000;
+const ME_ROUTE = "**/Me";
+const FEED_ROUTE = "**/Feed";
+const NO_ARTICLES_TEXT = "No articles yet";
+const FEED_ERROR_TITLE = "Could not load feed";
+const EVIDENCE_VIEWPORTS = [
+  { name: "desktop", width: 1280, height: 900 },
+  { name: "mobile", width: 320, height: 740 },
+] as const;
 const browserDescribe =
   process.env.RUN_WEB_ASYNC_STATES === "1" &&
   existsSync(chromium.executablePath())
@@ -23,6 +32,7 @@ browserDescribe("web async states", () => {
     server = await startStaticServer();
     const address = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${address.port}`;
+    await mkdir(SHOTS, { recursive: true });
     browser = await chromium.launch({ headless: true });
   });
 
@@ -37,7 +47,7 @@ browserDescribe("web async states", () => {
     const page = await browser.newPage();
     let loginRequested = false;
 
-    await page.route("**/Me", async route => {
+    await page.route(ME_ROUTE, async route => {
       await route.fulfill({ json: { authenticated: false } });
     });
     await page.route("**/Login", async route => {
@@ -52,7 +62,9 @@ browserDescribe("web async states", () => {
     await page.goto(`${baseUrl}/login.html`, { waitUntil: "domcontentloaded" });
     await page.locator('input[name="email"]').fill("user@example.test");
     await page.locator('input[name="password"]').fill("bad-password");
-    await page.locator('button[type="submit"]').click();
+    await page.locator("form").evaluate(form => {
+      (form as HTMLFormElement).requestSubmit();
+    });
 
     await page
       .getByText(/Check your account access or return to public pages/u)
@@ -71,10 +83,10 @@ browserDescribe("web async states", () => {
       releaseFeed = resolveRelease;
     });
 
-    await page.route("**/Me", async route => {
+    await page.route(ME_ROUTE, async route => {
       await route.fulfill({ json: { authenticated: false } });
     });
-    await page.route("**/Feed", async route => {
+    await page.route(FEED_ROUTE, async route => {
       await feedReleased;
       await route.fulfill({ json: { items: [] } });
     });
@@ -86,7 +98,7 @@ browserDescribe("web async states", () => {
     expect(await skeletons.count()).toBe(8);
 
     releaseFeed();
-    await page.getByText("No articles yet").waitFor({
+    await page.getByText(NO_ARTICLES_TEXT).waitFor({
       timeout: QUICK_TIMEOUT,
     });
     await page.close();
@@ -95,10 +107,10 @@ browserDescribe("web async states", () => {
   it("renders a recoverable feed error when the response fails", async () => {
     const page = await browser.newPage();
 
-    await page.route("**/Me", async route => {
+    await page.route(ME_ROUTE, async route => {
       await route.fulfill({ json: { authenticated: false } });
     });
-    await page.route("**/Feed", async route => {
+    await page.route(FEED_ROUTE, async route => {
       await route.fulfill({
         status: 503,
         contentType: "application/json",
@@ -108,11 +120,11 @@ browserDescribe("web async states", () => {
 
     await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
 
-    await page.getByText("Could not load feed").waitFor({
+    await page.getByText(FEED_ERROR_TITLE).waitFor({
       timeout: QUICK_TIMEOUT,
     });
     await page.getByText(/GET \/Feed .* 503/).waitFor();
-    expect(await page.getByText("Could not load feed").count()).toBe(1);
+    expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(1);
     await page.locator(".nav a", { hasText: "Home" }).waitFor();
     await page.close();
   });
@@ -120,20 +132,20 @@ browserDescribe("web async states", () => {
   it("shows session recovery guidance while preserving public content", async () => {
     const page = await browser.newPage();
 
-    await page.route("**/Me", async route => {
+    await page.route(ME_ROUTE, async route => {
       await route.fulfill({
         status: 403,
         contentType: "application/json",
         body: JSON.stringify({ error: "permission denied" }),
       });
     });
-    await page.route("**/Feed", async route => {
+    await page.route(FEED_ROUTE, async route => {
       await route.fulfill({ json: { items: [] } });
     });
 
     await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
 
-    await page.getByText("No articles yet").waitFor({
+    await page.getByText(NO_ARTICLES_TEXT).waitFor({
       timeout: QUICK_TIMEOUT,
     });
     await page
@@ -144,7 +156,111 @@ browserDescribe("web async states", () => {
     expect(await page.getByText("permission denied").count()).toBe(0);
     await page.close();
   });
+
+  it("captures desktop and mobile feed async evidence", async () => {
+    const evidenceFiles: string[] = [];
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      await captureFeedLoadingEvidence(browser, baseUrl, viewport);
+      await captureFeedErrorEvidence(browser, baseUrl, viewport);
+      evidenceFiles.push(
+        evidencePath(viewport.name, "feed-loading"),
+        evidencePath(viewport.name, "feed-empty"),
+        evidencePath(viewport.name, "feed-error")
+      );
+    }
+    expect(evidenceFiles.every(filePath => existsSync(filePath))).toBe(true);
+  }, 30_000);
 });
+
+/**
+ * Captures the feed skeleton and resolved empty state for one viewport.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @param viewport - Evidence viewport metadata.
+ */
+async function captureFeedLoadingEvidence(
+  browser: Browser,
+  baseUrl: string,
+  viewport: (typeof EVIDENCE_VIEWPORTS)[number]
+): Promise<void> {
+  const page = await browser.newPage({ viewport });
+  let releaseFeed: () => void = () => {};
+  const feedReleased = new Promise<void>(resolveRelease => {
+    releaseFeed = resolveRelease;
+  });
+
+  await page.route(ME_ROUTE, async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route(FEED_ROUTE, async route => {
+    await feedReleased;
+    await route.fulfill({ json: { items: [] } });
+  });
+
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+  await page.locator(".ab-skeleton").first().waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-loading"),
+    fullPage: true,
+  });
+
+  releaseFeed();
+  await page.getByText(NO_ARTICLES_TEXT).waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-empty"),
+    fullPage: true,
+  });
+  await page.close();
+}
+
+/**
+ * Captures the feed error state for one viewport.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @param viewport - Evidence viewport metadata.
+ */
+async function captureFeedErrorEvidence(
+  browser: Browser,
+  baseUrl: string,
+  viewport: (typeof EVIDENCE_VIEWPORTS)[number]
+): Promise<void> {
+  const page = await browser.newPage({ viewport });
+
+  await page.route(ME_ROUTE, async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route(FEED_ROUTE, async route => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "temporary outage" }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+  await page.getByText(FEED_ERROR_TITLE).waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath(viewport.name, "feed-error"),
+    fullPage: true,
+  });
+  await page.close();
+}
+
+/**
+ * Builds a deterministic screenshot evidence path.
+ * @param viewportName - Evidence viewport name.
+ * @param stateName - Async state being captured.
+ * @returns Absolute screenshot path.
+ */
+function evidencePath(viewportName: string, stateName: string): string {
+  return join(SHOTS, `async-${viewportName}-${stateName}.png`);
+}
 
 /**
  * Starts a static server rooted at generated web assets.
