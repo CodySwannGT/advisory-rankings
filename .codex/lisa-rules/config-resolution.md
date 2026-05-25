@@ -54,7 +54,8 @@ fi
       "in_review": "<page-id>",
       "blocked":   "<page-id>",
       "ticketed":  "<page-id>",
-      "shipped":   "<page-id>"
+      "shipped":   "<page-id>",
+      "verified":  "<page-id>"
     },
     "dashboardPageId": "<page-id>",
     "feedbackPageId":  "<page-id>",
@@ -67,7 +68,6 @@ fi
       "build": {
         "ready":   "status:ready",
         "claimed": "status:in-progress",
-        "review":  "status:code-review",
         "blocked": "status:blocked",
         "done":    { "dev": "status:on-dev", "staging": "status:on-stg", "production": "status:done" }
       },
@@ -75,7 +75,7 @@ fi
         "draft": "prd-draft",
         "ready": "prd-ready", "in_review": "prd-in-review",
         "blocked": "prd-blocked", "ticketed": "prd-ticketed",
-        "shipped": "prd-shipped",
+        "shipped": "prd-shipped", "verified": "prd-verified",
         "sentinel": "prd-intake-feedback",
         "rollup": { "closeOnShipped": false }
       }
@@ -87,7 +87,8 @@ fi
     "statusProperty": "Status",
     "values": {
       "draft": "Draft", "ready": "Ready", "in_review": "In Review",
-      "blocked": "Blocked", "ticketed": "Ticketed", "shipped": "Shipped"
+      "blocked": "Blocked", "ticketed": "Ticketed", "shipped": "Shipped",
+      "verified": "Verified"
     },
     "rollup": { "closeOnShipped": false }
   },
@@ -106,7 +107,7 @@ fi
         "draft": "prd-draft",
         "ready": "prd-ready", "in_review": "prd-in-review",
         "blocked": "prd-blocked", "ticketed": "prd-ticketed",
-        "shipped": "prd-shipped",
+        "shipped": "prd-shipped", "verified": "prd-verified",
         "sentinel": "prd-intake-feedback",
         "rollup": { "closeOnShipped": false }
       }
@@ -118,6 +119,13 @@ fi
       "dev":        "dev",
       "staging":    "staging",
       "production": "main"
+    }
+  },
+
+  "intake": {
+    "repair": {
+      "staleAfterHours": 24,
+      "maxCandidates": 100
     }
   }
 }
@@ -171,7 +179,7 @@ When `tracker = "github"` AND `source = "github"` (self-host), both reads and wr
 | `notion.workspaceId` | `source = "notion"` | **committed** | Workspace identifier (Notion workspace UUID, or a stable human slug the user picks at setup). Same for every developer on the project. Used as the keychain `account` value when looking up the Notion API token, so each project's `notion-access` finds the right per-workspace token. |
 | `notion.prdDatabaseId` | `source = "notion"` | **committed** | Notion database ID (UUID, dashes optional). The database is the PRD queue. Same for every developer on the project. |
 | `notion.statusProperty` | `source = "notion"` | **committed** | Name of the database property that drives the lifecycle. Defaults to `"Status"` if absent. |
-| `notion.values` | optional | **committed** | Map of role → Notion status-value name (`draft`, `ready`, `in_review`, `blocked`, `ticketed`, `shipped`). Defaults match the role names in title case. Override here if your Notion DB uses different value names. |
+| `notion.values` | optional | **committed** | Map of role → Notion status-value name (`draft`, `ready`, `in_review`, `blocked`, `ticketed`, `shipped`, `verified`). Defaults match the role names in title case. Override here if your Notion DB uses different value names. |
 
 #### `linear`
 
@@ -192,11 +200,11 @@ Every lifecycle skill operates on a fixed set of **roles** (`ready`, `claimed`, 
 |---|---|---|---|
 | `ready` | Human signal "this is buildable; agent may claim" | `Ready` (status) | `status:ready` (label) |
 | `claimed` | Agent has picked the item up | `In Progress` (status) | `status:in-progress` (label) |
-| `review` | Build complete, in code review | `Code Review` (status) | `status:code-review` (label) |
+| `review` | Optional post-build review hold, when a tracker/project still uses one | `Code Review` (status) | Linear default: `status:code-review`; GitHub has no default review label |
 | `blocked` | Agent stopped on triage ambiguities or external blocker | `Blocked` (status) | `status:blocked` (label) |
 | `done` | Terminal state for this work, **env-keyed** | map of env → status | map of env → label |
 
-`review` is required for label-driven systems (GitHub, Linear) because that's how the agent signals "PR opened, awaiting human review." For JIRA, `review` is optional — projects that keep the ticket in `claimed` until terminal can omit it and lifecycle skills will skip the intermediate transition.
+`review` is optional. GitHub build intake skips it by default and moves successful builds directly from `claimed` to the configured `done` label. Linear and JIRA projects that still use a post-build review hold can configure `review`; projects that keep the ticket in `claimed` until terminal can omit it and lifecycle skills will skip the intermediate transition.
 
 `blocked` is what every vendor agent flips to when triage finds unresolved ambiguities or the build path is blocked by something the agent can't resolve. Different from `claimed` because it explicitly signals "human attention required."
 
@@ -210,6 +218,7 @@ Every lifecycle skill operates on a fixed set of **roles** (`ready`, `claimed`, 
 | `blocked` | Validation failed; clarifying-comments posted | `Blocked` (status) | `prd-blocked` (label) |
 | `ticketed` | Validated and tickets created | `Ticketed` (status) | `prd-ticketed` (label) |
 | `shipped` | All child tickets shipped | `Shipped` (status) | `prd-shipped` (label) |
+| `verified` | Shipped product empirically checked against the PRD | `Verified` (status) | `prd-verified` (label); parent-page lookup (Confluence) |
 | `sentinel` | (PRD-intake feedback issue marker, GitHub/Linear self-host only) | — | `prd-intake-feedback` |
 
 ### PRD rollup config (`prd.rollup`)
@@ -224,6 +233,22 @@ The `rollup` object lives in each PRD-source vendor section (`github.labels.prd.
 
 Like every other vocabulary key, `prd.rollup` is **optional** — a missing block inherits `closeOnShipped: false`. The `shipped` transition itself is unconditional on the all-terminal condition; only the close/archive step is gated by this flag.
 
+### Repair intake config (`intake.repair`)
+
+`lisa:repair-intake` (the recovery counterpart to `lisa:intake`) reads two optional tuning keys
+from the top-level `intake.repair` block. Both are **optional** — a missing block inherits the
+documented defaults, so existing projects need no config change.
+
+| Key | Required | Default | Notes |
+|-----|----------|---------|-------|
+| `intake.repair.staleAfterHours` | no | `24` | How long an in-progress item (build `claimed`, PRD `in_review`) may show no observable activity before repair-intake treats it as stalled and resumes it. `blocked` items are judged on blocker/answer state, not this threshold. Overridable per-run via `stale_after=<dur>` in `$ARGUMENTS` (which always wins). The same value is the default backoff window for loop-prevention notes. |
+| `intake.repair.maxCandidates` | no | `100` | Upper bound on how many stuck items repair-intake enumerates while searching for the first actionable one. Bounds scan cost. Overridable per-run via `max_candidates=<n>`. |
+
+Resolution order matches every other key: `$ARGUMENTS` override → `.lisa.config.local.json` →
+`.lisa.config.json` → built-in default. The role SEMANTICS repair-intake operates on (which
+roles count as "stuck", what each repair does) are fixed like every other lifecycle transition;
+only these thresholds are tunable.
+
 ### Env-keyed `done`
 
 The `done` role is special: the terminal status/label depends on which environment a PR was merged into. A hotfix to staging ends at `On Stg`; a production hotfix ends at `Done`. So `done` is a **map** keyed by env name (`dev`, `staging`, `production`).
@@ -236,6 +261,16 @@ Skills that transition to `done` MUST resolve the env first:
 
 If a project's terminal state is the same regardless of env, set `done` to a string instead of a map (lifecycle skills accept either shape).
 
+### Env → base branch (forward: the build base and PR base)
+
+`deploy.branches` is also read in the **forward** direction by the build flow (`lisa:implement`): the environment a work item targets determines the branch the work is built on and the branch the PR opens against.
+
+1. **Resolve the work item's target environment** — its `## Target Backend Environment` field. If the item names no environment, use the **remote default branch** (`gh repo view --json defaultBranchRef`, or `origin/HEAD`).
+2. **Map env → base branch** via `deploy.branches` (e.g. `staging → staging`, `production → main`). Absent env or missing branch → stop and report; never guess.
+3. **Before any code is written**, `lisa:implement` fetches and **rebases the working branch onto `origin/<base>`, resolving conflicts**, so implementation builds on the latest target-environment code. **The PR then opens against that same base branch** (`target_branch=<base>` to `lisa:git-submit-pr`).
+
+This is the exact inverse of the env-keyed `done` "Branch inference" above: `done` derives the env *from* the PR base branch (reverse); the build flow derives the base branch *from* the env (forward). Both use the one `deploy.branches` map, so the branch a PR targets and the `done` status it earns always agree.
+
 The true terminal `done` value is also the only value that triggers provider-native closure / resolution per `leaf-only-lifecycle`:
 
 - If `done` is a string, that value is terminal.
@@ -245,7 +280,7 @@ The true terminal `done` value is also the only value that triggers provider-nat
 ### What's configurable, what's not
 
 - **Status / label NAMES** are configurable per project — that's the point of the vocabulary maps.
-- **Role SEMANTICS and TRANSITIONS** are not. The build lifecycle is always `ready → claimed → done` (with optional `review` for label-driven systems). The PRD lifecycle is always `ready → in_review → (blocked | ticketed) → shipped`. Lisa skills hardcode these transitions because they encode the design intent of the framework, not the project's preferences.
+- **Role SEMANTICS and TRANSITIONS** are not. The build lifecycle is always `ready → claimed → done` (with optional `review` for label-driven systems). The PRD lifecycle is always `ready → in_review → (blocked | ticketed) → shipped`, then verification may move `shipped → verified` on a pass or `shipped → blocked` on a failed verification. `verified` is terminal and product-owned like `draft` and `shipped`; Lisa does not add `prd-verifying` or `prd-verification-failed` states. Skills hardcode these transitions because they encode the design intent of the framework, not the project's preferences.
 - **Extra statuses/labels** the project uses outside these roles are fine — lisa never touches them.
 
 ### Defaults vs. requirements
@@ -324,8 +359,8 @@ Initiatives (Linear's cross-Project rollup) are NOT used — they're intended fo
 
 When `github-to-tracker` is invoked AND `tracker = "github"`, both reads and writes hit the same GitHub repo. Label namespaces are kept separate so the two flows don't collide:
 
-- PRD-source labels: `prd-draft`, `prd-ready`, `prd-in-review`, `prd-blocked`, `prd-ticketed`, `prd-shipped` — owned by `github-prd-intake` and the human PM.
-- Build-queue labels: `status:ready`, `status:in-progress`, `status:code-review`, `status:on-dev`, `status:done` — owned by `github-build-intake` and `github-agent`.
+- PRD-source labels: `prd-draft`, `prd-ready`, `prd-in-review`, `prd-blocked`, `prd-ticketed`, `prd-shipped`, `prd-verified` — owned by `github-prd-intake`, `verify-prd`, and the human PM.
+- Build-queue labels: `status:ready`, `status:in-progress`, `status:on-dev`, `status:done` — owned by `github-build-intake` and `github-agent`.
 - Sentinel issue label: `prd-intake-feedback` — owned by `github-prd-intake`.
 
 Never overload one label across both lifecycles.
@@ -434,6 +469,33 @@ GitHub and Linear PRD lifecycles use labels (`prd-ready` / `prd-in-review` / etc
 **Identity-match is mandatory at every tier.** A substrate that's authenticated as the *wrong* Atlassian account is more dangerous than no substrate — it silently performs operations against the wrong workspace. `atlassian-access` verifies identity before every operation and skips substrates that don't match.
 
 **Why curl is still needed**: acli's Confluence surface only covers `space` and `page view`. v1 page-write endpoints accept scoped tokens but return 410 Gone (deprecated); v2 endpoints require granular OAuth scopes acli doesn't request. API tokens via Basic auth bypass this with full user scope, so curl is the headless-friendly path for ops neither acli nor MCP can do.
+
+## Repo scoping (multi-repo trackers)
+
+A ticketing system can oversee **multiple repos** — e.g. one JIRA project (or Linear team) for `frontend`, `backend`, and `infrastructure`. When build-intake runs inside one repo, it must claim only the tickets that belong to **that** repo and skip the rest. Two pieces make this work; the claim-time enforcement lives in the `repo-scope-split` rule.
+
+### The `repo:<name>` label (the repo marker)
+
+A work item's target repo is recorded as a **label** `repo:<name>`, where `<name>` is the repo's short name (e.g. `repo:frontend`). The convention is uniform across trackers (JIRA / GitHub / Linear), consistent with the other namespaced labels (`status:`, `type:`, `component:`). On JIRA a **component** equal to the repo name is accepted as an alias (matches the legacy `component = "frontend"` JQL pattern). A leaf work unit carries **exactly one** `repo:<name>` (leaves are single-repo per `repo-scope-split`); a container (Epic/Story/Spike) may carry several or none.
+
+The label is not required to exist up front: build-intake **determines** the target repo from the ticket's content + code surfaces when the label is absent and **stamps** `repo:<name>` so later cycles filter cheaply (see `repo-scope-split` "claim-time repo scoping").
+
+### Current-repo resolution (which repo am I?)
+
+Resolve the name of the repo intake is running in, highest priority first:
+
+1. `.lisa.config.local.json` then `.lisa.config.json` `repo` (an explicit override, e.g. `"repo": "frontend"`).
+2. `.lisa.config.json` `github.repo` when set (the repo's own identity).
+3. The git remote basename: `basename -s .git "$(git remote get-url origin)"` (e.g. `git@github.com:acme/frontend.git` → `frontend`).
+
+```bash
+read_g() { local lv gv; lv=$(jq -r "$1 // empty" .lisa.config.local.json 2>/dev/null); gv=$(jq -r "$1 // empty" .lisa.config.json 2>/dev/null); echo "${lv:-${gv}}"; }
+CURRENT_REPO=$(read_g '.repo')
+[ -z "$CURRENT_REPO" ] && CURRENT_REPO=$(read_g '.github.repo')
+[ -z "$CURRENT_REPO" ] && CURRENT_REPO=$(basename -s .git "$(git remote get-url origin 2>/dev/null)" 2>/dev/null)
+```
+
+If the current repo cannot be resolved by any tier, build-intake stops with a clear error rather than claiming tickets it cannot scope. The match is by repo short name (`repo:<CURRENT_REPO>`), case-insensitive.
 
 ## Invariants
 

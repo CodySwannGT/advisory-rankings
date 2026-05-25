@@ -1,6 +1,6 @@
 ---
 name: github-prd-intake
-description: "Scans a GitHub repository for issues carrying the configured `ready` PRD label and runs each one through the dry-run validation pipeline. PRDs that pass every gate get tickets written (to whatever destination tracker is configured — JIRA, GitHub Issues itself, or Linear) and the label flipped to the configured `ticketed` label; PRDs that fail get clarifying-question comments and the label flipped to the configured `blocked` label. The GitHub counterpart of lisa:notion-prd-intake / lisa:confluence-prd-intake / lisa:linear-prd-intake. Composes existing skills (github-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
+description: "Scans a GitHub repository for issues carrying the configured `ready` PRD label and runs the first eligible one through the dry-run validation pipeline. A PRD that passes every gate gets tickets written (to whatever destination tracker is configured — JIRA, GitHub Issues itself, or Linear) and the label flipped to the configured `ticketed` label; a PRD that fails gets clarifying-question comments and the label flipped to the configured `blocked` label. The GitHub counterpart of lisa:notion-prd-intake / lisa:confluence-prd-intake / lisa:linear-prd-intake. Composes existing skills (github-to-tracker, tracker-validate, tracker-source-artifacts, product-walkthrough)."
 allowed-tools: ["Skill", "Bash"]
 ---
 
@@ -12,7 +12,7 @@ allowed-tools: ["Skill", "Bash"]
 - A full GitHub repo URL (e.g., `https://github.com/acme/product-prds`).
 - The literal token `github` — falls back to `.lisa.config.json` (`github.org` / `github.repo`).
 
-Run one intake cycle against that repo. Each issue with the `ready` label is claimed, validated, and routed to either the `blocked` label (with clarifying comments) or the `ticketed` label (with destination tickets created).
+Run one intake cycle against that repo. The first eligible issue with the `ready` label is claimed, validated, routed to either the `blocked` label (with clarifying comments) or the `ticketed` label (with destination tickets created), then the cycle exits. Remaining ready PRDs stay queued for later scheduler invocations.
 
 ## Workflow resolution
 
@@ -43,7 +43,7 @@ The **PRD closure rollup phase (3f)** transitions a `$TICKETED` PRD to `$SHIPPED
 
 ## Confirmation policy
 
-Do NOT ask the caller whether to proceed. Once invoked with a repo, run the cycle to completion — claim, validate, branch to `$BLOCKED` or `$TICKETED`, write the summary. The caller has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background batch.
+Do NOT ask the caller whether to proceed. Once invoked with a repo, run the cycle to completion for the first eligible PRD — claim, validate, branch to `$BLOCKED` or `$TICKETED`, write the summary, and exit. The caller has already authorized the run by invoking the skill; re-prompting defeats the purpose of a background queue.
 
 Specifically forbidden:
 
@@ -69,7 +69,7 @@ draft → ready → in_review → blocked | ticketed → shipped → verified
 
 (Defaults: `prd-draft` / `prd-ready` / `prd-in-review` / `prd-blocked` / `prd-ticketed` / `prd-shipped` / `prd-verified`.)
 
-`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification reuses `blocked` rather than introducing a separate `verifying` / `verification-failed` state. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never sets, clears, or otherwise touches it. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
+`verified` is the terminal state after `shipped`: it means the shipped product has been empirically checked against the PRD (set by `/lisa:verify-prd`, not by this intake skill). A failed post-ship verification does **not** use `blocked`; `/lisa:verify-prd` re-opens the PRD `shipped → ticketed` and creates build-ready fix tickets that auto-build and trigger a re-verify (the self-healing loop), introducing no `verifying` / `verification-failed` state. Like `draft` and `shipped`, `verified` is **product-owned** — this intake skill never sets, clears, or otherwise touches it. See the "PRD-level verification vs ticket verification" section of the `prd-lifecycle-rollup` rule.
 
 Exactly one of these labels is expected on a PRD issue at any time.
 
@@ -124,9 +124,9 @@ gh issue list --repo <org>/<repo> --state open --limit 100 --json number,labels 
 
 If no PRD lifecycle labels appear on any open issue → convention not adopted; surface error and exit. If lifecycle labels exist but none are `$READY` → genuinely empty queue, exit cleanly with the idle message.
 
-### Phase 3 — Process each ready PRD
+### Phase 3 — Process the first eligible ready PRD
 
-Process serially to keep label transitions auditable.
+Select the first ready PRD issue returned by Phase 2 and process only that issue. Later scheduler invocations process the remaining ready PRDs.
 
 #### 3a. Claim
 
@@ -225,9 +225,9 @@ For unanchored failures (`prd_anchor: null`), post one rollup comment prefixed w
 
 After all comments are posted, transition: `gh issue edit <num> --remove-label "$IN_REVIEW" --add-label "$BLOCKED"`. Do NOT write any tickets.
 
-#### 3d. Continue
+#### 3d. Stop
 
-Move to the next ready PRD. One PRD failing does not affect others.
+Stop immediately after the claimed PRD is ticketed, blocked, or recorded as an error.
 
 #### 3e. Coverage audit (mandatory after $TICKETED)
 
@@ -238,7 +238,7 @@ Per-ticket gates prove each ticket is well-formed; they do NOT prove the *set* o
 
    | Verdict | Action |
    |---------|--------|
-   | `COMPLETE` | Done. Leave label as `$TICKETED`. Move to next PRD. |
+   | `COMPLETE` | Done. Leave label as `$TICKETED`. End the cycle. |
    | `COMPLETE_WITH_SCOPE_CREEP` | Post an advisory comment on the PRD issue naming the scope-creep tickets. Leave label as `$TICKETED`. |
    | `GAPS_FOUND` | The created ticket set is incomplete. (a) For each gap, post a comment using the same product-facing template as Phase 3c.2 — anchored when `prd_anchor` is non-null. (b) Post one summary comment listing the tickets that *were* successfully created. (c) Transition labels from `$TICKETED` back to `$BLOCKED`. |
    | `NO_TICKETS_FOUND` | Should not happen if step 2 succeeded. Log as Error; leave label as `$TICKETED` with a flag comment. |
@@ -338,6 +338,20 @@ The set of **required** children for the all-terminal check is the top-level chi
 
 This phase only touches GitHub PRD issues. It implements exactly one PRD-lifecycle hop — `$TICKETED → $SHIPPED` — and the optional config-gated close that follows it. All terminal-state semantics, the generated-top-level-work boundary, the env-keyed `done` resolution, and the dedupe-by-child-ref idempotency come from the `prd-lifecycle-rollup` rule; this skill is its GitHub implementation, not a second source of truth.
 
+#### 3g. PRD verification dispatch (close the loop on shipped PRDs)
+
+`shipped` and `verified` are distinct facts about a PRD (see the `prd-lifecycle-rollup` rule's "PRD-level verification vs ticket verification" and "Closing the loop" sections). Rollup (3f) only reaches `$SHIPPED`; the `shipped → verified` (pass) / `shipped → ticketed` (fail) hops are owned by `/lisa:verify-prd`. This phase **closes that loop** by dispatching the initiative-level acceptance gate for shipped PRDs. It never performs the verification transition itself — the "never sets the verification outcome" invariant holds: `lisa:verify-prd`, not this skill, sets `verified` (or, on failure, re-opens the PRD to `ticketed`).
+
+Re-query the PRDs currently carrying `$SHIPPED` via `gh issue list --repo <org>/<repo> --label "$SHIPPED" --state open`. Pick the **first** one and invoke `lisa:verify-prd <issue-url>`. Process **one shipped PRD per cycle** — `lisa:verify-prd` is a heavy full flow (spec-conformance + empirical verification + fix-issue creation), so it is bounded exactly like the single-ready-PRD claim in Phase 3; the scheduler drains the rest.
+
+**Per-cycle combined bound:** each scheduler cycle dispatches at most one ready PRD (the Phase 3 single-ready-PRD claim) **and** at most one shipped PRD for verification (this Phase 3g dispatch), for a maximum of two PRD operations per cycle. Ready intake runs first (Phase 3), then shipped verify (Phase 3g).
+
+`lisa:verify-prd` owns the outcome: on a CONFORMS verdict with all empirical checks passing it transitions `$SHIPPED → verified` and posts evidence; on a conformance miss or a failing/unavailable check it **re-opens the PRD `$SHIPPED → ticketed`** (never `blocked`) and creates **build-ready** fix tickets registered as the PRD's generated work, then posts a failure report — the fix tickets auto-build, rollup (3f) re-ships the PRD once they are terminal, and a later cycle re-verifies (the self-healing loop). Either branch moves the PRD out of `$SHIPPED`, so it is not re-picked this cycle; a PRD whose generated work is not actually terminal is guard-stopped by `lisa:verify-prd` (left `$SHIPPED`) — that is verify-prd's gate, not this skill's.
+
+**`closeOnShipped` constraint:** when `github.labels.prd.rollup.closeOnShipped = true`, issues are closed immediately after reaching `$SHIPPED`. This Phase 3g query (`--state open`) will not find them, so those PRDs are permanently excluded from `lisa:verify-prd` dispatch. If PRD verification is required, set `github.labels.prd.rollup.closeOnShipped = false` (or omit it); closing on ship is an explicit opt-out of the shipped→verified verification loop.
+
+This phase, like 3f, is **behaviorally identical across all four intake skills** (`github-prd-intake`, `linear-prd-intake`, `notion-prd-intake`, `confluence-prd-intake`) — only the `$SHIPPED` query surface differs; keep them aligned. Record the dispatched PRD + verify-prd's verdict in the summary.
+
 ### Phase 4 — Summary report
 
 ```text
@@ -379,10 +393,10 @@ When the configured destination tracker is GitHub Issues AND the PRD repo is the
 
 ## Idempotency & safety
 
-- **Single-cycle scope**: this skill processes the ready set as it exists at the start of Phase 2. New ready issues added mid-cycle are picked up next run.
+- **One item per cycle**: this skill processes the first eligible ready PRD issue from Phase 2, then exits. New or remaining ready issues are picked up by later scheduler invocations.
 - **No writes outside the lifecycle**: this skill only ever writes to the destination tracker via `lisa:github-to-tracker` (which delegates to `lisa:tracker-write`), only ever changes labels among `$IN_REVIEW`, `$BLOCKED`, `$TICKETED`, `$SHIPPED`, only ever comments on the source PRD issue. It never edits PRD bodies and never touches the `draft` label. It sets the `$SHIPPED` label and may close the PRD issue **only** through the config-gated rollup phase (3f), and never deletes any issue.
 - **Claim-first ordering**: the label flip to `$IN_REVIEW` happens BEFORE validation runs.
-- **Failure isolation**: an exception processing one PRD must not stop the cycle. Catch, record under "Errors" in the summary, continue. The PRD that errored is left labeled `$IN_REVIEW` — humans investigate from there.
+- **Failure handling**: an exception processing the selected PRD is caught and recorded under "Errors" in the summary, then the cycle exits. The PRD that errored is left labeled `$IN_REVIEW` — humans investigate from there.
 - **Single-label invariant**: after every transition, verify exactly one lifecycle label is present.
 - **Rollup idempotency**: rollup (Phase 3f) is a no-op on a PRD already carrying `$SHIPPED` (and already closed when `closeOnShipped` is `true`) — no duplicate transition, no duplicate close, no duplicate comment. The all-terminal condition is a pure function of the children's current states, so recomputing it is safe to re-run. Closure NEVER precedes the all-terminal condition.
 

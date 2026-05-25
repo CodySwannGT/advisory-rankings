@@ -1,4 +1,4 @@
-display_name: 'Root Cause Analysis'
-short_description: 'Root cause analysis methodology'
+display_name: "Root Cause Analysis"
+short_description: "Root cause analysis methodology"
 default_prompt:
-  - 'Use $root-cause-analysis: Root cause analysis methodology.'
+  - "Use $root-cause-analysis: Root cause analysis methodology."

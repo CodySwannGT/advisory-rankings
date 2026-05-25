@@ -26,6 +26,11 @@ import type { ViteUserConfig } from "vitest/config";
 
 const config: ViteUserConfig = {
   test: {
+    // Lisa governance forces `test`/`test:cov` to a bare `vitest run`, dropping
+    // the `bun run build && bun run test:setup:playwright` preamble the browser
+    // regression tests require. Reinstate those preconditions via globalSetup so
+    // the forced scripts stay self-sufficient across Lisa updates.
+    globalSetup: ["./tests/global-setup.ts"],
     coverage: {
       // CLI entrypoints depend on live services, network, or local files; keep
       // the unit coverage threshold focused on reusable app and library code.
