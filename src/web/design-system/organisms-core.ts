@@ -1,10 +1,9 @@
 // @ts-nocheck
 import { el } from "./dom.js";
-import { Avatar, Tag, EmptyText, Heading } from "./atoms.js";
+import { Avatar, Tag, EmptyText, Heading, Button, Skeleton } from "./atoms.js";
 import { EntityRow, EntityChip, KvList, NavRow } from "./molecules.js";
 import { APP_VERSION } from "../version.js";
 
-const SKELETON_CLASS = "ab-skeleton";
 const CARD_SUBTITLE_CLASS = "card-subtitle";
 
 // ─── Card ─────────────────────────────────────────────────────
@@ -63,6 +62,77 @@ export function SectionCard({ title, body, attrs = {} } = {}) {
  */
 export function EmptyCard({ title, body }) {
   return SectionCard({ title, body: EmptyText({ children: body }) });
+}
+
+const ASYNC_STATE_DEFAULTS = {
+  empty: {
+    title: "No results yet",
+    body: "New data will appear here once it is available.",
+  },
+  "not-found": {
+    title: "Not found",
+    body: "This record may have moved, been removed, or not been loaded yet.",
+  },
+  permission: {
+    title: "Sign in required",
+    body: "Sign in again or continue browsing public pages.",
+  },
+  transient: {
+    title: "Could not load this section",
+    body: "Refresh this section or try again in a moment.",
+  },
+  partial: {
+    title: "Some details are unavailable",
+    body: "The main record loaded, but one supporting section failed.",
+  },
+};
+
+// ─── AsyncStateCard ───────────────────────────────────────────
+// Canonical full-card fallbacks for page and section async states.
+/**
+ * Renders a canonical full-card fallback for empty, not-found, auth,
+ * transient, and partial-resource states.
+ * @param root0 - Async-state rendering options.
+ * @param root0.kind - Product fallback category.
+ * @param root0.title - Optional title override.
+ * @param root0.body - Optional body override.
+ * @param root0.actionLabel - Optional primary action label.
+ * @param root0.onAction - Optional primary action handler.
+ * @param root0.attrs - Element attributes for the card.
+ * @returns Rendered DOM node.
+ */
+export function AsyncStateCard({
+  kind = "transient",
+  title,
+  body,
+  actionLabel,
+  onAction,
+  attrs = {},
+} = {}) {
+  const defaults = ASYNC_STATE_DEFAULTS[kind] || ASYNC_STATE_DEFAULTS.transient;
+  const cls =
+    `ab-async-state ab-async-state--${kind} ${attrs.class || ""}`.trim();
+  const action =
+    actionLabel && onAction
+      ? Button({
+          variant: "neutral",
+          onClick: onAction,
+          children: actionLabel,
+          attrs: { class: "ab-async-state-action" },
+        })
+      : null;
+
+  return SectionCard({
+    title: title || defaults.title,
+    attrs: { ...attrs, class: cls },
+    body: [
+      EmptyText({
+        children: body || defaults.body,
+        attrs: { class: "ab-async-state-body" },
+      }),
+      action,
+    ],
+  });
 }
 
 // ─── ChipRow ──────────────────────────────────────────────────
@@ -206,10 +276,10 @@ export function SkeletonCard() {
     children: el(
       "div",
       { class: "card-body" },
-      el("div", { class: SKELETON_CLASS, style: "width: 60%; height: 18px;" }),
-      el("div", { class: SKELETON_CLASS }),
-      el("div", { class: SKELETON_CLASS, style: "width: 80%;" }),
-      el("div", { class: SKELETON_CLASS, style: "width: 70%;" })
+      Skeleton({ width: "60%", height: 18 }),
+      Skeleton(),
+      Skeleton({ width: "80%" }),
+      Skeleton({ width: "70%" })
     ),
   });
 }

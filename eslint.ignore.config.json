@@ -73,6 +73,8 @@
 
     "lib/**/*.js",
     "cdk.out/**",
+    "harper-app/*.js",
+    "harper-app/web/**/*.js",
 
     "audit.ignore.config.json",
     "audit.ignore.local.json",
