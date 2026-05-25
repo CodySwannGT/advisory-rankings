@@ -22,6 +22,9 @@ export function Navbar({ active, refreshMe, logout, search } = {}) {
     class: "nav-scrim",
     onClick: () => toggleDrawer(drawerState, burger, false),
   });
+  document.addEventListener("keydown", event =>
+    closeDrawerFromKeyboard({ event, state: drawerState, burger })
+  );
 
   links.addEventListener("click", event => {
     if (event.target.tagName === "A" || event.target.closest("a"))
@@ -173,4 +176,16 @@ function toggleDrawer(state, burger, force) {
   state.set("open", open);
   document.body.classList.toggle("drawer-open", open);
   burger.setAttribute("aria-expanded", String(open));
+}
+
+/**
+ * Closes the mobile drawer from keyboard dismissal without hijacking other keys.
+ * @param root0 - Keyboard close context.
+ * @param root0.event - Key event to inspect.
+ * @param root0.state - Shared drawer state map.
+ * @param root0.burger - Button whose expanded state should match the drawer.
+ */
+function closeDrawerFromKeyboard({ event, state, burger }) {
+  if (event.key === "Escape" && state.get("open"))
+    toggleDrawer(state, burger, false);
 }
