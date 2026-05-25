@@ -441,6 +441,7 @@ The pages have been migrated to the system:
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `/rankings` (`rankings.html`) | `mountThreeColumnPage` | `SectionCard`, `ScrollableTable`, `RollupCard`, `DetailsCard`, `Tag` |
+| `/regulatory` (`regulatory.html`) | Legacy checked-in page shell | `SectionCard`, `DisclosureEventCard`, `DetailsCard` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
 The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,

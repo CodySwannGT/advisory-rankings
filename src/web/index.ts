@@ -90,7 +90,7 @@ function renderLeft(root, items) {
       { label: "Firms", icon: "🏢", href: "/firms" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
   const recentTransitions = items

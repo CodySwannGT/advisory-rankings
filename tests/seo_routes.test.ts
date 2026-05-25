@@ -4,6 +4,7 @@ import advisorsRoutes from "../harper-app/advisors/index.js";
 import articlesRoutes from "../harper-app/articles/index.js";
 import firmsRoutes from "../harper-app/firms/index.js";
 import recruitingRoutes from "../harper-app/recruiting/index.js";
+import regulatoryRoutes from "../harper-app/regulatory/index.js";
 import teamsRoutes from "../harper-app/teams/index.js";
 
 describe("SEO route shells", () => {
@@ -16,6 +17,7 @@ describe("SEO route shells", () => {
     await advisorsRoutes(fastify);
     await teamsRoutes(fastify);
     await articlesRoutes(fastify);
+    await regulatoryRoutes(fastify);
 
     expect(paths).toEqual([
       "/firms",
@@ -26,6 +28,7 @@ describe("SEO route shells", () => {
       "/teams",
       "/teams/:slug",
       "/articles/:slug",
+      "/regulatory",
     ]);
     expect(paths).not.toContain("/");
     expect(paths).not.toContain("/:slug");

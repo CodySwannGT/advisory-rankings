@@ -66,7 +66,7 @@ function primaryBrowseCard() {
       { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
 }

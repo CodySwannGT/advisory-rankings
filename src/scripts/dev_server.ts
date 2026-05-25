@@ -13,6 +13,7 @@
  *   - Static GET for /firms        → web/firms.html
  *   - Static GET for /recruiting   → web/recruiting.html
  *   - Static GET for /rankings     → web/rankings.html
+ *   - Static GET for /regulatory   → web/regulatory.html
  *   - Static GET for /firms/<slug> → web/firm.html
  *   - Static GET for /articles/<slug> → web/article.html
  *   - GET /Feed                    → resources.js Feed.get()
@@ -199,6 +200,23 @@ const MIME = {
   ".ico": "image/x-icon",
 };
 
+const STATIC_EXACT_PATHS = new Map([
+  ["/", "/index.html"],
+  ["/firms", "/firms.html"],
+  ["/recruiting", "/recruiting.html"],
+  ["/rankings", "/rankings.html"],
+  ["/regulatory", "/regulatory.html"],
+  ["/advisors", "/advisors.html"],
+  ["/teams", "/teams.html"],
+]);
+
+const STATIC_PREFIX_PATHS = [
+  ["/firms/", "/firm.html"],
+  ["/advisors/", "/advisor.html"],
+  ["/teams/", "/team.html"],
+  ["/articles/", "/article.html"],
+];
+
 /**
  * Handles serve static for this workflow.
  * @param req - req used by this operation.
@@ -233,17 +251,11 @@ async function serveStatic(req, res) {
  * @returns Static file path under harper-app/web.
  */
 function staticPath(path) {
-  if (path === "/") return "/index.html";
-  if (path === "/firms") return "/firms.html";
-  if (path === "/recruiting") return "/recruiting.html";
-  if (path === "/rankings") return "/rankings.html";
-  if (path.startsWith("/firms/")) return "/firm.html";
-  if (path === "/advisors") return "/advisors.html";
-  if (path.startsWith("/advisors/")) return "/advisor.html";
-  if (path === "/teams") return "/teams.html";
-  if (path.startsWith("/teams/")) return "/team.html";
-  if (path.startsWith("/articles/")) return "/article.html";
-  return path;
+  return (
+    STATIC_EXACT_PATHS.get(path) ||
+    STATIC_PREFIX_PATHS.find(([prefix]) => path.startsWith(prefix))?.[1] ||
+    path
+  );
 }
 
 /**

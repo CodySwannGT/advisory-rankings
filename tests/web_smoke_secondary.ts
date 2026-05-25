@@ -75,7 +75,7 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     hasText: /Could not load compliance events/i,
   });
 
-  await smokeGoto(page, `${BASE}/regulatory.html`);
+  await smokeGoto(page, `${BASE}/regulatory`);
   await retryAsync(
     async () => {
       await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -89,23 +89,33 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
   });
   await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const legacyResponse = await page.request.get(`${BASE}/regulatory.html`);
   await shot(page, "06-compliance");
 
   return [
-    check(await complianceCard.isVisible(), "regulatory.html: compliance card"),
+    check(
+      new URL(page.url()).pathname === "/regulatory",
+      "regulatory: clean URL"
+    ),
+    check(
+      legacyResponse.ok(),
+      "regulatory.html: legacy route remains compatible",
+      String(legacyResponse.status())
+    ),
+    check(await complianceCard.isVisible(), "regulatory: compliance card"),
     check(
       (await page.locator(DISCLOSURE_CARD_SELECTOR).count()) >= 1,
-      "regulatory.html: disclosure events rendered"
+      "regulatory: disclosure events rendered"
     ),
     check(
       /FINRA|regulatory|disclosure/i.test(
         (await regulatoryDisclosure.textContent()) ?? ""
       ),
-      "regulatory.html: event shows regulatory context"
+      "regulatory: event shows regulatory context"
     ),
     check(
       (await loadError.count()) === 0,
-      "regulatory.html: no compliance load error"
+      "regulatory: no compliance load error"
     ),
   ];
 }
