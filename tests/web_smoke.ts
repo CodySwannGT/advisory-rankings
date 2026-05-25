@@ -8,7 +8,7 @@
  */
 
 import { mkdir } from "node:fs/promises";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
@@ -39,6 +39,14 @@ import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
 import { smokeRecruiting } from "./web_smoke_recruiting.js";
 import { smokeRankings } from "./web_smoke_rankings.js";
 
+const DRAWER_OPEN_CLASS = "drawer-open";
+const DRAWER_SELECTOR = ".nav-drawer";
+const DRAWER_LINKS_SELECTOR =
+  ".nav-drawer .nav-links a, .nav-drawer .me-action";
+const DRAWER_FIRMS_LINK_SELECTOR = '.nav-drawer .nav-links a:has-text("Firms")';
+const NAV_BURGER_SELECTOR = ".nav-burger";
+const NAV_SEARCH_SELECTOR = ".nav .search";
+
 /**
  * Checks the mobile navigation drawer.
  * @param browser - Browser used to create a mobile context.
@@ -55,36 +63,19 @@ async function smokeMobile(
     extraHTTPHeaders
   );
   const page = await mobile.newPage();
-  const drawer = page.locator(".nav-drawer");
-  const search = page.locator(".nav .search");
+  const drawer = page.locator(DRAWER_SELECTOR);
+  const search = page.locator(NAV_SEARCH_SELECTOR);
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, ARTICLE_CARD_SELECTOR);
-  const closedMetrics = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    searchWidth:
-      document.querySelector(".nav .search")?.getBoundingClientRect().width ??
-      0,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
+  const closedMetrics = await readClosedMobileMetrics(page);
   await shot(page, "08-mobile-closed");
-  await page.locator(".nav-burger").click();
-  await page.waitForFunction(
-    () => document.body.classList.contains("drawer-open"),
-    null,
-    { timeout: QUICK_UI_TIMEOUT }
-  );
-  const drawerLinkLabels = await page
-    .locator(".nav-drawer .nav-links a, .nav-drawer .me-action")
-    .evaluateAll(nodes =>
-      nodes.map(node => node.textContent?.trim()).filter(Boolean)
-    );
-  const openMetrics = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
+  await openMobileDrawer(page);
+  const drawerLinkLabels = await readDrawerLinkLabels(page);
+  const openMetrics = await readOpenMobileMetrics(page);
   await shot(page, "09-mobile-drawer-open");
-  await page.locator('.nav-drawer .nav-links a:has-text("Firms")').click();
+  const escapeResult = await exerciseEscapeDismissal(page);
+  await page.locator(DRAWER_FIRMS_LINK_SELECTOR).click();
   await page.waitForURL(/\/firms$/, { timeout: QUICK_UI_TIMEOUT });
 
   return await closeWithChecks(mobile, [
@@ -101,10 +92,18 @@ async function smokeMobile(
       `closed ${closedMetrics.scrollWidth}/${closedMetrics.clientWidth}, open ${openMetrics.scrollWidth}/${openMetrics.clientWidth}`
     ),
     check(
-      await page.locator(".nav-burger").isVisible(),
+      await page.locator(NAV_BURGER_SELECTOR).isVisible(),
       "mobile: hamburger visible"
     ),
     check(await drawer.isVisible(), "mobile: drawer opens"),
+    check(
+      !escapeResult.closed.open && escapeResult.closed.expanded === "false",
+      "mobile: Escape closes drawer and resets aria-expanded"
+    ),
+    check(
+      escapeResult.reopened.open && escapeResult.reopened.expanded === "true",
+      "mobile: drawer reopens after Escape dismissal"
+    ),
     check(
       ["Home", "Firms", "Rankings", "Advisors", "Teams", "Sign in"].every(
         label => drawerLinkLabels.includes(label)
@@ -117,6 +116,117 @@ async function smokeMobile(
       "mobile: drawer link navigates to Firms"
     ),
   ]);
+}
+
+/**
+ * Reads mobile viewport metrics before the drawer opens.
+ * @param page - Browser page to inspect.
+ * @returns Search and overflow metrics.
+ */
+async function readClosedMobileMetrics(page: Page) {
+  return await page.evaluate(searchSelector => {
+    const searchBox = document
+      .querySelector(searchSelector)
+      ?.getBoundingClientRect();
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      searchWidth: searchBox?.width ?? 0,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  }, NAV_SEARCH_SELECTOR);
+}
+
+/**
+ * Reads mobile viewport metrics while the drawer is open.
+ * @param page - Browser page to inspect.
+ * @returns Overflow metrics.
+ */
+async function readOpenMobileMetrics(page: Page) {
+  return await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+}
+
+/**
+ * Reads visible drawer labels for navigation affordance checks.
+ * @param page - Browser page to inspect.
+ * @returns Drawer link and auth action labels.
+ */
+async function readDrawerLinkLabels(page: Page) {
+  return await page
+    .locator(DRAWER_LINKS_SELECTOR)
+    .evaluateAll(nodes =>
+      nodes.map(node => node.textContent?.trim()).filter(Boolean)
+    );
+}
+
+/**
+ * Opens the mobile drawer and waits for the body state used by the UI.
+ * @param page - Browser page to inspect.
+ */
+async function openMobileDrawer(page: Page): Promise<void> {
+  await page.locator(NAV_BURGER_SELECTOR).click();
+  await waitForDrawerOpenState(page, true);
+}
+
+/**
+ * Presses Escape against an open drawer, captures closed state, then reopens it.
+ * @param page - Browser page to inspect.
+ * @returns Drawer state after Escape and after reopening.
+ */
+async function exerciseEscapeDismissal(page: Page): Promise<{
+  readonly closed: DrawerState;
+  readonly reopened: DrawerState;
+}> {
+  await page.keyboard.press("Escape");
+  await waitForDrawerOpenState(page, false);
+  const closed = await readDrawerState(page);
+  await openMobileDrawer(page);
+  return { closed, reopened: await readDrawerState(page) };
+}
+
+/** Drawer body class and trigger ARIA state. */
+interface DrawerState {
+  readonly expanded: string | null | undefined;
+  readonly open: boolean;
+}
+
+/**
+ * Reads the class and ARIA state that define drawer visibility.
+ * @param page - Browser page to inspect.
+ * @returns Drawer state from DOM markers.
+ */
+async function readDrawerState(page: Page): Promise<DrawerState> {
+  return await page.evaluate(
+    ({ drawerOpenClass, navBurgerSelector }) => ({
+      open: document.body.classList.contains(drawerOpenClass),
+      expanded: document
+        .querySelector(navBurgerSelector)
+        ?.getAttribute("aria-expanded"),
+    }),
+    {
+      drawerOpenClass: DRAWER_OPEN_CLASS,
+      navBurgerSelector: NAV_BURGER_SELECTOR,
+    }
+  );
+}
+
+/**
+ * Waits for the drawer body class to match the expected state.
+ * @param page - Browser page to inspect.
+ * @param open - Whether the drawer should be open.
+ */
+async function waitForDrawerOpenState(
+  page: Page,
+  open: boolean
+): Promise<void> {
+  await page.waitForFunction(
+    ({ drawerOpenClass, expectedOpen }) =>
+      document.body.classList.contains(drawerOpenClass) === expectedOpen,
+    { drawerOpenClass: DRAWER_OPEN_CLASS, expectedOpen: open },
+    { timeout: QUICK_UI_TIMEOUT }
+  );
 }
 
 /**
