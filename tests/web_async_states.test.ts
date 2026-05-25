@@ -35,11 +35,13 @@ browserDescribe("web async states", () => {
 
   it("shows safe sign-in recovery copy for auth failures", async () => {
     const page = await browser.newPage();
+    let loginRequested = false;
 
     await page.route("**/Me", async route => {
       await route.fulfill({ json: { authenticated: false } });
     });
     await page.route("**/Login", async route => {
+      loginRequested = true;
       await route.fulfill({
         status: 403,
         contentType: "application/json",
@@ -50,17 +52,12 @@ browserDescribe("web async states", () => {
     await page.goto(`${baseUrl}/login.html`, { waitUntil: "domcontentloaded" });
     await page.locator('input[name="email"]').fill("user@example.test");
     await page.locator('input[name="password"]').fill("bad-password");
-    const loginResponse = page.waitForResponse(response =>
-      response.url().endsWith("/Login")
-    );
-    await page
-      .locator('input[name="password"]')
-      .evaluate(input => input.form?.requestSubmit());
-    expect((await loginResponse).status()).toBe(403);
+    await page.locator('button[type="submit"]').click();
 
     await page
       .getByText(/Check your account access or return to public pages/u)
       .waitFor({ timeout: QUICK_TIMEOUT });
+    expect(loginRequested).toBe(true);
     expect(await page.getByText("internal authorization policy").count()).toBe(
       0
     );
@@ -159,8 +156,9 @@ async function startStaticServer(): Promise<Server> {
     const resolvedPath = resolveStaticPath(filePath);
 
     try {
+      const file = await readFile(resolvedPath);
       response.writeHead(200, { "Content-Type": contentType(resolvedPath) });
-      response.end(await readFile(resolvedPath));
+      response.end(file);
     } catch {
       response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
       response.end("Not found");
