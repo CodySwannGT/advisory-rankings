@@ -1,6 +1,7 @@
 // Shared loading and partial-failure states for detail/profile routes.
 
 import {
+  AsyncStateCard,
   Card,
   EmptyCard,
   EmptyText,
@@ -21,6 +22,16 @@ const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
 const EmptyTextComponent = EmptyText as unknown as DesignSystemComponent;
 const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
 const SkeletonComponent = Skeleton as unknown as DesignSystemComponent;
+const AsyncStateCardComponent =
+  AsyncStateCard as unknown as DesignSystemComponent;
+
+/**
+ * Options for a detail not-found recovery card.
+ */
+type DetailNotFoundOptions = Readonly<
+  Record<"title" | "actionLabel" | "href", string> &
+    Partial<Record<"id", string>>
+>;
 
 /**
  * Renders profile/detail placeholders that preserve the final page structure.
@@ -53,6 +64,36 @@ export function DetailErrorCard(title: string, error: unknown): HTMLElement {
   return EmptyCardComponent({
     title,
     body: "Try again shortly.",
+  });
+}
+
+/**
+ * Renders a detail-route not-found state with a direct recovery action.
+ * @param options - Display copy and destination for the recovery action.
+ * @param options.title - Not-found heading.
+ * @param options.id - Requested record id.
+ * @param options.actionLabel - Recovery button label.
+ * @param options.href - Recovery route.
+ * @returns Not-found card.
+ */
+export function DetailNotFoundCard({
+  title,
+  id,
+  actionLabel,
+  href,
+}: DetailNotFoundOptions): HTMLElement {
+  return AsyncStateCardComponent({
+    kind: "not-found",
+    title,
+    body: id ? `Record id: ${id}` : undefined,
+    actionLabel,
+    onAction: () => {
+      window.location.assign(href);
+    },
+    attrs: {
+      class: "detail-not-found-card",
+      "data-recovery-href": href,
+    },
   });
 }
 
