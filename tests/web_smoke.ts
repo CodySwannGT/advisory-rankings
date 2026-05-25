@@ -33,7 +33,10 @@ import {
   smokeTeam,
   smokeAdvisor,
 } from "./web_smoke_scenarios.js";
-import { smokeGlobalSearch } from "./web_smoke_search.js";
+import {
+  smokeGlobalSearch,
+  smokeGlobalSearchMobile,
+} from "./web_smoke_search.js";
 import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
 import { smokeRecruiting } from "./web_smoke_recruiting.js";
 import { smokeRankings } from "./web_smoke_rankings.js";
@@ -164,6 +167,7 @@ async function runScenarios(
     ...(await smokeRecruiting(page)),
     ...(await smokeRankings(page)),
     ...(await smokeGlobalSearch(page)),
+    ...(await smokeGlobalSearchMobile(browser, extraHTTPHeaders)),
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
