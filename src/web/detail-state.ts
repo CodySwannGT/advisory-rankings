@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared loading and partial-failure states for detail/profile routes.
 
 import {
@@ -11,13 +10,32 @@ import {
 } from "./design-system/index.js";
 
 /**
+ * Narrow callable type for design-system helpers that still opt out of TS.
+ */
+type DesignSystemComponent = (
+  options: Readonly<Record<string, unknown>>
+) => HTMLElement;
+
+const CardComponent = Card as unknown as DesignSystemComponent;
+const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
+const EmptyTextComponent = EmptyText as unknown as DesignSystemComponent;
+const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
+const SkeletonComponent = Skeleton as unknown as DesignSystemComponent;
+
+/**
  * Renders profile/detail placeholders that preserve the final page structure.
  * @param root0 - Route columns and display copy.
  * @param root0.center - Main column node.
  * @param root0.right - Right rail node.
  * @param root0.label - Entity label displayed to assistive tech.
  */
-export function renderDetailLoading({ center, right, label }) {
+export function renderDetailLoading({
+  center,
+  right,
+  label,
+}: Readonly<
+  Record<"center" | "right", HTMLElement> & Record<"label", string>
+>): void {
   center.appendChild(profileSkeleton(label));
   center.appendChild(sectionSkeleton("Overview"));
   center.appendChild(sectionSkeleton("Related activity"));
@@ -30,10 +48,11 @@ export function renderDetailLoading({ center, right, label }) {
  * @param error - Error thrown by the resource request.
  * @returns Empty-state card.
  */
-export function DetailErrorCard(title, error) {
-  return EmptyCard({
+export function DetailErrorCard(title: string, error: unknown): HTMLElement {
+  console.error("Detail route failed to load", error);
+  return EmptyCardComponent({
     title,
-    body: `Try again shortly. ${String(error?.message || error || "").slice(0, 180)}`,
+    body: "Try again shortly.",
   });
 }
 
@@ -42,7 +61,7 @@ export function DetailErrorCard(title, error) {
  * @param rows - Resource field that may be an array or an error envelope.
  * @returns Array rows when available, otherwise an empty array.
  */
-export function resourceRows(rows) {
+export function resourceRows(rows: unknown): readonly unknown[] {
   return Array.isArray(rows) ? rows : [];
 }
 
@@ -52,14 +71,31 @@ export function resourceRows(rows) {
  * @param rows - Resource field that may contain an error envelope.
  * @returns Failure card or null when the resource loaded.
  */
-export function PartialFailureCard(title, rows) {
-  if (!rows?.error) return null;
-  return SectionCard({
+export function PartialFailureCard(
+  title: string,
+  rows: unknown
+): HTMLElement | null {
+  if (!hasResourceError(rows)) return null;
+  return SectionCardComponent({
     title,
-    body: EmptyText({
+    body: EmptyTextComponent({
       children: `${title} could not load. The rest of this profile remains available.`,
     }),
   });
+}
+
+/**
+ * Checks whether a related-resource payload is an error envelope.
+ * @param rows - Resource field that may contain an error value.
+ * @returns Whether the resource failed independently.
+ */
+function hasResourceError(rows: unknown): boolean {
+  return (
+    typeof rows === "object" &&
+    rows !== null &&
+    "error" in rows &&
+    Boolean((rows as Readonly<Record<string, unknown>>).error)
+  );
 }
 
 /**
@@ -67,8 +103,8 @@ export function PartialFailureCard(title, rows) {
  * @param label - Entity label displayed to assistive tech.
  * @returns Skeleton card.
  */
-function profileSkeleton(label) {
-  return Card({
+function profileSkeleton(label: string): HTMLElement {
+  return CardComponent({
     attrs: {
       class: "detail-loading-card",
       "aria-label": `Loading ${label}`,
@@ -79,7 +115,7 @@ function profileSkeleton(label) {
       el(
         "div",
         { class: "profile-head" },
-        Skeleton({
+        SkeletonComponent({
           width: 104,
           height: 104,
           attrs: { class: "profile-avatar" },
@@ -87,9 +123,9 @@ function profileSkeleton(label) {
         el(
           "div",
           { class: "profile-title" },
-          Skeleton({ width: "60%", height: 28 }),
-          Skeleton({ width: "42%", height: 14 }),
-          Skeleton({ width: "34%", height: 22 })
+          SkeletonComponent({ width: "60%", height: 28 }),
+          SkeletonComponent({ width: "42%", height: 14 }),
+          SkeletonComponent({ width: "34%", height: 22 })
         )
       ),
     ],
@@ -101,14 +137,14 @@ function profileSkeleton(label) {
  * @param title - Placeholder section label.
  * @returns Skeleton section card.
  */
-function sectionSkeleton(title) {
-  return SectionCard({
+function sectionSkeleton(title: string): HTMLElement {
+  return SectionCardComponent({
     title,
     attrs: { class: "detail-loading-card", "aria-busy": "true" },
     body: [
-      Skeleton({ width: "88%" }),
-      Skeleton({ width: "72%" }),
-      Skeleton({ width: "54%" }),
+      SkeletonComponent({ width: "88%" }),
+      SkeletonComponent({ width: "72%" }),
+      SkeletonComponent({ width: "54%" }),
     ],
   });
 }

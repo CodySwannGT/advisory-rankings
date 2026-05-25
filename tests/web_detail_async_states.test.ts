@@ -34,87 +34,99 @@ describe("detail async states", () => {
       releaseAdvisor = resolveRelease;
     });
 
-    await page.route("**/Me", async route => {
-      await route.fulfill({ json: { authenticated: false } });
-    });
-    await page.route("**/AdvisorProfile/advisor-1", async route => {
-      await advisorReleased;
-      await route.fulfill({ json: missingAdvisor("advisor-1") });
-    });
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/AdvisorProfile/advisor-1", async route => {
+        await advisorReleased;
+        await route.fulfill({ json: missingAdvisor("advisor-1") });
+      });
 
-    await page.goto(`${baseUrl}/advisor.html?id=advisor-1`, {
-      waitUntil: "domcontentloaded",
-    });
+      await page.goto(`${baseUrl}/advisor.html?id=advisor-1`, {
+        waitUntil: "domcontentloaded",
+      });
 
-    await page.getByLabel("Loading advisor profile").waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    expect(await page.locator(".detail-loading-card").count()).toBe(4);
+      await page.getByLabel("Loading advisor profile").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(await page.locator(".detail-loading-card").count()).toBe(4);
 
-    releaseAdvisor();
-    await page.getByText("Advisor not found").waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    await page.close();
+      releaseAdvisor();
+      await page.getByText("Advisor not found").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    } finally {
+      releaseAdvisor();
+      await page.close();
+    }
   });
 
   it("renders route-level detail errors without removing navigation", async () => {
     const page = await browser.newPage();
 
-    await page.route("**/Me", async route => {
-      await route.fulfill({ json: { authenticated: false } });
-    });
-    await page.route("**/FirmProfile/firm-1", async route => {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "temporary outage" }),
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
       });
-    });
+      await page.route("**/FirmProfile/firm-1", async route => {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "temporary outage" }),
+        });
+      });
 
-    await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
-      waitUntil: "domcontentloaded",
-    });
+      await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+        waitUntil: "domcontentloaded",
+      });
 
-    const errorCard = page.getByText("Could not load firm");
-    await errorCard.waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    const firmsNav = page.locator(".nav a", { hasText: "Firms" });
-    await firmsNav.waitFor();
-    expect(await errorCard.isVisible()).toBe(true);
-    expect(await firmsNav.isVisible()).toBe(true);
-    await page.close();
+      const errorCard = page.getByText("Could not load firm");
+      await errorCard.waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      const firmsNav = page.locator(".nav a", { hasText: "Firms" });
+      await firmsNav.waitFor();
+      expect(await errorCard.isVisible()).toBe(true);
+      expect(await page.getByText("Try again shortly.").isVisible()).toBe(true);
+      expect(await page.getByText("temporary outage").count()).toBe(0);
+      expect(await firmsNav.isVisible()).toBe(true);
+    } finally {
+      await page.close();
+    }
   });
 
   it("keeps article content visible when related sections fail", async () => {
     const page = await browser.newPage();
 
-    await page.route("**/Me", async route => {
-      await route.fulfill({ json: { authenticated: false } });
-    });
-    await page.route("**/ArticleView/article-1", async route => {
-      await route.fulfill({ json: articleWithPartialFailures() });
-    });
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/ArticleView/article-1", async route => {
+        await route.fulfill({ json: articleWithPartialFailures() });
+      });
 
-    await page.goto(`${baseUrl}/article.html?id=article-1`, {
-      waitUntil: "domcontentloaded",
-    });
+      await page.goto(`${baseUrl}/article.html?id=article-1`, {
+        waitUntil: "domcontentloaded",
+      });
 
-    const headline = page.getByText("Advisor moves in test market");
-    await headline.waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    await page.getByText("Article body could not load").waitFor();
-    await page.getByText("Extracted facts could not load").waitFor();
-    await page.getByText("Mentioned advisors could not load").waitFor();
-    const metadataHeading = page.getByRole("heading", {
-      name: "Article metadata",
-    });
-    await metadataHeading.waitFor();
-    expect(await headline.isVisible()).toBe(true);
-    expect(await metadataHeading.isVisible()).toBe(true);
-    await page.close();
+      const headline = page.getByText("Advisor moves in test market");
+      await headline.waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("Article body could not load").waitFor();
+      await page.getByText("Extracted facts could not load").waitFor();
+      await page.getByText("Mentioned advisors could not load").waitFor();
+      const metadataHeading = page.getByRole("heading", {
+        name: "Article metadata",
+      });
+      await metadataHeading.waitFor();
+      expect(await headline.isVisible()).toBe(true);
+      expect(await metadataHeading.isVisible()).toBe(true);
+    } finally {
+      await page.close();
+    }
   });
 });
 
@@ -153,7 +165,7 @@ async function startStaticServer(): Promise<Server> {
  * @returns Local static file path.
  */
 function resolveStaticPath(urlPath: string): string {
-  const cleanPath = normalize(decodeURIComponent(urlPath)).replace(
+  const cleanPath = normalize(safeDecodePath(urlPath)).replace(
     /^(\.\.(\/|\\|$))+/,
     ""
   );
@@ -166,6 +178,19 @@ function resolveStaticPath(urlPath: string): string {
     return join(WEB_ROOT, "404.html");
   }
   return candidate;
+}
+
+/**
+ * Decodes a request path while preserving malformed paths for normal 404 flow.
+ * @param urlPath - Incoming request path.
+ * @returns Decoded URL path or the original value when decoding fails.
+ */
+function safeDecodePath(urlPath: string): string {
+  try {
+    return decodeURIComponent(urlPath);
+  } catch {
+    return urlPath;
+  }
 }
 
 /**
@@ -191,7 +216,7 @@ function contentType(filePath: string): string {
  * @param id - Requested advisor id.
  * @returns AdvisorProfile not-found response.
  */
-function missingAdvisor(id: string) {
+function missingAdvisor(id: string): MissingAdvisorResponse {
   return { error: "not found", id };
 }
 
@@ -200,7 +225,7 @@ function missingAdvisor(id: string) {
  * related sections.
  * @returns ArticleView response.
  */
-function articleWithPartialFailures() {
+function articleWithPartialFailures(): ArticleWithPartialFailures {
   return {
     article: {
       id: "article-1",
@@ -220,3 +245,40 @@ function articleWithPartialFailures() {
     provenance: { error: "provenance unavailable" },
   };
 }
+
+/**
+ * Test payload for AdvisorProfile not-found responses.
+ */
+type MissingAdvisorResponse = Readonly<{
+  error: string;
+  id: string;
+}>;
+
+/**
+ * Test payload for related resources that fail independently.
+ */
+type FailedResource = Readonly<{
+  error: string;
+}>;
+
+/**
+ * Minimal ArticleView payload used by partial-failure browser tests.
+ */
+type ArticleWithPartialFailures = Readonly<{
+  article: Readonly<{
+    id: string;
+    headline: string;
+    dek: string;
+    category: string;
+    publishedDate: string;
+    modifiedDate: string;
+    authors: readonly string[];
+    url: string;
+  }>;
+  body: FailedResource;
+  eventCards: FailedResource;
+  firms: readonly unknown[];
+  teams: readonly unknown[];
+  advisors: FailedResource;
+  provenance: FailedResource;
+}>;
