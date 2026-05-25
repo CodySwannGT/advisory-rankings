@@ -29,7 +29,14 @@ import {
   ArticleListBlock,
   TransitionEventCard,
   DisclosureEventCard,
+  clear,
 } from "./design-system/index.js";
+import {
+  DetailErrorCard,
+  PartialFailureCard,
+  renderDetailLoading,
+  resourceRows,
+} from "./detail-state.js";
 import {
   firmDetailsCard,
   regulatoryCard,
@@ -56,13 +63,18 @@ mountThreeColumnPage({
       return;
     }
 
+    renderDetailLoading({ center, right, label: "firm profile" });
     api(`/FirmProfile/${encodeURIComponent(id)}`)
-      .then(d => render(d, center, right))
-      .catch(err =>
-        center.appendChild(
-          EmptyCard({ title: "Error", body: String(err.message || err) })
-        )
-      );
+      .then(d => {
+        clear(center);
+        clear(right);
+        render(d, center, right);
+      })
+      .catch(err => {
+        clear(center);
+        clear(right);
+        center.appendChild(DetailErrorCard("Could not load firm", err));
+      });
   },
 });
 
@@ -74,6 +86,12 @@ mountThreeColumnPage({
  * @returns The rendered DOM node or section.
  */
 function render(d, center, right) {
+  if (d.error) {
+    center.appendChild(
+      EmptyCard({ title: "Firm not found", body: d.id || "" })
+    );
+    return;
+  }
   const f = d.firm;
   const profile = ProfileHead({
     initialsText: initials(f.name),
@@ -104,6 +122,11 @@ function appendSections(root, sections) {
  * @returns Ordered center-column sections.
  */
 function firmCenterSections(d) {
+  const currentTeams = resourceRows(d.currentTeams);
+  const transitionsIn = resourceRows(d.transitionsIn);
+  const transitionsOut = resourceRows(d.transitionsOut);
+  const disclosuresAtThisFirm = resourceRows(d.disclosuresAtThisFirm);
+  const articles = resourceRows(d.articles);
   return [
     d.firm.notes
       ? SectionCard({ title: "About", body: el("div", {}, d.firm.notes) })
@@ -115,31 +138,43 @@ function firmCenterSections(d) {
           body: paginatedAdvisors(d.firm.id, "past", { showEnd: true }),
         })
       : null,
-    teamsSection(d.currentTeams),
+    teamsSection(currentTeams),
+    PartialFailureCard("Teams currently at this firm", d.currentTeams),
     transitionSection(
+      `Recent moves to ${d.firm.short || d.firm.name}`,
+      transitionsIn
+    ),
+    PartialFailureCard(
       `Recent moves to ${d.firm.short || d.firm.name}`,
       d.transitionsIn
     ),
     transitionSection(
       `Recent moves away from ${d.firm.short || d.firm.name}`,
+      transitionsOut
+    ),
+    PartialFailureCard(
+      `Recent moves away from ${d.firm.short || d.firm.name}`,
       d.transitionsOut
     ),
-    d.disclosuresAtThisFirm.length
+    disclosuresAtThisFirm.length
       ? SectionCard({
           title: `Disclosures filed while advisors were at ${d.firm.short || d.firm.name}`,
           body: el(
             "div",
             {},
-            ...d.disclosuresAtThisFirm.map(dis =>
-              DisclosureEventCard(dis, fmts)
-            )
+            ...disclosuresAtThisFirm.map(dis => DisclosureEventCard(dis, fmts))
           ),
         })
       : null,
+    PartialFailureCard(
+      `Disclosures filed while advisors were at ${d.firm.short || d.firm.name}`,
+      d.disclosuresAtThisFirm
+    ),
     SectionCard({
-      title: `Coverage (${d.articles.length.toLocaleString()})`,
-      body: ArticleListBlock({ articles: d.articles, fmtDate, articleSource }),
+      title: `Coverage (${articles.length.toLocaleString()})`,
+      body: ArticleListBlock({ articles, fmtDate, articleSource }),
     }),
+    PartialFailureCard("Coverage", d.articles),
   ];
 }
 
@@ -152,7 +187,8 @@ function firmRightSections(d) {
   return [
     firmDetailsCard(d.firm),
     regulatoryCard(d.brokerCheckSnapshot),
-    branchesCard(d.branches),
+    branchesCard(resourceRows(d.branches)),
+    PartialFailureCard("Branches", d.branches),
   ];
 }
 
