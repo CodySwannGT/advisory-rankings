@@ -192,16 +192,50 @@ const baseRows = () => {
       subjectType: "advisor",
       methodologyUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
     },
+    {
+      id: "ranking-b",
+      publisher: "AdvisorHub",
+      name: "Next Gen",
+      year: 2025,
+      subjectType: "advisor",
+      methodologyUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+    },
   ]);
   setRows("RankingEntry", [
     {
       id: "ranking-entry-a",
       rankingId: "ranking-a",
       subjectAdvisorId: "advisor-a",
+      firmId: "firm-a",
+      rawDisplayName: "Avery Stone",
+      firmText: "Example Wealth LLC",
+      city: "Atlanta",
+      state: "GA",
+      sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+      sourceLabel: "AdvisorHub Advisors to Watch 2025",
+      loadedAt: "2026-05-25",
+      resolutionStatus: "resolved",
       rank: 12,
       scoreTotal: 92.4,
+      scoreScale: 87.2,
+      scoreGrowth: 91.5,
       aum: 1_200_000_000,
       regulatoryClean: true,
+    },
+    {
+      id: "ranking-entry-b",
+      rankingId: "ranking-b",
+      rawDisplayName: "Jordan Example",
+      firmText: "Unresolved Capital",
+      city: "Austin",
+      state: "TX",
+      sourceUrl: "https://www.advisorhub.com/advisors-to-watch-next-gen-2025/",
+      sourceLabel: "AdvisorHub Next Gen 2025",
+      loadedAt: "2026-05-25",
+      resolutionStatus: "unresolved",
+      rank: 3,
+      scoreScale: null,
+      scoreGrowth: 76.4,
     },
   ]);
   setRows("AdvisorMetricSnapshot", []);
@@ -634,6 +668,211 @@ describe("Harper feed and profile builders", () => {
         compiledAsOf: null,
       },
       provenance: { sourceTable: "BrokerCheckSnapshot", sourceIds: [] },
+    });
+  });
+
+  it("builds a source-backed rankings explorer payload", async () => {
+    const payload = await new (resources as any).RankingsExplorer().get(
+      routeTarget("", { category: "Next Gen", year: "2025" })
+    );
+
+    expect(new (resources as any).RankingsExplorer().allowRead()).toBe(true);
+    expect(payload).toMatchObject({
+      filters: {
+        category: "Next Gen",
+        limit: 50,
+        year: 2025,
+        sort: "rank",
+      },
+      summary: {
+        totalEntries: 1,
+        resolvedEntries: 0,
+        unresolvedEntries: 1,
+        representedFirms: 0,
+        representedStates: 1,
+      },
+      facets: {
+        categories: ["Advisors to Watch", "Next Gen"],
+        years: [2025],
+        states: ["GA", "TX"],
+      },
+    });
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]).toMatchObject({
+      id: "ranking-entry-b",
+      ranking: {
+        name: "Next Gen",
+        year: 2025,
+      },
+      subject: {
+        displayName: "Jordan Example",
+        id: null,
+        url: null,
+      },
+      firmText: "Unresolved Capital",
+      resolutionStatus: "unresolved",
+      scores: {
+        scale: {
+          value: null,
+          status: "unavailable",
+          label: "Unavailable",
+        },
+        growth: {
+          value: 76.4,
+          status: "loaded",
+        },
+      },
+      sourceStatus: [
+        "source-backed",
+        "unresolved-entity",
+        "unresolved-firm",
+        "missing-scale",
+      ],
+      provenance: {
+        sourceTable: "RankingEntry",
+        sourceIds: ["ranking-entry-b"],
+        rankingId: "ranking-b",
+      },
+    });
+  });
+
+  it("filters and sorts resolved rankings explorer rows", async () => {
+    const payload = await new (resources as any).RankingsExplorer().get(
+      routeTarget("", { firm: "Example Wealth LLC", resolved: "resolved" })
+    );
+
+    expect(payload.summary).toMatchObject({
+      totalEntries: 1,
+      resolvedEntries: 1,
+      unresolvedEntries: 0,
+      representedFirms: 1,
+    });
+    expect(payload.items[0]).toMatchObject({
+      id: "ranking-entry-a",
+      subject: {
+        kind: "advisor",
+        id: "advisor-a",
+        displayName: "Avery Stone",
+        url: "/advisor.html?id=avery-stone",
+      },
+      firm: {
+        id: "firm-a",
+        name: "Example Wealth Management",
+        url: "/firm.html?id=example-wealth",
+      },
+      source: {
+        url: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+        loadedAt: "2026-05-25",
+      },
+    });
+  });
+
+  it("covers rankings explorer fallback subjects, sorting, and empty states", async () => {
+    setRows("RankingEntry", [
+      {
+        id: "ranking-entry-team",
+        rankingId: "ranking-a",
+        subjectTeamId: "team-a",
+        firmId: "firm-a",
+        rawDisplayName: "Stone Group",
+        firmText: "Example Wealth Management",
+        city: "Atlanta",
+        state: "GA",
+        sourceLabel: "AdvisorHub ranking fixture",
+        resolutionStatus: "resolved",
+        rank: 7,
+        scoreGrowth: 88,
+      },
+      {
+        id: "ranking-entry-firm",
+        rankingId: "missing-ranking",
+        subjectFirmId: "firm-b",
+        rawDisplayName: "Beta Advisors",
+        firmText: "Beta Advisors",
+        rank: 2,
+        scoreScale: 96,
+        scoreGrowth: 64,
+      },
+      {
+        id: "ranking-entry-unresolved",
+        rankingId: "ranking-a",
+        rawDisplayName: "",
+        firmText: "",
+        resolutionStatus: "ambiguous",
+        scoreScale: 81,
+      },
+    ]);
+
+    const sorted = await new (resources as any).RankingsExplorer().get(
+      routeTarget("", {
+        limit: "not-a-number",
+        resolved: "bogus",
+        sort: "-growth",
+        year: "not-a-year",
+      })
+    );
+
+    expect(sorted.items.map((item: any) => item.id)).toEqual([
+      "ranking-entry-team",
+      "ranking-entry-firm",
+      "ranking-entry-unresolved",
+    ]);
+    expect(sorted.items[0]).toMatchObject({
+      subject: {
+        kind: "team",
+        id: "team-a",
+        displayName: "Stone Group",
+        url: "/team.html?id=stone-group",
+      },
+      source: {
+        url: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+        label: "AdvisorHub ranking fixture",
+      },
+    });
+    expect(sorted.items[1]).toMatchObject({
+      ranking: {
+        id: "missing-ranking",
+        publisher: "AdvisorHub",
+        name: "Unknown ranking",
+        year: null,
+        subjectType: "firm",
+      },
+      subject: {
+        kind: "firm",
+        id: "firm-b",
+        displayName: "Beta Advisors",
+        url: "/firm.html?id=beta-advisors",
+      },
+      sourceStatus: expect.arrayContaining(["missing-source", "missing-state"]),
+    });
+    expect(sorted.items[2]).toMatchObject({
+      subject: {
+        kind: "advisor",
+        id: null,
+        displayName: "Unresolved ranking row",
+      },
+      resolutionStatus: "ambiguous",
+      sourceStatus: expect.arrayContaining([
+        "unresolved-entity",
+        "unresolved-firm",
+        "missing-growth",
+      ]),
+    });
+
+    const empty = await new (resources as any).RankingsExplorer().get(
+      routeTarget("", { city: "missing", state: "ca" })
+    );
+
+    expect(empty).toMatchObject({
+      filters: {
+        city: "missing",
+        state: "CA",
+      },
+      summary: {
+        totalEntries: 0,
+      },
+      emptyState:
+        "No matching public ranking rows are loaded for these filters.",
     });
   });
 

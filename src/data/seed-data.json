@@ -828,6 +828,84 @@
       "teamSize": 19
     }
   ],
+  "Ranking": [
+    {
+      "id": "ranking:advisorhub:next-gen:2025",
+      "publisher": "AdvisorHub",
+      "name": "Next Gen",
+      "year": 2025,
+      "subjectType": "advisor",
+      "methodologyUrl": "https://www.advisorhub.com/advisors-to-watch-rankings/"
+    },
+    {
+      "id": "ranking:advisorhub:over-1b:2025",
+      "publisher": "AdvisorHub",
+      "name": "Over $1B",
+      "year": 2025,
+      "subjectType": "team",
+      "methodologyUrl": "https://www.advisorhub.com/advisors-to-watch-rankings/"
+    }
+  ],
+  "RankingEntry": [
+    {
+      "id": "ranking-entry:advisorhub:next-gen:2025:c-james-taylor",
+      "rankingId": "ranking:advisorhub:next-gen:2025",
+      "subjectAdvisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "rawDisplayName": "C. James Taylor",
+      "firmText": "Wells Fargo Advisors",
+      "city": "New York",
+      "state": "NY",
+      "sourceUrl": "https://www.advisorhub.com/advisors-to-watch-next-gen-2025/",
+      "sourceLabel": "AdvisorHub Next Gen 2025",
+      "loadedAt": "2026-05-25",
+      "resolutionStatus": "resolved",
+      "rank": 12,
+      "scoreScale": 94.2,
+      "scoreGrowth": 88.7,
+      "aum": 5940000000,
+      "productionT12": 18600000,
+      "teamSize": 19,
+      "regulatoryClean": true
+    },
+    {
+      "id": "ranking-entry:advisorhub:over-1b:2025:taylor-group",
+      "rankingId": "ranking:advisorhub:over-1b:2025",
+      "subjectTeamId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "rawDisplayName": "The Taylor Group",
+      "firmText": "Wells Fargo Advisors",
+      "city": "New York",
+      "state": "NY",
+      "sourceUrl": "https://www.advisorhub.com/advisors-to-watch-over-1b-2025/",
+      "sourceLabel": "AdvisorHub Over $1B 2025",
+      "loadedAt": "2026-05-25",
+      "resolutionStatus": "resolved",
+      "rank": 8,
+      "scoreScale": 96.1,
+      "scoreGrowth": 91.4,
+      "aum": 5940000000,
+      "productionT12": 18600000,
+      "teamSize": 19,
+      "regulatoryClean": true
+    },
+    {
+      "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+      "rankingId": "ranking:advisorhub:next-gen:2025",
+      "rawDisplayName": "Jordan Example",
+      "firmText": "Example Independent",
+      "city": "Austin",
+      "state": "TX",
+      "sourceUrl": "https://www.advisorhub.com/advisors-to-watch-next-gen-2025/",
+      "sourceLabel": "AdvisorHub Next Gen 2025",
+      "loadedAt": "2026-05-25",
+      "resolutionStatus": "unresolved",
+      "rank": 42,
+      "scoreScale": null,
+      "scoreGrowth": 72.3,
+      "regulatoryClean": null
+    }
+  ],
   "TransitionEvent": [
     {
       "announcedDate": "2026-05-01",

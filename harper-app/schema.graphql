@@ -381,6 +381,15 @@ type RankingEntry @table @export {
   subjectAdvisorId: ID @indexed
   subjectTeamId: ID @indexed
   subjectFirmId: ID @indexed
+  firmId: ID @indexed
+  rawDisplayName: String
+  firmText: String
+  city: String @indexed
+  state: String @indexed
+  sourceUrl: String
+  sourceLabel: String
+  loadedAt: Date @indexed
+  resolutionStatus: String @indexed
   rank: Int
   scoreTotal: Float
   scoreScale: Float
