@@ -30,6 +30,7 @@ import {
   smokeDirectories,
   smokeFeed,
   smokeFirm,
+  smokeNotFoundRecovery,
   smokeTeam,
   smokeAdvisor,
 } from "./web_smoke_scenarios.js";
@@ -169,6 +170,7 @@ async function runScenarios(
     ...(await smokeArticle(page)),
     ...(await smokeCompliance(page)),
     ...(await smokeDirectories(page)),
+    ...(await smokeNotFoundRecovery(page)),
     ...(await smokeAuth(page)),
     ...(await smokeBreakpoints(browser, extraHTTPHeaders)),
     ...(await smokeMobile(browser, extraHTTPHeaders)),
