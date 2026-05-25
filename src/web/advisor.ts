@@ -27,6 +27,7 @@ import {
 } from "./design-system/index.js";
 import {
   DetailErrorCard,
+  DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
   resourceRows,
@@ -84,7 +85,12 @@ mountThreeColumnPage({
 function render(d, center, right) {
   if (d.error) {
     center.appendChild(
-      EmptyCard({ title: "Advisor not found", body: d.id || "" })
+      DetailNotFoundCard({
+        title: "Advisor not found",
+        id: d.id,
+        actionLabel: "Back to Advisors",
+        href: "/advisors",
+      })
     );
     return;
   }
