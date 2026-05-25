@@ -125,6 +125,31 @@
 	padding: var(--ab-space-2) 0;
 }
 
+/* InlineStatus */
+.ab-inline-status {
+	display: flex;
+	align-items: center;
+	gap: var(--ab-space-2);
+	color: var(--ab-color-text-muted);
+	font-size: var(--ab-font-size-sm);
+	line-height: 1.4;
+	padding: var(--ab-space-2) 0;
+}
+.ab-inline-status--loading::before {
+	content: "";
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid var(--ab-color-border);
+	border-top-color: var(--ab-color-brand);
+	border-radius: var(--ab-radius-pill);
+	animation: ab-spin 0.8s linear infinite;
+}
+.ab-inline-status--error { color: var(--ab-color-danger); }
+.ab-inline-status--empty { font-style: italic; }
+@keyframes ab-spin {
+	to { transform: rotate(360deg); }
+}
+
 /* Headings */
 .ab-heading { margin: 0; }
 .ab-heading-1 { font-size: var(--ab-font-size-3xl); font-weight: var(--ab-font-weight-black); }
@@ -175,6 +200,20 @@
 	max-width: 100%;
 }
 .snap-table-scroll > table { min-width: max-content; }
+
+/* Async state cards — full-card fallbacks for empty, not-found,
+   permission, transient, and partial-resource states. */
+.ab-async-state .card-body {
+	display: grid;
+	gap: var(--ab-space-3);
+}
+.ab-async-state-body { max-width: 52rem; }
+.ab-async-state-action { justify-self: start; }
+.ab-async-state--permission { border-left: 4px solid var(--ab-color-warning); }
+.ab-async-state--transient,
+.ab-async-state--partial { border-left: 4px solid var(--ab-color-danger); }
+.ab-async-state--empty,
+.ab-async-state--not-found { border-left: 4px solid var(--ab-color-border); }
 
 /* GlobalSearch — header search box + dropdown.
    The wrap is the existing `.search` label (legacy navbar styles
