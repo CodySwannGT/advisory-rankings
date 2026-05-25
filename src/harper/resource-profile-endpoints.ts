@@ -8,6 +8,7 @@ import {
   teamChip,
   transitionRow,
 } from "./resource-feed.js";
+import { firmDueDiligenceModules } from "./resource-firm-due-diligence.js";
 import { advisorCountsForFirm, firmAdvisorRows } from "./resource-firm.js";
 import {
   cmpAsc,
@@ -221,7 +222,7 @@ function firmProfilePayload(db, firm) {
     db,
     firmId
   );
-  return {
+  const profile = {
     firm: { ...firm, short: firm.name },
     currentAdvisorCount,
     pastAdvisorCount,
@@ -247,6 +248,10 @@ function firmProfilePayload(db, firm) {
         .map(mention => mention.articleId)
     ),
     brokerCheckSnapshot: firmBrokerCheckSnapshot(db, firmId),
+  };
+  return {
+    ...profile,
+    dueDiligence: firmDueDiligenceModules(db, firmId, profile),
   };
 }
 
@@ -317,6 +322,7 @@ function firmBrokerCheckSnapshot(db, firmId) {
   return (
     snap && {
       fetchedAt: snap.fetchedAt,
+      id: snap.id,
       subjectCrd: snap.subjectCrd,
       bcScope: snap.bcScope,
       iaScope: snap.iaScope,

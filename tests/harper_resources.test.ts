@@ -48,6 +48,8 @@ const table = (name: string) => ({
   FirmAlias: table("FirmAlias"),
   License: table("License"),
   OutsideBusinessActivity: table("OutsideBusinessActivity"),
+  Ranking: table("Ranking"),
+  RankingEntry: table("RankingEntry"),
   RecruitingDealQuote: table("RecruitingDealQuote"),
   RegistrationApplication: table("RegistrationApplication"),
   Sanction: table("Sanction"),
@@ -64,6 +66,8 @@ const search = await import("../src/harper/resource-search.js");
 const feed = await import("../src/harper/resource-feed.js");
 const advisorResource = await import("../src/harper/resource-advisor.js");
 const firmResource = await import("../src/harper/resource-firm.js");
+const firmDueDiligenceResource =
+  await import("../src/harper/resource-firm-due-diligence.js");
 
 const setRows = (name: string, rows: any[]) => tableRows.set(name, rows);
 
@@ -179,6 +183,27 @@ const baseRows = () => {
       teamSize: 2,
     },
   ]);
+  setRows("Ranking", [
+    {
+      id: "ranking-a",
+      publisher: "AdvisorHub",
+      name: "Advisors to Watch",
+      year: 2025,
+      subjectType: "advisor",
+      methodologyUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+    },
+  ]);
+  setRows("RankingEntry", [
+    {
+      id: "ranking-entry-a",
+      rankingId: "ranking-a",
+      subjectAdvisorId: "advisor-a",
+      rank: 12,
+      scoreTotal: 92.4,
+      aum: 1_200_000_000,
+      regulatoryClean: true,
+    },
+  ]);
   setRows("AdvisorMetricSnapshot", []);
   setRows("TransitionEvent", [
     {
@@ -196,6 +221,14 @@ const baseRows = () => {
       fromFirmId: "firm-b",
       toFirmId: "firm-a",
       moveDate: "2024-03-01",
+    },
+    {
+      id: "transition-out",
+      subjectAdvisorId: "advisor-b",
+      fromFirmId: "firm-a",
+      toFirmId: "firm-b",
+      moveDate: "2024-04-01",
+      aumMoved: null,
     },
   ]);
   setRows("RecruitingDealQuote", [
@@ -479,6 +512,125 @@ describe("Harper feed and profile builders", () => {
         reasonForLeaving: "retired",
       }),
     ]);
+  });
+
+  it("builds source-backed firm due-diligence modules", async () => {
+    const db = await resourceData.loadAll();
+    const profile = await new (resources as any).FirmProfile().get(
+      routeTarget("Example Wealth LLC")
+    );
+
+    expect(profile.dueDiligence).toMatchObject({
+      firmId: "firm-a",
+      modules: {
+        recruitingMomentum: {
+          status: "loaded",
+          inbound: { count: 2, knownAum: 500_000_000, unknownAumCount: 1 },
+          outbound: { count: 1, knownAum: 0, unknownAumCount: 1 },
+          netMoveCount: 1,
+          netAumMoved: 500_000_000,
+          provenance: {
+            sourceTable: "TransitionEvent",
+            sourceIds: ["transition-team", "transition-a", "transition-out"],
+          },
+          freshness: {
+            status: "loaded",
+            asOf: "2024-04-01",
+          },
+        },
+        rosterFootprint: {
+          status: "loaded",
+          currentAdvisorCount: 1,
+          pastAdvisorCount: 1,
+          teamCount: 1,
+          branchCount: 1,
+        },
+        rankingPresence: {
+          status: "loaded",
+          resolvedCount: 1,
+          unresolvedCount: 0,
+          topRank: 12,
+          provenance: {
+            sourceTable: "RankingEntry",
+            sourceIds: ["ranking-entry-a"],
+          },
+        },
+        regulatorySnapshot: {
+          status: "loaded",
+          source: {
+            sourceName: "FINRA BrokerCheck",
+            sourceUrl: "https://brokercheck.finra.org/firm/summary/67890",
+            compiledAsOf: "2025-01-02",
+          },
+          provenance: {
+            sourceTable: "BrokerCheckSnapshot",
+            sourceIds: ["bc-firm"],
+          },
+        },
+        coverageTimeline: {
+          status: "loaded",
+          articleCount: 1,
+          provenance: {
+            sourceTables: ["Article", "ArticleFirmMention"],
+            sourceIds: ["article-a"],
+          },
+        },
+      },
+      dataConfidence: {
+        status: "partial",
+        modules: [
+          expect.objectContaining({
+            name: "recruitingMomentum",
+            freshness: expect.objectContaining({ asOf: "2024-04-01" }),
+          }),
+          expect.objectContaining({
+            name: "rosterFootprint",
+            freshness: expect.objectContaining({ asOf: "2025-01-02" }),
+          }),
+          expect.objectContaining({
+            name: "rankingPresence",
+            freshness: expect.objectContaining({ asOf: "2025" }),
+          }),
+          expect.objectContaining({
+            name: "regulatorySnapshot",
+            freshness: expect.objectContaining({ asOf: "2025-01-02" }),
+          }),
+          expect.objectContaining({
+            name: "coverageTimeline",
+            freshness: expect.objectContaining({ asOf: "2025-02-01" }),
+          }),
+        ],
+      },
+    });
+    expect(firmDueDiligenceResource.firmDueDiligenceModules).toBeTypeOf(
+      "function"
+    );
+    expect(db.byRanking.get("ranking-a")).toMatchObject({
+      name: "Advisors to Watch",
+    });
+  });
+
+  it("labels missing firm due-diligence source states explicitly", async () => {
+    setRows("RankingEntry", []);
+    setRows("BrokerCheckSnapshot", []);
+    const profile = await new (resources as any).FirmProfile().get(
+      routeTarget("Example Wealth LLC")
+    );
+
+    expect(profile.dueDiligence.modules.rankingPresence).toMatchObject({
+      status: "unavailable",
+      note: "No RankingEntry rows are loaded for this firm; this does not imply the firm has no ranked advisors, teams, or firm appearances.",
+      provenance: { sourceTable: "RankingEntry", sourceIds: [] },
+    });
+    expect(profile.dueDiligence.modules.regulatorySnapshot).toMatchObject({
+      status: "unavailable",
+      note: "No firm BrokerCheck snapshot is loaded for this firm.",
+      source: {
+        sourceName: "FINRA BrokerCheck",
+        compiledAsOf: null,
+      },
+      provenance: { sourceTable: "BrokerCheckSnapshot", sourceIds: [] },
+    });
   });
 
   it("covers fallback feed summaries and missing entity chips", async () => {
