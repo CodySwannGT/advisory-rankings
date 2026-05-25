@@ -1,0 +1,4 @@
+display_name: 'Tracker Build Intake'
+short_description: 'Vendor-neutral wrapper for the build-queue batch scanner'
+default_prompt:
+  - 'Use $tracker-build-intake: Vendor-neutral wrapper for the build-queue batch scanner.'
