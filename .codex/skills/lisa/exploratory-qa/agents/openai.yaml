@@ -1,0 +1,4 @@
+display_name: 'Exploratory QA'
+short_description: 'Playwright-backed exploratory QA workflow for web apps'
+default_prompt:
+  - 'Use $exploratory-qa: Playwright-backed exploratory QA workflow for web apps.'

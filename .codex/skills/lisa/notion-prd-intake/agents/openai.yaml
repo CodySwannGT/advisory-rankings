@@ -1,0 +1,4 @@
+display_name: 'Notion PRD Intake'
+short_description: 'Scans a Notion PRD database for pages in the configured `ready` status and runs each one through the dry-run validation pipeline'
+default_prompt:
+  - 'Use $notion-prd-intake: Scans a Notion PRD database for pages in the configured `ready` status and runs each one through the dry-run validation pipeline.'
