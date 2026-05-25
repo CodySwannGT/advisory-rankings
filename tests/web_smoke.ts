@@ -36,6 +36,7 @@ import {
 import { smokeGlobalSearch } from "./web_smoke_search.js";
 import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
 import { smokeRecruiting } from "./web_smoke_recruiting.js";
+import { smokeRankings } from "./web_smoke_rankings.js";
 
 /**
  * Checks the mobile navigation drawer.
@@ -104,8 +105,8 @@ async function smokeMobile(
     ),
     check(await drawer.isVisible(), "mobile: drawer opens"),
     check(
-      ["Home", "Firms", "Advisors", "Teams", "Sign in"].every(label =>
-        drawerLinkLabels.includes(label)
+      ["Home", "Firms", "Rankings", "Advisors", "Teams", "Sign in"].every(
+        label => drawerLinkLabels.includes(label)
       ),
       "mobile: drawer links visible at 320px",
       drawerLinkLabels.join(", ")
@@ -161,6 +162,7 @@ async function runScenarios(
   return [
     ...(await smokeFeed(page)),
     ...(await smokeRecruiting(page)),
+    ...(await smokeRankings(page)),
     ...(await smokeGlobalSearch(page)),
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),

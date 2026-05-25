@@ -66,6 +66,7 @@ function createLinks(active) {
     link("/", "Home"),
     link("/firms", "Firms"),
     link("/recruiting", "Recruiting"),
+    link("/rankings", "Rankings"),
     link("/advisors", "Advisors"),
     link("/teams", "Teams")
   );

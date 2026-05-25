@@ -973,44 +973,54 @@ body.drawer-open .nav .nav-scrim {
   overflow-x: auto;
 }
 
-/* ── Recruiting market page ─────────────────────────────────── */
+/* ── Recruiting market and rankings pages ───────────────────── */
 
-.recruiting-header .card-body {
+.recruiting-header .card-body,
+.rankings-header .card-body {
   display: grid;
   gap: 14px;
 }
-.recruiting-lede {
+.recruiting-lede,
+.rankings-lede {
   margin: 0;
   color: var(--text-muted);
 }
-.recruiting-stat-grid {
+.recruiting-stat-grid,
+.rankings-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
-.recruiting-stat {
+.recruiting-stat,
+.rankings-stat {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   padding: 10px;
 }
-.recruiting-stat-label {
+.recruiting-stat-label,
+.rankings-stat-label {
   display: block;
   color: var(--text-muted);
   font-size: 12px;
 }
-.recruiting-stat strong {
+.recruiting-stat strong,
+.rankings-stat strong {
   display: block;
   margin-top: 2px;
   font-size: 18px;
   overflow-wrap: anywhere;
 }
-.recruiting-filters {
+.recruiting-filters,
+.rankings-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
+}
+.rankings-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .filter-field {
   display: grid;
@@ -1042,10 +1052,15 @@ body.drawer-open .nav .nav-scrim {
 .filter-button:hover {
   filter: brightness(0.96);
 }
-.recruiting-table {
+.recruiting-table,
+.rankings-table {
   min-width: 720px;
 }
-.recruiting-table td {
+.rankings-table {
+  min-width: 960px;
+}
+.recruiting-table td,
+.rankings-table td {
   vertical-align: top;
 }
 .stacked-cell {
@@ -1065,6 +1080,8 @@ body.drawer-open .nav .nav-scrim {
 
 @media (max-width: 700px) {
   .recruiting-stat-grid,
+  .rankings-stat-grid,
+  .rankings-filters,
   .recruiting-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
