@@ -1069,6 +1069,72 @@ describe("Harper resource endpoints", () => {
     });
   });
 
+  it("filters feed responses by signal mode and source category", async () => {
+    setRows("Article", [
+      ...(tableRows.get("Article") ?? []),
+      {
+        id: "article-c",
+        headline: "Market roundup",
+        slug: "market-roundup",
+        publishedDate: "2025-01-01",
+        category: "unknown",
+      },
+    ]);
+
+    const eventBacked = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "event-backed" })
+    );
+    const compliance = await new (resources as any).Feed().get(
+      routeTarget("", {
+        category: "compliance",
+        mode: "compliance-disclosures",
+      })
+    );
+    const empty = await new (resources as any).Feed().get(
+      routeTarget("", { category: "firm bio" })
+    );
+
+    expect(eventBacked).toMatchObject({
+      count: 2,
+      filters: { mode: "event-backed", category: "all" },
+      summary: {
+        returned: 2,
+        total: 3,
+        modeTotal: 2,
+        categoryTotal: 3,
+      },
+      emptyState: null,
+    });
+    expect(
+      eventBacked.items.every((item: any) => item.eventCards.length > 0)
+    ).toBe(true);
+    expect(compliance).toMatchObject({
+      count: 1,
+      filters: { mode: "compliance-disclosures", category: "compliance" },
+      summary: {
+        returned: 1,
+        total: 3,
+        modeTotal: 1,
+        categoryTotal: 1,
+      },
+      items: [
+        expect.objectContaining({
+          article: expect.objectContaining({ id: "article-b" }),
+        }),
+      ],
+    });
+    expect(empty).toMatchObject({
+      count: 0,
+      filters: { mode: "all", category: "firm_bio" },
+      summary: { returned: 0, total: 3, modeTotal: 3, categoryTotal: 0 },
+      emptyState: {
+        reason: "no-filtered-feed-results",
+        message: "No feed items match the selected filters.",
+      },
+      items: [],
+    });
+  });
+
   it("calls curated MCP tools with public resource links", async () => {
     const endpoint = new (resources as any).mcp();
     const callTool = async (name: string, args: Record<string, unknown>) => {
@@ -1310,6 +1376,9 @@ describe("Harper directory and search resources", () => {
     const result = await new (resources as any).Search().get(
       routeTarget("", { q: "stone", limit: "5" })
     );
+    const firmOnly = await new (resources as any).Search().get(
+      routeTarget("", { kind: "firm", limit: "5", q: "example" })
+    );
 
     expect(firms.map((firm: any) => firm.name)).toEqual([
       "Beta Advisors",
@@ -1334,6 +1403,11 @@ describe("Harper directory and search resources", () => {
       "advisor",
       "team",
     ]);
+    expect(firmOnly).toMatchObject({
+      kind: "firm",
+      counts: { firms: 1, advisors: 0, teams: 0, total: 1 },
+      items: [expect.objectContaining({ kind: "firm", id: "firm-a" })],
+    });
   });
 
   it("handles optional aliases, team firm misses, and capped search results", async () => {
@@ -1405,6 +1479,7 @@ describe("Harper directory and search resources", () => {
       new (resources as any).Search().get(routeTarget("", { q: "s" }))
     ).resolves.toEqual({
       q: "s",
+      kind: "all",
       items: [],
       counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
     });

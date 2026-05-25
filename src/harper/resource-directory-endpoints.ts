@@ -125,9 +125,11 @@ export class Search extends Resource {
       .trim()
       .toLowerCase();
     const cap = Math.min(parsePagination(target).limit, 20);
+    const kind = parseSearchKind(target);
     if (norm.length < 2)
       return {
         q: norm,
+        kind,
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
@@ -154,13 +156,26 @@ export class Search extends Resource {
       byFirm,
       currentFirmByAdvisor,
       norm,
-    });
+    }).filter(match => kind === "all" || match.kind === kind);
     return {
       q: norm,
+      kind,
       items: matches.slice(0, cap).map(({ sortKey, ...row }) => row),
       counts: searchCounts(matches),
     };
   }
+}
+
+/**
+ * Parses the optional search-kind filter used by public `/Search` requests.
+ * @param target - Request target carrying an optional `kind` query param.
+ * @returns A bounded search kind, defaulting to `all` for missing/invalid input.
+ */
+function parseSearchKind(target) {
+  const kind = String(target?.get?.("kind") || "all")
+    .trim()
+    .toLowerCase();
+  return ["firm", "advisor", "team"].includes(kind) ? kind : "all";
 }
 
 /**
