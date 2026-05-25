@@ -57,9 +57,83 @@ describe("detail async states", () => {
       await page.getByText("Advisor not found").waitFor({
         timeout: QUICK_TIMEOUT,
       });
+      expect(
+        await page.getByRole("button", { name: "Back to Advisors" }).isVisible()
+      ).toBe(true);
     } finally {
       releaseAdvisor();
       await page.close();
+    }
+  });
+
+  it("renders route-specific recovery actions on missing detail records", async () => {
+    const cases = [
+      {
+        path: "/advisor.html?id=missing-advisor",
+        resource: "**/AdvisorProfile/missing-advisor",
+        payload: missingDetail("missing-advisor"),
+        title: "Advisor not found",
+        action: "Back to Advisors",
+        recoveryHref: "/advisors",
+      },
+      {
+        path: "/firm.html?id=missing-firm",
+        resource: "**/FirmProfile/missing-firm",
+        payload: missingDetail("missing-firm"),
+        title: "Firm not found",
+        action: "Back to Firms",
+        recoveryHref: "/firms",
+      },
+      {
+        path: "/team.html?id=missing-team",
+        resource: "**/TeamProfile/missing-team",
+        payload: missingDetail("missing-team"),
+        title: "Team not found",
+        action: "Back to Teams",
+        recoveryHref: "/teams",
+      },
+      {
+        path: "/article.html?id=missing-article",
+        resource: "**/ArticleView/missing-article",
+        payload: missingDetail("missing-article"),
+        title: "Article not found",
+        action: "Back to Articles",
+        recoveryHref: "/",
+      },
+    ];
+
+    for (const detailCase of cases) {
+      const page = await browser.newPage();
+      try {
+        await page.route("**/Me", async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(detailCase.resource, async route => {
+          await route.fulfill({ json: detailCase.payload });
+        });
+
+        await page.goto(`${baseUrl}${detailCase.path}`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        await page.getByText(detailCase.title).waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+        const action = page.getByRole("button", { name: detailCase.action });
+        expect(await action.isVisible()).toBe(true);
+        expect(
+          await page
+            .locator(".detail-not-found-card")
+            .getAttribute("data-recovery-href")
+        ).toBe(detailCase.recoveryHref);
+
+        await action.click();
+        await page.waitForURL(`**${detailCase.recoveryHref}`, {
+          timeout: QUICK_TIMEOUT,
+        });
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -266,13 +340,15 @@ function contentType(filePath: string): string {
 }
 
 /**
- * Builds the standard resource envelope for a missing advisor.
- * @param id - Requested advisor id.
- * @returns AdvisorProfile not-found response.
+ * Builds the standard resource envelope for a missing detail entity.
+ * @param id - Requested entity id.
+ * @returns Detail not-found response.
  */
-function missingAdvisor(id: string): MissingAdvisorResponse {
+function missingDetail(id: string): MissingDetailResponse {
   return { error: "not found", id };
 }
+
+const missingAdvisor = missingDetail;
 
 /**
  * Builds an ArticleView payload with successful primary content and failed
@@ -451,7 +527,7 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
 /**
  * Test payload for AdvisorProfile not-found responses.
  */
-type MissingAdvisorResponse = Readonly<{
+type MissingDetailResponse = Readonly<{
   error: string;
   id: string;
 }>;
