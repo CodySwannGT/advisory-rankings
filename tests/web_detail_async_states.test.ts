@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+/* eslint-disable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- Browser fixture payloads keep this detail-route regression self-contained. */
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -128,6 +129,58 @@ describe("detail async states", () => {
       await page.close();
     }
   });
+
+  it("renders firm due-diligence modules, filters, links, and unavailable states", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/FirmProfile/firm-1", async route => {
+        await route.fulfill({ json: firmDueDiligenceProfile() });
+      });
+
+      await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: "Firm due diligence" }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      const recruitingHeading = page.getByRole("heading", {
+        name: "Recruiting momentum",
+      });
+      expect(await recruitingHeading.isVisible()).toBe(true);
+      expect(
+        await page.getByRole("link", { name: "The Taylor Group" }).isVisible()
+      ).toBe(true);
+      expect(
+        await page
+          .getByText("No RankingEntry rows are loaded")
+          .first()
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await page.getByText("FINRA BrokerCheck").first().isVisible()
+      ).toBe(true);
+      expect(await page.getByText("Source: TransitionEvent").isVisible()).toBe(
+        true
+      );
+
+      await page.getByRole("button", { name: "Needs data" }).click();
+      expect(
+        await page
+          .getByRole("heading", { name: "Ranking presence" })
+          .isVisible()
+      ).toBe(true);
+      expect(await recruitingHeading.isVisible()).toBe(false);
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 /**
@@ -140,8 +193,9 @@ async function startStaticServer(): Promise<Server> {
     const resolvedPath = resolveStaticPath(filePath);
 
     try {
+      const body = await readFile(resolvedPath);
       response.writeHead(200, { "Content-Type": contentType(resolvedPath) });
-      response.end(await readFile(resolvedPath));
+      response.end(body);
     } catch {
       response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
       response.end("Not found");
@@ -247,6 +301,154 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
 }
 
 /**
+ * Builds a FirmProfile payload with source-backed and unavailable
+ * due-diligence modules.
+ * @returns FirmProfile response.
+ */
+function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
+  return {
+    firm: {
+      id: "firm-1",
+      name: "Example Wealth LLC",
+      short: "Example Wealth",
+      logoUrl: null,
+      channel: "wirehouse",
+      subChannel: "wealth_management",
+      hqCity: "New York",
+      hqState: "NY",
+      hqCountry: "US",
+      foundedYear: 1999,
+      finraCrd: "67890",
+      website: "https://example.com",
+    },
+    currentAdvisorCount: 4,
+    pastAdvisorCount: 2,
+    currentTeams: [],
+    transitionsIn: [],
+    transitionsOut: [],
+    disclosuresAtThisFirm: [],
+    articles: [],
+    branches: [],
+    brokerCheckSnapshot: null,
+    dueDiligence: {
+      generatedAt: "2026-05-25T12:00:00.000Z",
+      firmId: "firm-1",
+      modules: {
+        recruitingMomentum: {
+          status: "loaded",
+          note: "Calculated from canonical TransitionEvent rows for this firm.",
+          inbound: { count: 1, knownAum: 500000000, unknownAumCount: 0 },
+          outbound: { count: 0, knownAum: 0, unknownAumCount: 0 },
+          netMoveCount: 1,
+          netAumMoved: 500000000,
+          recentMoves: [
+            {
+              id: "move-1",
+              direction: "inbound",
+              subject: {
+                kind: "team",
+                id: "team-1",
+                name: "The Taylor Group",
+              },
+              moveDate: "2026-05-01T00:00:00.000Z",
+              aumMoved: 500000000,
+            },
+          ],
+          provenance: {
+            sourceTable: "TransitionEvent",
+            sourceIds: ["move-1"],
+          },
+          freshness: {
+            status: "loaded",
+            asOf: "2026-05-01T00:00:00.000Z",
+            note: "Source timestamp loaded.",
+          },
+        },
+        rosterFootprint: {
+          status: "loaded",
+          note: "Counts are derived from canonical roster, team, and branch rows.",
+          currentAdvisorCount: 4,
+          pastAdvisorCount: 2,
+          teamCount: 1,
+          branchCount: 3,
+          provenance: { sourceTables: ["EmploymentHistory", "Team", "Branch"] },
+          freshness: {
+            status: "loaded",
+            asOf: "2026-05-02T00:00:00.000Z",
+            note: "Source timestamp loaded.",
+          },
+        },
+        rankingPresence: {
+          status: "unavailable",
+          note: "No RankingEntry rows are loaded for this firm; this does not imply the firm has no ranked advisors, teams, or firm appearances.",
+          appearances: [],
+          resolvedCount: 0,
+          unresolvedCount: 0,
+          provenance: { sourceTable: "RankingEntry", sourceIds: [] },
+          freshness: {
+            status: "unavailable",
+            asOf: null,
+            note: "Ranking freshness is unavailable because no RankingEntry rows are loaded.",
+          },
+        },
+        regulatorySnapshot: {
+          status: "loaded",
+          note: "Regulatory values are source-backed by the loaded firm BrokerCheck snapshot.",
+          snapshot: {
+            subjectCrd: "67890",
+            bcScope: "ACTIVE",
+            iaScope: "ACTIVE",
+            disclosureCount: 12,
+            registeredStateCount: 52,
+          },
+          source: {
+            sourceName: "FINRA BrokerCheck",
+            sourceUrl: "https://brokercheck.finra.org/firm/summary/67890",
+            termsUrl: "https://brokercheck.finra.org/terms",
+            compiledAsOf: "2026-05-02T00:00:00.000Z",
+          },
+          provenance: {
+            sourceTable: "BrokerCheckSnapshot",
+            sourceIds: ["bc-1"],
+          },
+          freshness: {
+            status: "loaded",
+            asOf: "2026-05-02T00:00:00.000Z",
+            note: "Source timestamp loaded.",
+          },
+        },
+        coverageTimeline: {
+          status: "not_found",
+          note: "No source articles mention this firm in the loaded article data.",
+          recentArticles: [],
+          articleCount: 0,
+          provenance: {
+            sourceTables: ["Article", "ArticleFirmMention"],
+            sourceIds: [],
+          },
+          freshness: {
+            status: "unavailable",
+            asOf: null,
+            note: "Coverage freshness is unavailable because no article publication dates are loaded.",
+          },
+        },
+      },
+      dataConfidence: {
+        status: "partial",
+        note: "Module statuses distinguish loaded rows, explicit no-result states, and unavailable source tables.",
+        modules: [
+          { name: "recruitingMomentum", status: "loaded" },
+          { name: "rosterFootprint", status: "loaded" },
+          { name: "rankingPresence", status: "unavailable" },
+          { name: "regulatorySnapshot", status: "loaded" },
+          { name: "coverageTimeline", status: "not_found" },
+        ],
+      },
+    },
+  };
+}
+
+/**
  * Test payload for AdvisorProfile not-found responses.
  */
 type MissingAdvisorResponse = Readonly<{
@@ -282,3 +484,7 @@ type ArticleWithPartialFailures = Readonly<{
   advisors: FailedResource;
   provenance: FailedResource;
 }>;
+
+type FirmDueDiligenceProfile = Readonly<Record<string, unknown>>;
+
+/* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End self-contained browser fixture exception. */
