@@ -22,8 +22,8 @@
     "buckets": ["git", "documentation", "memory", "roles"]
   },
   "git": {
-    "prPerIngestion": false,
-    "autoMerge": false,
+    "prPerIngestion": true,
+    "autoMerge": true,
     "targetBranch": "main",
     "branchPrefix": "codex/wiki-ingest/"
   },
@@ -78,4 +78,3 @@
   "staff": [],
   "contaminationTerms": []
 }
-
