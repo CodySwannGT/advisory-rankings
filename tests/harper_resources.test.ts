@@ -211,8 +211,10 @@ const baseRows = () => {
       subjectAdvisorId: "advisor-a",
       fromFirmId: "firm-b",
       toFirmId: "firm-a",
+      toBranchId: "branch-a",
       moveDate: "2024-02-01",
       aumMoved: 500_000_000,
+      productionT12: 1_500_000,
       recruitingDealId: "deal-a",
     },
     {
@@ -220,6 +222,7 @@ const baseRows = () => {
       subjectTeamId: "team-a",
       fromFirmId: "firm-b",
       toFirmId: "firm-a",
+      toBranchId: "branch-a",
       moveDate: "2024-03-01",
     },
     {
@@ -227,6 +230,7 @@ const baseRows = () => {
       subjectAdvisorId: "advisor-b",
       fromFirmId: "firm-a",
       toFirmId: "firm-b",
+      fromBranchId: "branch-a",
       moveDate: "2024-04-01",
       aumMoved: null,
     },
@@ -695,6 +699,7 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).PublicFirms().allowRead()).toBe(true);
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
+    expect(new (resources as any).RecruitingMarket().allowRead()).toBe(true);
     expect(new (resources as any).Search().allowRead()).toBe(true);
     expect(new (resources as any).mcp().allowCreate()).toBe(true);
   });
@@ -890,6 +895,89 @@ describe("Harper resource endpoints", () => {
       resource: "advisorbook://article/article-a",
     });
     expect(articleResult.url).toContain("/articles/");
+  });
+
+  it("serves source-backed recruiting market aggregates", async () => {
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", { firm: "Example Wealth LLC", state: "ga", year: "2024" })
+    );
+
+    expect(market).toMatchObject({
+      filters: {
+        firmId: "firm-a",
+        state: "GA",
+        year: "2024",
+      },
+      summary: {
+        count: 3,
+        knownAum: 500_000_000,
+        unknownAumCount: 2,
+        missingT12Count: 2,
+      },
+      provenance: {
+        sourceTables: expect.arrayContaining(["TransitionEvent", "Article"]),
+        sourceIds: expect.arrayContaining([
+          "transition-a",
+          "transition-team",
+          "transition-out",
+        ]),
+      },
+    });
+    expect(market.firmMomentum[0]).toMatchObject({
+      firm: { id: "firm-a", short: "Example WM" },
+      inbound: { count: 2, knownAum: 500_000_000, unknownAumCount: 1 },
+      outbound: { count: 1, knownAum: 0, unknownAumCount: 1 },
+      netMoveCount: 1,
+      netKnownAum: 500_000_000,
+    });
+    expect(market.marketActivity[0]).toMatchObject({
+      market: "Atlanta, GA",
+      summary: { count: 3, knownAum: 500_000_000 },
+    });
+    expect(market.recentMoves).toEqual([
+      expect.objectContaining({
+        id: "transition-out",
+        sourceStatus: expect.arrayContaining([
+          "missing-source",
+          "missing-aum",
+          "missing-t12",
+        ]),
+      }),
+      expect.objectContaining({
+        id: "transition-team",
+        article: null,
+        sourceStatus: expect.arrayContaining([
+          "missing-source",
+          "missing-aum",
+          "missing-t12",
+        ]),
+      }),
+      expect.objectContaining({
+        id: "transition-a",
+        article: expect.objectContaining({
+          url: "https://www.advisorhub.com/stone-joins-example/",
+        }),
+        sourceStatus: ["source-backed"],
+      }),
+    ]);
+
+    await expect(
+      new (resources as any).RecruitingMarket().get(
+        routeTarget("", { firm: "missing-firm" })
+      )
+    ).resolves.toMatchObject({
+      summary: { count: 3 },
+      emptyState: null,
+    });
+    await expect(
+      new (resources as any).RecruitingMarket().get(
+        routeTarget("", { state: "ZZ" })
+      )
+    ).resolves.toMatchObject({
+      summary: { count: 0 },
+      emptyState:
+        "No matching public recruiting move data is loaded for these filters.",
+    });
   });
 
   it("reads AdvisorBook MCP resources with public payloads", async () => {
