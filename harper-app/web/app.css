@@ -611,6 +611,143 @@ body.drawer-open .nav .nav-scrim {
   margin-top: 6px;
 }
 
+/* ── Firm due diligence summary ─────────────────────────────── */
+
+.firm-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.firm-dd-summary,
+.firm-dd-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.firm-dd-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px 12px;
+}
+.firm-dd-metric strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.firm-dd-metric span,
+.firm-dd-metric small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.firm-dd-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.firm-dd-filter {
+  min-height: 34px;
+}
+.firm-dd-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.firm-dd-module {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--card);
+}
+.firm-dd-module--loaded {
+  border-left: 3px solid var(--accent-green);
+}
+.firm-dd-module--missing {
+  border-left: 3px solid var(--accent-amber);
+}
+.firm-dd-module[hidden] {
+  display: none;
+}
+.firm-dd-module-head,
+.firm-dd-confidence-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.firm-dd-module h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+}
+.firm-dd-note,
+.firm-dd-missing,
+.firm-dd-meta,
+.firm-dd-confidence p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.firm-dd-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.firm-dd-list-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.firm-dd-list-row span,
+.firm-dd-list-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.firm-dd-list-row strong {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+.firm-dd-link-row:hover {
+  text-decoration: none;
+  background: var(--bg);
+}
+.firm-dd-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.firm-dd-confidence {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.firm-dd-confidence-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.firm-dd-confidence-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
 /* List of advisors / members */
 .entity-list {
   display: flex;
@@ -685,6 +822,16 @@ body.drawer-open .nav .nav-scrim {
   }
   .profile-title h1 {
     font-size: 22px;
+  }
+  .firm-dd-module {
+    padding: 12px;
+  }
+  .firm-dd-list-row {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .firm-dd-list-row strong {
+    text-align: left;
   }
 }
 
