@@ -315,4 +315,5 @@ export {
   smokeCompliance,
   smokeDirectories,
 } from "./web_smoke_secondary.js";
+export { smokeNotFoundRecovery } from "./web_smoke_not_found.js";
 export { smokeAuth } from "./web_smoke_auth.js";
