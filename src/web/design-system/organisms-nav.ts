@@ -65,6 +65,7 @@ function createLinks(active) {
     { class: "nav-links" },
     link("/", "Home"),
     link("/firms", "Firms"),
+    link("/recruiting", "Recruiting"),
     link("/advisors", "Advisors"),
     link("/teams", "Teams")
   );

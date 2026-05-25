@@ -35,6 +35,7 @@ import {
 } from "./web_smoke_scenarios.js";
 import { smokeGlobalSearch } from "./web_smoke_search.js";
 import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
+import { smokeRecruiting } from "./web_smoke_recruiting.js";
 
 /**
  * Checks the mobile navigation drawer.
@@ -159,6 +160,7 @@ async function runScenarios(
 ): Promise<readonly Check[]> {
   return [
     ...(await smokeFeed(page)),
+    ...(await smokeRecruiting(page)),
     ...(await smokeGlobalSearch(page)),
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),

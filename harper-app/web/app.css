@@ -821,6 +821,110 @@ body.drawer-open .nav .nav-scrim {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.snap-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* ── Recruiting market page ─────────────────────────────────── */
+
+.recruiting-header .card-body {
+  display: grid;
+  gap: 14px;
+}
+.recruiting-lede {
+  margin: 0;
+  color: var(--text-muted);
+}
+.recruiting-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.recruiting-stat {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px;
+}
+.recruiting-stat-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.recruiting-stat strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.recruiting-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.filter-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.filter-field input,
+.filter-field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  padding: 8px 10px;
+}
+.filter-button {
+  height: 37px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.filter-button:hover {
+  filter: brightness(0.96);
+}
+.recruiting-table {
+  min-width: 720px;
+}
+.recruiting-table td {
+  vertical-align: top;
+}
+.stacked-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.stacked-cell span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.tag-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .recruiting-stat-grid,
+  .recruiting-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .filter-button {
+    grid-column: 1 / -1;
+  }
+}
 
 .rail .card .card-body {
   padding: 12px 14px;
