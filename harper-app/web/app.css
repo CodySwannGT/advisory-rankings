@@ -110,6 +110,23 @@ a:hover {
   color: var(--brand);
 }
 
+@media (min-width: 701px) and (max-width: 800px) {
+  .nav {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .nav .logo {
+    font-size: 20px;
+  }
+  .nav .search {
+    max-width: 240px;
+    padding: 8px 10px;
+  }
+  .nav .nav-links a {
+    padding: 8px;
+  }
+}
+
 /* "Me" pill: signed-in name + sign-out button, or "Sign in" link. */
 .nav .me-spot {
   display: flex;
