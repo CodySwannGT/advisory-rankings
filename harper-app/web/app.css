@@ -1114,6 +1114,63 @@ body.drawer-open .nav .nav-scrim {
   margin-bottom: 10px;
 }
 
+.private-rating {
+  display: grid;
+  gap: 12px;
+}
+.private-rating-note,
+.private-rating-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.private-rating-note--error {
+  color: var(--accent-red);
+}
+.private-rating-link {
+  justify-self: start;
+  text-decoration: none;
+}
+.private-rating-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.private-rating-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.private-rating-field input,
+.private-rating-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+}
+.private-rating-field textarea {
+  resize: vertical;
+}
+.private-rating-field--wide,
+.private-rating-save,
+.private-rating-status {
+  grid-column: 1 / -1;
+}
+.private-rating-help {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
 footer.site-footer {
   text-align: center;
   color: var(--text-muted);

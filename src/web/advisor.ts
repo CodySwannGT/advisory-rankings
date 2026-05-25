@@ -25,6 +25,7 @@ import {
   TransitionEventCard,
   clear,
 } from "./design-system/index.js";
+import { privateRatingCard } from "./advisor-rating.js";
 import {
   DetailErrorCard,
   DetailNotFoundCard,
@@ -177,6 +178,7 @@ function advisorCenterSections(d) {
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
   return [
+    privateRatingCard(d.advisor.id),
     careerSection(d),
     teamsSection(resourceRows(d.teams)),
     PartialFailureCard("Teams", d.teams),
