@@ -17,6 +17,7 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { firmDueDiligenceChecks } from "./web_smoke_firm_due_diligence.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -98,7 +99,9 @@ export async function smokeFirm(
     .first();
   const pastBlock = page
     .locator(".card")
-    .filter({ hasText: "Past advisors" })
+    .filter({
+      has: page.locator("h2.card-title").filter({ hasText: /^Past advisors/ }),
+    })
     .first();
   const cairnesLink = pastBlock
     .locator("a")
@@ -121,6 +124,7 @@ const firmProfileChecks = async (
   pastBlock: Locator,
   cairnesLink: Locator
 ): Promise<readonly Check[]> => [
+  ...(await firmDueDiligenceChecks(page)),
   check(
     cleanProfilePath("firms", page.url()),
     "firm URL: clean /firms/... path",
