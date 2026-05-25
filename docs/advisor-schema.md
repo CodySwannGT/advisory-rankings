@@ -529,6 +529,13 @@ A team's client base often clusters at one or two employers — material to grow
 |---|---|
 | `id`, `ranking_id` | id |
 | `subject_advisor_id?` / `subject_team_id?` / `subject_firm_id?` | id |
+| `firm_id?` | id | Conservatively resolved firm, often through `FirmAlias`, even when the advisor/team row stays unresolved. |
+| `raw_display_name?` | str | Source-table display text for unresolved or not-yet-linked ranking rows. |
+| `firm_text?` | str | Source-table firm text kept even when no canonical firm resolves. |
+| `city?` / `state?` | str | Source-table location fields used by the public explorer filters. |
+| `source_url?` / `source_label?` | url / str | Public ranking page and human-readable source label. |
+| `loaded_at?` | date | Fixture/scrape load date so the UI can show freshness. |
+| `resolution_status?` | enum (`resolved`, `unresolved`, `ambiguous`) | Explicit resolver outcome; unresolved rows stay visible. |
 | `rank?` | int |
 | `score_total?` | decimal |
 | `score_scale?` / `score_growth?` / `score_professionalism?` | decimal |

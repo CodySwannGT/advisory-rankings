@@ -8,13 +8,15 @@ describe("seed data", () => {
       (sum, rows) => sum + (rows as unknown[]).length,
       0
     );
-    expect(tables).toHaveLength(25);
-    expect(total).toBe(101);
+    expect(tables).toHaveLength(27);
+    expect(total).toBe(106);
     expect(seedData.Firm).toHaveLength(10);
     expect(seedData.FirmAlias).toHaveLength(1);
     expect(seedData.FirmMergeAudit).toHaveLength(1);
     expect(seedData.Advisor).toHaveLength(12);
     expect(seedData.Article).toHaveLength(2);
+    expect(seedData.Ranking).toHaveLength(2);
+    expect(seedData.RankingEntry).toHaveLength(3);
     expect(seedData.Firm.some(firm => firm.name === "Morgan Stanley")).toBe(
       true
     );
