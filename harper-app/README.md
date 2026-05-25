@@ -8,8 +8,8 @@ The advisor schema running on Harper (formerly HarperDB).
 |---|---|
 | `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, registers clean URL Fastify routes, and serves `web/**` as a static site. |
 | `schema.graphql` | 35 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
-| `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, `/Search?q=…` for the navbar global search box, and public MCP POST `/mcp`. |
-| `firms/`, `advisors/`, `teams/`, `articles/`, `recruiting/`, `seo_shell.js` | Fastify route shells for SEO-friendly URLs. `/firms`, `/advisors`, `/teams`, and `/recruiting` serve page HTML; `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, `/teams/<slug>-<id>`, and `/articles/<slug>-<id>` serve the matching detail shell. |
+| `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, `/RecruitingMarket`, `/RankingsExplorer`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, `/Search?q=…` for the navbar global search box, and public MCP POST `/mcp`. |
+| `firms/`, `advisors/`, `teams/`, `articles/`, `recruiting/`, `rankings/`, `seo_shell.js` | Fastify route shells for SEO-friendly URLs. `/firms`, `/advisors`, `/teams`, `/recruiting`, and `/rankings` serve page HTML; `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, `/teams/<slug>-<id>`, and `/articles/<slug>-<id>` serve the matching detail shell. |
 | `web/` | AdvisorBook static SPA. HTML/CSS are tracked here; browser `.js` modules are generated from `src/web/**/*.ts` by `bun run build`. UI is composed from the Atomic Design library under `src/web/design-system/` and emitted to `web/design-system/` — see `docs/design-system.md`. |
 
 ## How to run (clean machine)
@@ -39,7 +39,8 @@ Once the server is up:
   `http://127.0.0.1:9926/<TableName>/`.
 - **Custom resources** at `http://127.0.0.1:9926/Feed`,
   `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`,
-  `/TeamProfile/<id>`, `/Search?q=…` (registered by `resources.js`).
+  `/TeamProfile/<id>`, `/RecruitingMarket`, `/RankingsExplorer`,
+  `/Search?q=…` (registered by `resources.js`).
   `/Search` is what powers the navbar search box: case-insensitive
   name match across firms / advisors / teams, returns
   `{ q, items: [{ kind, id, name, sub, score }], counts }`.
@@ -78,7 +79,8 @@ Once the server is up:
   Default `limit` is 50, max 100. Cursor is opaque base64url.
 - **Web UI** served at `http://127.0.0.1:9926/` from `web/index.html`.
   Directories are also available at `/firms`, `/advisors`, and `/teams`;
-  the recruiting explorer is available at `/recruiting`;
+  the recruiting explorer is available at `/recruiting`; the rankings
+  explorer is available at `/rankings`;
   profile pages use `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, and
   `/teams/<slug>-<id>`. Article detail pages use
   `/articles/<slug>-<id>`.
