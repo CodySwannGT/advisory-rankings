@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* eslint-disable jsdoc/require-jsdoc, functional/immutable-data -- This module owns form DOM wiring for the advisor rating card. */
+/* eslint-disable jsdoc/require-jsdoc -- This module owns form DOM wiring for the advisor rating card. */
 import { api, postJson, refreshMe, isAuthFailure } from "./app.js";
 import {
   el,
@@ -164,4 +164,4 @@ async function saveRating(event, advisorId, controls, status) {
       : "Could not save rating.";
   }
 }
-/* eslint-enable jsdoc/require-jsdoc, functional/immutable-data -- This module owns form DOM wiring for the advisor rating card. */
+/* eslint-enable jsdoc/require-jsdoc -- This module owns form DOM wiring for the advisor rating card. */

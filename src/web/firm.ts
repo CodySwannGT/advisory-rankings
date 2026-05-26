@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* eslint-disable max-lines, sonarjs/no-duplicate-string, functional/immutable-data, jsdoc/require-jsdoc -- This legacy route keeps DOM section helpers local to the page module. */
+/* eslint-disable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- This legacy route keeps DOM section helpers local to the page module. */
 // Firm profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
@@ -849,4 +849,4 @@ function transitionSection(title, transitions) {
     : null;
 }
 
-/* eslint-enable max-lines, sonarjs/no-duplicate-string, functional/immutable-data, jsdoc/require-jsdoc -- End route-local helper exception. */
+/* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End route-local helper exception. */
