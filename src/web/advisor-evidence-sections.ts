@@ -48,6 +48,10 @@ function evidenceFreshnessSection(freshness = {}) {
     body: el(
       "div",
       { class: "advisor-evidence" },
+      helpText(
+        "Evidence freshness",
+        "Evidence freshness explains when public-source checks last ran and whether any checks need review."
+      ),
       evidenceStateHeader(state),
       evidenceDateGrid(freshness),
       evidenceCountGrid(
@@ -77,6 +81,10 @@ function factConfidenceSection(confidence = {}) {
     body: el(
       "div",
       { class: "advisor-evidence" },
+      helpText(
+        "Fact confidence",
+        "Fact confidence groups advisor facts by how directly each fact is supported by loaded source rows."
+      ),
       confidence.hasData
         ? [
             evidenceStateHeader({
@@ -97,6 +105,21 @@ function factConfidenceSection(confidence = {}) {
           ]
     ),
   });
+}
+
+/**
+ * Builds a keyboard-focusable explanation affordance for evidence terms.
+ * @param label - Term being explained.
+ * @param explanation - Public explanation copy.
+ * @returns Help text disclosure.
+ */
+function helpText(label, explanation) {
+  return el(
+    "details",
+    { class: "advisor-evidence-help" },
+    el("summary", { "aria-label": `${label} explanation` }, "?"),
+    el("p", {}, explanation)
+  );
 }
 
 /**
