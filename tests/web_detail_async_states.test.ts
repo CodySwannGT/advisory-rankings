@@ -369,9 +369,77 @@ describe("detail async states", () => {
           .getByRole("heading", { name: "Ranking presence" })
           .isVisible()
       ).toBe(true);
+      expect(
+        await page.getByText("No modules currently need data.").isVisible()
+      ).toBe(false);
       expect(await recruitingHeading.isVisible()).toBe(false);
     } finally {
       await page.close();
+    }
+  });
+
+  it("shows a firm due-diligence empty state when a filter has no modules", async () => {
+    const viewports = [
+      { width: 1180, height: 900 },
+      { width: 390, height: 900 },
+    ];
+
+    for (const viewport of viewports) {
+      const page = await browser.newPage({ viewport });
+
+      try {
+        await page.route("**/Me", async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route("**/FirmProfile/firm-loaded", async route => {
+          await route.fulfill({ json: firmDueDiligenceAllLoadedProfile() });
+        });
+
+        await page.goto(`${baseUrl}/firm.html?id=firm-loaded`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        const section = page.locator(".firm-dd-card").first();
+        await section
+          .getByRole("heading", { name: "Firm due diligence" })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        await section.getByRole("button", { name: "Needs data" }).click();
+
+        expect(
+          await section.getByText("No modules currently need data.").isVisible()
+        ).toBe(true);
+        expect(
+          await section
+            .getByRole("button", { name: "Show all modules" })
+            .isVisible()
+        ).toBe(true);
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              document.documentElement.clientWidth
+          )
+        ).toBe(true);
+
+        await section.getByRole("button", { name: "Show all modules" }).click();
+        expect(
+          await section
+            .getByRole("button", { name: "All" })
+            .getAttribute("aria-pressed")
+        ).toBe("true");
+        expect(
+          await section
+            .getByRole("button", { name: "All" })
+            .evaluate(button => button === document.activeElement)
+        ).toBe(true);
+        expect(
+          await section
+            .getByRole("heading", { name: "Recruiting momentum" })
+            .isVisible()
+        ).toBe(true);
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -723,6 +791,42 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
       },
     },
   };
+}
+
+function firmDueDiligenceAllLoadedProfile(): FirmDueDiligenceProfile {
+  const profile = JSON.parse(
+    JSON.stringify(firmDueDiligenceProfile())
+  ) as FirmDueDiligenceProfile;
+  profile.dueDiligence.modules.rankingPresence.status = "loaded";
+  profile.dueDiligence.modules.rankingPresence.note =
+    "Ranking rows are loaded for this firm.";
+  profile.dueDiligence.modules.rankingPresence.appearances = [
+    {
+      ranking: { id: "ranking-1", name: "Top firms", year: 2026 },
+      rank: 12,
+      segment: "national",
+    },
+  ];
+  profile.dueDiligence.modules.coverageTimeline.status = "loaded";
+  profile.dueDiligence.modules.coverageTimeline.note =
+    "Source-backed coverage is loaded.";
+  profile.dueDiligence.modules.coverageTimeline.articleCount = 1;
+  profile.dueDiligence.modules.coverageTimeline.recentArticles = [
+    {
+      id: "article-1",
+      headline: "Example Wealth expands",
+      publishedDate: "2026-05-20T00:00:00.000Z",
+      url: "https://example.com/article-1",
+      source: "AdvisorBook",
+    },
+  ];
+  profile.dueDiligence.dataConfidence.status = "loaded";
+  profile.dueDiligence.dataConfidence.modules =
+    profile.dueDiligence.dataConfidence.modules.map(module => ({
+      ...module,
+      status: "loaded",
+    }));
+  return profile;
 }
 
 async function routeAdvisorEvidence(page: Page) {

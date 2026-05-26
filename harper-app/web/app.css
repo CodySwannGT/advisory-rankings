@@ -820,6 +820,27 @@ body.drawer-open .nav .nav-scrim {
 .firm-dd-module[hidden] {
   display: none;
 }
+.firm-dd-empty {
+  min-width: 0;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 14px;
+}
+.firm-dd-empty[hidden] {
+  display: none;
+}
+.firm-dd-empty strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.25;
+}
+.firm-dd-empty p {
+  margin: 6px 0 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
 .firm-dd-module-head,
 .firm-dd-confidence-head {
   display: flex;
