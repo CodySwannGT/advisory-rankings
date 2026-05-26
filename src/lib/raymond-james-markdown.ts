@@ -86,23 +86,28 @@ const advisorSource = (
   };
 };
 
-const parseNameAndRole = (
-  value: string
-): { readonly name: string; readonly roleTitle?: string } => {
+/** Parsed advisor name and optional role title extracted from a Raymond James branch listing. */
+interface NameAndRole {
+  readonly name: string;
+  readonly roleTitle?: string;
+}
+
+/** Address fields parsed from a Raymond James branch contact line. */
+interface ParsedAddress {
+  readonly address?: string;
+  readonly city?: string;
+  readonly state?: string;
+  readonly postalCode?: string;
+}
+
+const parseNameAndRole = (value: string): NameAndRole => {
   const roleTitle = ROLE_TITLES.find(role => value.includes(role));
   if (!roleTitle) return { name: dedupeTrailingWords(value) };
   const name = value.slice(0, value.indexOf(roleTitle));
   return { name: dedupeTrailingWords(name), roleTitle };
 };
 
-const parseAddress = (
-  value: string
-): {
-  readonly address?: string;
-  readonly city?: string;
-  readonly state?: string;
-  readonly postalCode?: string;
-} => {
+const parseAddress = (value: string): ParsedAddress => {
   const match = value.match(/^(.+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/u);
   if (!match) return {};
   const beforeState = cleanText(match[1] ?? "");
@@ -117,16 +122,20 @@ const parseAddress = (
 
 const dedupeTrailingWords = (value: string): string => {
   const words = cleanText(value).split(" ").filter(Boolean);
-  while (words.length > 1) {
-    const last = words.at(-1);
-    const previous = words.at(-2);
-    if (!last || last !== previous) break;
-    words.pop();
-  }
-  return words
+  return trimTrailingDuplicates(words)
     .join(" ")
     .replace(/\s+(CFP®|CFA®|AAMS™|CPWA®)$/u, ", $1")
     .replace(/,,/gu, ",");
+};
+
+const trimTrailingDuplicates = (
+  words: ReadonlyArray<string>
+): ReadonlyArray<string> => {
+  if (words.length <= 1) return words;
+  const last = words.at(-1);
+  const previous = words.at(-2);
+  if (!last || last !== previous) return words;
+  return trimTrailingDuplicates(words.slice(0, -1));
 };
 
 const cityFromAddressPrefix = (value: string): string => {
