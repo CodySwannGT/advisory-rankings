@@ -1,5 +1,22 @@
 // @ts-nocheck
 
+const EVENT_BACKED_MODE = "event-backed";
+const RECRUITING_MOVES_MODE = "recruiting-moves";
+const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
+
+const FEED_MODE_ALIASES = new Map([
+  ["event", EVENT_BACKED_MODE],
+  ["moves", RECRUITING_MOVES_MODE],
+  ["compliance", COMPLIANCE_DISCLOSURES_MODE],
+]);
+
+const FEED_MODES = new Set([
+  "all",
+  EVENT_BACKED_MODE,
+  RECRUITING_MOVES_MODE,
+  COMPLIANCE_DISCLOSURES_MODE,
+]);
+
 /**
  * Parses public feed query params into bounded, stable filter values.
  * @param target - Request target carrying optional feed filter params.
@@ -20,11 +37,11 @@ export function parseFeedFilters(target) {
  */
 export function matchesFeedMode(item, mode) {
   switch (mode) {
-    case "event-backed":
+    case EVENT_BACKED_MODE:
       return (item.eventCards || []).length > 0;
-    case "recruiting-moves":
+    case RECRUITING_MOVES_MODE:
       return (item.eventCards || []).some(card => card.kind === "transition");
-    case "compliance-disclosures":
+    case COMPLIANCE_DISCLOSURES_MODE:
       return (item.eventCards || []).some(card => card.kind === "disclosure");
     default:
       return true;
@@ -91,14 +108,8 @@ function parseFeedMode(target) {
   const mode = String(target?.get?.("mode") || "all")
     .trim()
     .toLowerCase();
-  return [
-    "all",
-    "event-backed",
-    "recruiting-moves",
-    "compliance-disclosures",
-  ].includes(mode)
-    ? mode
-    : "all";
+  const canonicalMode = FEED_MODE_ALIASES.get(mode) || mode;
+  return FEED_MODES.has(canonicalMode) ? canonicalMode : "all";
 }
 
 /**
