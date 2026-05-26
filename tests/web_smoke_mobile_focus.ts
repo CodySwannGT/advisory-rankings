@@ -3,6 +3,7 @@ import { check, QUICK_UI_TIMEOUT, type Check } from "./web_smoke_support.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const NAV_BURGER_SELECTOR = ".nav-burger";
+const MOBILE_TAB_SCAN_LIMIT = 120;
 
 /** Focus trail captured while tabbing through the mobile header. */
 interface TabSequence {
@@ -74,7 +75,9 @@ async function isDrawerOpen(page: Page): Promise<boolean> {
  */
 async function readDrawerTabSequence(page: Page): Promise<TabSequence> {
   await page.locator(NAV_BURGER_SELECTOR).focus();
-  return await Array.from({ length: 12 }).reduce<Promise<TabSequence>>(
+  return await Array.from({ length: MOBILE_TAB_SCAN_LIMIT }).reduce<
+    Promise<TabSequence>
+  >(
     async previousSequence => {
       const previous = await previousSequence;
       await page.keyboard.press("Tab");

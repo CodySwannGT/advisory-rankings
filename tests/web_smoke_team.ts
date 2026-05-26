@@ -9,6 +9,7 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { revealFeedCard } from "./web_smoke_feed_pagination.js";
 
 /**
  * Checks the Taylor team profile.
@@ -17,6 +18,8 @@ import {
  */
 export async function smokeTeam(page: Page): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, "article.card .post-headline");
+  await revealFeedCard(page, "Taylor");
   await smokeWaitForSelector(page, ".chip.team");
   await page
     .locator(".chip.team")
