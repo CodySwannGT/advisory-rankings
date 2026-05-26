@@ -39,6 +39,7 @@ import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
 import { smokeMobileFocus } from "./web_smoke_mobile_focus.js";
 import { smokeRecruiting } from "./web_smoke_recruiting.js";
 import { smokeRankings } from "./web_smoke_rankings.js";
+import { smokePublicPageHeadings } from "./web_smoke_headings.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -282,6 +283,7 @@ async function runScenarios(
     ...(await smokeArticle(page)),
     ...(await smokeCompliance(page)),
     ...(await smokeDirectories(page)),
+    ...(await smokePublicPageHeadings(page)),
     ...(await smokeNotFoundRecovery(page)),
     ...(await smokeAuth(page)),
     ...(await smokeBreakpoints(browser, extraHTTPHeaders)),
