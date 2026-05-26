@@ -79,25 +79,19 @@ export function summarize(entries) {
 }
 
 export function rankingsCoverage(entries) {
-  const buckets = entries.reduce(
-    (acc, entry) => foldCoverageEntry(acc, entry),
-    new Map()
+  const grouped = Map.groupBy(entries, coverageKey);
+  const buckets = Array.from(grouped, ([key, items]) =>
+    items.reduce(mergeCoverageEntry, emptyCoverageBucket(key, items[0]))
   );
   return {
     totalEntries: entries.length,
-    buckets: [...buckets.values()].sort(compareCoverageBuckets),
+    buckets: buckets.toSorted(compareCoverageBuckets),
     gapBuckets: sourceStatusBuckets(entries),
     emptyState:
       entries.length === 0
         ? "No ranking rows are loaded for this coverage slice."
         : null,
   };
-}
-
-function foldCoverageEntry(buckets, entry) {
-  const key = coverageKey(entry);
-  const previous = buckets.get(key) || emptyCoverageBucket(key, entry);
-  return new Map(buckets).set(key, mergeCoverageEntry(previous, entry));
 }
 
 function emptyCoverageBucket(key, entry) {
@@ -135,34 +129,32 @@ function mergeCoverageEntry(bucket, entry) {
 }
 
 function sourceStatusBuckets(entries) {
-  const buckets = entries.reduce(
-    (outer, entry) =>
-      entry.sourceStatus.reduce(
-        (inner, status) => foldStatusBucket(inner, status, entry),
-        outer
-      ),
-    new Map()
+  const pairs = entries.flatMap(entry =>
+    entry.sourceStatus.map(status => ({ status, entry }))
   );
-  return [...buckets.values()].sort(
+  const grouped = Map.groupBy(pairs, pair => pair.status);
+  const buckets = Array.from(grouped, ([status, items]) =>
+    items.reduce(mergeStatusBucket, {
+      status,
+      count: 0,
+      query: sourceStatusQuery(status),
+      sourceLabels: [],
+      sampleRows: [],
+    })
+  );
+  return buckets.toSorted(
     (left, right) =>
       right.count - left.count || left.status.localeCompare(right.status)
   );
 }
 
-function foldStatusBucket(buckets, status, entry) {
-  const previous = buckets.get(status) || {
-    status,
-    count: 0,
-    query: sourceStatusQuery(status),
-    sourceLabels: [],
-    sampleRows: [],
+function mergeStatusBucket(bucket, pair) {
+  return {
+    ...bucket,
+    count: bucket.count + 1,
+    sourceLabels: withUnique(bucket.sourceLabels, pair.entry.source.label),
+    sampleRows: withSample(bucket.sampleRows, pair.entry),
   };
-  return new Map(buckets).set(status, {
-    ...previous,
-    count: previous.count + 1,
-    sourceLabels: withUnique(previous.sourceLabels, entry.source.label),
-    sampleRows: withSample(previous.sampleRows, entry),
-  });
 }
 
 function withSample(samples, entry) {
@@ -228,29 +220,30 @@ function compareCoverageBuckets(left, right) {
 }
 
 export function topFirms(entries) {
-  const byFirm = entries.reduce(
-    (acc, entry) => foldFirmEntry(acc, entry),
-    new Map()
+  const grouped = Map.groupBy(
+    entries,
+    entry => entry.firm?.id || entry.firmText || "Unknown firm"
   );
-  return [...byFirm.values()].sort(
+  const rows = Array.from(grouped, ([, items]) =>
+    items.reduce(mergeFirmEntry, {
+      firm: items[0].firm,
+      firmText: items[0].firmText || items[0].firm?.name || "Unknown firm",
+      count: 0,
+      sourceIds: [],
+    })
+  );
+  return rows.toSorted(
     (left, right) =>
       right.count - left.count || left.firmText.localeCompare(right.firmText)
   );
 }
 
-function foldFirmEntry(byFirm, entry) {
-  const key = entry.firm?.id || entry.firmText || "Unknown firm";
-  const previous = byFirm.get(key) || {
-    firm: entry.firm,
-    firmText: entry.firmText || entry.firm?.name || "Unknown firm",
-    count: 0,
-    sourceIds: [],
+function mergeFirmEntry(row, entry) {
+  return {
+    ...row,
+    count: row.count + 1,
+    sourceIds: [...row.sourceIds, entry.id],
   };
-  return new Map(byFirm).set(key, {
-    ...previous,
-    count: previous.count + 1,
-    sourceIds: [...previous.sourceIds, entry.id],
-  });
 }
 
 export function facets(entries) {
