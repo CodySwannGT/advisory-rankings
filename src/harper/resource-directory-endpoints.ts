@@ -12,6 +12,7 @@ import {
   searchCounts,
   teamSearchMatches,
 } from "./resource-search.js";
+import { advisorDisplayName } from "./resource-routing.js";
 import { canonicalizeFirmResourceRows } from "./resource-firm-canonicalization.js";
 /**
  * Public firm directory resource.
@@ -35,7 +36,11 @@ export class PublicFirms extends Resource {
       firms: await all(tables.Firm),
       firmAliases: await optionalAll(tables.FirmAlias),
     });
-    const sorted = [...rows.firms].sort(compareFirmDirectoryRows);
+    const filters = parseFirmDirectoryFilters(target);
+    const filtered = rows.firms.filter(firm =>
+      firmMatchesFilters(firm, filters)
+    );
+    const sorted = [...filtered].sort(compareFirmDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
       sorted,
@@ -62,9 +67,25 @@ export class PublicAdvisors extends Resource {
    * @returns Advisor page, next cursor, and total row count.
    */
   async get(target) {
-    const rows = await all(tables.Advisor);
+    const [advisors, firms, employments, firmAliases] = await Promise.all([
+      all(tables.Advisor),
+      all(tables.Firm),
+      all(tables.EmploymentHistory),
+      optionalAll(tables.FirmAlias),
+    ]);
+    const rows = canonicalizeFirmResourceRows({
+      firms,
+      employments,
+      firmAliases,
+    });
+    const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
+    const currentFirmByAdvisor = currentEmploymentByAdvisor(rows.employments);
+    const filters = parseAdvisorDirectoryFilters(target);
     const keyOf = advisorDirectoryKey;
-    const sorted = [...rows].sort(compareAdvisorDirectoryRows);
+    const filtered = advisors.filter(advisor =>
+      advisorMatchesFilters(advisor, filters, currentFirmByAdvisor, byFirm)
+    );
+    const sorted = [...filtered].sort(compareAdvisorDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
       sorted,
@@ -101,12 +122,16 @@ export class PublicTeams extends Resource {
       firmAliases: await optionalAll(tables.FirmAlias),
     });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    const sorted = [...rows.teams].sort(compareTeamDirectoryRows).map(team => ({
-      ...team,
-      currentFirmName: team.currentFirmId
-        ? (byFirm.get(team.currentFirmId)?.name ?? null)
-        : null,
-    }));
+    const filters = parseTeamDirectoryFilters(target);
+    const filtered = rows.teams
+      .filter(team => teamMatchesFilters(team, filters, byFirm))
+      .map(team => ({
+        ...team,
+        currentFirmName: team.currentFirmId
+          ? (byFirm.get(team.currentFirmId)?.name ?? null)
+          : null,
+      }));
+    const sorted = [...filtered].sort(compareTeamDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
       sorted,
@@ -197,6 +222,183 @@ function parseSearchKind(target) {
  */
 async function optionalAll(table) {
   return table ? all(table) : [];
+}
+
+/**
+ * Parses advisor directory filters from public query parameters.
+ * @param target - Request target carrying URL search params.
+ * @returns Normalized advisor filter values.
+ */
+function parseAdvisorDirectoryFilters(target) {
+  return {
+    q: normalizedParam(target, "q"),
+    firm: normalizedParam(target, "firm"),
+    careerStatus: normalizedParam(target, "careerStatus"),
+    hasCrd: booleanParam(target, "hasCrd"),
+  };
+}
+
+/**
+ * Parses firm directory filters from public query parameters.
+ * @param target - Request target carrying URL search params.
+ * @returns Normalized firm filter values.
+ */
+function parseFirmDirectoryFilters(target) {
+  return {
+    q: normalizedParam(target, "q"),
+    channel: normalizedParam(target, "channel"),
+    state: normalizedParam(target, "state"),
+    active: activeParam(target),
+  };
+}
+
+/**
+ * Parses team directory filters from public query parameters.
+ * @param target - Request target carrying URL search params.
+ * @returns Normalized team filter values.
+ */
+function parseTeamDirectoryFilters(target) {
+  return {
+    q: normalizedParam(target, "q"),
+    firm: normalizedParam(target, "firm"),
+    serviceModel: normalizedParam(target, "serviceModel"),
+  };
+}
+
+/**
+ * Checks an advisor against supported public directory filters.
+ * @param advisor - Advisor row from the public table.
+ * @param filters - Normalized advisor filters.
+ * @param currentFirmByAdvisor - Current-employment lookup keyed by advisor ID.
+ * @param byFirm - Canonical firm lookup keyed by firm ID.
+ * @returns Whether the advisor should be included in the response.
+ */
+function advisorMatchesFilters(advisor, filters, currentFirmByAdvisor, byFirm) {
+  const employment = currentFirmByAdvisor.get(advisor.id);
+  const firm = employment ? byFirm.get(employment.firmId) : null;
+  return (
+    textMatches(filters.q, [
+      advisorDisplayName(advisor),
+      advisor.legalName,
+      advisor.preferredName,
+      advisor.firstName,
+      advisor.lastName,
+    ]) &&
+    textMatches(filters.firm, [employment?.firmId, firm?.id, firm?.name]) &&
+    exactMatches(filters.careerStatus, advisor.careerStatus) &&
+    booleanMatches(filters.hasCrd, Boolean(advisor.finraCrd))
+  );
+}
+
+/**
+ * Checks a firm against supported public directory filters.
+ * @param firm - Canonical firm row.
+ * @param filters - Normalized firm filters.
+ * @returns Whether the firm should be included in the response.
+ */
+function firmMatchesFilters(firm, filters) {
+  return (
+    textMatches(filters.q, [firm.name, firm.legalName]) &&
+    exactMatches(filters.channel, firm.channel) &&
+    exactMatches(filters.state, firm.hqState) &&
+    booleanMatches(filters.active, !firm.dissolvedYear)
+  );
+}
+
+/**
+ * Checks a team against supported public directory filters.
+ * @param team - Team row.
+ * @param filters - Normalized team filters.
+ * @param byFirm - Canonical firm lookup keyed by firm ID.
+ * @returns Whether the team should be included in the response.
+ */
+function teamMatchesFilters(team, filters, byFirm) {
+  const firm = team.currentFirmId ? byFirm.get(team.currentFirmId) : null;
+  return (
+    textMatches(filters.q, [team.name]) &&
+    textMatches(filters.firm, [team.currentFirmId, firm?.id, firm?.name]) &&
+    exactMatches(filters.serviceModel, team.serviceModel)
+  );
+}
+
+/**
+ * Reads a lowercased string query parameter.
+ * @param target - Request target carrying URL search params.
+ * @param name - Query parameter name.
+ * @returns Normalized value, or empty string when absent.
+ */
+function normalizedParam(target, name) {
+  return String(target?.get?.(name) || "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Parses boolean-like query parameters.
+ * @param target - Request target carrying URL search params.
+ * @param name - Query parameter name.
+ * @returns Boolean filter, or null when absent/invalid.
+ */
+function booleanParam(target, name) {
+  const value = normalizedParam(target, name);
+  if (["true", "1", "yes"].includes(value)) return true;
+  if (["false", "0", "no"].includes(value)) return false;
+  return null;
+}
+
+/**
+ * Parses the active/dissolved firm status filter.
+ * @param target - Request target carrying URL search params.
+ * @returns Active-state filter, or null when absent/invalid.
+ */
+function activeParam(target) {
+  const active = booleanParam(target, "active");
+  if (active !== null) return active;
+  const status = normalizedParam(target, "status");
+  if (status === "active") return true;
+  if (["dissolved", "inactive"].includes(status)) return false;
+  return null;
+}
+
+/**
+ * Applies case-insensitive substring matching across candidate fields.
+ * @param query - Normalized query string.
+ * @param values - Candidate values.
+ * @returns True when the query is empty or a candidate contains it.
+ */
+function textMatches(query, values) {
+  return !query || values.some(value => normalizeValue(value).includes(query));
+}
+
+/**
+ * Applies case-insensitive exact matching.
+ * @param query - Normalized query string.
+ * @param value - Candidate value.
+ * @returns True when the query is empty or equals the normalized value.
+ */
+function exactMatches(query, value) {
+  return !query || normalizeValue(value) === query;
+}
+
+/**
+ * Applies optional boolean matching.
+ * @param expected - Desired boolean value.
+ * @param actual - Candidate boolean value.
+ * @returns True when no boolean filter is active or the value matches.
+ */
+function booleanMatches(expected, actual) {
+  return expected === null || actual === expected;
+}
+
+/**
+ * Normalizes arbitrary row values for filter comparison.
+ * @param value - Candidate row value.
+ * @returns Lowercased string value.
+ */
+function normalizeValue(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 /**
