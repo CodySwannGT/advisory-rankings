@@ -171,6 +171,99 @@ describe("detail async states", () => {
     }
   });
 
+  it("renders shared recoverable detail errors without leaking details", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.goto(`${baseUrl}/__blank.html`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.addScriptTag({
+        type: "module",
+        content: `
+          import {
+            DetailNotFoundCard,
+            renderRecoverableDetailError,
+          } from "/detail-state.js";
+
+          const center = document.createElement("main");
+          const right = document.createElement("aside");
+          center.textContent = "stale center";
+          right.textContent = "stale right";
+          document.body.append(center, right);
+
+          let retryCount = 0;
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load firm",
+            error: new Error("temporary outage with raw backend details"),
+            onRetry: () => {
+              retryCount += 1;
+            },
+          });
+          center
+            .querySelector("button")
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+          const notFound = DetailNotFoundCard({
+            title: "Firm not found",
+            id: "firm-missing",
+            actionLabel: "Back to Firms",
+            href: "/firms",
+          });
+          document.body.append(notFound);
+
+          window.__detailRecoverableResult = {
+            title: center.querySelector(".card-title")?.textContent,
+            body: center.querySelector(".ab-empty")?.textContent,
+            buttonText: center.querySelector("button")?.textContent,
+            asyncState: center
+              .querySelector(".detail-error-card")
+              ?.getAttribute("data-async-state"),
+            retryRule: center
+              .querySelector(".detail-error-card")
+              ?.getAttribute("data-retry-rule"),
+            retryCount,
+            rightChildren: right.childElementCount,
+            staleCenterCleared: !center.textContent.includes("stale center"),
+            staleRightCleared: !right.textContent.includes("stale right"),
+            rawDetailsLeaked: center.textContent.includes("raw backend details"),
+            notFoundAction: notFound.querySelector("button")?.textContent,
+            notFoundRecoveryHref: notFound.getAttribute("data-recovery-href"),
+            notFoundRetryButtons: [...notFound.querySelectorAll("button")]
+              .filter(button => button.textContent === "Retry").length,
+          };
+        `,
+      });
+      await page.waitForFunction(() => "__detailRecoverableResult" in window);
+
+      const result = await page.evaluate(
+        () =>
+          (window as typeof window & { __detailRecoverableResult: unknown })
+            .__detailRecoverableResult
+      );
+
+      expect(result).toEqual({
+        title: "Could not load firm",
+        body: "Try again shortly.",
+        buttonText: "Retry",
+        asyncState: "error",
+        retryRule: "required",
+        retryCount: 1,
+        rightChildren: 0,
+        staleCenterCleared: true,
+        staleRightCleared: true,
+        rawDetailsLeaked: false,
+        notFoundAction: "Back to Firms",
+        notFoundRecoveryHref: "/firms",
+        notFoundRetryButtons: 0,
+      });
+    } finally {
+      await page.close();
+    }
+  });
+
   it("keeps article content visible when related sections fail", async () => {
     const page = await browser.newPage();
 
@@ -340,6 +433,12 @@ describe("detail async states", () => {
 async function startStaticServer(): Promise<Server> {
   const server = createServer(async (request, response) => {
     const filePath = request.url?.split("?")[0] || "/";
+    if (filePath === "/__blank.html") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      response.end("<!doctype html><html><body></body></html>");
+      return;
+    }
+
     const resolvedPath = resolveStaticPath(filePath);
 
     try {
