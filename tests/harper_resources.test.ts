@@ -796,6 +796,33 @@ describe("Harper feed and profile builders", () => {
         representedFirms: 0,
         representedStates: 1,
       },
+      coverage: {
+        totalEntries: 1,
+        buckets: [
+          {
+            key: "Next Gen:2025",
+            category: "Next Gen",
+            year: 2025,
+            query: "/rankings?category=Next+Gen&year=2025",
+            total: 1,
+            resolved: 0,
+            unresolved: 1,
+            missingFirm: 1,
+            missingMarket: 0,
+            missingScore: 1,
+            latestLoadedAt: "2026-05-25",
+            sourceLabels: ["AdvisorHub Next Gen 2025"],
+            sampleRows: [
+              {
+                id: "ranking-entry-b",
+                label: "Jordan Example",
+                firmText: "Unresolved Capital",
+                sourceLabel: "AdvisorHub Next Gen 2025",
+              },
+            ],
+          },
+        ],
+      },
       facets: {
         categories: ["Advisors to Watch", "Next Gen"],
         years: [2025],
@@ -839,6 +866,24 @@ describe("Harper feed and profile builders", () => {
         rankingId: "ranking-b",
       },
     });
+    expect(payload.coverage.gapBuckets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "source-backed",
+          count: 1,
+          query: "/rankings",
+        }),
+        expect.objectContaining({
+          status: "unresolved-firm",
+          count: 1,
+          query: "/rankings?resolved=unresolved",
+        }),
+        expect.objectContaining({
+          status: "missing-scale",
+          count: 1,
+        }),
+      ])
+    );
   });
 
   it("filters and sorts resolved rankings explorer rows", async () => {
@@ -870,6 +915,180 @@ describe("Harper feed and profile builders", () => {
         loadedAt: "2026-05-25",
       },
     });
+  });
+
+  it("aggregates deterministic coverage totals for filtered ranking rows", async () => {
+    setRows("RankingEntry", [
+      {
+        id: "coverage-resolved",
+        rankingId: "ranking-a",
+        subjectAdvisorId: "advisor-a",
+        firmId: "firm-a",
+        rawDisplayName: "Avery Stone",
+        firmText: "Example Wealth LLC",
+        city: "Atlanta",
+        state: "GA",
+        sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        loadedAt: "2026-05-25",
+        resolutionStatus: "resolved",
+        rank: 1,
+        scoreTotal: 97,
+        scoreScale: 95,
+        scoreGrowth: 94,
+        scoreProfessionalism: 96,
+      },
+      {
+        id: "coverage-unresolved-missing-score",
+        rankingId: "ranking-a",
+        rawDisplayName: "Morgan Gap",
+        firmText: "Unresolved Capital",
+        city: "Austin",
+        state: "TX",
+        sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        loadedAt: "2026-05-26",
+        resolutionStatus: "unresolved",
+        rank: 2,
+        scoreGrowth: 88,
+      },
+      {
+        id: "coverage-unresolved-missing-market",
+        rankingId: "ranking-a",
+        rawDisplayName: "Taylor Market",
+        firmText: "Unresolved Capital",
+        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        loadedAt: "2026-05-24",
+        resolutionStatus: "unresolved",
+        rank: 3,
+        scoreScale: 90,
+      },
+      {
+        id: "coverage-other-category",
+        rankingId: "ranking-b",
+        rawDisplayName: "Jordan Example",
+        firmText: "Beta Advisors",
+        city: "Dallas",
+        state: "TX",
+        sourceLabel: "AdvisorHub Next Gen 2025",
+        loadedAt: "2026-05-25",
+        resolutionStatus: "unresolved",
+        rank: 4,
+      },
+    ]);
+
+    const payload = await new (resources as any).RankingsExplorer().get(
+      routeTarget("", { category: "Advisors to Watch", year: "2025" })
+    );
+
+    expect(payload.summary).toMatchObject({
+      totalEntries: 3,
+      resolvedEntries: 1,
+      unresolvedEntries: 2,
+      representedFirms: 1,
+      representedStates: 2,
+    });
+    expect(payload.coverage).toMatchObject({
+      totalEntries: 3,
+      buckets: [
+        {
+          key: "Advisors to Watch:2025",
+          total: 3,
+          resolved: 1,
+          unresolved: 2,
+          missingFirm: 2,
+          missingMarket: 1,
+          missingScore: 2,
+          latestLoadedAt: "2026-05-26",
+          sourceLabels: ["AdvisorHub Advisors to Watch 2025"],
+        },
+      ],
+    });
+    expect(payload.coverage.buckets[0].sampleRows).toEqual([
+      expect.objectContaining({
+        id: "coverage-resolved",
+        label: "Avery Stone",
+        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+      }),
+      expect.objectContaining({
+        id: "coverage-unresolved-missing-score",
+        label: "Morgan Gap",
+        sourceStatus: expect.arrayContaining([
+          "unresolved-entity",
+          "unresolved-firm",
+          "missing-scale",
+        ]),
+      }),
+      expect.objectContaining({
+        id: "coverage-unresolved-missing-market",
+        label: "Taylor Market",
+        sourceStatus: expect.arrayContaining([
+          "missing-source",
+          "missing-state",
+          "missing-growth",
+        ]),
+      }),
+    ]);
+    expect(payload.coverage.gapBuckets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "unresolved-firm",
+          count: 2,
+          sampleRows: expect.arrayContaining([
+            expect.objectContaining({
+              id: "coverage-unresolved-missing-score",
+              sourceLabel: "AdvisorHub Advisors to Watch 2025",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          status: "missing-scale",
+          count: 1,
+          sampleRows: [
+            expect.objectContaining({
+              id: "coverage-unresolved-missing-score",
+              label: "Morgan Gap",
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          status: "missing-state",
+          count: 1,
+          sampleRows: [
+            expect.objectContaining({
+              id: "coverage-unresolved-missing-market",
+              label: "Taylor Market",
+            }),
+          ],
+        }),
+      ])
+    );
+  });
+
+  it("returns an explicit rankings coverage payload when no ranking rows are loaded", async () => {
+    setRows("RankingEntry", []);
+
+    const payload = await new (resources as any).RankingsExplorer().get(
+      routeTarget("")
+    );
+
+    expect(payload.summary).toEqual({
+      totalEntries: 0,
+      resolvedEntries: 0,
+      unresolvedEntries: 0,
+      representedFirms: 0,
+      representedStates: 0,
+    });
+    expect(payload.coverage).toEqual({
+      totalEntries: 0,
+      buckets: [],
+      gapBuckets: [],
+      emptyState: "No ranking rows are loaded for this coverage slice.",
+    });
+    expect(payload.items).toEqual([]);
+    expect(payload.emptyState).toBe(
+      "No matching public ranking rows are loaded for these filters."
+    );
   });
 
   it("covers rankings explorer fallback subjects, sorting, and empty states", async () => {
@@ -975,6 +1194,12 @@ describe("Harper feed and profile builders", () => {
       },
       summary: {
         totalEntries: 0,
+      },
+      coverage: {
+        totalEntries: 0,
+        buckets: [],
+        gapBuckets: [],
+        emptyState: "No ranking rows are loaded for this coverage slice.",
       },
       emptyState:
         "No matching public ranking rows are loaded for these filters.",

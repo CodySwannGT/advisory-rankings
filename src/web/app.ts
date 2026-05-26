@@ -462,15 +462,17 @@ export const fmts = {
  * Handles mount page for this workflow.
  * @param root0 - value used by this operation.
  * @param root0.active - active used by this operation.
+ * @param root0.pageTitle - page title exposed as the route-level h1.
  * @param root0.build - build used by this operation.
  * @returns The computed value.
  */
-export function mountPage({ active, build }) {
+export function mountPage({ active, pageTitle, build }) {
   mountThreeColumnPage({
     active,
     refreshMe,
     logout,
     search,
+    pageTitle,
     build: ({ layout }) => build(layout),
   });
 }
