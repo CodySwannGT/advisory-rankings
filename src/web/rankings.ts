@@ -17,6 +17,7 @@ import {
   summaryCard,
   topFirmsCard,
 } from "./rankings-sections.js";
+import { coverageWorkbenchCard } from "./rankings-coverage.js";
 
 const FILTER_FIELDS = [
   "category",
@@ -87,6 +88,7 @@ function resourceQuery() {
 function renderRankings(data, center, right) {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
+  center.appendChild(coverageWorkbenchCard(data.coverage));
   if (data.emptyState) {
     center.appendChild(
       EmptyCard({
