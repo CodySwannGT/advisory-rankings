@@ -34,6 +34,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
+  pageTitle: "Interactive Rankings Explorer",
   build({ center, right }) {
     center.append(SkeletonCard(), SkeletonCard());
     loadRankings(center, right);

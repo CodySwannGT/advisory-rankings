@@ -44,6 +44,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
+  pageTitle: "Recruiting Market Map",
   build({ center, right }) {
     center.append(SkeletonCard(), SkeletonCard());
     loadRecruiting(center, right);
