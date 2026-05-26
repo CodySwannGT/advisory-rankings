@@ -1,4 +1,4 @@
-/* eslint-disable jsdoc/require-jsdoc, functional/immutable-data -- Private resource helpers are covered through the public endpoint. */
+/* eslint-disable jsdoc/require-jsdoc -- Private resource helpers are covered through the public endpoint. */
 // @ts-nocheck
 import { resolveFirm } from "./resource-routing.js";
 
@@ -316,4 +316,4 @@ function uniqueSorted(values) {
   );
 }
 
-/* eslint-enable jsdoc/require-jsdoc, functional/immutable-data -- End local helper exception. */
+/* eslint-enable jsdoc/require-jsdoc -- End local helper exception. */

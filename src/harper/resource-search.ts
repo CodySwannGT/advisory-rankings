@@ -30,7 +30,6 @@ export function currentEmploymentByAdvisor(employments) {
     if (employment.endDate) continue;
     const existing = current.get(employment.advisorId);
     if (!existing || cmpDesc("startDate")(employment, existing) < 0) {
-      // eslint-disable-next-line functional/immutable-data -- local accumulator keeps navbar search linear on large datasets.
       current.set(employment.advisorId, employment);
     }
   }

@@ -1,4 +1,4 @@
-/* eslint-disable jsdoc/require-jsdoc, functional/immutable-data -- Private aggregation helpers build compact response objects in local maps. */
+/* eslint-disable jsdoc/require-jsdoc -- Private aggregation helpers build compact response objects in local maps. */
 // @ts-nocheck
 import { loadAll } from "./resource-data.js";
 import { advisorDisplayName, resolveFirm } from "./resource-routing.js";
@@ -221,4 +221,4 @@ function dateDesc(field) {
     String(right?.[field] || "").localeCompare(String(left?.[field] || ""));
 }
 
-/* eslint-enable jsdoc/require-jsdoc, functional/immutable-data -- End local helper exception. */
+/* eslint-enable jsdoc/require-jsdoc -- End local helper exception. */

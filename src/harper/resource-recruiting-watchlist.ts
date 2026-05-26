@@ -1,4 +1,4 @@
-/* eslint-disable jsdoc/require-jsdoc, functional/immutable-data -- Watchlist helpers build compact response rows in local maps. */
+/* eslint-disable jsdoc/require-jsdoc -- Watchlist helpers build compact response rows in local maps. */
 // @ts-nocheck
 import { firmChip } from "./resource-feed.js";
 import { normalizeId, resolveFirm } from "./resource-routing.js";
@@ -182,4 +182,4 @@ function watchlistSourceStatus(moves) {
   );
 }
 
-/* eslint-enable jsdoc/require-jsdoc, functional/immutable-data -- End local private-helper exception. */
+/* eslint-enable jsdoc/require-jsdoc -- End local private-helper exception. */

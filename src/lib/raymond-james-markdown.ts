@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* eslint-disable functional/immutable-data, functional/readonly-type, sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- branch roster markdown parsing is bounded to one public page at a time. */
+/* eslint-disable sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- branch roster markdown parsing is bounded to one public page at a time. */
 import { cleanText } from "./morgan-stanley-row-utils.js";
 import type {
   RaymondJamesAdvisorSource,
@@ -148,4 +148,4 @@ const absoluteRaymondJamesUrl = (value: string): string | undefined => {
     : `https://www.raymondjames.com${value.startsWith("/") ? "" : "/"}${value}`;
 };
 
-/* eslint-enable functional/immutable-data, functional/readonly-type, sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- re-enable global parser lint rules after this bounded markdown parser. */
+/* eslint-enable sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- re-enable global parser lint rules after this bounded markdown parser. */
