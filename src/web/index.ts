@@ -131,9 +131,11 @@ function renderLeft(root, items) {
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
+      { label: "Recruiting", icon: "↔", href: "/recruiting" },
+      { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
   const recentTransitions = items

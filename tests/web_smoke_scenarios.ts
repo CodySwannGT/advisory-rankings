@@ -20,6 +20,11 @@ import {
 import { firmDueDiligenceChecks } from "./web_smoke_firm_due_diligence.js";
 import { smokeFeedFilters } from "./web_smoke_feed_filters.js";
 import { smokeTeam } from "./web_smoke_team.js";
+import {
+  advisorCopyGuardrailChecks,
+  browseLabelChecks,
+  feedCopyGuardrailChecks,
+} from "./web_smoke_copy_guardrails.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -81,7 +86,11 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     ),
   ];
 
-  return [...initialFeedChecks, ...(await smokeFeedFilters(page))];
+  return [
+    ...initialFeedChecks,
+    ...(await smokeFeedFilters(page)),
+    ...(await feedCopyGuardrailChecks(page)),
+  ];
 }
 
 /**
@@ -128,6 +137,7 @@ const firmProfileChecks = async (
   cairnesLink: Locator
 ): Promise<readonly Check[]> => [
   ...(await firmDueDiligenceChecks(page)),
+  ...(await browseLabelChecks(page, "firm.html")),
   check(
     cleanProfilePath("firms", page.url()),
     "firm URL: clean /firms/... path",
@@ -254,6 +264,7 @@ export async function smokeAdvisor(
       "advisor.html: attribution links to BrokerCheck ToU"
     ),
     ...(await advisorEvidenceChecks(page)),
+    ...(await advisorCopyGuardrailChecks(page)),
   ];
 }
 
