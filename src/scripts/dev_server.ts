@@ -203,14 +203,26 @@ async function serveStatic(req, res) {
     const s = await stat(file);
     if (!s.isFile()) throw new Error("not a file");
     const body = await readFile(file);
+    const extension = extname(file);
     res.writeHead(200, {
-      "Content-Type": MIME[extname(file)] || "application/octet-stream",
-      "Cache-Control": "no-store",
+      "Content-Type": MIME[extension] || "application/octet-stream",
+      "Cache-Control": staticCacheControl(extension),
     });
     res.end(body);
   } catch {
     res.writeHead(404).end("not found");
   }
+}
+
+/**
+ * Chooses cache headers for static assets served by the local dev server.
+ * @param extension - Requested file extension.
+ * @returns Cache-Control header value.
+ */
+function staticCacheControl(extension: string): string {
+  return [".ico", ".svg", ".png", ".css", ".js"].includes(extension)
+    ? "public, max-age=3600"
+    : "no-store";
 }
 
 /**

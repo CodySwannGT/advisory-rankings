@@ -51,6 +51,37 @@ const DRAWER_LINKS_SELECTOR =
 const DRAWER_FIRMS_LINK_SELECTOR = '.nav-drawer .nav-links a:has-text("Firms")';
 const NAV_BURGER_SELECTOR = ".nav-burger";
 const NAV_SEARCH_SELECTOR = ".nav .search";
+const FAVICON_SELECTOR = 'link[rel~="icon"]';
+
+/**
+ * Verifies the public app advertises and serves a favicon.
+ * @param page - Browser page shared by desktop smoke scenarios.
+ * @returns Smoke assertions for favicon discovery and request health.
+ */
+async function smokeFavicon(page: Page): Promise<readonly Check[]> {
+  await smokeGoto(page, `${BASE}/`);
+  const iconHref = await page
+    .locator(FAVICON_SELECTOR)
+    .first()
+    .getAttribute("href");
+  const iconUrl = iconHref ? new URL(iconHref, BASE).toString() : "";
+  const iconResponse = iconUrl ? await page.request.get(iconUrl) : null;
+  const legacyResponse = await page.request.get(`${BASE}/favicon.ico`);
+
+  return [
+    check(Boolean(iconHref), "favicon: page declares icon link"),
+    check(
+      Boolean(iconResponse?.ok()),
+      "favicon: configured icon request succeeds",
+      iconUrl || "missing icon href"
+    ),
+    check(
+      legacyResponse.ok(),
+      "favicon: /favicon.ico request succeeds",
+      `status ${legacyResponse.status()}`
+    ),
+  ];
+}
 
 /**
  * Checks the mobile navigation drawer.
@@ -277,6 +308,7 @@ async function runScenarios(
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[]> {
   return [
+    ...(await smokeFavicon(page)),
     ...(await smokeFeed(page)),
     ...(await smokeRecruiting(page)),
     ...(await smokeRankings(page, browser, extraHTTPHeaders)),
