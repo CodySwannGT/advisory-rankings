@@ -1030,7 +1030,8 @@ body.drawer-open .nav .nav-scrim {
   overflow-wrap: anywhere;
 }
 .recruiting-filters,
-.rankings-filters {
+.rankings-filters,
+.feed-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
@@ -1038,6 +1039,9 @@ body.drawer-open .nav .nav-scrim {
 }
 .rankings-filters {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.feed-filters {
+  grid-template-columns: minmax(150px, 1.4fr) minmax(150px, 1.2fr) auto auto;
 }
 .filter-field {
   display: grid;
@@ -1069,6 +1073,19 @@ body.drawer-open .nav .nav-scrim {
 .filter-button:hover {
   filter: brightness(0.96);
 }
+.feed-filter-clear {
+  min-height: 37px;
+  border-radius: 8px;
+}
+.feed-filter-clear[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+.feed-filter-summary {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
 .recruiting-table,
 .rankings-table {
   min-width: 720px;
@@ -1099,10 +1116,12 @@ body.drawer-open .nav .nav-scrim {
   .recruiting-stat-grid,
   .rankings-stat-grid,
   .rankings-filters,
-  .recruiting-filters {
+  .recruiting-filters,
+  .feed-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .filter-button {
+  .filter-button,
+  .feed-filter-clear {
     grid-column: 1 / -1;
   }
 }

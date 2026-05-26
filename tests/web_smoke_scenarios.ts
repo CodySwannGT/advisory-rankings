@@ -18,6 +18,8 @@ import {
   type Check,
 } from "./web_smoke_support.js";
 import { firmDueDiligenceChecks } from "./web_smoke_firm_due_diligence.js";
+import { smokeFeedFilters } from "./web_smoke_feed_filters.js";
+import { smokeTeam } from "./web_smoke_team.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -41,8 +43,7 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
-
-  return [
+  const initialFeedChecks = [
     check((await postCards.count()) >= 2, "/ feed: at least two post cards"),
     check(
       Boolean(await taylorCard.locator(".post-headline").textContent()),
@@ -79,6 +80,8 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
       "/ feed: right rail shows Trending firms"
     ),
   ];
+
+  return [...initialFeedChecks, ...(await smokeFeedFilters(page))];
 }
 
 /**
@@ -266,50 +269,6 @@ async function navigateToCairnesAdvisor(
   await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
 }
 
-/**
- * Checks the Taylor team profile.
- * @param page - Browser page used for the scenario.
- * @returns Smoke assertions for the team profile.
- */
-export async function smokeTeam(page: Page): Promise<readonly Check[]> {
-  await smokeGoto(page, `${BASE}/`);
-  await smokeWaitForSelector(page, ".chip.team");
-  await page
-    .locator(".chip.team")
-    .filter({ hasText: "Taylor" })
-    .first()
-    .click();
-  await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
-  await shot(page, "04-team-taylor-group");
-
-  return [
-    check(
-      cleanProfilePath("teams", page.url()),
-      "team URL: clean /teams/... path",
-      page.url()
-    ),
-    check(
-      /Taylor/.test(
-        (await page.locator(PROFILE_HEADING_SELECTOR).textContent()) ?? ""
-      ),
-      "team.html: Taylor header"
-    ),
-    check(
-      (await page
-        .locator(".card")
-        .filter({ hasText: "Current members" })
-        .first()
-        .locator(".row")
-        .count()) >= 9,
-      "team.html: current members rendered"
-    ),
-    check(
-      (await page.locator(".snap-table tbody tr").count()) >= 2,
-      "team.html: metric snapshot rows rendered"
-    ),
-  ];
-}
-
 export {
   smokeArticle,
   smokeCompliance,
@@ -317,3 +276,4 @@ export {
 } from "./web_smoke_secondary.js";
 export { smokeNotFoundRecovery } from "./web_smoke_not_found.js";
 export { smokeAuth } from "./web_smoke_auth.js";
+export { smokeTeam };
