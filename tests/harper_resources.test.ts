@@ -1483,6 +1483,177 @@ describe("Harper resource endpoints", () => {
     ]);
   });
 
+  it("normalizes recruiting watchlist inputs deterministically", async () => {
+    const target = routeTarget("", {
+      firm: [
+        "Example Wealth LLC, Beta Advisors",
+        "Example Wealth LLC",
+        "Missing One",
+        "Missing Two",
+        "Missing Three",
+        "Missing Four",
+        "Missing Five",
+        "Missing Six",
+        "Missing Seven",
+      ],
+      firmId: "firm-b",
+      state: "ga",
+      year: "2024",
+    });
+    const first = await new (resources as any).RecruitingMarket().get(target);
+    const second = await new (resources as any).RecruitingMarket().get(target);
+    const stable = (market: any) => ({
+      filters: market.filters,
+      recentMoveIds: market.recentMoves.map((move: any) => move.id),
+      watchlist: {
+        count: market.watchlist.count,
+        itemKeys: market.watchlist.items.map((item: any) => ({
+          firmId: item.firm?.id ?? null,
+          query: item.query,
+          sourceStatus: item.sourceStatus,
+        })),
+        summary: market.watchlist.summary,
+      },
+    });
+
+    expect(stable(first)).toEqual(stable(second));
+    expect(first.watchlist.count).toBe(8);
+    expect(first.filters).toMatchObject({
+      firmId: null,
+      firmQuery: null,
+      state: "GA",
+      watchlistFirmIds: ["firm-a", "firm-b"],
+      watchlistFirmQueries: [
+        "Example Wealth LLC",
+        "Beta Advisors",
+        "Missing One",
+        "Missing Two",
+        "Missing Three",
+        "Missing Four",
+        "Missing Five",
+        "Missing Six",
+      ],
+      year: "2024",
+    });
+    expect(first.watchlist.items.slice(2)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          firm: null,
+          sourceStatus: ["unresolved-firm"],
+        }),
+      ])
+    );
+  });
+
+  it("covers empty and source-degraded recruiting watchlist rows", async () => {
+    setRows("TransitionEvent", [
+      ...(tableRows.get("TransitionEvent") ?? []),
+      {
+        id: "transition-unlocated",
+        subjectAdvisorId: "advisor-a",
+        fromFirmId: "firm-b",
+        toFirmId: "firm-a",
+        moveDate: "2024-05-01",
+        aumMoved: 125_000_000,
+        productionT12: null,
+      },
+    ]);
+    const degraded = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", { firm: "Example Wealth LLC", year: "2024" })
+    );
+
+    expect(degraded.watchlist.items[0]).toMatchObject({
+      firm: { id: "firm-a" },
+      sourceCoverage: {
+        moveCount: 4,
+        sourceBackedCount: 1,
+        missingSourceCount: 3,
+        missingLocationCount: 1,
+      },
+      sourceMoveIds: [
+        "transition-a",
+        "transition-team",
+        "transition-unlocated",
+        "transition-out",
+      ],
+      sourceStatus: expect.arrayContaining([
+        "missing-location",
+        "missing-source",
+        "missing-t12",
+      ]),
+    });
+
+    const empty = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", {
+        firm: ["Example Wealth LLC", "Missing Firm"],
+        state: "TX",
+      })
+    );
+
+    expect(empty).toMatchObject({
+      summary: { count: 0 },
+      emptyState:
+        "No matching public recruiting move data is loaded for these filters.",
+      watchlist: {
+        count: 2,
+        items: [
+          {
+            query: "Example Wealth LLC",
+            firm: expect.objectContaining({ id: "firm-a" }),
+            inbound: {
+              count: 0,
+              knownAum: 0,
+              unknownAumCount: 0,
+              missingT12Count: 0,
+            },
+            outbound: {
+              count: 0,
+              knownAum: 0,
+              unknownAumCount: 0,
+              missingT12Count: 0,
+            },
+            netMoveCount: 0,
+            netKnownAum: 0,
+            sourceCoverage: {
+              moveCount: 0,
+              sourceBackedCount: 0,
+              missingSourceCount: 0,
+              missingLocationCount: 0,
+            },
+            sourceMoveIds: [],
+            sourceStatus: ["no-matching-moves"],
+          },
+          {
+            query: "Missing Firm",
+            firm: null,
+            inbound: {
+              count: 0,
+              knownAum: 0,
+              unknownAumCount: 0,
+              missingT12Count: 0,
+            },
+            outbound: {
+              count: 0,
+              knownAum: 0,
+              unknownAumCount: 0,
+              missingT12Count: 0,
+            },
+            netMoveCount: 0,
+            netKnownAum: 0,
+            sourceCoverage: {
+              moveCount: 0,
+              sourceBackedCount: 0,
+              missingSourceCount: 0,
+              missingLocationCount: 0,
+            },
+            sourceMoveIds: [],
+            sourceStatus: ["unresolved-firm"],
+          },
+        ],
+      },
+    });
+  });
+
   it("reads AdvisorBook MCP resources with public payloads", async () => {
     const endpoint = new (resources as any).mcp();
     const readResource = async (uri: string) => {
