@@ -8,7 +8,7 @@
   </head>
   <body>
     <script type="module">
-      // Directory page: every firm in the DB. UI from the design system.
+      // Directory page: cursor-paginated firm rows. UI from the design system.
       import {
         api,
         refreshMe,
@@ -24,10 +24,12 @@
         SectionCard,
         AsyncStateCard,
         DetailsCard,
-        EntityList,
         EntityRow,
         Avatar,
+        Paginated,
       } from "/design-system/index.js?v=20260521-media";
+
+      const PAGE_SIZE = 50;
 
       mountThreeColumnPage({
         active: "firms",
@@ -39,70 +41,85 @@
           const loadFirms = () => {
             clear(center);
             clear(right);
-            api("/PublicFirms")
-              .then(rows => {
-                center.appendChild(
-                  SectionCard({
-                    title: `All firms (${rows.length.toLocaleString()})`,
-                    body: EntityList({
-                      rows: rows.map(f =>
-                        EntityRow({
-                          avatar: Avatar({
-                            initials: initials(f.name),
-                            imageUrl: f.logoUrl,
-                            alt: f.name,
-                          }),
-                          name: f.name,
-                          sub: [
-                            humanize(f.channel),
-                            [f.hqCity, f.hqState].filter(Boolean).join(", "),
-                            f.dissolvedYear
-                              ? `dissolved ${f.dissolvedYear}`
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · "),
-                          href: entityPath("firm", f),
-                        })
-                      ),
-                    }),
-                  })
-                );
-                const channels = new Set(
-                  rows.map(f => humanize(f.channel)).filter(Boolean)
-                );
-                const headquarters = rows.filter(
-                  f => f.hqCity || f.hqState
-                ).length;
-                right.appendChild(
-                  DetailsCard({
-                    title: "Firm directory",
-                    pairs: [
-                      ["Firms", rows.length.toLocaleString()],
-                      ["Channels", channels.size],
-                      ["Headquarters on file", headquarters],
-                      [
-                        "Active firms",
-                        rows
-                          .filter(f => !f.dissolvedYear)
-                          .length.toLocaleString(),
-                      ],
-                    ],
-                  })
-                );
-              })
-              .catch(err => {
-                console.error("Firm directory failed to load", err);
-                center.appendChild(
-                  AsyncStateCard({
-                    kind: "transient",
-                    title: "Could not load firms",
-                    body: "Retry the request to refresh this directory.",
-                    actionLabel: "Retry",
-                    onAction: loadFirms,
-                  })
-                );
+            let totalCount = null;
+            let statsCard = DetailsCard({
+              title: "Firm directory",
+              pairs: [
+                ["Loaded", "0"],
+                ["Total", "Loading..."],
+              ],
+            });
+            right.appendChild(statsCard);
+            const loaded = new Set();
+            const updateStats = total => {
+              if (typeof total === "number") totalCount = total;
+              const nextStatsCard = DetailsCard({
+                title: "Firm directory",
+                pairs: [
+                  ["Loaded", loaded.size.toLocaleString()],
+                  [
+                    "Total",
+                    typeof totalCount === "number"
+                      ? totalCount.toLocaleString()
+                      : "Loading...",
+                  ],
+                ],
               });
+              statsCard.replaceWith(nextStatsCard);
+              statsCard = nextStatsCard;
+            };
+
+            try {
+              center.appendChild(
+                SectionCard({
+                  title: "All firms",
+                  body: Paginated({
+                    fetchPage: cursor => {
+                      const qs = new URLSearchParams({
+                        limit: String(PAGE_SIZE),
+                      });
+                      if (cursor) qs.set("cursor", cursor);
+                      return api(`/PublicFirms?${qs.toString()}`);
+                    },
+                    renderRow: f => {
+                      loaded.add(f.id);
+                      updateStats();
+                      return EntityRow({
+                        avatar: Avatar({
+                          initials: initials(f.name),
+                          imageUrl: f.logoUrl,
+                          alt: f.name,
+                        }),
+                        name: f.name,
+                        sub: [
+                          humanize(f.channel),
+                          [f.hqCity, f.hqState].filter(Boolean).join(", "),
+                          f.dissolvedYear
+                            ? `dissolved ${f.dissolvedYear}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · "),
+                        href: entityPath("firm", f),
+                      });
+                    },
+                    empty: "No firms are available yet.",
+                    onTotal: updateStats,
+                  }),
+                })
+              );
+            } catch (err) {
+              console.error("Firm directory failed to load", err);
+              center.appendChild(
+                AsyncStateCard({
+                  kind: "transient",
+                  title: "Could not load firms",
+                  body: "Retry the request to refresh this directory.",
+                  actionLabel: "Retry",
+                  onAction: loadFirms,
+                })
+              );
+            }
           };
           loadFirms();
         },

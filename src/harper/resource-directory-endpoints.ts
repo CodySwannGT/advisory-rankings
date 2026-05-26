@@ -27,16 +27,22 @@ export class PublicFirms extends Resource {
 
   /**
    * Lists firms after alias merges have removed duplicate public rows.
-   * @returns Public firm rows sorted by name.
+   * @param target - Request target carrying optional cursor and limit.
+   * @returns Firm page, next cursor, and total row count.
    */
-  async get() {
+  async get(target) {
     const rows = canonicalizeFirmResourceRows({
       firms: await all(tables.Firm),
       firmAliases: await optionalAll(tables.FirmAlias),
     });
-    return [...rows.firms].sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "")
+    const sorted = [...rows.firms].sort(compareFirmDirectoryRows);
+    const { cursor, limit } = parsePagination(target);
+    const { items, nextCursor } = paginate(
+      sorted,
+      { cursor: decodeCursor(cursor), limit },
+      firmDirectoryKey
     );
+    return { items, nextCursor, total: sorted.length };
   }
 }
 
@@ -81,9 +87,10 @@ export class PublicTeams extends Resource {
 
   /**
    * Enriches teams with current firm names for directory cards.
-   * @returns Team rows sorted by name and enriched with current firm name.
+   * @param target - Request target carrying optional cursor and limit.
+   * @returns Team page, next cursor, and total row count.
    */
-  async get() {
+  async get(target) {
     const [teams, firms] = await Promise.all([
       all(tables.Team),
       all(tables.Firm),
@@ -94,14 +101,19 @@ export class PublicTeams extends Resource {
       firmAliases: await optionalAll(tables.FirmAlias),
     });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    return [...rows.teams]
-      .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
-      .map(team => ({
-        ...team,
-        currentFirmName: team.currentFirmId
-          ? (byFirm.get(team.currentFirmId)?.name ?? null)
-          : null,
-      }));
+    const sorted = [...rows.teams].sort(compareTeamDirectoryRows).map(team => ({
+      ...team,
+      currentFirmName: team.currentFirmId
+        ? (byFirm.get(team.currentFirmId)?.name ?? null)
+        : null,
+    }));
+    const { cursor, limit } = parsePagination(target);
+    const { items, nextCursor } = paginate(
+      sorted,
+      { cursor: decodeCursor(cursor), limit },
+      teamDirectoryKey
+    );
+    return { items, nextCursor, total: sorted.length };
   }
 }
 
@@ -188,6 +200,15 @@ async function optionalAll(table) {
 }
 
 /**
+ * Sorts firms by public display name.
+ * @param firm - Firm row from the public directory table.
+ * @returns Lowercase key used for cursor pagination.
+ */
+function firmDirectoryKey(firm) {
+  return (firm.name || "").toLowerCase();
+}
+
+/**
  * Sorts advisors by their best available surname-like field.
  * @param advisor - Advisor row from the public directory table.
  * @returns Lowercase key used for cursor pagination.
@@ -197,14 +218,54 @@ function advisorDirectoryKey(advisor) {
 }
 
 /**
+ * Sorts teams by public display name.
+ * @param team - Team row from the public directory table.
+ * @returns Lowercase key used for cursor pagination.
+ */
+function teamDirectoryKey(team) {
+  return (team.name || "").toLowerCase();
+}
+
+/**
+ * Orders firm directory rows while keeping cursor ties deterministic.
+ * @param a - Left firm row.
+ * @param b - Right firm row.
+ * @returns Negative, zero, or positive comparison result.
+ */
+function compareFirmDirectoryRows(a, b) {
+  return compareDirectoryRows(a, b, firmDirectoryKey);
+}
+
+/**
  * Orders advisor directory rows while keeping cursor ties deterministic.
  * @param a - Left advisor row.
  * @param b - Right advisor row.
  * @returns Negative, zero, or positive comparison result.
  */
 function compareAdvisorDirectoryRows(a, b) {
-  const left = advisorDirectoryKey(a),
-    right = advisorDirectoryKey(b);
+  return compareDirectoryRows(a, b, advisorDirectoryKey);
+}
+
+/**
+ * Orders team directory rows while keeping cursor ties deterministic.
+ * @param a - Left team row.
+ * @param b - Right team row.
+ * @returns Negative, zero, or positive comparison result.
+ */
+function compareTeamDirectoryRows(a, b) {
+  return compareDirectoryRows(a, b, teamDirectoryKey);
+}
+
+/**
+ * Applies the shared cursor sort contract to directory resources.
+ * @param a - Left directory row.
+ * @param b - Right directory row.
+ * @param keyOf - Sort-key callback used by pagination.
+ * @returns Negative, zero, or positive comparison result.
+ */
+function compareDirectoryRows(a, b, keyOf) {
+  const left = keyOf(a),
+    right = keyOf(b);
   return left === right
     ? (a.id || "").localeCompare(b.id || "")
     : left < right

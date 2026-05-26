@@ -2010,11 +2010,15 @@ describe("Harper resource endpoints", () => {
 
 describe("Harper directory and search resources", () => {
   it("serves sorted public directories and ranked search results", async () => {
-    const firms = await new (resources as any).PublicFirms().get();
+    const firms = await new (resources as any).PublicFirms().get(
+      routeTarget("", { limit: "1" })
+    );
     const advisors = await new (resources as any).PublicAdvisors().get(
       routeTarget("", { limit: "1" })
     );
-    const teams = await new (resources as any).PublicTeams().get();
+    const teams = await new (resources as any).PublicTeams().get(
+      routeTarget("", { limit: "1" })
+    );
     const result = await new (resources as any).Search().get(
       routeTarget("", { q: "stone", limit: "5" })
     );
@@ -2022,16 +2026,27 @@ describe("Harper directory and search resources", () => {
       routeTarget("", { kind: "firm", limit: "5", q: "example" })
     );
 
-    expect(firms.map((firm: any) => firm.name)).toEqual([
-      "Beta Advisors",
-      "Example Wealth Management",
-    ]);
+    expect(firms).toMatchObject({
+      items: [expect.objectContaining({ name: "Beta Advisors" })],
+      total: 2,
+    });
+    expect(firms.nextCursor).toBeTruthy();
     expect(advisors).toMatchObject({
       items: [expect.objectContaining({ id: "advisor-a" })],
       total: 2,
     });
     expect(advisors.nextCursor).toBeTruthy();
-    expect(teams[0]).toMatchObject({
+    expect(teams).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: "team-a",
+          currentFirmName: "Example Wealth Management",
+        }),
+      ],
+    });
+    expect(teams.nextCursor).toBeNull();
+    expect(teams.items[0]).toMatchObject({
       id: "team-a",
       currentFirmName: "Example Wealth Management",
     });
@@ -2073,11 +2088,13 @@ describe("Harper directory and search resources", () => {
       routeTarget("", { limit: "50", q: "stone" })
     );
 
-    expect(firms).toHaveLength(2);
-    expect(teams).toEqual([
+    expect(firms.items).toHaveLength(2);
+    expect(firms.total).toBe(2);
+    expect(teams.items).toEqual([
       expect.objectContaining({ currentFirmName: null, id: "team-a" }),
       expect.objectContaining({ currentFirmName: null, id: "team-z" }),
     ]);
+    expect(teams.total).toBe(2);
     expect(result.items).toHaveLength(20);
     expect(result.counts.advisors).toBe(25);
   });
