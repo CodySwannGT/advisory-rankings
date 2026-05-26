@@ -18,6 +18,8 @@ import {
   type Check,
 } from "./web_smoke_support.js";
 import { firmDueDiligenceChecks } from "./web_smoke_firm_due_diligence.js";
+import { smokeFeedFilters } from "./web_smoke_feed_filters.js";
+import { smokeTeam } from "./web_smoke_team.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -79,96 +81,7 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     ),
   ];
 
-  await page
-    .locator('form.feed-filters select[name="mode"]')
-    .selectOption("event");
-  await page.waitForURL(/(?:\?|&)mode=event(?:&|$)/, {
-    timeout: QUICK_UI_TIMEOUT,
-  });
-  await page.waitForFunction(
-    () =>
-      [...document.querySelectorAll("article.card")].every(
-        card => card.querySelectorAll(".event-card").length > 0
-      ),
-    null,
-    { timeout: QUICK_UI_TIMEOUT }
-  );
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
-  await shot(page, "01-feed-event-filter");
-  const eventFilterUrl = page.url();
-  const eventFilterCardCount = await page.locator("article.card").count();
-  const eventFilterAllHaveCards = await page
-    .locator("article.card")
-    .evaluateAll(cards =>
-      cards.every(card => card.querySelectorAll(".event-card").length > 0)
-    );
-
-  const emptyCategory = await feedCategoryWithoutMoves(page);
-  if (emptyCategory) {
-    await page
-      .locator('form.feed-filters select[name="mode"]')
-      .selectOption("moves");
-    await page
-      .locator('form.feed-filters select[name="category"]')
-      .selectOption(emptyCategory);
-    await page.waitForSelector("text=No feed posts match these filters", {
-      timeout: QUICK_UI_TIMEOUT,
-    });
-    await shot(page, "01-feed-empty-filter");
-  }
-
-  return [
-    ...initialFeedChecks,
-    check(
-      eventFilterUrl.includes("mode=event"),
-      "/ feed filters: event-backed mode persists in URL",
-      eventFilterUrl
-    ),
-    check(
-      eventFilterCardCount >= 1,
-      "/ feed filters: event-backed mode keeps matching posts visible"
-    ),
-    check(
-      eventFilterAllHaveCards,
-      "/ feed filters: event-backed rows all include event cards"
-    ),
-    check(
-      !emptyCategory ||
-        (await page
-          .locator("text=No feed posts match these filters")
-          .count()) >= 1,
-      "/ feed filters: zero-result combinations show explicit empty state"
-    ),
-  ];
-}
-
-/**
- * Finds a loaded feed category that should produce an empty recruiting-moves view.
- * @param page - Browser page used for the scenario.
- * @returns Category value or empty string when every category has a move.
- */
-async function feedCategoryWithoutMoves(page: Page): Promise<string> {
-  return await page.evaluate(async () => {
-    const data = await fetch("/Feed").then(response => response.json());
-    const items = Array.isArray(data.items) ? data.items : [];
-    const categories = new Set(
-      items.map((item: any) => item.article?.category).filter(Boolean)
-    );
-    const moveCategories = new Set(
-      items
-        .filter((item: any) =>
-          (item.eventCards || []).some(
-            (event: any) => event.kind === "transition"
-          )
-        )
-        .map((item: any) => item.article?.category)
-        .filter(Boolean)
-    );
-    return (
-      [...categories].find(category => !moveCategories.has(category)) || ""
-    );
-  });
+  return [...initialFeedChecks, ...(await smokeFeedFilters(page))];
 }
 
 /**
@@ -356,50 +269,6 @@ async function navigateToCairnesAdvisor(
   await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
 }
 
-/**
- * Checks the Taylor team profile.
- * @param page - Browser page used for the scenario.
- * @returns Smoke assertions for the team profile.
- */
-export async function smokeTeam(page: Page): Promise<readonly Check[]> {
-  await smokeGoto(page, `${BASE}/`);
-  await smokeWaitForSelector(page, ".chip.team");
-  await page
-    .locator(".chip.team")
-    .filter({ hasText: "Taylor" })
-    .first()
-    .click();
-  await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
-  await shot(page, "04-team-taylor-group");
-
-  return [
-    check(
-      cleanProfilePath("teams", page.url()),
-      "team URL: clean /teams/... path",
-      page.url()
-    ),
-    check(
-      /Taylor/.test(
-        (await page.locator(PROFILE_HEADING_SELECTOR).textContent()) ?? ""
-      ),
-      "team.html: Taylor header"
-    ),
-    check(
-      (await page
-        .locator(".card")
-        .filter({ hasText: "Current members" })
-        .first()
-        .locator(".row")
-        .count()) >= 9,
-      "team.html: current members rendered"
-    ),
-    check(
-      (await page.locator(".snap-table tbody tr").count()) >= 2,
-      "team.html: metric snapshot rows rendered"
-    ),
-  ];
-}
-
 export {
   smokeArticle,
   smokeCompliance,
@@ -407,3 +276,4 @@ export {
 } from "./web_smoke_secondary.js";
 export { smokeNotFoundRecovery } from "./web_smoke_not_found.js";
 export { smokeAuth } from "./web_smoke_auth.js";
+export { smokeTeam };
