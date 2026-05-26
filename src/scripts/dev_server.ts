@@ -42,6 +42,7 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { handleAuthRoute } from "./dev_server_auth.js";
+import { DEV_SERVER_TABLES } from "./dev_server_tables.js";
 
 const PORT = Number(process.env.PORT || 9926);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -54,40 +55,7 @@ const PASS = process.env.HDB_ADMIN_PASSWORD || "admin-local";
 const AUTH = `Basic ${Buffer.from(`${USER}:${PASS}`).toString("base64")}`;
 const DEV_URL_BASE = ["http", "://x"].join("");
 
-const TABLES = [
-  "Firm",
-  "FirmAlias",
-  "FirmMergeAudit",
-  "FirmSuccession",
-  "Branch",
-  "BranchAssignment",
-  "Advisor",
-  "Education",
-  "Designation",
-  "License",
-  "EmploymentHistory",
-  "RegistrationApplication",
-  "Team",
-  "TeamMembership",
-  "TeamMetricSnapshot",
-  "AdvisorMetricSnapshot",
-  "TransitionEvent",
-  "RecruitingDealQuote",
-  "Disclosure",
-  "DisclosureCluster",
-  "Sanction",
-  "OutsideBusinessActivity",
-  "EmployerConcentration",
-  "Ranking",
-  "RankingEntry",
-  "Article",
-  "ArticleAdvisorMention",
-  "ArticleFirmMention",
-  "ArticleTeamMention",
-  "ArticleTransitionEventMention",
-  "ArticleDisclosureMention",
-  "FieldAssertion",
-];
+const TABLES = [...DEV_SERVER_TABLES];
 
 // ── ops API helpers ─────────────────────────────────────────────
 
