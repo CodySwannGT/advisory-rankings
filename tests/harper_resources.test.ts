@@ -72,9 +72,20 @@ const firmDueDiligenceResource =
 
 const setRows = (name: string, rows: any[]) => tableRows.set(name, rows);
 
-const routeTarget = (id: string, params: Record<string, string> = {}) => ({
+const routeTarget = (
+  id: string,
+  params: Record<string, string | string[]> = {}
+) => ({
   id,
-  get: (name: string) => params[name] ?? null,
+  get: (name: string) => {
+    const value = params[name];
+    return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  },
+  getAll: (name: string) => {
+    const value = params[name];
+    if (Array.isArray(value)) return value;
+    return value == null ? [] : [value];
+  },
   toString: () => id,
 });
 
@@ -1387,6 +1398,89 @@ describe("Harper resource endpoints", () => {
       emptyState:
         "No matching public recruiting move data is loaded for these filters.",
     });
+  });
+
+  it("serves deterministic recruiting watchlist snapshots", async () => {
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", {
+        firm: ["Example Wealth LLC", "Beta Advisors"],
+        state: "ga",
+        year: "2024",
+      })
+    );
+
+    expect(market.filters).toMatchObject({
+      firmId: null,
+      firmQuery: null,
+      state: "GA",
+      watchlistFirmIds: ["firm-a", "firm-b"],
+      watchlistFirmQueries: ["Example Wealth LLC", "Beta Advisors"],
+      year: "2024",
+    });
+    expect(market.watchlist).toMatchObject({
+      generatedAt: market.generatedAt,
+      count: 2,
+      summary: {
+        inbound: { count: 3, knownAum: 500_000_000 },
+        outbound: { count: 3, knownAum: 500_000_000 },
+        netMoveCount: 0,
+        netKnownAum: 0,
+      },
+    });
+    expect(market.watchlist.items).toEqual([
+      expect.objectContaining({
+        query: "Example Wealth LLC",
+        firm: expect.objectContaining({ id: "firm-a", short: "Example WM" }),
+        inbound: {
+          count: 2,
+          knownAum: 500_000_000,
+          unknownAumCount: 1,
+          missingT12Count: 1,
+        },
+        outbound: {
+          count: 1,
+          knownAum: 0,
+          unknownAumCount: 1,
+          missingT12Count: 1,
+        },
+        netMoveCount: 1,
+        netKnownAum: 500_000_000,
+        sourceCoverage: {
+          moveCount: 3,
+          sourceBackedCount: 1,
+          missingSourceCount: 2,
+          missingLocationCount: 0,
+        },
+        sourceMoveIds: ["transition-a", "transition-team", "transition-out"],
+        sourceStatus: expect.arrayContaining(["missing-source", "missing-aum"]),
+      }),
+      expect.objectContaining({
+        query: "Beta Advisors",
+        firm: expect.objectContaining({ id: "firm-b" }),
+        inbound: {
+          count: 1,
+          knownAum: 0,
+          unknownAumCount: 1,
+          missingT12Count: 1,
+        },
+        outbound: {
+          count: 2,
+          knownAum: 500_000_000,
+          unknownAumCount: 1,
+          missingT12Count: 1,
+        },
+        netMoveCount: -1,
+        netKnownAum: -500_000_000,
+        sourceCoverage: {
+          moveCount: 3,
+          sourceBackedCount: 1,
+          missingSourceCount: 2,
+          missingLocationCount: 0,
+        },
+        sourceMoveIds: ["transition-out", "transition-a", "transition-team"],
+        sourceStatus: expect.arrayContaining(["missing-source", "missing-aum"]),
+      }),
+    ]);
   });
 
   it("reads AdvisorBook MCP resources with public payloads", async () => {
