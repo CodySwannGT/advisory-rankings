@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
@@ -253,6 +253,82 @@ describe("detail async states", () => {
       expect(await recruitingHeading.isVisible()).toBe(false);
     } finally {
       await page.close();
+    }
+  });
+
+  it("renders advisor evidence panels for loaded, warning, and no-data states", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1180, height: 900 },
+    });
+    const mobilePage = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await routeAdvisorEvidence(page);
+      await page.goto(`${baseUrl}/advisor.html?id=advisor-loaded`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      const desktopEvidence = page
+        .locator(".right .card")
+        .filter({ hasText: "Evidence freshness" })
+        .first();
+      await desktopEvidence.waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await desktopEvidence
+          .locator(".tag")
+          .filter({ hasText: /^Loaded$/ })
+          .isVisible()
+      ).toBe(true);
+      expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
+        true
+      );
+      expect(await desktopEvidence.getByText("Firm Bio").isVisible()).toBe(
+        true
+      );
+      const confidence = page
+        .locator(".right .card")
+        .filter({ hasText: "Fact confidence" })
+        .first();
+      await confidence.waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await confidence.getByText("4 total").isVisible()).toBe(true);
+      expect(await confidence.getByText("Asserted").isVisible()).toBe(true);
+
+      await page.goto(`${baseUrl}/advisor.html?id=advisor-warning`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .locator(".right .card")
+        .filter({ hasText: "Evidence freshness" })
+        .locator(".tag")
+        .filter({ hasText: /^Warning$/ })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      await routeAdvisorEvidence(mobilePage);
+      await mobilePage.goto(`${baseUrl}/advisor.html?id=advisor-empty`, {
+        waitUntil: "domcontentloaded",
+      });
+      const mobileEvidence = mobilePage.locator(".advisor-mobile-evidence");
+      await mobileEvidence
+        .getByRole("heading", { name: "Evidence freshness" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await mobileEvidence.getByText("No evidence checks yet").isVisible()
+      ).toBe(true);
+      expect(
+        await mobileEvidence.getByText("No confidence rows yet").isVisible()
+      ).toBe(true);
+      expect(
+        await mobilePage.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth
+        )
+      ).toBe(true);
+    } finally {
+      await page.close();
+      await mobilePage.close();
     }
   });
 });
@@ -524,6 +600,145 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
   };
 }
 
+async function routeAdvisorEvidence(page: Page) {
+  await page.route("**/Me", async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route("**/AdvisorProfile/*", async route => {
+    const id = route.request().url().split("/").pop() || "advisor-loaded";
+    await route.fulfill({ json: advisorEvidenceProfile(id) });
+  });
+}
+
+function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
+  const states = {
+    "advisor-loaded": {
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-25T12:00:00Z",
+        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        statusCounts: {
+          success: 2,
+          no_new_data: 1,
+          ambiguous: 0,
+          failed: 0,
+        },
+        sourceTypeCoverage: {
+          web_research: 1,
+          firm_bio: 1,
+          rankings: 0,
+          press: 1,
+        },
+      },
+      confidenceSummary: {
+        hasData: true,
+        asserted: 2,
+        inferred: 1,
+        derived: 1,
+        total: 4,
+      },
+    },
+    "advisor-warning": {
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-25T12:00:00Z",
+        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        statusCounts: {
+          success: 1,
+          no_new_data: 0,
+          ambiguous: 1,
+          failed: 1,
+        },
+        sourceTypeCoverage: {
+          web_research: 1,
+          firm_bio: 1,
+          rankings: 0,
+          press: 0,
+        },
+      },
+      confidenceSummary: {
+        hasData: true,
+        asserted: 1,
+        inferred: 1,
+        derived: 0,
+        total: 2,
+      },
+    },
+    "advisor-empty": {
+      evidenceFreshness: emptyEvidenceFreshness(),
+      confidenceSummary: emptyConfidenceSummary(),
+    },
+  } as const;
+  const state = states[id as keyof typeof states] || states["advisor-loaded"];
+
+  return {
+    advisor: {
+      id,
+      legalName: "Avery Stone",
+      preferredName: "Avery Stone",
+      headshotUrl: null,
+      careerStatus: "active",
+      yearsExperience: 12,
+      finraCrd: "12345",
+      secIard: null,
+      industryStartDate: "2014-01-01",
+      birthYear: null,
+      gender: "undisclosed",
+    },
+    displayName: "Avery Stone",
+    career: [
+      {
+        roleTitle: "Advisor",
+        firm: { id: "firm-a", name: "Example Wealth", short: "Example WM" },
+        branch: { id: "branch-a", name: "Atlanta", city: "Atlanta" },
+        startDate: "2020-01-01",
+        endDate: null,
+      },
+    ],
+    teams: [],
+    disclosures: [],
+    outsideBusinessActivities: [],
+    registrationApplications: [],
+    transitions: [],
+    articles: [],
+    licenses: [],
+    designations: [],
+    education: [],
+    brokerCheckSnapshot: null,
+    ...state,
+  };
+}
+
+function emptyEvidenceFreshness() {
+  return {
+    hasData: false,
+    lastCheckedAt: null,
+    nearestNextCheckAfter: null,
+    statusCounts: {
+      success: 0,
+      no_new_data: 0,
+      ambiguous: 0,
+      failed: 0,
+    },
+    sourceTypeCoverage: {
+      web_research: 0,
+      firm_bio: 0,
+      rankings: 0,
+      press: 0,
+    },
+  };
+}
+
+function emptyConfidenceSummary() {
+  return {
+    hasData: false,
+    asserted: 0,
+    inferred: 0,
+    derived: 0,
+    total: 0,
+  };
+}
+
 /**
  * Test payload for AdvisorProfile not-found responses.
  */
@@ -562,5 +777,6 @@ type ArticleWithPartialFailures = Readonly<{
 }>;
 
 type FirmDueDiligenceProfile = Readonly<Record<string, unknown>>;
+type AdvisorEvidenceProfile = Readonly<Record<string, unknown>>;
 
 /* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End self-contained browser fixture exception. */
