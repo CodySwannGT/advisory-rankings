@@ -6,7 +6,7 @@ The advisor schema running on Harper (formerly HarperDB).
 
 | File | Purpose |
 |---|---|
-| `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, registers clean URL Fastify routes, and serves `web/**` as a static site. |
+| `config.yaml` | Component config — points Harper at `*.graphql` for the schema, enables REST, loads `resources.js` as a `jsResource`, registers clean URL and favicon Fastify routes, and serves `web/**` as a static site. |
 | `schema.graphql` | 35 entity types (`@table @export`) translated from `docs/advisor-schema.md`. PKs, indexes, timestamp directives. |
 | `resources.js` | Generated custom JS resources compiled from `src/harper/resources.ts`. They join across ~10 tables per request and back the web UI: `/Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>`, `/RecruitingMarket`, `/RankingsExplorer`, the cursor-paginated lists `/PublicAdvisors?cursor=…&limit=…` and `/FirmAdvisors/<id>?status=current\|past&cursor=…&limit=…`, `/Search?q=…` for the navbar global search box, and public MCP POST `/mcp`. |
 | `firms/`, `advisors/`, `teams/`, `articles/`, `recruiting/`, `rankings/`, `regulatory/`, `seo_shell.js` | Fastify route shells for SEO-friendly URLs. `/firms`, `/advisors`, `/teams`, `/recruiting`, `/rankings`, and `/regulatory` serve page HTML; `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, `/teams/<slug>-<id>`, and `/articles/<slug>-<id>` serve the matching detail shell. |
