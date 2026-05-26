@@ -315,6 +315,18 @@ body.drawer-open .nav .nav-scrim {
   overflow-y: auto;
 }
 
+.ab-page-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Cards ──────────────────────────────────────────────────── */
 
 .card {
@@ -628,6 +640,94 @@ body.drawer-open .nav .nav-scrim {
   margin-top: 6px;
 }
 
+/* ── Advisor evidence panels ───────────────────────────────── */
+
+.advisor-mobile-evidence {
+  display: none;
+}
+.advisor-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.advisor-evidence-state {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.advisor-evidence-state p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.advisor-evidence-state .tag {
+  flex-shrink: 0;
+}
+.advisor-evidence-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.advisor-evidence-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.advisor-evidence-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 9px 10px;
+}
+.advisor-evidence-metric strong,
+.advisor-evidence-metric span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.advisor-evidence-metric strong {
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.2;
+}
+.advisor-evidence-metric span {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.advisor-evidence-card--ok {
+  border-left: 3px solid var(--accent-green);
+}
+.advisor-evidence-card--warn {
+  border-left: 3px solid var(--accent-amber);
+}
+.advisor-confidence-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg);
+}
+.advisor-confidence-bar__segment {
+  min-width: 4px;
+}
+.advisor-confidence-bar__segment--asserted {
+  background: var(--accent-green);
+}
+.advisor-confidence-bar__segment--inferred {
+  background: var(--brand);
+}
+.advisor-confidence-bar__segment--derived {
+  background: var(--accent-amber);
+}
+
 /* ── Firm due diligence summary ─────────────────────────────── */
 
 .firm-dd {
@@ -816,6 +916,12 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text-muted);
   font-size: 12px;
   text-align: right;
+}
+
+@media (max-width: 800px) {
+  .advisor-mobile-evidence {
+    display: block;
+  }
 }
 
 @media (max-width: 700px) {
@@ -1029,6 +1135,149 @@ body.drawer-open .nav .nav-scrim {
   font-size: 18px;
   overflow-wrap: anywhere;
 }
+.rankings-coverage-workbench .card-body {
+  display: grid;
+  gap: 16px;
+}
+.rankings-coverage-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.rankings-coverage-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px;
+}
+.rankings-coverage-metric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rankings-coverage-metric strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.rankings-coverage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+.rankings-coverage-panel {
+  min-width: 0;
+}
+.rankings-coverage-panel h3 {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.rankings-coverage-buckets,
+.rankings-gap-buckets {
+  display: grid;
+  gap: 10px;
+}
+.rankings-coverage-bucket,
+.rankings-gap-bucket {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  padding: 12px;
+  text-decoration: none;
+}
+.rankings-coverage-bucket:hover,
+.rankings-gap-bucket:hover {
+  border-color: var(--brand);
+}
+.rankings-coverage-meta {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+.rankings-coverage-meta .tag-list,
+.rankings-gap-bucket .tag-list {
+  max-width: 100%;
+}
+.rankings-coverage-meta .tag,
+.rankings-gap-bucket .tag {
+  white-space: normal;
+}
+.rankings-coverage-bucket-head,
+.rankings-gap-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.rankings-coverage-bucket-head strong,
+.rankings-gap-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rankings-coverage-bucket-head span,
+.rankings-coverage-meta > span {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.rankings-bucket-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.rankings-bucket-stats span {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 7px;
+}
+.rankings-bucket-stats em {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+.rankings-bucket-stats strong {
+  display: block;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.rankings-sample-rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rankings-sample-rows li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.rankings-sample-rows strong,
+.rankings-sample-rows span {
+  overflow-wrap: anywhere;
+}
+.rankings-sample-rows span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .recruiting-filters,
 .rankings-filters,
 .feed-filters {
@@ -1073,6 +1322,35 @@ body.drawer-open .nav .nav-scrim {
 .filter-button:hover {
   filter: brightness(0.96);
 }
+.watchlist-firms {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+.watchlist-firm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 37px;
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+.watchlist-add-button,
+.watchlist-remove-button {
+  width: 37px;
+  height: 37px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.watchlist-add-button:hover,
+.watchlist-remove-button:hover {
+  background: var(--bg);
+}
 .feed-filter-clear {
   min-height: 37px;
   border-radius: 8px;
@@ -1090,12 +1368,69 @@ body.drawer-open .nav .nav-scrim {
 .rankings-table {
   min-width: 720px;
 }
+.snap-table-scroll > .recruiting-table {
+  min-width: 0;
+  table-layout: fixed;
+}
 .rankings-table {
   min-width: 960px;
 }
 .recruiting-table td,
 .rankings-table td {
   vertical-align: top;
+}
+.recruiting-table th,
+.recruiting-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.firm-momentum-table th:first-child,
+.firm-momentum-table td:first-child {
+  width: 25%;
+}
+.firm-momentum-table th:nth-child(2),
+.firm-momentum-table td:nth-child(2),
+.firm-momentum-table th:nth-child(3),
+.firm-momentum-table td:nth-child(3) {
+  width: 21%;
+}
+.firm-momentum-table th:nth-child(4),
+.firm-momentum-table td:nth-child(4) {
+  width: 18%;
+}
+.firm-momentum-table th:nth-child(5),
+.firm-momentum-table td:nth-child(5) {
+  width: 15%;
+}
+.market-activity-table th:first-child,
+.market-activity-table td:first-child {
+  width: 26%;
+}
+.recent-moves-table th:first-child,
+.recent-moves-table td:first-child {
+  width: 15%;
+}
+.recent-moves-table th:nth-child(2),
+.recent-moves-table td:nth-child(2) {
+  width: 24%;
+}
+.recent-moves-table th:nth-child(3),
+.recent-moves-table td:nth-child(3),
+.recent-moves-table th:nth-child(4),
+.recent-moves-table td:nth-child(4) {
+  width: 12%;
+}
+.recent-moves-table th:nth-child(5),
+.recent-moves-table td:nth-child(5) {
+  width: 15%;
+}
+.recent-moves-table th:nth-child(6),
+.recent-moves-table td:nth-child(6) {
+  width: 22%;
+}
+.recruiting-firm-link {
+  color: var(--text);
+  font-weight: 700;
 }
 .stacked-cell {
   display: grid;
@@ -1111,18 +1446,154 @@ body.drawer-open .nav .nav-scrim {
   gap: 4px;
   flex-wrap: wrap;
 }
+.recruiting-watchlist .card-body {
+  display: grid;
+  gap: 12px;
+}
+.watchlist-summary,
+.watchlist-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.watchlist-item,
+.watchlist-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.watchlist-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+.watchlist-metric {
+  padding: 8px;
+}
+.watchlist-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.watchlist-query {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.watchlist-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.watchlist-status {
+  padding-top: 2px;
+}
 
 @media (max-width: 700px) {
   .recruiting-stat-grid,
   .rankings-stat-grid,
+  .rankings-coverage-summary,
   .rankings-filters,
   .recruiting-filters,
   .feed-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .rankings-coverage-layout {
+    grid-template-columns: 1fr;
+  }
+  .rankings-bucket-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rankings-coverage-bucket-head,
+  .rankings-gap-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .filter-button,
   .feed-filter-clear {
     grid-column: 1 / -1;
+  }
+  .snap-table-scroll:has(.recruiting-table) {
+    overflow-x: visible;
+  }
+  .recruiting-table,
+  .recruiting-table thead,
+  .recruiting-table tbody,
+  .recruiting-table tr,
+  .recruiting-table th,
+  .recruiting-table td {
+    display: block;
+    width: 100%;
+  }
+  .recruiting-table.firm-momentum-table th,
+  .recruiting-table.firm-momentum-table td,
+  .recruiting-table.market-activity-table th,
+  .recruiting-table.market-activity-table td,
+  .recruiting-table.recent-moves-table th,
+  .recruiting-table.recent-moves-table td {
+    width: 100%;
+  }
+  .recruiting-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .recruiting-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .recruiting-table tr {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .recruiting-table tr + tr {
+    margin-top: 10px;
+  }
+  .recruiting-table td {
+    display: grid;
+    grid-template-columns: minmax(82px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    min-width: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .recruiting-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .recruiting-table tr:last-child td:not(:last-child) {
+    border-bottom: 1px solid var(--border);
+  }
+  .recruiting-table td:last-child {
+    border-bottom: 0;
+  }
+  .watchlist-firms,
+  .watchlist-grid {
+    grid-template-columns: 1fr;
+  }
+  .watchlist-summary,
+  .watchlist-metrics {
+    grid-template-columns: repeat(3, minmax(80px, 1fr));
+    overflow-x: auto;
   }
 }
 

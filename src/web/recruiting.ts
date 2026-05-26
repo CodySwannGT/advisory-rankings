@@ -27,16 +27,24 @@ import {
   sourceCard,
   summaryCard,
   topMarketsCard,
+  watchlistCard,
 } from "./recruiting-sections.js";
 
-const FILTER_FIELDS = ["firm", "state", "year", "direction"];
+const FIRM_FILTER_FIELDS = ["firm", "firmId"];
+const SINGLE_VALUE_FILTER_FIELDS = ["state", "year", "direction"];
 const DEFAULT_LIMIT = 30;
+const FIRM_INPUT_SELECTOR = 'input[name="firm"]';
+const WATCHLIST_ADD_BUTTON_SELECTOR = ".watchlist-add-button";
+const WATCHLIST_FIRMS_SELECTOR = "[data-watchlist-firms]";
+const WATCHLIST_REMOVE_BUTTON_SELECTOR = ".watchlist-remove-button";
+const WATCHLIST_ROW_SELECTOR = ".watchlist-firm-row";
 
 mountThreeColumnPage({
   active: "recruiting",
   refreshMe,
   logout,
   search,
+  pageTitle: "Recruiting Market Map",
   build({ center, right }) {
     center.append(SkeletonCard(), SkeletonCard());
     loadRecruiting(center, right);
@@ -72,7 +80,13 @@ function loadRecruiting(center, right) {
  */
 function resourceQuery() {
   const params = new URLSearchParams();
-  for (const field of FILTER_FIELDS) {
+  const current = new URLSearchParams(location.search);
+  for (const field of FIRM_FILTER_FIELDS) {
+    for (const value of current.getAll(field)) {
+      if (value) params.append(field, value);
+    }
+  }
+  for (const field of SINGLE_VALUE_FILTER_FIELDS) {
     const value = getQueryParam(field);
     if (value) params.set(field, value);
   }
@@ -89,6 +103,9 @@ function resourceQuery() {
 function renderRecruiting(data, center, right) {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
+  if (data.watchlist) {
+    center.appendChild(watchlistCard(data.watchlist));
+  }
   if (data.emptyState) {
     center.appendChild(
       EmptyCard({
@@ -137,25 +154,127 @@ function headerCard(data) {
  * @returns Filter form card.
  */
 function filterCard(data) {
+  const form = el(
+    "form",
+    {
+      class: "recruiting-filters recruiting-watchlist-form",
+      method: "get",
+      action: "/recruiting",
+    },
+    watchlistFirmControls(watchlistFirmQueries(data)),
+    labelInput("State", "state", data.filters.state || "", {
+      placeholder: "NY",
+      maxlength: 2,
+    }),
+    labelInput("Year", "year", data.filters.year || "", {
+      placeholder: "2026",
+      inputmode: "numeric",
+      pattern: "\\d{4}",
+    }),
+    directionSelect(data.filters.direction),
+    el("button", { class: "filter-button", type: "submit" }, "Apply")
+  );
+  wireWatchlistControls(form);
   return SectionCard({
     title: "Filters",
-    body: el(
-      "form",
-      { class: "recruiting-filters", method: "get", action: "/recruiting" },
-      labelInput("Firm", "firm", data.filters.firmQuery || ""),
-      labelInput("State", "state", data.filters.state || "", {
-        placeholder: "NY",
-        maxlength: 2,
-      }),
-      labelInput("Year", "year", data.filters.year || "", {
-        placeholder: "2026",
-        inputmode: "numeric",
-        pattern: "\\d{4}",
-      }),
-      directionSelect(data.filters.direction),
-      el("button", { class: "filter-button", type: "submit" }, "Apply")
-    ),
+    body: form,
   });
+}
+
+/**
+ * Returns firm query values for the editable watchlist rows.
+ * @param data - RecruitingMarket response.
+ * @returns Selected firm query values.
+ */
+function watchlistFirmQueries(data) {
+  const queries = data.filters.watchlistFirmQueries || [];
+  if (queries.length) return queries;
+  return data.filters.firmQuery ? [data.filters.firmQuery] : [""];
+}
+
+/**
+ * Builds editable repeated firm controls.
+ * @param queries - Current selected firm query values.
+ * @returns Watchlist controls.
+ */
+function watchlistFirmControls(queries) {
+  return el(
+    "div",
+    { class: "watchlist-firms", "data-watchlist-firms": "" },
+    ...queries.map((value, index) => firmInputRow(value, index)),
+    el(
+      "button",
+      {
+        "aria-label": "Add firm",
+        class: "watchlist-add-button",
+        title: "Add firm",
+        type: "button",
+      },
+      "+"
+    )
+  );
+}
+
+/**
+ * Creates one repeated firm input row.
+ * @param value - Current firm query value.
+ * @param index - Zero-based row index.
+ * @returns Firm input row.
+ */
+function firmInputRow(value, index) {
+  return el(
+    "div",
+    { class: "watchlist-firm-row" },
+    labelInput(`Firm ${index + 1}`, "firm", value, {
+      autocomplete: "organization",
+    }),
+    el(
+      "button",
+      {
+        "aria-label": `Remove firm ${index + 1}`,
+        class: "watchlist-remove-button",
+        title: "Remove firm",
+        type: "button",
+      },
+      "x"
+    )
+  );
+}
+
+/**
+ * Enables add/remove controls for repeated firm inputs.
+ * @param form - Recruiting filter form.
+ */
+function wireWatchlistControls(form) {
+  form.addEventListener("click", event => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const group = form.querySelector(WATCHLIST_FIRMS_SELECTOR);
+    if (!group) return;
+    if (target.closest(WATCHLIST_ADD_BUTTON_SELECTOR)) {
+      group.insertBefore(
+        firmInputRow("", group.querySelectorAll(FIRM_INPUT_SELECTOR).length),
+        group.querySelector(WATCHLIST_ADD_BUTTON_SELECTOR)
+      );
+    }
+    if (target.closest(WATCHLIST_REMOVE_BUTTON_SELECTOR)) {
+      target.closest(WATCHLIST_ROW_SELECTOR)?.remove();
+      resetFirmRows(group);
+    }
+  });
+}
+
+/**
+ * Rebuilds repeated firm rows so labels stay stable after removal.
+ * @param group - Firm control group.
+ */
+function resetFirmRows(group) {
+  const values = [...group.querySelectorAll(FIRM_INPUT_SELECTOR)].map(
+    input => input.value
+  );
+  const addButton = group.querySelector(WATCHLIST_ADD_BUTTON_SELECTOR);
+  const rows = (values.length ? values : [""]).map(firmInputRow);
+  group.replaceChildren(...rows, ...(addButton ? [addButton] : []));
 }
 
 /**

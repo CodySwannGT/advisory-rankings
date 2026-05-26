@@ -63,7 +63,7 @@
     "node": ">= 22.21.1"
   },
   "name": "advisory-rankings",
-  "version": "0.1.65",
+  "version": "0.1.83",
   "description": "Advisor data schema (sourced from AdvisorHub) running on Harper.",
   "private": true,
   "type": "module",
@@ -77,7 +77,7 @@
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.40.4",
-    "@codyswann/lisa": "^2.62.1",
+    "@codyswann/lisa": "^2.98.1",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",

@@ -78,6 +78,139 @@ export function summarize(entries) {
   };
 }
 
+export function rankingsCoverage(entries) {
+  const buckets = new Map();
+  for (const entry of entries) addCoverageEntry(buckets, entry);
+  return {
+    totalEntries: entries.length,
+    buckets: [...buckets.values()].sort(compareCoverageBuckets),
+    gapBuckets: sourceStatusBuckets(entries),
+    emptyState:
+      entries.length === 0
+        ? "No ranking rows are loaded for this coverage slice."
+        : null,
+  };
+}
+
+function addCoverageEntry(buckets, entry) {
+  const key = coverageKey(entry);
+  const bucket =
+    buckets.get(key) ||
+    buckets
+      .set(key, {
+        key,
+        category: entry.ranking.name,
+        year: entry.ranking.year,
+        query: coverageQuery(entry),
+        total: 0,
+        resolved: 0,
+        unresolved: 0,
+        missingFirm: 0,
+        missingMarket: 0,
+        missingScore: 0,
+        latestLoadedAt: null,
+        sourceLabels: [],
+        sampleRows: [],
+      })
+      .get(key);
+  bucket.total += 1;
+  bucket.resolved += entry.resolutionStatus === "resolved" ? 1 : 0;
+  bucket.unresolved += entry.resolutionStatus === "resolved" ? 0 : 1;
+  bucket.missingFirm += entry.firm ? 0 : 1;
+  bucket.missingMarket += entry.location.state ? 0 : 1;
+  bucket.missingScore += hasMissingScore(entry) ? 1 : 0;
+  bucket.latestLoadedAt = latestDate(
+    bucket.latestLoadedAt,
+    entry.source.loadedAt
+  );
+  appendUnique(bucket.sourceLabels, entry.source.label);
+  appendSample(bucket.sampleRows, entry);
+}
+
+function sourceStatusBuckets(entries) {
+  const buckets = new Map();
+  for (const entry of entries) {
+    for (const status of entry.sourceStatus) {
+      const bucket =
+        buckets.get(status) ||
+        buckets
+          .set(status, {
+            status,
+            count: 0,
+            query: sourceStatusQuery(status),
+            sourceLabels: [],
+            sampleRows: [],
+          })
+          .get(status);
+      bucket.count += 1;
+      appendUnique(bucket.sourceLabels, entry.source.label);
+      appendSample(bucket.sampleRows, entry);
+    }
+  }
+  return [...buckets.values()].sort(
+    (left, right) =>
+      right.count - left.count || left.status.localeCompare(right.status)
+  );
+}
+
+function appendSample(samples, entry) {
+  if (samples.length >= 3) return;
+  samples.push({
+    id: entry.id,
+    label: entry.subject.displayName,
+    firmText: entry.firmText,
+    sourceLabel: entry.source.label,
+    sourceStatus: entry.sourceStatus,
+  });
+}
+
+function appendUnique(values, value) {
+  if (value && !values.includes(value)) values.push(value);
+}
+
+function coverageKey(entry) {
+  return `${entry.ranking.name || "Unknown ranking"}:${entry.ranking.year || "unknown"}`;
+}
+
+function coverageQuery(entry) {
+  return queryString({
+    category: entry.ranking.name,
+    year: entry.ranking.year,
+  });
+}
+
+function sourceStatusQuery(status) {
+  if (status === "unresolved-entity" || status === "unresolved-firm")
+    return queryString({ resolved: "unresolved" });
+  return queryString({});
+}
+
+function queryString(params) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== "") search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `/rankings?${text}` : "/rankings";
+}
+
+function hasMissingScore(entry) {
+  return Object.values(entry.scores).some(score => score.status !== "loaded");
+}
+
+function latestDate(left, right) {
+  if (!right) return left;
+  if (!left) return right;
+  return String(right).localeCompare(String(left)) > 0 ? right : left;
+}
+
+function compareCoverageBuckets(left, right) {
+  return (
+    String(left.category).localeCompare(String(right.category)) ||
+    Number(right.year || 0) - Number(left.year || 0)
+  );
+}
+
 export function topFirms(entries) {
   const byFirm = new Map();
   for (const entry of entries) addFirmEntry(byFirm, entry);

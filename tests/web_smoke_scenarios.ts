@@ -253,6 +253,31 @@ export async function smokeAdvisor(
           .count()) >= 1,
       "advisor.html: attribution links to BrokerCheck ToU"
     ),
+    ...(await advisorEvidenceChecks(page)),
+  ];
+}
+
+/**
+ * Checks advisor evidence right-rail cards.
+ * @param page - Browser page used for the scenario.
+ * @returns Smoke assertions for profile evidence panels.
+ */
+async function advisorEvidenceChecks(page: Page): Promise<readonly Check[]> {
+  return [
+    check(
+      (await page
+        .locator(".card")
+        .filter({ hasText: "Evidence freshness" })
+        .count()) >= 1,
+      "advisor.html: evidence freshness panel rendered"
+    ),
+    check(
+      (await page
+        .locator(".card")
+        .filter({ hasText: "Fact confidence" })
+        .count()) >= 1,
+      "advisor.html: fact confidence panel rendered"
+    ),
   ];
 }
 
