@@ -27,9 +27,15 @@
         EntityRow,
         Avatar,
         Paginated,
+        el,
       } from "/design-system/index.js?v=20260521-media";
 
       const PAGE_SIZE = 50;
+      const ACTIVE_OPTIONS = [
+        ["", "Any status"],
+        ["true", "Active"],
+        ["false", "Dissolved"],
+      ];
 
       mountThreeColumnPage({
         active: "firms",
@@ -38,6 +44,7 @@
         search,
         pageTitle: "Firm directory",
         build({ center, right }) {
+          const filters = readFirmFilters();
           const loadFirms = () => {
             clear(center);
             clear(right);
@@ -72,40 +79,44 @@
             try {
               center.appendChild(
                 SectionCard({
-                  title: "All firms",
-                  body: Paginated({
-                    fetchPage: cursor => {
-                      const qs = new URLSearchParams({
-                        limit: String(PAGE_SIZE),
-                      });
-                      if (cursor) qs.set("cursor", cursor);
-                      return api(`/PublicFirms?${qs.toString()}`);
-                    },
-                    renderRow: f => {
-                      loaded.add(f.id);
-                      updateStats();
-                      return EntityRow({
-                        avatar: Avatar({
-                          initials: initials(f.name),
-                          imageUrl: f.logoUrl,
-                          alt: f.name,
-                        }),
-                        name: f.name,
-                        sub: [
-                          humanize(f.channel),
-                          [f.hqCity, f.hqState].filter(Boolean).join(", "),
-                          f.dissolvedYear
-                            ? `dissolved ${f.dissolvedYear}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · "),
-                        href: entityPath("firm", f),
-                      });
-                    },
-                    empty: "No firms are available yet.",
-                    onTotal: updateStats,
-                  }),
+                  title: activeFilterTitle("All firms", filters),
+                  body: [
+                    firmFilterForm(filters),
+                    Paginated({
+                      fetchPage: cursor => {
+                        const qs = directoryQuery(filters, cursor);
+                        return api(`/PublicFirms?${qs.toString()}`);
+                      },
+                      renderRow: f => {
+                        loaded.add(f.id);
+                        updateStats();
+                        return EntityRow({
+                          avatar: Avatar({
+                            initials: initials(f.name),
+                            imageUrl: f.logoUrl,
+                            alt: f.name,
+                          }),
+                          name: f.name,
+                          sub: [
+                            humanize(f.channel),
+                            [f.hqCity, f.hqState].filter(Boolean).join(", "),
+                            f.dissolvedYear
+                              ? `dissolved ${f.dissolvedYear}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · "),
+                          href: entityPath("firm", f),
+                        });
+                      },
+                      empty: filterEmptyCopy(
+                        filters,
+                        "No firms match the selected filters.",
+                        "No firms are available yet."
+                      ),
+                      onTotal: updateStats,
+                    }),
+                  ],
                 })
               );
             } catch (err) {
@@ -124,6 +135,99 @@
           loadFirms();
         },
       });
+
+      function readFirmFilters() {
+        const params = new URLSearchParams(location.search);
+        return {
+          q: clean(params.get("q")),
+          channel: clean(params.get("channel")),
+          state: clean(params.get("state")).toUpperCase(),
+          active: activeValue(params),
+        };
+      }
+
+      function activeValue(params) {
+        const active = clean(params.get("active")).toLowerCase();
+        if (["true", "false"].includes(active)) return active;
+        const status = clean(params.get("status")).toLowerCase();
+        if (status === "active") return "true";
+        if (["dissolved", "inactive"].includes(status)) return "false";
+        return "";
+      }
+
+      function firmFilterForm(filters) {
+        return el(
+          "form",
+          { class: "directory-filters", method: "get", action: "/firms" },
+          textField("Firm", "q", filters.q, "Name or legal name"),
+          textField("Channel", "channel", filters.channel, "wirehouse, ria"),
+          textField("HQ state", "state", filters.state, "NY"),
+          selectField("Status", "active", filters.active, ACTIVE_OPTIONS),
+          el("button", { class: "filter-button", type: "submit" }, "Apply"),
+          el(
+            "a",
+            {
+              class: "feed-filter-clear",
+              href: "/firms",
+              "aria-disabled": activeFilters(filters) ? undefined : "true",
+            },
+            "Clear"
+          )
+        );
+      }
+
+      function directoryQuery(filters, cursor) {
+        const qs = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        for (const [key, value] of Object.entries(filters)) {
+          if (value) qs.set(key, value);
+        }
+        if (cursor) qs.set("cursor", cursor);
+        return qs;
+      }
+
+      function textField(label, name, value, placeholder) {
+        return el(
+          "label",
+          { class: "filter-field" },
+          label,
+          el("input", { name, value, placeholder })
+        );
+      }
+
+      function selectField(label, name, value, options) {
+        return el(
+          "label",
+          { class: "filter-field" },
+          label,
+          el(
+            "select",
+            { name },
+            ...options.map(([optionValue, optionLabel]) =>
+              el(
+                "option",
+                { value: optionValue, selected: optionValue === value },
+                optionLabel
+              )
+            )
+          )
+        );
+      }
+
+      function clean(value) {
+        return String(value || "").trim();
+      }
+
+      function activeFilters(filters) {
+        return Object.values(filters).some(Boolean);
+      }
+
+      function activeFilterTitle(title, filters) {
+        return activeFilters(filters) ? `${title} (filtered)` : title;
+      }
+
+      function filterEmptyCopy(filters, filteredCopy, defaultCopy) {
+        return activeFilters(filters) ? filteredCopy : defaultCopy;
+      }
     </script>
   </body>
 </html>
