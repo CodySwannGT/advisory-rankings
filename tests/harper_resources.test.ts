@@ -2163,6 +2163,98 @@ describe("Harper directory and search resources", () => {
     });
   });
 
+  it("filters advisor directories with stable totals and cursor pages", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: "Avery Stone",
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-c",
+        firstName: "Casey",
+        lastName: "Stone",
+        legalName: "Casey Stone",
+        careerStatus: "active",
+        finraCrd: "7654321",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Young",
+        legalName: "Blake Young",
+        careerStatus: "active",
+        finraCrd: "8888888",
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-a",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        startDate: "2024-01-01",
+      },
+      {
+        id: "employment-c",
+        advisorId: "advisor-c",
+        firmId: "firm-a",
+        startDate: "2024-01-01",
+      },
+      {
+        id: "employment-b",
+        advisorId: "advisor-b",
+        firmId: "firm-b",
+        startDate: "2024-01-01",
+      },
+    ]);
+
+    const first = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        careerStatus: "active",
+        firm: "Example Wealth",
+        hasCrd: "true",
+        limit: "1",
+        q: "stone",
+      })
+    );
+    const second = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        careerStatus: "active",
+        cursor: first.nextCursor,
+        firm: "Example Wealth",
+        hasCrd: "true",
+        limit: "1",
+        q: "stone",
+      })
+    );
+    const unfiltered = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", { limit: "10" })
+    );
+
+    expect(first).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "advisor-a" })],
+    });
+    expect(first.nextCursor).toBeTruthy();
+    expect(second).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "advisor-c" })],
+      nextCursor: null,
+    });
+    expect(unfiltered).toMatchObject({
+      total: 3,
+      nextCursor: null,
+    });
+    expect(unfiltered.items.map((advisor: any) => advisor.id)).toEqual([
+      "advisor-a",
+      "advisor-c",
+      "advisor-b",
+    ]);
+  });
+
   it("filters firm and team directories while preserving cursor pagination", async () => {
     setRows("Firm", [
       {
@@ -2253,6 +2345,142 @@ describe("Harper directory and search resources", () => {
       nextCursor: null,
     });
     expect(teamsSecond.items[0].id).not.toBe(teamsFirst.items[0].id);
+  });
+
+  it("filters firm directories without breaking unfiltered ordering", async () => {
+    setRows("Firm", [
+      {
+        id: "firm-a",
+        name: "Example Wealth Management",
+        hqState: "GA",
+        channel: "ria",
+      },
+      {
+        id: "firm-b",
+        name: "Beta Advisors",
+        hqState: "TX",
+        channel: "broker-dealer",
+        dissolvedYear: 2020,
+      },
+      {
+        id: "firm-c",
+        name: "Cobalt Capital",
+        hqState: "TX",
+        channel: "ria",
+      },
+    ]);
+
+    const first = await new (resources as any).PublicFirms().get(
+      routeTarget("", {
+        active: "true",
+        channel: "ria",
+        limit: "1",
+      })
+    );
+    const second = await new (resources as any).PublicFirms().get(
+      routeTarget("", {
+        active: "true",
+        channel: "ria",
+        cursor: first.nextCursor,
+        limit: "1",
+      })
+    );
+    const unfiltered = await new (resources as any).PublicFirms().get(
+      routeTarget("", { limit: "10" })
+    );
+
+    expect(first).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "firm-c" })],
+    });
+    expect(first.nextCursor).toBeTruthy();
+    expect(second).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "firm-a" })],
+      nextCursor: null,
+    });
+    expect(unfiltered.items.map((firm: any) => firm.id)).toEqual([
+      "firm-b",
+      "firm-c",
+      "firm-a",
+    ]);
+    expect(unfiltered.total).toBe(3);
+  });
+
+  it("filters team directories with pagination and profile metadata", async () => {
+    setRows("Team", [
+      {
+        id: "team-a",
+        name: "Stone Alpha",
+        slug: "stone-alpha",
+        currentFirmId: "firm-a",
+        serviceModel: "ensemble",
+      },
+      {
+        id: "team-b",
+        name: "Stone Beta",
+        slug: "stone-beta",
+        currentFirmId: "firm-a",
+        serviceModel: "ensemble",
+      },
+      {
+        id: "team-c",
+        name: "Young Group",
+        slug: "young-group",
+        currentFirmId: "firm-b",
+        serviceModel: "solo",
+      },
+    ]);
+
+    const first = await new (resources as any).PublicTeams().get(
+      routeTarget("", {
+        firm: "Example Wealth",
+        limit: "1",
+        q: "stone",
+        serviceModel: "ensemble",
+      })
+    );
+    const second = await new (resources as any).PublicTeams().get(
+      routeTarget("", {
+        cursor: first.nextCursor,
+        firm: "Example Wealth",
+        limit: "1",
+        q: "stone",
+        serviceModel: "ensemble",
+      })
+    );
+    const unfiltered = await new (resources as any).PublicTeams().get(
+      routeTarget("", { limit: "10" })
+    );
+
+    expect(first).toMatchObject({
+      total: 2,
+      items: [
+        expect.objectContaining({
+          currentFirmName: "Example Wealth Management",
+          id: "team-a",
+          slug: "stone-alpha",
+        }),
+      ],
+    });
+    expect(first.nextCursor).toBeTruthy();
+    expect(second).toMatchObject({
+      total: 2,
+      items: [
+        expect.objectContaining({
+          currentFirmName: "Example Wealth Management",
+          id: "team-b",
+          slug: "stone-beta",
+        }),
+      ],
+      nextCursor: null,
+    });
+    expect(unfiltered.items.map((team: any) => team.id)).toEqual([
+      "team-a",
+      "team-b",
+      "team-c",
+    ]);
+    expect(unfiltered.total).toBe(3);
   });
 
   it("scores search helper results and short query responses", async () => {
