@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { loadAll } from "./resource-data.js";
 import { firmChip, transitionRow } from "./resource-feed.js";
-import { normalizeId, resolveFirm } from "./resource-routing.js";
+import * as watchlist from "./resource-recruiting-watchlist.js";
 
 /** Public recruiting market aggregation resource. */
 export class RecruitingMarket extends Resource {
@@ -22,12 +22,14 @@ export class RecruitingMarket extends Resource {
   async get(target) {
     const db = await loadAll();
     const filters = parseFilters(target, db);
+    const generatedAt = new Date().toISOString();
     const moves = filteredMoves(recruitingMoves(db), filters);
     return {
-      generatedAt: new Date().toISOString(),
+      generatedAt,
       filters: publicFilters(filters),
       summary: summarizeMoves(moves),
       firmMomentum: firmMomentum(db, moves),
+      watchlist: watchlist.watchlistPayload(db, moves, filters, generatedAt),
       marketActivity: marketActivity(moves),
       recentMoves: moves
         .sort(dateDesc("moveDate"))
@@ -51,8 +53,8 @@ export class RecruitingMarket extends Resource {
 }
 
 function parseFilters(target, db) {
-  const firmFilter = target?.get?.("firm") || target?.get?.("firmId") || null;
-  const firm = firmFilter ? resolveFirm(db, normalizeId(firmFilter)) : null;
+  const watchItems = watchlist.watchlistFilters(target, db);
+  const primaryWatchItem = watchItems.length === 1 ? watchItems[0] : null;
   const direction = ["inbound", "outbound", "net"].includes(
     target?.get?.("direction")
   )
@@ -60,10 +62,11 @@ function parseFilters(target, db) {
     : "net";
   return {
     direction,
-    firmId: firm?.id ?? null,
-    firmQuery: firmFilter,
+    firmId: primaryWatchItem?.firm?.id ?? null,
+    firmQuery: primaryWatchItem?.query ?? null,
     limit: boundedNumber(target?.get?.("limit"), 20, 1, 100),
     state: normalizeState(target?.get?.("state")),
+    watchItems,
     year: normalizeYear(target?.get?.("year")),
   };
 }
@@ -125,17 +128,18 @@ function transitionBranch(db, transition) {
 }
 
 function filteredMoves(moves, filters) {
+  const firmIds = watchlist.firmIdsForFilter(filters);
   return moves.filter(move => {
     if (filters.year && !String(move.moveDate || "").startsWith(filters.year))
       return false;
     if (filters.state && move.location.state !== filters.state) return false;
-    if (!filters.firmId) return true;
+    if (firmIds.length === 0) return true;
     if (filters.direction === "inbound")
-      return move.toFirm?.id === filters.firmId;
+      return firmIds.includes(move.toFirm?.id);
     if (filters.direction === "outbound")
-      return move.fromFirm?.id === filters.firmId;
+      return firmIds.includes(move.fromFirm?.id);
     return (
-      move.toFirm?.id === filters.firmId || move.fromFirm?.id === filters.firmId
+      firmIds.includes(move.toFirm?.id) || firmIds.includes(move.fromFirm?.id)
     );
   });
 }
@@ -258,6 +262,7 @@ function publicFilters(filters) {
     firmQuery: filters.firmQuery,
     limit: filters.limit,
     state: filters.state,
+    ...watchlist.publicWatchlistFilters(filters),
     year: filters.year,
   };
 }
