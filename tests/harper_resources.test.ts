@@ -2099,6 +2099,162 @@ describe("Harper directory and search resources", () => {
     expect(result.counts.advisors).toBe(25);
   });
 
+  it("filters advisor directories by current firm, status, and CRD presence", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: "Avery Stone",
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Young",
+        legalName: "Blake Young",
+        careerStatus: "retired",
+      },
+      {
+        id: "advisor-c",
+        firstName: "Casey",
+        lastName: "Stone",
+        legalName: "Casey Stone",
+        careerStatus: "active",
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-a",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        startDate: "2024-01-01",
+      },
+      {
+        id: "employment-b",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        startDate: "2023-01-01",
+        endDate: "2024-01-01",
+      },
+      {
+        id: "employment-c",
+        advisorId: "advisor-c",
+        firmId: "firm-b",
+        startDate: "2024-01-01",
+      },
+    ]);
+
+    const result = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        careerStatus: "active",
+        firm: "Example Wealth",
+        hasCrd: "true",
+        limit: "1",
+        q: "stone",
+      })
+    );
+
+    expect(result).toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: "advisor-a" })],
+      nextCursor: null,
+    });
+  });
+
+  it("filters firm and team directories while preserving cursor pagination", async () => {
+    setRows("Firm", [
+      {
+        id: "firm-a",
+        name: "Example Wealth Management",
+        hqState: "GA",
+        channel: "ria",
+      },
+      {
+        id: "firm-b",
+        name: "Beta Advisors",
+        hqState: "TX",
+        channel: "ria",
+        dissolvedYear: 2020,
+      },
+      {
+        id: "firm-c",
+        name: "Cobalt Capital",
+        hqState: "TX",
+        channel: "ria",
+      },
+    ]);
+    setRows("Team", [
+      {
+        id: "team-a",
+        name: "Stone Group",
+        currentFirmId: "firm-a",
+        serviceModel: "ensemble",
+      },
+      {
+        id: "team-b",
+        name: "Stone Partners",
+        currentFirmId: "firm-a",
+        serviceModel: "ensemble",
+      },
+      {
+        id: "team-c",
+        name: "Young Group",
+        currentFirmId: "firm-c",
+        serviceModel: "solo",
+      },
+    ]);
+
+    const firms = await new (resources as any).PublicFirms().get(
+      routeTarget("", {
+        active: "true",
+        channel: "ria",
+        limit: "1",
+        state: "TX",
+      })
+    );
+    const teamsFirst = await new (resources as any).PublicTeams().get(
+      routeTarget("", {
+        firm: "Example Wealth",
+        limit: "1",
+        q: "stone",
+        serviceModel: "ensemble",
+      })
+    );
+    const teamsSecond = await new (resources as any).PublicTeams().get(
+      routeTarget("", {
+        cursor: teamsFirst.nextCursor,
+        firm: "Example Wealth",
+        limit: "1",
+        q: "stone",
+        serviceModel: "ensemble",
+      })
+    );
+
+    expect(firms).toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: "firm-c" })],
+      nextCursor: null,
+    });
+    expect(teamsFirst).toMatchObject({
+      total: 2,
+      items: [
+        expect.objectContaining({
+          id: "team-a",
+          currentFirmName: "Example Wealth Management",
+        }),
+      ],
+    });
+    expect(teamsFirst.nextCursor).toBeTruthy();
+    expect(teamsSecond).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "team-b" })],
+      nextCursor: null,
+    });
+    expect(teamsSecond.items[0].id).not.toBe(teamsFirst.items[0].id);
+  });
+
   it("scores search helper results and short query responses", async () => {
     const employments = [
       { advisorId: "advisor-a", firmId: "firm-a", startDate: "2020-01-01" },
