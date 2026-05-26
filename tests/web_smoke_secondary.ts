@@ -14,6 +14,7 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { smokeAdvisorDirectoryFilters } from "./web_smoke_advisor_filters.js";
 import {
   smokeAdvisorDirectoryPagination,
   smokePaginatedDirectory,
@@ -155,6 +156,7 @@ export async function smokeDirectories(page: Page): Promise<readonly Check[]> {
   return [
     ...(await smokeDirectoryPages(page, ["firms", "advisors", "teams"])),
     ...(await smokePaginatedDirectory(page, "firms", "Firm directory")),
+    ...(await smokeAdvisorDirectoryFilters(page)),
     ...(await smokeAdvisorDirectoryPagination(page)),
     ...(await smokePaginatedDirectory(page, "teams", "Team directory")),
     ...(await smokeFirmTeamDirectoryFilters(page)),

@@ -1333,7 +1333,8 @@ body.drawer-open .nav .nav-scrim {
 .recruiting-filters,
 .rankings-filters,
 .directory-filters,
-.feed-filters {
+.feed-filters,
+.advisor-directory-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
@@ -1348,6 +1349,11 @@ body.drawer-open .nav .nav-scrim {
 }
 .feed-filters {
   grid-template-columns: minmax(150px, 1.4fr) minmax(150px, 1.2fr) auto auto;
+}
+.advisor-directory-filters {
+  grid-template-columns:
+    minmax(140px, 1.4fr) minmax(140px, 1.2fr) minmax(120px, 0.8fr)
+    minmax(120px, 0.8fr) auto auto;
 }
 .filter-field {
   display: grid;
@@ -1564,7 +1570,8 @@ body.drawer-open .nav .nav-scrim {
   .rankings-filters,
   .directory-filters,
   .recruiting-filters,
-  .feed-filters {
+  .feed-filters,
+  .advisor-directory-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .rankings-coverage-layout {
