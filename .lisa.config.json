@@ -9,7 +9,6 @@
       "build": {
         "ready": "status:ready",
         "claimed": "status:in-progress",
-        "review": "status:code-review",
         "blocked": "status:blocked",
         "done": {
           "dev": "status:done",
