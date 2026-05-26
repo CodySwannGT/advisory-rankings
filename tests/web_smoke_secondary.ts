@@ -18,6 +18,7 @@ import {
   smokeAdvisorDirectoryPagination,
   smokePaginatedDirectory,
 } from "./web_smoke_directory_pagination.js";
+import { smokeFirmTeamDirectoryFilters } from "./web_smoke_directory_filters.js";
 import { revealFeedCard } from "./web_smoke_feed_pagination.js";
 
 const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
@@ -156,6 +157,7 @@ export async function smokeDirectories(page: Page): Promise<readonly Check[]> {
     ...(await smokePaginatedDirectory(page, "firms", "Firm directory")),
     ...(await smokeAdvisorDirectoryPagination(page)),
     ...(await smokePaginatedDirectory(page, "teams", "Team directory")),
+    ...(await smokeFirmTeamDirectoryFilters(page)),
   ];
 }
 

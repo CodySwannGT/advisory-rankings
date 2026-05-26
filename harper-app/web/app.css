@@ -1332,6 +1332,7 @@ body.drawer-open .nav .nav-scrim {
 }
 .recruiting-filters,
 .rankings-filters,
+.directory-filters,
 .feed-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1340,6 +1341,10 @@ body.drawer-open .nav .nav-scrim {
 }
 .rankings-filters {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.directory-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+  margin-bottom: 12px;
 }
 .feed-filters {
   grid-template-columns: minmax(150px, 1.4fr) minmax(150px, 1.2fr) auto auto;
@@ -1557,6 +1562,7 @@ body.drawer-open .nav .nav-scrim {
   .rankings-stat-grid,
   .rankings-coverage-summary,
   .rankings-filters,
+  .directory-filters,
   .recruiting-filters,
   .feed-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));

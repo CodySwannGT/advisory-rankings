@@ -26,6 +26,7 @@
         DetailsCard,
         EntityRow,
         Paginated,
+        el,
       } from "/design-system/index.js?v=20260521-media";
 
       const PAGE_SIZE = 50;
@@ -37,6 +38,7 @@
         search,
         pageTitle: "Team directory",
         build({ center, right }) {
+          const filters = readTeamFilters();
           const loadTeams = () => {
             clear(center);
             clear(right);
@@ -71,30 +73,34 @@
             try {
               center.appendChild(
                 SectionCard({
-                  title: "All teams",
-                  body: Paginated({
-                    fetchPage: cursor => {
-                      const qs = new URLSearchParams({
-                        limit: String(PAGE_SIZE),
-                      });
-                      if (cursor) qs.set("cursor", cursor);
-                      return api(`/PublicTeams?${qs.toString()}`);
-                    },
-                    renderRow: t => {
-                      loaded.add(t.id);
-                      updateStats();
-                      return EntityRow({
-                        avatar: initials(t.name),
-                        name: t.name,
-                        sub: [t.currentFirmName, humanize(t.serviceModel)]
-                          .filter(Boolean)
-                          .join(" · "),
-                        href: entityPath("team", t),
-                      });
-                    },
-                    empty: "No teams are available yet.",
-                    onTotal: updateStats,
-                  }),
+                  title: activeFilterTitle("All teams", filters),
+                  body: [
+                    teamFilterForm(filters),
+                    Paginated({
+                      fetchPage: cursor => {
+                        const qs = directoryQuery(filters, cursor);
+                        return api(`/PublicTeams?${qs.toString()}`);
+                      },
+                      renderRow: t => {
+                        loaded.add(t.id);
+                        updateStats();
+                        return EntityRow({
+                          avatar: initials(t.name),
+                          name: t.name,
+                          sub: [t.currentFirmName, humanize(t.serviceModel)]
+                            .filter(Boolean)
+                            .join(" · "),
+                          href: entityPath("team", t),
+                        });
+                      },
+                      empty: filterEmptyCopy(
+                        filters,
+                        "No teams match the selected filters.",
+                        "No teams are available yet."
+                      ),
+                      onTotal: updateStats,
+                    }),
+                  ],
                 })
               );
             } catch (err) {
@@ -113,6 +119,74 @@
           loadTeams();
         },
       });
+
+      function readTeamFilters() {
+        const params = new URLSearchParams(location.search);
+        return {
+          q: clean(params.get("q")),
+          firm: clean(params.get("firm")),
+          serviceModel: clean(params.get("serviceModel")),
+        };
+      }
+
+      function teamFilterForm(filters) {
+        return el(
+          "form",
+          { class: "directory-filters", method: "get", action: "/teams" },
+          textField("Team", "q", filters.q, "Team name"),
+          textField("Current firm", "firm", filters.firm, "Firm name or ID"),
+          textField(
+            "Service model",
+            "serviceModel",
+            filters.serviceModel,
+            "ensemble, solo"
+          ),
+          el("button", { class: "filter-button", type: "submit" }, "Apply"),
+          el(
+            "a",
+            {
+              class: "feed-filter-clear",
+              href: "/teams",
+              "aria-disabled": activeFilters(filters) ? undefined : "true",
+            },
+            "Clear"
+          )
+        );
+      }
+
+      function directoryQuery(filters, cursor) {
+        const qs = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        for (const [key, value] of Object.entries(filters)) {
+          if (value) qs.set(key, value);
+        }
+        if (cursor) qs.set("cursor", cursor);
+        return qs;
+      }
+
+      function textField(label, name, value, placeholder) {
+        return el(
+          "label",
+          { class: "filter-field" },
+          label,
+          el("input", { name, value, placeholder })
+        );
+      }
+
+      function clean(value) {
+        return String(value || "").trim();
+      }
+
+      function activeFilters(filters) {
+        return Object.values(filters).some(Boolean);
+      }
+
+      function activeFilterTitle(title, filters) {
+        return activeFilters(filters) ? `${title} (filtered)` : title;
+      }
+
+      function filterEmptyCopy(filters, filteredCopy, defaultCopy) {
+        return activeFilters(filters) ? filteredCopy : defaultCopy;
+      }
     </script>
   </body>
 </html>
