@@ -9,6 +9,7 @@ import {
   parseFilters,
   publicEntry,
   publicFilters,
+  rankingsCoverage,
   sortEntries,
   summarize,
   topFirms,
@@ -39,6 +40,7 @@ export class RankingsExplorer extends Resource {
       filters: publicFilters(filters),
       facets: facets(rankingEntries(db)),
       summary: summarize(entries),
+      coverage: rankingsCoverage(entries),
       topFirms: topFirms(entries),
       items: sorted.map(publicEntry),
       provenance: {
