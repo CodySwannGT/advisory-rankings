@@ -315,6 +315,18 @@ body.drawer-open .nav .nav-scrim {
   overflow-y: auto;
 }
 
+.ab-page-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Cards ──────────────────────────────────────────────────── */
 
 .card {
@@ -715,6 +727,34 @@ body.drawer-open .nav .nav-scrim {
 .advisor-confidence-bar__segment--derived {
   background: var(--accent-amber);
 }
+.advisor-evidence-help,
+.firm-dd-help {
+  margin: 0;
+}
+.advisor-evidence-help summary,
+.firm-dd-help summary {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.advisor-evidence-help summary::-webkit-details-marker,
+.firm-dd-help summary::-webkit-details-marker {
+  display: none;
+}
+.advisor-evidence-help p,
+.firm-dd-help p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
 
 /* ── Firm due diligence summary ─────────────────────────────── */
 
@@ -756,6 +796,8 @@ body.drawer-open .nav .nav-scrim {
 }
 .firm-dd-filter {
   min-height: 34px;
+  width: auto;
+  flex: 0 0 auto;
 }
 .firm-dd-grid {
   display: grid;
@@ -833,6 +875,7 @@ body.drawer-open .nav .nav-scrim {
 .firm-dd-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 .firm-dd-confidence {
@@ -1123,6 +1166,149 @@ body.drawer-open .nav .nav-scrim {
   font-size: 18px;
   overflow-wrap: anywhere;
 }
+.rankings-coverage-workbench .card-body {
+  display: grid;
+  gap: 16px;
+}
+.rankings-coverage-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.rankings-coverage-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px;
+}
+.rankings-coverage-metric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rankings-coverage-metric strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.rankings-coverage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+.rankings-coverage-panel {
+  min-width: 0;
+}
+.rankings-coverage-panel h3 {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.rankings-coverage-buckets,
+.rankings-gap-buckets {
+  display: grid;
+  gap: 10px;
+}
+.rankings-coverage-bucket,
+.rankings-gap-bucket {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  padding: 12px;
+  text-decoration: none;
+}
+.rankings-coverage-bucket:hover,
+.rankings-gap-bucket:hover {
+  border-color: var(--brand);
+}
+.rankings-coverage-meta {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+.rankings-coverage-meta .tag-list,
+.rankings-gap-bucket .tag-list {
+  max-width: 100%;
+}
+.rankings-coverage-meta .tag,
+.rankings-gap-bucket .tag {
+  white-space: normal;
+}
+.rankings-coverage-bucket-head,
+.rankings-gap-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.rankings-coverage-bucket-head strong,
+.rankings-gap-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rankings-coverage-bucket-head span,
+.rankings-coverage-meta > span {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.rankings-bucket-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.rankings-bucket-stats span {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 7px;
+}
+.rankings-bucket-stats em {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+.rankings-bucket-stats strong {
+  display: block;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.rankings-sample-rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rankings-sample-rows li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.rankings-sample-rows strong,
+.rankings-sample-rows span {
+  overflow-wrap: anywhere;
+}
+.rankings-sample-rows span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .recruiting-filters,
 .rankings-filters,
 .feed-filters {
@@ -1348,10 +1534,22 @@ body.drawer-open .nav .nav-scrim {
 @media (max-width: 700px) {
   .recruiting-stat-grid,
   .rankings-stat-grid,
+  .rankings-coverage-summary,
   .rankings-filters,
   .recruiting-filters,
   .feed-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rankings-coverage-layout {
+    grid-template-columns: 1fr;
+  }
+  .rankings-bucket-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rankings-coverage-bucket-head,
+  .rankings-gap-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .filter-button,
   .feed-filter-clear {
