@@ -15,7 +15,8 @@
     "**/node_modules/**",
     "harper-app/resources.js",
     "harper-app/resource-*.js",
-    "harper-app/web/**/*.js"
+    "harper-app/web/**/*.js",
+    "src/types/**/*.ts"
   ],
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],
   "ignoreBinaries": ["audit", "harperdb", "knip", "playwright", "tsx"],
