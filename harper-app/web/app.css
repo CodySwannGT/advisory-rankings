@@ -1167,6 +1167,35 @@ body.drawer-open .nav .nav-scrim {
 .filter-button:hover {
   filter: brightness(0.96);
 }
+.watchlist-firms {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+.watchlist-firm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 37px;
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+.watchlist-add-button,
+.watchlist-remove-button {
+  width: 37px;
+  height: 37px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.watchlist-add-button:hover,
+.watchlist-remove-button:hover {
+  background: var(--bg);
+}
 .feed-filter-clear {
   min-height: 37px;
   border-radius: 8px;
@@ -1262,6 +1291,59 @@ body.drawer-open .nav .nav-scrim {
   gap: 4px;
   flex-wrap: wrap;
 }
+.recruiting-watchlist .card-body {
+  display: grid;
+  gap: 12px;
+}
+.watchlist-summary,
+.watchlist-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.watchlist-item,
+.watchlist-metric {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.watchlist-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+.watchlist-metric {
+  padding: 8px;
+}
+.watchlist-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.watchlist-query {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.watchlist-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.watchlist-status {
+  padding-top: 2px;
+}
 
 @media (max-width: 700px) {
   .recruiting-stat-grid,
@@ -1336,6 +1418,15 @@ body.drawer-open .nav .nav-scrim {
   }
   .recruiting-table td:last-child {
     border-bottom: 0;
+  }
+  .watchlist-firms,
+  .watchlist-grid {
+    grid-template-columns: 1fr;
+  }
+  .watchlist-summary,
+  .watchlist-metrics {
+    grid-template-columns: repeat(3, minmax(80px, 1fr));
+    overflow-x: auto;
   }
 }
 
