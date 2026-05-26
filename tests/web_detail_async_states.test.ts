@@ -126,6 +126,12 @@ describe("detail async states", () => {
             .locator(".detail-not-found-card")
             .getAttribute("data-recovery-href")
         ).toBe(detailCase.recoveryHref);
+        expect(
+          await page
+            .locator(".detail-not-found-card")
+            .getByRole("button", { name: "Retry" })
+            .count()
+        ).toBe(0);
 
         await action.click();
         await page.waitForURL(`**${detailCase.recoveryHref}`, {
@@ -137,19 +143,25 @@ describe("detail async states", () => {
     }
   });
 
-  it("renders route-level detail errors without removing navigation", async () => {
+  it("retries firm detail errors with the same id and renders due diligence", async () => {
     const page = await browser.newPage();
+    const firmProfileRequests: string[] = [];
 
     try {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
       await page.route("**/FirmProfile/firm-1", async route => {
-        await route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: JSON.stringify({ error: "temporary outage" }),
-        });
+        firmProfileRequests.push(route.request().url());
+        if (firmProfileRequests.length === 1) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "temporary outage" }),
+          });
+          return;
+        }
+        await route.fulfill({ json: firmDueDiligenceProfile() });
       });
 
       await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
@@ -166,6 +178,20 @@ describe("detail async states", () => {
       expect(await page.getByText("Try again shortly.").isVisible()).toBe(true);
       expect(await page.getByText("temporary outage").count()).toBe(0);
       expect(await firmsNav.isVisible()).toBe(true);
+
+      await page.getByRole("button", { name: "Retry" }).click();
+      await page.getByRole("heading", { name: "Firm due diligence" }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(
+        await page
+          .getByRole("heading", { name: "Recruiting momentum" })
+          .isVisible()
+      ).toBe(true);
+      expect(
+        firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
+      ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
+      expect(await page.getByText("Could not load firm").count()).toBe(0);
     } finally {
       await page.close();
     }
