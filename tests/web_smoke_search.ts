@@ -1,10 +1,12 @@
-import type { Locator, Page } from "playwright";
+import type { Browser, Locator, Page } from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
   FEED_HEADLINE_SELECTOR,
   check,
+  closeWithChecks,
   cleanProfilePath,
+  newContext,
   shot,
   smokeGoto,
   smokeWaitForSelector,
@@ -13,6 +15,10 @@ import {
 
 /** Search result kinds that map directly to public profile route segments. */
 type SearchKind = "advisor" | "firm" | "team";
+const SEARCH_RESULTS_SELECTOR = "#global-search-results";
+const SEARCH_RESULT_ROWS_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-item`;
+const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
+const ACTIVE_SEARCH_RESULT_SELECTOR = ".gs-item-active";
 
 /**
  * Checks global search suggestions and keyboard navigation against backend data.
@@ -21,7 +27,7 @@ type SearchKind = "advisor" | "firm" | "team";
  */
 export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   const input = page.locator("#global-search");
-  const results = page.locator("#global-search-results .gs-item");
+  const results = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
@@ -42,11 +48,19 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   const supportedKinds = await supportedSearchKindCount(results);
 
   await input.press("ArrowDown");
-  const activeRows = await page.locator(".gs-item-active").count();
+  const activeRows = await page.locator(ACTIVE_SEARCH_RESULT_SELECTOR).count();
   await input.press("Enter");
   await page.waitForURL(url => url.pathname === expectedPath, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
+  const enteredUrl = page.url();
+  const enterOpenedCleanPath =
+    firstKind !== null &&
+    cleanProfilePath(pluralSearchKind(firstKind), enteredUrl);
+  const emptySearchChecks = await smokeSearchEmptyAndDismissChecks(
+    page,
+    "desktop"
+  );
 
   return [
     check(dropdownExpanded, "global search: suggestions dropdown opens"),
@@ -57,12 +71,33 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
     ),
     check(activeRows === 1, "global search: ArrowDown selects one result"),
     check(
-      firstKind !== null &&
-        cleanProfilePath(pluralSearchKind(firstKind), page.url()),
+      enterOpenedCleanPath,
       "global search: Enter opens clean profile route",
-      page.url()
+      enteredUrl
     ),
+    ...emptySearchChecks,
   ];
+}
+
+/**
+ * Repeats empty-result and Escape-dismiss assertions in a mobile shell context.
+ * @param browser - Browser used to create a mobile context.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @returns Smoke assertions for mobile search state behavior.
+ */
+export async function smokeGlobalSearchMobile(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  const context = await newContext(
+    browser,
+    { width: 390, height: 844 },
+    extraHTTPHeaders
+  );
+  const page = await context.newPage();
+  return await closeWithChecks(context, [
+    ...(await smokeSearchEmptyAndDismissChecks(page, "mobile")),
+  ]);
 }
 
 const normalizeSearchKind = (value: string): SearchKind | null =>
@@ -86,4 +121,72 @@ async function supportedSearchKindCount(results: Locator): Promise<number> {
   return kinds.filter(kind =>
     ["advisor", "firm", "team"].includes(kind.trim().toLowerCase())
   ).length;
+}
+
+/**
+ * Asserts deterministic empty-state and Escape-dismiss behavior for search.
+ * @param page - Browser page used for the scenario.
+ * @param shell - Shell mode label for assertion output.
+ * @returns Smoke assertions for no-result and dismiss state handling.
+ */
+async function smokeSearchEmptyAndDismissChecks(
+  page: Page,
+  shell: "desktop" | "mobile"
+): Promise<readonly Check[]> {
+  const input = page.locator("#global-search");
+  const dropdown = page.locator(SEARCH_RESULTS_SELECTOR);
+  const rows = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
+  const empty = page.locator(SEARCH_EMPTY_SELECTOR).first();
+
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+
+  await input.fill("zzzzzzzzzzzz-no-match");
+  await empty.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await shot(page, `02-${shell}-global-search-empty`);
+  const emptyStateText = (await empty.textContent()) ?? "";
+  const emptyStateRows = await rows.count();
+
+  await input.fill("wells");
+  await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await input.press("ArrowDown");
+  const activeBeforeEscape = await page
+    .locator(ACTIVE_SEARCH_RESULT_SELECTOR)
+    .count();
+  await input.press("Escape");
+  await page.waitForFunction(
+    selector => document.querySelector(selector)?.hasAttribute("hidden"),
+    SEARCH_RESULTS_SELECTOR,
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
+  const activeAfterEscape = await page
+    .locator(ACTIVE_SEARCH_RESULT_SELECTOR)
+    .count();
+  const dropdownHidden = await dropdown.evaluate(node =>
+    node.hasAttribute("hidden")
+  );
+
+  return [
+    check(
+      emptyStateRows === 0,
+      `${shell}: global search no-result query clears stale suggestion rows`
+    ),
+    check(
+      /No matches for/.test(emptyStateText),
+      `${shell}: global search renders explicit empty state`,
+      emptyStateText
+    ),
+    check(
+      activeBeforeEscape === 1,
+      `${shell}: global search ArrowDown selects one suggestion before Escape`
+    ),
+    check(
+      dropdownHidden,
+      `${shell}: global search Escape collapses suggestion surface`
+    ),
+    check(
+      activeAfterEscape === 0,
+      `${shell}: global search Escape clears active row state`
+    ),
+  ];
 }
