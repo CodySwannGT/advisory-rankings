@@ -1184,12 +1184,69 @@ body.drawer-open .nav .nav-scrim {
 .rankings-table {
   min-width: 720px;
 }
+.snap-table-scroll > .recruiting-table {
+  min-width: 0;
+  table-layout: fixed;
+}
 .rankings-table {
   min-width: 960px;
 }
 .recruiting-table td,
 .rankings-table td {
   vertical-align: top;
+}
+.recruiting-table th,
+.recruiting-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.firm-momentum-table th:first-child,
+.firm-momentum-table td:first-child {
+  width: 25%;
+}
+.firm-momentum-table th:nth-child(2),
+.firm-momentum-table td:nth-child(2),
+.firm-momentum-table th:nth-child(3),
+.firm-momentum-table td:nth-child(3) {
+  width: 21%;
+}
+.firm-momentum-table th:nth-child(4),
+.firm-momentum-table td:nth-child(4) {
+  width: 18%;
+}
+.firm-momentum-table th:nth-child(5),
+.firm-momentum-table td:nth-child(5) {
+  width: 15%;
+}
+.market-activity-table th:first-child,
+.market-activity-table td:first-child {
+  width: 26%;
+}
+.recent-moves-table th:first-child,
+.recent-moves-table td:first-child {
+  width: 15%;
+}
+.recent-moves-table th:nth-child(2),
+.recent-moves-table td:nth-child(2) {
+  width: 24%;
+}
+.recent-moves-table th:nth-child(3),
+.recent-moves-table td:nth-child(3),
+.recent-moves-table th:nth-child(4),
+.recent-moves-table td:nth-child(4) {
+  width: 12%;
+}
+.recent-moves-table th:nth-child(5),
+.recent-moves-table td:nth-child(5) {
+  width: 15%;
+}
+.recent-moves-table th:nth-child(6),
+.recent-moves-table td:nth-child(6) {
+  width: 22%;
+}
+.recruiting-firm-link {
+  color: var(--text);
+  font-weight: 700;
 }
 .stacked-cell {
   display: grid;
@@ -1217,6 +1274,68 @@ body.drawer-open .nav .nav-scrim {
   .filter-button,
   .feed-filter-clear {
     grid-column: 1 / -1;
+  }
+  .snap-table-scroll:has(.recruiting-table) {
+    overflow-x: visible;
+  }
+  .recruiting-table,
+  .recruiting-table thead,
+  .recruiting-table tbody,
+  .recruiting-table tr,
+  .recruiting-table th,
+  .recruiting-table td {
+    display: block;
+    width: 100%;
+  }
+  .recruiting-table.firm-momentum-table th,
+  .recruiting-table.firm-momentum-table td,
+  .recruiting-table.market-activity-table th,
+  .recruiting-table.market-activity-table td,
+  .recruiting-table.recent-moves-table th,
+  .recruiting-table.recent-moves-table td {
+    width: 100%;
+  }
+  .recruiting-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .recruiting-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .recruiting-table tr {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .recruiting-table tr + tr {
+    margin-top: 10px;
+  }
+  .recruiting-table td {
+    display: grid;
+    grid-template-columns: minmax(82px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    min-width: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .recruiting-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .recruiting-table tr:last-child td:not(:last-child) {
+    border-bottom: 1px solid var(--border);
+  }
+  .recruiting-table td:last-child {
+    border-bottom: 0;
   }
 }
 
