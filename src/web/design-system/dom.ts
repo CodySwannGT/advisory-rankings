@@ -30,25 +30,48 @@ export type DomAttrValue =
 export type DomAttrs = Readonly<Record<string, DomAttrValue>>;
 
 /**
- * Acceptable child values passed to {@link el}. Strings/numbers become
- * text nodes; `null` / `false` / `undefined` are skipped; nested arrays
- * are flattened to arbitrary depth.
+ * Leaf values produced by flattening a {@link DomChild}. After
+ * flattening, every entry is either a DOM node, a primitive text value,
+ * or a skip-marker (`null` / `false` / `undefined`).
  */
-export type DomChild =
-  | Node
-  | string
-  | number
-  | null
-  | false
-  | undefined
-  | DomChildArray;
+export type DomChildLeaf = Node | string | number | false | null | undefined;
 
 /**
- * Recursive helper for {@link DomChild} — nested arrays of children, to
- * arbitrary depth. Named separately so {@link DomChild} avoids a forward
- * self-reference.
+ * Acceptable child values passed to {@link el}. Strings/numbers become
+ * text nodes; `null` / `false` / `undefined` are skipped. A single level
+ * of array nesting is flattened — call sites that need deeper nesting
+ * must spread their own arrays at the boundary (the established pattern
+ * across `src/web/`, where helpers like `arrify(...)` and
+ * `headings.map(...)` are always spread into `el(...)`).
  */
-export interface DomChildArray extends ReadonlyArray<DomChild> {}
+export type DomChild = DomChildLeaf | readonly DomChildLeaf[];
+
+/**
+ * Narrows a {@link DomChild} to the single-level array branch.
+ * Combined with `Array.isArray`'s runtime check, this produces a sound
+ * narrowing that distinguishes nested arrays from leaf values without a
+ * cast.
+ * @param child - Candidate child value.
+ * @returns `true` when `child` is an array of {@link DomChildLeaf}.
+ */
+function isLeafArray(child: DomChild): child is readonly DomChildLeaf[] {
+  return Array.isArray(child);
+}
+
+/**
+ * Flattens a one-level {@link DomChild} sequence into the leaf form
+ * consumed by `el`'s child pipeline, preserving left-to-right source
+ * order. Replaces the previous `Array.prototype.flat(Infinity)` call so
+ * the depth is bounded by the actual data — and asserted by the type
+ * system rather than a `flat<0>` cast.
+ * @param children - Child sequence to flatten.
+ * @returns Flat sequence of {@link DomChildLeaf} entries in source order.
+ */
+function flattenChildren(
+  children: readonly DomChild[]
+): readonly DomChildLeaf[] {
+  return children.flatMap(child => (isLeafArray(child) ? child : [child]));
+}
 
 /**
  * Selects the first element matching `sel` within `root`.
@@ -94,8 +117,7 @@ export function el(
   ...children: readonly DomChild[]
 ): HTMLElement {
   const node = document.createElement(tag);
-  const flat: readonly (Node | string)[] = children
-    .flat(Infinity as 0) // typed as a fully-flattened array of DomChild leaves
+  const flat: readonly (Node | string)[] = flattenChildren(children)
     .filter(
       (child): child is Node | string | number =>
         child != null && child !== false
@@ -112,10 +134,35 @@ export function el(
 
 /**
  * Removes all child nodes from a DOM container before rerendering.
- * @param node - DOM node to update.
+ * @param node - Parent DOM node to empty.
  */
-export function clear(node: Node): void {
-  (node as ParentNode).replaceChildren();
+export function clear(node: ParentNode): void {
+  node.replaceChildren();
+}
+
+/**
+ * Narrows a {@link DomAttrValue} to the plain string-map shape accepted
+ * by `element.dataset`. Excludes primitives and functions.
+ * @param value - Candidate attribute value.
+ * @returns `true` when `value` is a plain object suitable for `dataset`.
+ */
+function isDatasetMap(
+  value: DomAttrValue
+): value is Readonly<Record<string, string>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Narrows a {@link DomAttrValue} to the event-listener shape accepted by
+ * `addEventListener`. A function value is treated as a listener for any
+ * `on…` attribute key.
+ * @param value - Candidate attribute value.
+ * @returns `true` when `value` is callable.
+ */
+function isEventListener(
+  value: DomAttrValue
+): value is EventListenerOrEventListenerObject {
+  return typeof value === "function";
 }
 
 const applyAttr = (
@@ -128,15 +175,12 @@ const applyAttr = (
     Object.assign(node, { className: String(value) });
     return;
   }
-  if (key === "dataset") {
-    Object.assign(node.dataset, value as Readonly<Record<string, string>>);
+  if (key === "dataset" && isDatasetMap(value)) {
+    Object.assign(node.dataset, value);
     return;
   }
-  if (key.startsWith("on") && typeof value === "function") {
-    node.addEventListener(
-      key.slice(2).toLowerCase(),
-      value as EventListenerOrEventListenerObject
-    );
+  if (key.startsWith("on") && isEventListener(value)) {
+    node.addEventListener(key.slice(2).toLowerCase(), value);
     return;
   }
   if (key === "html") {
