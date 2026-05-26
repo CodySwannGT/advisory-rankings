@@ -1,0 +1,190 @@
+---
+type: source
+created: 2026-05-25
+updated: 2026-05-25
+related: []
+sources: []
+source_system: git
+project: advisory-rankings
+---
+
+# git history — advisory-rankings (2026-05-25)
+
+- Repo: `/Users/cody/.codex/worktrees/dc20/advisory-rankings`
+- HEAD: `67c58eb2e015b5249a97b351736b674d9f4ef721`
+- Total commits on HEAD: 306
+- New commits since last ingest (`af60905303d58ca596c75540e44453612c80c94e`): 171
+- Merged PRs: 20 recent merged PR(s) in CodySwannGT/advisory-rankings; latest #214 "chore: update @codyswann/lisa to 2.62.1"
+
+## New commits
+- 67c58eb · 2026-05-25 · chore(release): 0.1.58 [skip ci]
+- cd43dbe · 2026-05-25 · Merge pull request #214 from CodySwannGT/chore/lisa-update-latest
+- bbf7cd8 · 2026-05-25 · test: build Harper output and install Chromium via vitest globalSetup
+- df68617 · 2026-05-25 · chore: update @codyswann/lisa to 2.62.1
+- 9df6c4f · 2026-05-25 · chore(release): 0.1.57 [skip ci]
+- 894e767 · 2026-05-25 · Merge pull request #213 from CodySwannGT/codex/fix-rankings-nav-overflow
+- b60cefa · 2026-05-25 · fix: prevent rankings nav overflow
+- 0cd1eef · 2026-05-25 · chore(release): 0.1.56 [skip ci]
+- f9e9aec · 2026-05-25 · Merge pull request #211 from CodySwannGT/codex/issue-178-rankings-explorer
+- d324481 · 2026-05-25 · feat: add rankings explorer UI
+- dda52b9 · 2026-05-25 · chore(release): 0.1.55 [skip ci]
+- be900db · 2026-05-25 · Merge pull request #209 from CodySwannGT/codex/issue-187-fdd-smoke-evidence
+- 25f0ca9 · 2026-05-25 · test: add firm due diligence smoke checks
+- 4f7a8de · 2026-05-25 · chore(release): 0.1.54 [skip ci]
+- 3f44c1a · 2026-05-25 · feat: add rankings explorer resource
+- f7bc07f · 2026-05-25 · feat: add rankings explorer resource
+- 6b319a0 · 2026-05-25 · chore(release): 0.1.53 [skip ci]
+- f824af5 · 2026-05-25 · Merge pull request #205 from CodySwannGT/codex/issue-185-firm-profile-ui
+- 5957336 · 2026-05-25 · feat: add firm due diligence profile UI
+- a44a0ff · 2026-05-25 · chore(release): 0.1.52 [skip ci]
+- 5d16c70 · 2026-05-25 · Merge pull request #204 from CodySwannGT/codex/issue-171-recruiting-config-route
+- 225d7ba · 2026-05-25 · fix: register recruiting route
+- eb1f123 · 2026-05-25 · chore(release): 0.1.51 [skip ci]
+- 0b6802e · 2026-05-25 · Merge pull request #202 from CodySwannGT/codex/issue-171-recruiting-route-fix
+- 44d18ad · 2026-05-25 · fix: serve clean recruiting route
+- b62f88a · 2026-05-25 · chore(release): 0.1.50 [skip ci]
+- b9e4692 · 2026-05-25 · Merge pull request #200 from CodySwannGT/codex/issue-171-recruiting-explorer
+- 11ef4a8 · 2026-05-25 · feat: add recruiting market explorer
+- f452f4e · 2026-05-25 · chore(release): 0.1.49 [skip ci]
+- cba6951 · 2026-05-25 · Merge pull request #197 from CodySwannGT/codex/issue-169-recruiting-aggregation
+- 173c93b · 2026-05-25 · feat: add recruiting market resource
+- 9eb563f · 2026-05-25 · chore(release): 0.1.48 [skip ci]
+- 054057a · 2026-05-25 · feat: add firm due diligence resource modules
+- 1040b74 · 2026-05-25 · Merge branch 'main' into codex/issue-183-firm-due-diligence
+- 0f5f566 · 2026-05-25 · feat: add firm due diligence resource modules
+- 887d8d7 · 2026-05-25 · chore(release): 0.1.47 [skip ci]
+- ce9306e · 2026-05-25 · Merge pull request #157 from CodySwannGT/codex/issue-152-detail-async-states
+- b8035e5 · 2026-05-25 · fix(web): address detail async review feedback
+- c6fa96a · 2026-05-25 · Merge remote-tracking branch 'origin/main' into codex/issue-152-detail-async-states
+- 90d7eec · 2026-05-25 · chore(release): 0.1.46 [skip ci]
+- cc2ee0c · 2026-05-25 · Merge pull request #163 from CodySwannGT/codex/issue-146-async-patterns
+- 6131399 · 2026-05-25 · chore: merge main into async state patterns
+- af3761d · 2026-05-25 · Merge branch 'main' into codex/issue-152-detail-async-states
+- cfa7e6a · 2026-05-25 · chore(release): 0.1.45 [skip ci]
+- 54d08d6 · 2026-05-24 · Merge pull request #191 from CodySwannGT/chore/lisa-update-2026-05-24
+- 581f2d8 · 2026-05-24 · chore: update @codyswann/lisa to 2.59.0 and apply templates
+- c514407 · 2026-05-25 · chore(release): 0.1.44 [skip ci]
+- c78ab72 · 2026-05-24 · Merge pull request #190 from CodySwannGT/codex/async-evidence-matrix
+- 593fb48 · 2026-05-24 · test: record async evidence matrix
+- 53096b5 · 2026-05-25 · chore(release): 0.1.43 [skip ci]
+- 6c30f01 · 2026-05-24 · Merge pull request #188 from CodySwannGT/codex/work-stuck-async-tickets
+- 58bbfd2 · 2026-05-24 · Merge branch 'main' into codex/work-stuck-async-tickets
+- c4f9b7f · 2026-05-24 · feat: codify async state patterns
+- de7d4c8 · 2026-05-24 · chore(release): 0.1.42 [skip ci]
+- ce2dc8d · 2026-05-24 · Merge pull request #162 from CodySwannGT/codex/issue-149-async-surface-matrix
+- 914d04a · 2026-05-24 · feat: define async state patterns
+- 0402ffb · 2026-05-24 · docs: add async surface matrix
+- 904c7a1 · 2026-05-24 · chore(release): 0.1.41 [skip ci]
+- 0c41fb2 · 2026-05-24 · Merge pull request #156 from codex/issue-153-auth-fallback
+- 1f60010 · 2026-05-24 · feat: add auth fallback async states
+- 9fd6a12 · 2026-05-24 · feat(web): add detail async states
+- afb00d4 · 2026-05-24 · chore(release): 0.1.40 [skip ci]
+- 860be40 · 2026-05-24 · Merge pull request #142 from CodySwannGT/codex/fix-deploy-smoke
+- 915eae1 · 2026-05-24 · fix: harden deploy smoke checks
+- c3ecc55 · 2026-05-24 · chore(release): 0.1.39 [skip ci]
+- ad5dfa6 · 2026-05-24 · Merge pull request #138 from CodySwannGT/claude/heuristic-hoover-056928
+- 32309ef · 2026-05-24 · Merge branch 'main' into claude/heuristic-hoover-056928
+- fb5fe50 · 2026-05-24 · docs: correct PR merge handling — auto-merge is available
+- 93c2712 · 2026-05-24 · chore(release): 0.1.38 [skip ci]
+- d23f75d · 2026-05-24 · chore: upgrade @codyswann/lisa to 2.33.1 and wire setup:deploy-key
+- b681339 · 2026-05-24 · Merge pull request #137 from CodySwannGT/codex/remove-nightly-jira-triage
+- 7238dca · 2026-05-24 · chore: remove nightly Jira triage workflow
+- 40007dd · 2026-05-24 · chore(release): 0.1.37 [skip ci]
+- 4f9b368 · 2026-05-24 · Merge pull request #135 from CodySwannGT/codex/fix-claude-workflows-bun
+- adc5cff · 2026-05-24 · refactor(test): split web smoke auth checks
+- 8523dcc · 2026-05-24 · fix(ci): use bun for Claude workflows
+- 619a786 · 2026-05-24 · chore(release): 0.1.36 [skip ci]
+- 6dd4826 · 2026-05-24 · Merge pull request #130 from CodySwannGT/codex/issue-128-advisor-pagination-smoke
+- 109d138 · 2026-05-24 · chore(release): 0.1.35 [skip ci]
+- b4085e2 · 2026-05-24 · Merge pull request #134 from CodySwannGT/codex/issue-126-breakpoint-smoke
+- b0aad48 · 2026-05-24 · test: add breakpoint smoke coverage
+- 7090cab · 2026-05-24 · chore(release): 0.1.34 [skip ci]
+- 503d854 · 2026-05-23 · Merge pull request #133 from CodySwannGT/codex/issue-125-global-search-smoke-pr
+- 69bf256 · 2026-05-24 · chore(release): 0.1.33 [skip ci]
+- 97c37da · 2026-05-23 · Merge pull request #132 from CodySwannGT/codex/issue-124-mobile-search
+- 5b21cd9 · 2026-05-23 · test: add global search smoke coverage
+- 243e066 · 2026-05-23 · fix: improve mobile navbar search readability
+- 7a3612c · 2026-05-24 · chore(release): 0.1.32 [skip ci]
+- 0acc0bb · 2026-05-23 · Merge pull request #131 from CodySwannGT/codex/issue-127-compliance-smoke
+- e5e2939 · 2026-05-23 · test: add compliance page smoke coverage
+- 188d70f · 2026-05-23 · test: add advisor pagination smoke coverage
+- 62c44ad · 2026-05-23 · chore(release): 0.1.31 [skip ci]
+- 6a27d6e · 2026-05-23 · Merge pull request #122 from CodySwannGT/codex/firm-source-automation
+- e70f5b5 · 2026-05-23 · ci: automate firm source imports
+- d51ca86 · 2026-05-23 · chore(release): 0.1.30 [skip ci]
+- a23a237 · 2026-05-23 · Merge pull request #121 from CodySwannGT/codex/issue-105-ubs-adapter
+- b94bb10 · 2026-05-23 · feat: add ubs advisor source adapter
+- 7b41859 · 2026-05-23 · chore(release): 0.1.29 [skip ci]
+- f5a151e · 2026-05-23 · Merge pull request #120 from CodySwannGT/codex/issue-104-stifel-adapter
+- b8a38b3 · 2026-05-23 · feat: add stifel advisor source adapter
+- f844c25 · 2026-05-23 · chore(release): 0.1.28 [skip ci]
+- 38ca530 · 2026-05-23 · Merge pull request #119 from CodySwannGT/fix/deploy-smoke-extracted-facts
+- 39d7cb2 · 2026-05-23 · chore(release): 0.1.27 [skip ci]
+- 925d86f · 2026-05-23 · Merge pull request #118 from CodySwannGT/codex/issue-94-mcp-inspector
+- e16a2b4 · 2026-05-23 · test: stabilize deploy smoke
+- c5925fd · 2026-05-23 · docs: add mcp inspector verification path
+- 9e9a000 · 2026-05-23 · chore(release): 0.1.26 [skip ci]
+- e44caf5 · 2026-05-23 · Merge pull request #117 from CodySwannGT/codex/issue-93-mcp-docs
+- b498e36 · 2026-05-23 · chore(release): 0.1.25 [skip ci]
+- a587417 · 2026-05-23 · Merge pull request #116 from CodySwannGT/chore/vitest-coverage-75
+- e59f116 · 2026-05-23 · docs: document advisorbook mcp setup
+- 5eb9e5e · 2026-05-23 · chore: merge main
+- c226217 · 2026-05-23 · chore(release): 0.1.24 [skip ci]
+- 6bdb355 · 2026-05-23 · Merge pull request #115 from CodySwannGT/codex/issue-92-mcp-server-manifest
+- 51a1bc7 · 2026-05-23 · chore: upgrade lisa
+- e5159ae · 2026-05-23 · feat: add mcp server manifest
+- d54a450 · 2026-05-23 · chore(release): 0.1.23 [skip ci]
+- de08f17 · 2026-05-23 · Merge pull request #114 from CodySwannGT/codex/issue-91-article-resource-provenance
+- e513133 · 2026-05-23 · feat: include article provenance targets
+- c056965 · 2026-05-23 · chore(release): 0.1.22 [skip ci]
+- 55c3d8b · 2026-05-23 · Merge pull request #113 from CodySwannGT/codex/issue-90-mcp-resources
+- bfd6de1 · 2026-05-23 · feat: add advisorbook mcp resources
+- 57d97d1 · 2026-05-23 · chore(release): 0.1.21 [skip ci]
+- 3a0dfea · 2026-05-23 · Merge pull request #112 from CodySwannGT/codex/issue-89-mcp-readonly-tools
+- e4e75fb · 2026-05-23 · test: prove mcp tool surface is read-only
+- 6183aac · 2026-05-23 · chore(release): 0.1.20 [skip ci]
+- 7a0961d · 2026-05-23 · Merge pull request #111 from CodySwannGT/codex/issue-88-mcp-tools
+- a396b71 · 2026-05-23 · feat: add read-only mcp tools
+- 26db36b · 2026-05-23 · chore(release): 0.1.19 [skip ci]
+- bf59f7b · 2026-05-23 · chore: ignore accepted gitleaks findings (#110)
+- c4b11c6 · 2026-05-23 · chore(release): 0.1.18 [skip ci]
+- 002b12b · 2026-05-23 · Merge pull request #109 from CodySwannGT/codex/issue-87-mcp-transport-tests
+- e945abb · 2026-05-23 · test: cover mcp transport lifecycle
+- 51e57ca · 2026-05-23 · chore(release): 0.1.17 [skip ci]
+- f4e4dfc · 2026-05-23 · chore: scrub public repo operational docs (#108)
+- 4f4e2ba · 2026-05-23 · chore(release): 0.1.16 [skip ci]
+- 5847350 · 2026-05-23 · Merge pull request #107 from CodySwannGT/codex/issue-86-mcp-endpoint
+- a2fff9f · 2026-05-23 · feat: add public mcp json-rpc endpoint
+- 1781c1e · 2026-05-23 · chore(release): 0.1.15 [skip ci]
+- 2cd913d · 2026-05-23 · Merge pull request #106 from CodySwannGT/codex/issue-77-source-triage
+- da3b10d · 2026-05-23 · chore(release): 0.1.14 [skip ci]
+- 26c0f03 · 2026-05-23 · Merge pull request #100 from CodySwannGT/codex/fix-generated-harper-lint
+- aeb4c04 · 2026-05-23 · docs: record remaining firm source triage
+- 710c662 · 2026-05-23 · Merge pull request #103 from CodySwannGT/codex/issue-76-edward-jones-source
+- 27b3fa9 · 2026-05-23 · feat: add edward jones advisor source scraper
+- 64a499e · 2026-05-23 · feat: add raymond james advisor source scraper
+- 13ee78b · 2026-05-23 · feat: add raymond james advisor source scraper
+- b15f497 · 2026-05-23 · feat: add rbc advisor source scraper
+- d7ca0de · 2026-05-23 · feat: add rbc advisor source scraper
+- fe78fa0 · 2026-05-23 · fix: align pre-push with source quality gates
+- e1cebf5 · 2026-05-23 · feat: add wells fargo advisor source scraper
+- 6c16f1e · 2026-05-23 · chore(release): 0.1.13 [skip ci]
+- 7953cf6 · 2026-05-23 · feat: add merrill advisor source scraper
+- 6f63b97 · 2026-05-23 · chore(release): 0.1.12 [skip ci]
+- 25e6e37 · 2026-05-23 · feat: define firm source adapter contract (#97)
+- 5561e08 · 2026-05-23 · feat: define firm source adapter contract
+- c020c83 · 2026-05-23 · chore(release): 0.1.11 [skip ci]
+- d7af574 · 2026-05-23 · Merge pull request #96 from CodySwannGT/codex/configure-lisa-github-tracker
+- 7174ead · 2026-05-23 · chore: complete lisa github tracker config
+- a017c2c · 2026-05-23 · chore: configure lisa github tracker
+- 119d89b · 2026-05-23 · chore(release): 0.1.10 [skip ci]
+- dda4e03 · 2026-05-23 · Merge pull request #78 from CodySwannGT/codex/update-lisa-github-setup
+- af1808a · 2026-05-23 · chore: update Lisa and configure GitHub intake
+- 9226654 · 2026-05-23 · chore(release): 0.1.9 [skip ci]
+- 68fddd5 · 2026-05-23 · Merge pull request #63 from CodySwannGT/codex/setup-lisa-wiki
+- 76fc78f · 2026-05-23 · chore: align CI lint and format ignores
+- 707a2d4 · 2026-05-23 · chore: restore Lisa hook binary ignores
+- 775cbe1 · 2026-05-23 · chore: include local configs in eslint project
+- c60d467 · 2026-05-23 · docs: refresh wiki doctor report
+- e58e22d · 2026-05-23 · chore: refresh Lisa project config
+- 608cbd7 · 2026-05-23 · docs: set up Lisa wiki

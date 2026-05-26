@@ -45,6 +45,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
+  pageTitle: "AdvisorBook feed",
   build({ left, center, right }) {
     // Skeleton until /Feed resolves.
     center.append(SkeletonCard(), SkeletonCard());
