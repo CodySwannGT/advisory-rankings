@@ -276,7 +276,7 @@ async function runScenarios(
   return [
     ...(await smokeFeed(page)),
     ...(await smokeRecruiting(page)),
-    ...(await smokeRankings(page)),
+    ...(await smokeRankings(page, browser, extraHTTPHeaders)),
     ...(await smokeGlobalSearch(page)),
     ...(await smokeFirmAndAdvisor(page)),
     ...(await smokeTeam(page)),

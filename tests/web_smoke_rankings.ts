@@ -1,9 +1,11 @@
-import type { Page } from "playwright";
+import type { Browser, Page } from "playwright";
 
 import {
   BASE,
   QUICK_UI_TIMEOUT,
   check,
+  closeWithChecks,
+  newContext,
   shot,
   smokeGoto,
   smokeWaitForSelector,
@@ -13,13 +15,23 @@ import {
 const RANKINGS_TABLE_SELECTOR = ".rankings-table";
 const UNRESOLVED_ROW_NAME = "Jordan Example";
 const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
+const MOBILE_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 320, height: 740 },
+] as const;
 
 /**
  * Verifies the public Interactive Rankings Explorer page.
  * @param page - Browser page shared by smoke scenarios.
+ * @param browser - Browser used to open isolated mobile contexts.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
  * @returns Rankings smoke assertions.
  */
-export async function smokeRankings(page: Page): Promise<readonly Check[]> {
+export async function smokeRankings(
+  page: Page,
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/rankings`);
   await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const loaded = await readLoadedRankings(page);
@@ -34,8 +46,13 @@ export async function smokeRankings(page: Page): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/rankings?state=ZZ`);
   await smokeWaitForSelector(page, ".empty", QUICK_UI_TIMEOUT);
   const empty = await readEmptyRankings(page);
+  await shot(page, "rankings-coverage-empty-state");
 
-  return rankingsChecks(loaded, drilldown, unresolved, empty);
+  return [
+    ...rankingsChecks(loaded, drilldown, unresolved, empty),
+    ...(await smokeRankingsMobile(browser, extraHTTPHeaders)),
+    ...(await smokeRankingsNoRows(browser, extraHTTPHeaders)),
+  ];
 }
 
 /**
@@ -52,7 +69,8 @@ async function readLoadedRankings(page: Page) {
       hasNextGen: document.body.innerText.includes("Next Gen"),
       hasCoverageWorkbench:
         document.body.innerText.includes("Coverage workbench"),
-      hasCoverageBucket: document.body.innerText.includes("Advisors to Watch"),
+      hasCoverageBucket:
+        document.querySelectorAll(".rankings-coverage-bucket[href]").length > 0,
       hasGapSample: document.body.innerText.includes(unresolvedRowName),
       hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
       hasLatestLoaded: document.body.innerText.includes("Latest"),
@@ -193,4 +211,168 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     check(empty.hasCoverageEmpty, "rankings: empty coverage state renders"),
     check(empty.state === "ZZ", "rankings: empty state retains filter"),
   ];
+}
+
+/**
+ * Verifies rankings coverage at narrow mobile widths.
+ * @param browser - Browser used to create isolated mobile contexts.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @returns Mobile rankings smoke assertions.
+ */
+async function smokeRankingsMobile(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  const viewportChecks = await Promise.all(
+    MOBILE_VIEWPORTS.map(viewport =>
+      smokeRankingsMobileViewport(browser, extraHTTPHeaders, viewport)
+    )
+  );
+  return viewportChecks.flat();
+}
+
+/**
+ * Verifies rankings coverage at one mobile width.
+ * @param browser - Browser used to create an isolated mobile context.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @param viewport - Viewport dimensions to inspect.
+ * @returns Mobile rankings smoke assertions.
+ */
+async function smokeRankingsMobileViewport(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined,
+  viewport: (typeof MOBILE_VIEWPORTS)[number]
+): Promise<readonly Check[]> {
+  const context = await newContext(browser, viewport, extraHTTPHeaders);
+  const page = await context.newPage();
+  await smokeGoto(page, `${BASE}/rankings`);
+  await smokeWaitForSelector(
+    page,
+    ".rankings-coverage-workbench",
+    QUICK_UI_TIMEOUT
+  );
+  await shot(page, `rankings-coverage-mobile-${viewport.width}`);
+  const evidence = await readMobileRankings(page);
+
+  return await closeWithChecks(context, [
+    check(
+      evidence.hasCounts && evidence.hasLabels && evidence.hasDrilldown,
+      `rankings: mobile coverage content readable at ${viewport.width}px`,
+      evidence.text.slice(0, 180)
+    ),
+    check(
+      evidence.noOverflow,
+      `rankings: mobile page has no horizontal overflow at ${viewport.width}px`,
+      `scrollWidth ${evidence.scrollWidth}, clientWidth ${evidence.clientWidth}`
+    ),
+  ]);
+}
+
+/**
+ * Reads mobile rankings coverage facts.
+ * @param page - Browser page to inspect.
+ * @returns Mobile coverage facts.
+ */
+async function readMobileRankings(page: Page) {
+  return await page.evaluate(() => {
+    const workbench = document.querySelector(".rankings-coverage-workbench");
+    const text = workbench?.textContent || "";
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      hasCounts: /Rows in slice|Buckets|Gap types/i.test(text),
+      hasDrilldown:
+        document.querySelectorAll(
+          ".rankings-coverage-bucket[href], .rankings-gap-bucket[href]"
+        ).length > 0,
+      hasLabels: /Category coverage|Source-status gaps|Latest loaded/i.test(
+        text
+      ),
+      noOverflow:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      text,
+    };
+  });
+}
+
+/**
+ * Verifies the page renders an explicit no-ranking-rows state.
+ * @param browser - Browser used to create an isolated mocked context.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @returns No-row smoke assertions.
+ */
+async function smokeRankingsNoRows(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  const context = await newContext(
+    browser,
+    { width: 1280, height: 900 },
+    extraHTTPHeaders
+  );
+  const page = await context.newPage();
+  await page.route("**/RankingsExplorer**", async route => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(noRankingRowsPayload()),
+    });
+  });
+  await smokeGoto(page, `${BASE}/rankings`);
+  await smokeWaitForSelector(page, ".rankings-coverage-workbench .empty");
+  await shot(page, "rankings-coverage-no-rows");
+  const evidence = await readEmptyRankings(page);
+
+  return await closeWithChecks(context, [
+    check(evidence.hasEmpty, "rankings: no-row state explains missing rows"),
+    check(
+      evidence.hasCoverageEmpty,
+      "rankings: no-row coverage workbench renders explicit empty state"
+    ),
+  ]);
+}
+
+/**
+ * Builds the minimal RankingsExplorer payload needed to prove no loaded rows.
+ * @returns Empty rankings explorer payload.
+ */
+function noRankingRowsPayload() {
+  return {
+    items: [],
+    summary: {
+      totalEntries: 0,
+      resolvedEntries: 0,
+      unresolvedEntries: 0,
+      representedStates: 0,
+    },
+    filters: {
+      category: "",
+      year: "",
+      firmQuery: "",
+      state: "",
+      city: "",
+      resolved: "",
+      sort: "rank",
+    },
+    facets: {
+      categories: [],
+      years: [],
+    },
+    coverage: {
+      totalEntries: 0,
+      buckets: [],
+      gapBuckets: [],
+      emptyState: "No ranking rows are loaded for this coverage slice.",
+    },
+    topFirms: [],
+    source: {
+      label: "AdvisorHub rankings",
+      url: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+    },
+    provenance: {
+      sourceTables: ["Ranking", "RankingEntry", "FirmAlias"],
+      sourceIds: [],
+    },
+    emptyState: "No matching public ranking rows are available.",
+  };
 }
