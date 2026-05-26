@@ -25,6 +25,7 @@ fastifyRoutes:
     - 'recruiting/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
+    - 'favicon/index.js'
 
 # AdvisorBook web UI.  Served at the same origin as REST so the
 # browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
