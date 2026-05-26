@@ -1,4 +1,12 @@
-// @ts-nocheck
+import type {
+  AdvisorRow,
+  ArticleRow,
+  FirmAliasRow,
+  FirmRow,
+  TeamRow,
+} from "../types/harper-schema.js";
+import type { RouteTarget } from "../types/harper-resource.js";
+
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 // Robust date comparator. Harper returns dates as Date instances when
@@ -12,19 +20,103 @@ const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 //   - Production Harper passes a RequestTarget whose toString() yields
 //     the matched path slice — sometimes "<id>", sometimes "/<id>".
 // Strip a single leading slash so both shapes resolve.
+
+/** Optional lookup fields synthesized by canonicalization or legacy callers. */
+interface ArticleResolverFields {
+  readonly slug?: string;
+  readonly title?: string;
+}
+
+/**
+ * Resolvable article: schema row augmented with optional lookup fields
+ * synthesized by canonicalization (slug) and legacy callers (title).
+ */
+export type ResolvableArticle = ArticleRow & ArticleResolverFields;
+
+/** Optional lookup fields synthesized by canonicalization or chip rendering. */
+interface FirmResolverFields {
+  readonly slug?: string;
+  readonly short?: string;
+}
+
+/**
+ * Resolvable firm: schema row augmented with optional lookup fields
+ * synthesized by canonicalization (slug) and chip rendering (short).
+ */
+export type ResolvableFirm = FirmRow & FirmResolverFields;
+
+/** Optional lookup fields synthesized by canonicalization or display formatters. */
+interface AdvisorResolverFields {
+  readonly slug?: string;
+  readonly displayName?: string;
+}
+
+/**
+ * Resolvable advisor: schema row augmented with optional lookup fields
+ * synthesized by canonicalization (slug) and display formatters (displayName).
+ */
+export type ResolvableAdvisor = AdvisorRow & AdvisorResolverFields;
+
+/** Optional lookup fields synthesized by canonicalization. */
+interface TeamResolverFields {
+  readonly slug?: string;
+}
+
+/**
+ * Resolvable team: schema row augmented with the canonicalized slug.
+ */
+export type ResolvableTeam = TeamRow & TeamResolverFields;
+
+/** Minimal shape any row needs to participate in slug-based resolution. */
+interface SlugBearing {
+  readonly slug?: string;
+}
+
+/**
+ * Internal duck type for the proxy-like object Harper hands resource
+ * methods. Used by `normalizeId` to read `.id` without forcing callers
+ * to import `RequestTarget` from harperdb.
+ */
+interface IdBearingTarget {
+  readonly id?: unknown;
+  readonly toString?: () => string;
+}
+
+/**
+ * Minimal slice of the resource-index `db` consumed by the routing
+ * resolvers. Mirrors the shape produced by `buildDb` in
+ * `src/harper/resource-data.ts`. Kept here so this file does not depend
+ * on the still-untyped `resource-data` module.
+ */
+export interface ResourceIndex {
+  readonly articles: readonly ResolvableArticle[];
+  readonly firms: readonly ResolvableFirm[];
+  readonly advisors: readonly ResolvableAdvisor[];
+  readonly teams: readonly ResolvableTeam[];
+  readonly byArticle: ReadonlyMap<string, ResolvableArticle>;
+  readonly byFirm: ReadonlyMap<string, ResolvableFirm>;
+  readonly byAdvisor: ReadonlyMap<string, ResolvableAdvisor>;
+  readonly byTeam: ReadonlyMap<string, ResolvableTeam>;
+  readonly firmAliasByNormalized?: ReadonlyMap<string, FirmAliasRow>;
+}
+
 /**
  * Normalizes id for consistent comparisons.
  * @param target - Route target or request target to normalize.
  * @returns The normalized value.
  */
-export function normalizeId(target) {
+export function normalizeId(target: RouteTarget | null | undefined): string {
   if (target == null) return "";
   // Harper's RequestTarget extends URLSearchParams and exposes the
   // pre-parsed path id at `target.id`. Prefer that when present, fall
   // back to toString() for the dev_server bridge and any older callers.
-  if (typeof target === "object" && target.id != null)
-    return normalizeSluggedId(String(target.id));
-  const s = typeof target === "string" ? target : (target.toString?.() ?? "");
+  if (typeof target === "object") {
+    const objTarget = target as IdBearingTarget;
+    if (objTarget.id != null) return normalizeSluggedId(String(objTarget.id));
+    const s = objTarget.toString?.() ?? "";
+    return normalizeSluggedId(s.startsWith("/") ? s.slice(1) : s);
+  }
+  const s = typeof target === "string" ? target : String(target);
   return normalizeSluggedId(s.startsWith("/") ? s.slice(1) : s);
 }
 
@@ -33,7 +125,7 @@ export function normalizeId(target) {
  * @param value - Raw value to normalize or parse.
  * @returns The normalized value.
  */
-function normalizeSluggedId(value) {
+function normalizeSluggedId(value: string): string {
   const match = UUID_RE.exec(decodeURIComponent(value || ""));
   return match ? match[0] : value;
 }
@@ -43,10 +135,10 @@ function normalizeSluggedId(value) {
  * @param text - Source text to parse.
  * @returns Normalized lookup value.
  */
-export function slugifyText(text) {
-  return String(text || "")
+export function slugifyText(text: unknown): string {
+  return String(text ?? "")
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/&/g, " and ")
     .split(/[^a-z0-9]+/)
@@ -61,7 +153,11 @@ export function slugifyText(text) {
  * @param namesForRow - Callback that returns names belonging to a row.
  * @returns Normalized lookup value.
  */
-function resolveBySlug(rows, identifier, namesForRow) {
+function resolveBySlug<TRow extends SlugBearing>(
+  rows: readonly TRow[],
+  identifier: string | null | undefined,
+  namesForRow: (row: TRow) => ReadonlyArray<string | undefined>
+): TRow | null {
   if (!identifier) return null;
   const slug = slugifyText(identifier);
   if (!slug) return null;
@@ -79,7 +175,10 @@ function resolveBySlug(rows, identifier, namesForRow) {
  * @param identifier - Route id, slug, or lookup key.
  * @returns Normalized lookup value.
  */
-export function resolveArticle(db, identifier) {
+export function resolveArticle(
+  db: ResourceIndex,
+  identifier: string
+): ResolvableArticle | null {
   return (
     db.byArticle.get(identifier) ||
     resolveBySlug(db.articles, identifier, article => [
@@ -96,7 +195,10 @@ export function resolveArticle(db, identifier) {
  * @param identifier - Route id, slug, or lookup key.
  * @returns Normalized lookup value.
  */
-export function resolveFirm(db, identifier) {
+export function resolveFirm(
+  db: ResourceIndex,
+  identifier: string
+): ResolvableFirm | null {
   const alias = db.firmAliasByNormalized?.get(normalizeFirmAlias(identifier));
   return (
     db.byFirm.get(identifier) ||
@@ -114,8 +216,8 @@ export function resolveFirm(db, identifier) {
  * @param value - Raw value to normalize or parse.
  * @returns The normalized value.
  */
-export function normalizeFirmAlias(value) {
-  return String(value || "")
+export function normalizeFirmAlias(value: unknown): string {
+  return String(value ?? "")
     .toLowerCase()
     .replaceAll("&", " and ")
     .replace(/[.,]/g, " ")
@@ -130,7 +232,10 @@ export function normalizeFirmAlias(value) {
  * @param identifier - Route id, slug, or lookup key.
  * @returns Normalized lookup value.
  */
-export function resolveAdvisor(db, identifier) {
+export function resolveAdvisor(
+  db: ResourceIndex,
+  identifier: string
+): ResolvableAdvisor | null {
   return (
     db.byAdvisor.get(identifier) ||
     resolveBySlug(db.advisors, identifier, advisor => [
@@ -149,7 +254,10 @@ export function resolveAdvisor(db, identifier) {
  * @param identifier - Route id, slug, or lookup key.
  * @returns Normalized lookup value.
  */
-export function resolveTeam(db, identifier) {
+export function resolveTeam(
+  db: ResourceIndex,
+  identifier: string
+): ResolvableTeam | null {
   return (
     db.byTeam.get(identifier) ||
     resolveBySlug(db.teams, identifier, team => [team.slug, team.name])
@@ -161,7 +269,9 @@ export function resolveTeam(db, identifier) {
  * @param advisor - Advisor row or missing lookup result.
  * @returns Preferred display name with sensible legal-name fallbacks.
  */
-export function advisorDisplayName(advisor) {
+export function advisorDisplayName(
+  advisor: ResolvableAdvisor | null | undefined
+): string {
   if (!advisor) return "";
   return (
     advisor.displayName ||
@@ -177,8 +287,8 @@ export function advisorDisplayName(advisor) {
  * @param name - Canonical firm name.
  * @returns Compact firm label.
  */
-export function firmShort(name) {
-  return String(name || "")
+export function firmShort(name: unknown): string {
+  return String(name ?? "")
     .replace(/\bWealth Management\b/gi, "WM")
     .replace(/\bFinancial Advisors?\b/gi, "FA")
     .replace(/\bInvestment Management\b/gi, "IM")
