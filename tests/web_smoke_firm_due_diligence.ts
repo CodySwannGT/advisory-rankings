@@ -4,6 +4,7 @@ import {
   DEPLOYED_DATA_TIMEOUT,
   type Check,
 } from "./web_smoke_support.js";
+import { firmCopyGuardrailChecks } from "./web_smoke_copy_guardrails.js";
 
 /**
  * Checks the source-backed firm due-diligence summary on a real profile.
@@ -46,5 +47,6 @@ export async function firmDueDiligenceChecks(
       /Source:|Data confidence|Generated/.test(text),
       "firm.html: due-diligence source transparency"
     ),
+    ...(await firmCopyGuardrailChecks(section)),
   ];
 }
