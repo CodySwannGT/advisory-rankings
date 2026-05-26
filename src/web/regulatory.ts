@@ -163,6 +163,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
+  pageTitle: "Compliance events",
   build({ center, right }) {
     loadCompliance(center, right);
   },

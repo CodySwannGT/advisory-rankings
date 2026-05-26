@@ -337,11 +337,11 @@ the page back populated rail elements.
 
 | Template | Layout | Build args |
 |---|---|---|
-| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. The left rail starts with the shared Browse card so subpages keep a populated rail even when they only add center/right content. | `{ left, center, right, layout }` |
-| `mountFullWidthPage` | Single full-width column. Reserve for exceptional utility pages; public content and directory pages should use `mountThreeColumnPage`. | `{ center, layout }` |
-| `mountCenteredNarrowPage` | Single narrow centered column. Used by login. | `{ center, layout }`; accepts `maxWidth`. |
+| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. The left rail starts with the shared Browse card so subpages keep a populated rail even when they only add center/right content. Pass `pageTitle` so the route has exactly one document-level `h1` without changing card titles. | `{ left, center, right, layout }` |
+| `mountFullWidthPage` | Single full-width column. Reserve for exceptional utility pages; public content and directory pages should use `mountThreeColumnPage`. Pass `pageTitle` for the route-level `h1`. | `{ center, layout }` |
+| `mountCenteredNarrowPage` | Single narrow centered column. Used by login. Pass `pageTitle` for the route-level `h1`. | `{ center, layout }`; accepts `maxWidth`. |
 
-All three accept `{ active, refreshMe, logout, search, build }`.
+All three accept `{ active, refreshMe, logout, search, pageTitle, build }`.
 Caller imports `refreshMe`, `logout`, and `search` from `app.ts`
 and passes them in — this keeps templates decoupled from the
 network layer. `search` is what powers the navbar's
@@ -354,6 +354,7 @@ import { mountThreeColumnPage, SectionCard } from './design-system/index.js';
 
 mountThreeColumnPage({
 	active: 'firms',
+	pageTitle: 'Firm directory',
 	refreshMe, logout, search,
 	build({ center, right }) {
 		// populate center / right
@@ -364,7 +365,7 @@ mountThreeColumnPage({
 The legacy `mountPage({ active, build(layout) })` from `app.ts`
 still works for older callers — it forwards to
 `mountThreeColumnPage` and exposes `layout` (the grid root) to
-the build callback.
+the build callback. It also forwards `pageTitle` when supplied.
 
 ---
 
@@ -441,7 +442,7 @@ The pages have been migrated to the system:
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `/rankings` (`rankings.html`) | `mountThreeColumnPage` | `SectionCard`, `ScrollableTable`, `RollupCard`, `DetailsCard`, `Tag` |
-| `/regulatory` (`regulatory.html`) | Legacy checked-in page shell | `SectionCard`, `DisclosureEventCard`, `DetailsCard` |
+| `/regulatory` (`regulatory.html`) | `mountThreeColumnPage` | `SectionCard`, `DisclosureEventCard`, `DetailsCard` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
 The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,
