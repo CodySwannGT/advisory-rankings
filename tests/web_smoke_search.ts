@@ -27,10 +27,14 @@ const ACTIVE_SEARCH_RESULT_SELECTOR = ".gs-item-active";
  */
 export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   const input = page.locator("#global-search");
+  const namedInput = page.getByRole("combobox", {
+    name: "Search advisors, firms, teams",
+  });
   const results = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  const namedInputCount = await namedInput.count();
   await input.fill("wells");
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "02-global-search");
@@ -63,6 +67,10 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   );
 
   return [
+    check(
+      namedInputCount === 1,
+      "global search: combobox exposes accessible name"
+    ),
     check(dropdownExpanded, "global search: suggestions dropdown opens"),
     check(resultCount >= 1, "global search: selectable suggestions render"),
     check(

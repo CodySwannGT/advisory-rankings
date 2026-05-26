@@ -46,6 +46,7 @@ function createSearchView() {
     id: "global-search",
     autocomplete: "off",
     role: "combobox",
+    "aria-label": "Search advisors, firms, teams",
     "aria-autocomplete": "list",
     [EXPANDED_ATTR]: "false",
     "aria-controls": "global-search-results",
