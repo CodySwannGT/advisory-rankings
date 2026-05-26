@@ -10,6 +10,10 @@ import {
   type Check,
 } from "./web_smoke_support.js";
 
+const RANKINGS_TABLE_SELECTOR = ".rankings-table";
+const UNRESOLVED_ROW_NAME = "Jordan Example";
+const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
+
 /**
  * Verifies the public Interactive Rankings Explorer page.
  * @param page - Browser page shared by smoke scenarios.
@@ -17,19 +21,21 @@ import {
  */
 export async function smokeRankings(page: Page): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/rankings`);
-  await smokeWaitForSelector(page, ".rankings-table", QUICK_UI_TIMEOUT);
+  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const loaded = await readLoadedRankings(page);
   await shot(page, "11-rankings-desktop");
 
+  const drilldown = await followUnresolvedGap(page);
+
   await smokeGoto(page, `${BASE}/rankings?resolved=unresolved&state=TX`);
-  await smokeWaitForSelector(page, ".rankings-table", QUICK_UI_TIMEOUT);
+  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const unresolved = await readUnresolvedRankings(page);
 
   await smokeGoto(page, `${BASE}/rankings?state=ZZ`);
   await smokeWaitForSelector(page, ".empty", QUICK_UI_TIMEOUT);
   const empty = await readEmptyRankings(page);
 
-  return rankingsChecks(loaded, unresolved, empty);
+  return rankingsChecks(loaded, drilldown, unresolved, empty);
 }
 
 /**
@@ -38,24 +44,59 @@ export async function smokeRankings(page: Page): Promise<readonly Check[]> {
  * @returns Loaded rankings DOM facts.
  */
 async function readLoadedRankings(page: Page) {
-  return await page.evaluate(() => ({
-    hasHeader: document.body.innerText.includes(
-      "Interactive Rankings Explorer"
-    ),
-    hasNextGen: document.body.innerText.includes("Next Gen"),
-    hasCoverageWorkbench:
-      document.body.innerText.includes("Coverage workbench"),
-    hasCoverageBucket: document.body.innerText.includes("Advisors to Watch"),
-    hasGapSample: document.body.innerText.includes("Jordan Example"),
-    hasLatestLoaded: document.body.innerText.includes("Latest"),
-    hasResolved: document.body.innerText.includes("RESOLVED"),
-    hasSourceBacked: document.body.innerText.includes("SOURCE BACKED"),
-    hasUnavailable: document.body.innerText.includes("UNAVAILABLE"),
-    profileHref: document.querySelector<HTMLAnchorElement>(
-      ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
-    )?.href,
-    rowCount: document.querySelectorAll(".rankings-table tbody tr").length,
-  }));
+  return await page.evaluate(
+    ({ nextGenSourceLabel, rankingsTableSelector, unresolvedRowName }) => ({
+      hasHeader: document.body.innerText.includes(
+        "Interactive Rankings Explorer"
+      ),
+      hasNextGen: document.body.innerText.includes("Next Gen"),
+      hasCoverageWorkbench:
+        document.body.innerText.includes("Coverage workbench"),
+      hasCoverageBucket: document.body.innerText.includes("Advisors to Watch"),
+      hasGapSample: document.body.innerText.includes(unresolvedRowName),
+      hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
+      hasLatestLoaded: document.body.innerText.includes("Latest"),
+      hasResolved: document.body.innerText.includes("RESOLVED"),
+      hasSourceBacked: document.body.innerText.includes("SOURCE BACKED"),
+      hasUnavailable: document.body.innerText.includes("UNAVAILABLE"),
+      profileHref: document.querySelector<HTMLAnchorElement>(
+        ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
+      )?.href,
+      rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
+        .length,
+      unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
+        ".rankings-gap-bucket[href*='resolved=unresolved']"
+      )?.href,
+    }),
+    {
+      nextGenSourceLabel: NEXT_GEN_SOURCE_LABEL,
+      rankingsTableSelector: RANKINGS_TABLE_SELECTOR,
+      unresolvedRowName: UNRESOLVED_ROW_NAME,
+    }
+  );
+}
+
+/**
+ * Opens the unresolved source-status gap drill-down.
+ * @param page - Browser page to drive.
+ * @returns Drill-down DOM facts.
+ */
+async function followUnresolvedGap(page: Page) {
+  await page
+    .locator(".rankings-gap-bucket[href*='resolved=unresolved']")
+    .first()
+    .click();
+  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
+  return await page.evaluate(
+    unresolvedRowName => ({
+      hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
+      resolvedFilter: document.querySelector<HTMLSelectElement>(
+        'select[name="resolved"]'
+      )?.value,
+      url: window.location.href,
+    }),
+    UNRESOLVED_ROW_NAME
+  );
 }
 
 /**
@@ -64,17 +105,20 @@ async function readLoadedRankings(page: Page) {
  * @returns Unresolved rankings DOM facts.
  */
 async function readUnresolvedRankings(page: Page) {
-  return await page.evaluate(() => ({
-    hasUnresolvedRow: document.body.innerText.includes("Jordan Example"),
-    hasUnresolvedStatus: document.body.innerText.includes("UNRESOLVED"),
-    hasUnresolvedWorkbench:
-      document.body.innerText.includes("Coverage workbench"),
-    state: document.querySelector<HTMLInputElement>('input[name="state"]')
-      ?.value,
-    noOverflow:
-      document.documentElement.scrollWidth <=
-      document.documentElement.clientWidth,
-  }));
+  return await page.evaluate(
+    unresolvedRowName => ({
+      hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
+      hasUnresolvedStatus: document.body.innerText.includes("UNRESOLVED"),
+      hasUnresolvedWorkbench:
+        document.body.innerText.includes("Coverage workbench"),
+      state: document.querySelector<HTMLInputElement>('input[name="state"]')
+        ?.value,
+      noOverflow:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    }),
+    UNRESOLVED_ROW_NAME
+  );
 }
 
 /**
@@ -98,17 +142,31 @@ async function readEmptyRankings(page: Page) {
 /**
  * Converts rankings DOM facts into smoke checks.
  * @param loaded - Loaded page facts.
+ * @param drilldown - Coverage drill-down page facts.
  * @param unresolved - Filtered unresolved page facts.
  * @param empty - Empty page facts.
  * @returns Smoke assertions.
  */
-function rankingsChecks(loaded, unresolved, empty) {
+function rankingsChecks(loaded, drilldown, unresolved, empty) {
   return [
     check(loaded.hasHeader, "rankings: page header renders"),
     check(loaded.hasNextGen, "rankings: category data renders"),
     check(loaded.hasCoverageWorkbench, "rankings: coverage workbench renders"),
     check(loaded.hasCoverageBucket, "rankings: coverage buckets render"),
-    check(loaded.hasGapSample, "rankings: gap sample rows render"),
+    check(
+      loaded.hasGapSample && loaded.hasGapSource,
+      "rankings: gap samples include row and source labels"
+    ),
+    check(
+      Boolean(loaded.unresolvedGapHref),
+      "rankings: unresolved gap exposes drill-down link"
+    ),
+    check(
+      drilldown.resolvedFilter === "unresolved" &&
+        drilldown.hasUnresolvedRow &&
+        drilldown.url.includes("resolved=unresolved"),
+      "rankings: coverage gap drills into unresolved rows"
+    ),
     check(loaded.hasLatestLoaded, "rankings: latest loaded context renders"),
     check(loaded.rowCount > 0, "rankings: source-backed rows render"),
     check(loaded.hasResolved, "rankings: resolved status is visible"),
