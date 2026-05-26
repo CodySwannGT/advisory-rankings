@@ -16,16 +16,24 @@ export function Navbar({ active, refreshMe, logout, search } = {}) {
   const drawerState = new Map([["open", false]]);
   const meSpot = createMeSpot();
   const links = createLinks(active);
-  const burger = createBurger(() => toggleDrawer(drawerState, burger));
+  const burger = createBurger(() => toggleDrawer(drawerState, burger, drawer));
   const drawer = el("div", { class: "nav-drawer" }, links, meSpot);
   const scrim = el("div", {
     class: "nav-scrim",
-    onClick: () => toggleDrawer(drawerState, burger, false),
+    onClick: () => toggleDrawer(drawerState, burger, drawer, false),
   });
+  const mobileDrawerQuery = window.matchMedia("(max-width: 700px)");
+  syncDrawerFocusState({ drawer, open: false });
+  mobileDrawerQuery.addEventListener("change", () =>
+    syncDrawerFocusState({ drawer, open: drawerState.get("open") })
+  );
+  document.addEventListener("keydown", event =>
+    closeDrawerFromKeyboard({ event, state: drawerState, burger, drawer })
+  );
 
   links.addEventListener("click", event => {
     if (event.target.tagName === "A" || event.target.closest("a"))
-      toggleDrawer(drawerState, burger, false);
+      toggleDrawer(drawerState, burger, drawer, false);
   });
   if (refreshMe) refreshMe().then(me => renderMe({ meSpot, me, logout }));
 
@@ -166,11 +174,39 @@ function renderSessionFallback(meSpot, message) {
  * Opens or closes the mobile drawer and mirrors state to ARIA.
  * @param state - Shared drawer state map.
  * @param burger - Button whose expanded state should match the drawer.
+ * @param drawer - Drawer whose focusability should match mobile visibility.
  * @param force - Optional explicit drawer state.
  */
-function toggleDrawer(state, burger, force) {
+function toggleDrawer(state, burger, drawer, force) {
   const open = force ?? !state.get("open");
   state.set("open", open);
   document.body.classList.toggle("drawer-open", open);
   burger.setAttribute("aria-expanded", String(open));
+  syncDrawerFocusState({ drawer, open });
+}
+
+/**
+ * Removes the off-canvas mobile drawer from tab order while it is closed.
+ * @param root0 - Drawer focus context.
+ * @param root0.drawer - Drawer element to expose or hide from focus.
+ * @param root0.open - Whether the drawer is currently open.
+ */
+function syncDrawerFocusState({ drawer, open }) {
+  const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const hidden = mobile && !open;
+  drawer.toggleAttribute("inert", hidden);
+  drawer.setAttribute("aria-hidden", String(hidden));
+}
+
+/**
+ * Closes the mobile drawer from keyboard dismissal without hijacking other keys.
+ * @param root0 - Keyboard close context.
+ * @param root0.event - Key event to inspect.
+ * @param root0.state - Shared drawer state map.
+ * @param root0.burger - Button whose expanded state should match the drawer.
+ * @param root0.drawer - Drawer whose focusability should match mobile visibility.
+ */
+function closeDrawerFromKeyboard({ event, state, burger, drawer }) {
+  if (event.key === "Escape" && state.get("open"))
+    toggleDrawer(state, burger, drawer, false);
 }

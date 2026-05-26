@@ -31,21 +31,28 @@ import {
   el,
   Avatar,
 } from "./design-system/index.js";
+import {
+  feedCategories,
+  feedFilterCard,
+  filterEmptyState,
+  filterFeedItems,
+  readFeedFilters,
+  writeFeedFilters,
+} from "./feed-filters.js";
 
 mountThreeColumnPage({
   active: "home",
   refreshMe,
   logout,
   search,
+  pageTitle: "AdvisorBook feed",
   build({ left, center, right }) {
     // Skeleton until /Feed resolves.
     center.append(SkeletonCard(), SkeletonCard());
 
     api("/Feed")
       .then(({ items }) => {
-        renderCenter(center, items);
-        renderLeft(left, items);
-        renderRight(right, items);
+        renderFeed({ left, center, right }, items || []);
       })
       .catch(err => {
         clear(center);
@@ -60,17 +67,54 @@ mountThreeColumnPage({
 });
 
 /**
+ * Renders the feed and re-renders it when browser history restores filter state.
+ * @param layout - Page columns used by the feed.
+ * @param items - Full feed payload.
+ */
+function renderFeed(layout, items) {
+  const categories = feedCategories(items);
+  const renderCurrentState = () => {
+    const filters = readFeedFilters(categories);
+    const filteredItems = filterFeedItems(items, filters);
+
+    renderCenter(layout.center, filteredItems, {
+      categories,
+      count: filteredItems.length,
+      filters,
+      total: items.length,
+      onChange: nextFilters => {
+        writeFeedFilters(nextFilters);
+        renderCurrentState();
+      },
+    });
+    renderLeft(layout.left, filteredItems);
+    renderRight(layout.right, filteredItems);
+  };
+
+  renderCurrentState();
+  window.addEventListener("popstate", renderCurrentState);
+}
+
+/**
  * Renders center into the page.
  * @param root - DOM root node.
  * @param items - Items to render.
+ * @param state - Current filter state and callbacks.
  */
-function renderCenter(root, items) {
+function renderCenter(root, items, state) {
   clear(root);
+  root.appendChild(feedFilterCard(state));
   if (!items.length) {
+    const empty = state.filters.active
+      ? filterEmptyState(state.filters)
+      : {
+          title: "No articles yet",
+          body: "Once the ingest crawler runs, articles appear here.",
+        };
     root.appendChild(
       EmptyCard({
-        title: "No articles yet",
-        body: "Once the ingest crawler runs, articles appear here.",
+        title: empty.title,
+        body: empty.body,
       })
     );
     return;
@@ -88,9 +132,11 @@ function renderLeft(root, items) {
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
+      { label: "Recruiting", icon: "↔", href: "/recruiting" },
+      { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
   const recentTransitions = items

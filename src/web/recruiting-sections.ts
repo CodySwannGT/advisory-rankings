@@ -10,7 +10,6 @@ import {
   DetailsCard,
   RollupCard,
   ScrollableTable,
-  EntityChip,
   Tag,
 } from "./design-system/index.js";
 
@@ -33,6 +32,7 @@ export function momentumCard(rows) {
     title: "Firm momentum",
     body: ScrollableTable(
       table(
+        "firm-momentum-table",
         ["Firm", "Inbound", "Outbound", "Net AUM", "Unknown"],
         rows.map(row => [
           firmCell(row.firm),
@@ -43,6 +43,39 @@ export function momentumCard(rows) {
         ])
       )
     ),
+  });
+}
+
+/**
+ * Builds the selected-firm watchlist momentum card.
+ * @param watchlist - Recruiting watchlist payload.
+ * @returns Watchlist card.
+ */
+export function watchlistCard(watchlist) {
+  if (!watchlist?.items?.length) return null;
+  return SectionCard({
+    title: "Recruiting watchlist",
+    attrs: { class: "recruiting-watchlist" },
+    body: [
+      el(
+        "div",
+        { class: "watchlist-summary" },
+        metricBlock("Inbound", summaryValue(watchlist.summary.inbound)),
+        metricBlock("Outbound", summaryValue(watchlist.summary.outbound)),
+        metricBlock(
+          "Net",
+          netValue(
+            watchlist.summary.netKnownAum,
+            watchlist.summary.netMoveCount
+          )
+        )
+      ),
+      el(
+        "div",
+        { class: "watchlist-grid" },
+        ...watchlist.items.map(watchlistItem)
+      ),
+    ],
   });
 }
 
@@ -62,6 +95,7 @@ export function marketCard(rows) {
     title: "Market activity",
     body: ScrollableTable(
       table(
+        "market-activity-table",
         ["Market", "Moves", "Known AUM", "Unknown AUM", "Missing T12"],
         rows.map(row => [
           row.market,
@@ -91,6 +125,7 @@ export function recentMovesCard(rows) {
     title: "Recent moves",
     body: ScrollableTable(
       table(
+        "recent-moves-table",
         ["Date", "Move", "AUM", "T12", "Market", "Source"],
         rows.map(row => [
           fmtDate(row.moveDate, { mode: "short" }),
@@ -164,19 +199,28 @@ export function sourceCard(data) {
 
 /**
  * Renders a table with normalized cell content.
+ * @param tableClass - Recruiting table subtype class.
  * @param headings - Header labels.
  * @param rows - Body rows.
  * @returns Table node.
  */
-function table(headings, rows) {
+function table(tableClass, headings, rows) {
   return el(
     "table",
-    { class: "snap-table recruiting-table" },
+    { class: `snap-table recruiting-table ${tableClass}` },
     el("thead", {}, el("tr", {}, ...headings.map(h => el("th", {}, h)))),
     el(
       "tbody",
       {},
-      ...rows.map(row => el("tr", {}, ...row.map(cell => el("td", {}, cell))))
+      ...rows.map(row =>
+        el(
+          "tr",
+          {},
+          ...row.map((cell, index) =>
+            el("td", { "data-label": headings[index] }, cell)
+          )
+        )
+      )
     )
   );
 }
@@ -187,9 +231,93 @@ function table(headings, rows) {
  * @returns Firm cell content.
  */
 function firmCell(firm) {
-  return firm?.id
-    ? EntityChip({ ...firm, kind: "firm", href: entityPath("firm", firm) })
-    : "Unresolved firm";
+  if (!firm?.id) return "Unresolved firm";
+  return el(
+    "div",
+    { class: STACKED_CELL_CLASS },
+    el(
+      "a",
+      { class: "recruiting-firm-link", href: entityPath("firm", firm) },
+      firm.short || firm.name || firm.id
+    ),
+    firm.hq ? el("span", {}, firm.hq) : null
+  );
+}
+
+/**
+ * Renders one watchlist firm row as a compact panel.
+ * @param item - Watchlist item payload.
+ * @returns Watchlist item node.
+ */
+function watchlistItem(item) {
+  return el(
+    "article",
+    { class: "watchlist-item" },
+    el(
+      "div",
+      { class: "watchlist-item-head" },
+      firmCell(item.firm),
+      item.query ? el("span", { class: "watchlist-query" }, item.query) : null
+    ),
+    el(
+      "div",
+      { class: "watchlist-metrics" },
+      metricBlock("Inbound", summaryValue(item.inbound)),
+      metricBlock("Outbound", summaryValue(item.outbound)),
+      metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
+    ),
+    item.sourceStatus?.length
+      ? el(
+          "div",
+          { class: "tag-list watchlist-status" },
+          ...item.sourceStatus.map(status => statusTag(status))
+        )
+      : null
+  );
+}
+
+/**
+ * Renders a labeled watchlist metric.
+ * @param label - Metric label.
+ * @param value - Metric body node.
+ * @returns Metric block.
+ */
+function metricBlock(label, value) {
+  return el(
+    "div",
+    { class: "watchlist-metric" },
+    el("span", { class: "watchlist-metric-label" }, label),
+    value
+  );
+}
+
+/**
+ * Renders count and known AUM for a watchlist side.
+ * @param summary - Inbound or outbound summary.
+ * @returns Summary metric node.
+ */
+function summaryValue(summary) {
+  return el(
+    "div",
+    { class: STACKED_CELL_CLASS },
+    el("strong", {}, fmtMoney(summary?.knownAum)),
+    el("span", {}, `${fmtNumber(summary?.count)} moves`)
+  );
+}
+
+/**
+ * Renders net movement and known AUM.
+ * @param knownAum - Net known AUM.
+ * @param moveCount - Net move count.
+ * @returns Net metric node.
+ */
+function netValue(knownAum, moveCount) {
+  return el(
+    "div",
+    { class: STACKED_CELL_CLASS },
+    el("strong", {}, fmtMoney(knownAum)),
+    el("span", {}, `${fmtNumber(moveCount)} net moves`)
+  );
 }
 
 /**

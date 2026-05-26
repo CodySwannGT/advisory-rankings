@@ -37,10 +37,10 @@ import {
   clear,
 } from "./design-system/index.js";
 import {
-  DetailErrorCard,
   DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
+  renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
 import {
@@ -69,18 +69,28 @@ mountThreeColumnPage({
       return;
     }
 
-    renderDetailLoading({ center, right, label: "firm profile" });
-    api(`/FirmProfile/${encodeURIComponent(id)}`)
-      .then(d => {
-        clear(center);
-        clear(right);
-        render(d, center, right);
-      })
-      .catch(err => {
-        clear(center);
-        clear(right);
-        center.appendChild(DetailErrorCard("Could not load firm", err));
-      });
+    const loadFirmProfile = () => {
+      clear(center);
+      clear(right);
+      renderDetailLoading({ center, right, label: "firm profile" });
+      api(`/FirmProfile/${encodeURIComponent(id)}`)
+        .then(d => {
+          clear(center);
+          clear(right);
+          render(d, center, right);
+        })
+        .catch(err => {
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load firm",
+            error: err,
+            onRetry: loadFirmProfile,
+          });
+        });
+    };
+
+    loadFirmProfile();
   },
 });
 
@@ -551,6 +561,10 @@ function moduleMeta(module) {
   return el(
     "div",
     { class: "firm-dd-meta" },
+    helpText(
+      "Source state",
+      "Source state explains which loaded rows support this module and whether the module has a current freshness date."
+    ),
     sourceTables.length
       ? Tag({
           children: `Source: ${sourceTables.join(", ")}`,
@@ -625,6 +639,10 @@ function dataConfidenceBlock(confidence) {
       "div",
       { class: "firm-dd-confidence-head" },
       el("strong", {}, "Data confidence"),
+      helpText(
+        "Data confidence",
+        "Data confidence summarizes whether each due-diligence module is source-backed, missing data, or needs review."
+      ),
       statusTag(confidence.status)
     ),
     el("p", {}, confidence.note || ""),
@@ -639,6 +657,21 @@ function dataConfidenceBlock(confidence) {
         )
       )
     )
+  );
+}
+
+/**
+ * Builds a compact keyboard-accessible explanation control.
+ * @param label - Due-diligence term being explained.
+ * @param explanation - Public explanation copy.
+ * @returns Help text disclosure.
+ */
+function helpText(label, explanation) {
+  return el(
+    "details",
+    { class: "firm-dd-help" },
+    el("summary", { "aria-label": `${label} explanation` }, "?"),
+    el("p", {}, explanation)
   );
 }
 

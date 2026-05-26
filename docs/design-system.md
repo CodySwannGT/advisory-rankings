@@ -199,7 +199,7 @@ Self-contained UI sections.
 | `EntityList({ rows, empty })` | Wraps a list of `EntityRow`s in `.entity-list`. |
 | `Paginated({ fetchPage, renderRow, empty, onTotal })` | Cursor-paginated list with infinite scroll (IntersectionObserver) plus a "Load more" button fallback. `fetchPage(cursor)` must resolve to `{ items, nextCursor, total? }`. Used by the `/advisors` directory and the `Current/Past advisors` cards on the firm profile (`/PublicAdvisors`, `/FirmAdvisors/<id>`). |
 | `ProfileHead({ initialsText, title, subtitle, tags })` | Cover gradient + avatar + title block — top of every profile page. |
-| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. Shows a safe sign-in fallback when `/Me` fails without blocking public content. At the mobile breakpoint, the drawer collapses behind the hamburger and the search control wraps to a full-width row so 320px phones keep discovery readable. |
+| `Navbar({ active, refreshMe, logout, search })` | Sticky top nav. Caller injects `refreshMe` / `logout` / `search` from `app.ts`. Shows a safe sign-in fallback when `/Me` fails without blocking public content. At the mobile breakpoint, the drawer collapses behind the hamburger, closes on Escape with `aria-expanded` reset, and the search control wraps to a full-width row so 320px phones keep discovery readable. |
 | `GlobalSearch({ search })` | The header search box. Debounced live-suggest against `/Search`, dropdown of firm / advisor / team matches, keyboard navigation (↑ / ↓ / Enter / Esc), click-outside to close. `search(q)` is injected (defaults to a no-op if omitted) so the organism doesn't reach into the REST layer. Mounted by `Navbar` — pages should never instantiate it directly. |
 | `SiteFooter()` | Footer with source link and package version. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
@@ -337,11 +337,11 @@ the page back populated rail elements.
 
 | Template | Layout | Build args |
 |---|---|---|
-| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. The left rail starts with the shared Browse card so subpages keep a populated rail even when they only add center/right content. | `{ left, center, right, layout }` |
-| `mountFullWidthPage` | Single full-width column. Reserve for exceptional utility pages; public content and directory pages should use `mountThreeColumnPage`. | `{ center, layout }` |
-| `mountCenteredNarrowPage` | Single narrow centered column. Used by login. | `{ center, layout }`; accepts `maxWidth`. |
+| `mountThreeColumnPage` | Three-column grid (left rail / center / right rail). Rails collapse on tablet / mobile. The left rail starts with the shared Browse card so subpages keep a populated rail even when they only add center/right content. Pass `pageTitle` so the route has exactly one document-level `h1` without changing card titles. | `{ left, center, right, layout }` |
+| `mountFullWidthPage` | Single full-width column. Reserve for exceptional utility pages; public content and directory pages should use `mountThreeColumnPage`. Pass `pageTitle` for the route-level `h1`. | `{ center, layout }` |
+| `mountCenteredNarrowPage` | Single narrow centered column. Used by login. Pass `pageTitle` for the route-level `h1`. | `{ center, layout }`; accepts `maxWidth`. |
 
-All three accept `{ active, refreshMe, logout, search, build }`.
+All three accept `{ active, refreshMe, logout, search, pageTitle, build }`.
 Caller imports `refreshMe`, `logout`, and `search` from `app.ts`
 and passes them in — this keeps templates decoupled from the
 network layer. `search` is what powers the navbar's
@@ -354,6 +354,7 @@ import { mountThreeColumnPage, SectionCard } from './design-system/index.js';
 
 mountThreeColumnPage({
 	active: 'firms',
+	pageTitle: 'Firm directory',
 	refreshMe, logout, search,
 	build({ center, right }) {
 		// populate center / right
@@ -364,7 +365,7 @@ mountThreeColumnPage({
 The legacy `mountPage({ active, build(layout) })` from `app.ts`
 still works for older callers — it forwards to
 `mountThreeColumnPage` and exposes `layout` (the grid root) to
-the build callback.
+the build callback. It also forwards `pageTitle` when supplied.
 
 ---
 
@@ -435,12 +436,13 @@ The pages have been migrated to the system:
 | Page | Template | Notable organisms used |
 |---|---|---|
 | `index.html` | `mountThreeColumnPage` | `FeedPostCard`, `BrowseCard`, `RollupCard`, `EntityRow`, `SectionCard` |
-| `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck) |
+| `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `Tag`, `SourceAttribution` (Career + Licenses sections cite FINRA BrokerCheck; evidence freshness and fact confidence panels collapse into the center column on mobile) |
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `/rankings` (`rankings.html`) | `mountThreeColumnPage` | `SectionCard`, `ScrollableTable`, `RollupCard`, `DetailsCard`, `Tag` |
+| `/regulatory` (`regulatory.html`) | `mountThreeColumnPage` | `SectionCard`, `DisclosureEventCard`, `DetailsCard` |
 | `login.html` | `mountCenteredNarrowPage` | `SectionCard`, `Button`, `TextInput`, `LabeledField` |
 
 The legacy `app.ts` exports (`navbar`, `siteFooter`, `mountPage`,

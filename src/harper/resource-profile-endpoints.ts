@@ -1,6 +1,13 @@
 // @ts-nocheck
 import { loadAll } from "./resource-data.js";
 import {
+  feedEmptyState,
+  feedSummary,
+  matchesFeedCategory,
+  matchesFeedMode,
+  parseFeedFilters,
+} from "./resource-feed-filters.js";
+import {
   articleStub,
   disclosureRow,
   feedItem,
@@ -40,17 +47,26 @@ export class Feed extends Resource {
 
   /**
    * Hydrates the feed with article metadata, mentions, and event cards.
+   * @param target - Request target carrying optional `mode` and `category`.
    * @returns Hydrated feed items ordered by publication date.
    */
-  async get() {
+  async get(target) {
     const db = await loadAll();
     const items = [...db.articles]
       .sort(cmpDesc("publishedDate"))
       .map(article => feedItem(article, db));
+    const filters = parseFeedFilters(target);
+    const modeItems = items.filter(item => matchesFeedMode(item, filters.mode));
+    const filteredItems = modeItems.filter(item =>
+      matchesFeedCategory(item, filters.category)
+    );
     return {
       generatedAt: new Date().toISOString(),
-      count: items.length,
-      items,
+      count: filteredItems.length,
+      filters,
+      summary: feedSummary(items, modeItems, filteredItems, filters),
+      emptyState: feedEmptyState(filteredItems, filters),
+      items: filteredItems,
     };
   }
 }

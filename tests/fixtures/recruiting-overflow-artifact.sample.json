@@ -1,0 +1,31 @@
+{
+  "route": "/recruiting",
+  "viewport": {
+    "name": "mobile",
+    "width": 390,
+    "height": 844,
+    "tableBudgetPx": 16
+  },
+  "metrics": {
+    "clientWidth": 390,
+    "maxTableOverflow": 24,
+    "pageOverflow": 0,
+    "tableCount": 2,
+    "tables": [
+      {
+        "clientWidth": 358,
+        "index": 0,
+        "label": "Firm momentum",
+        "overflow": 24,
+        "scrollWidth": 382
+      },
+      {
+        "clientWidth": 358,
+        "index": 1,
+        "label": "Recent moves",
+        "overflow": 8,
+        "scrollWidth": 366
+      }
+    ]
+  }
+}

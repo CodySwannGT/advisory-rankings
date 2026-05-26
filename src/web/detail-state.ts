@@ -1,12 +1,13 @@
 // Shared loading and partial-failure states for detail/profile routes.
 
 import {
+  AsyncStateNotice,
   AsyncStateCard,
   Card,
-  EmptyCard,
   EmptyText,
   SectionCard,
   Skeleton,
+  clear,
   el,
 } from "./design-system/index.js";
 
@@ -18,12 +19,13 @@ type DesignSystemComponent = (
 ) => HTMLElement;
 
 const CardComponent = Card as unknown as DesignSystemComponent;
-const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
 const EmptyTextComponent = EmptyText as unknown as DesignSystemComponent;
 const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
 const SkeletonComponent = Skeleton as unknown as DesignSystemComponent;
 const AsyncStateCardComponent =
   AsyncStateCard as unknown as DesignSystemComponent;
+const AsyncStateNoticeComponent =
+  AsyncStateNotice as unknown as DesignSystemComponent;
 
 /**
  * Options for a detail not-found recovery card.
@@ -61,10 +63,34 @@ export function renderDetailLoading({
  */
 export function DetailErrorCard(title: string, error: unknown): HTMLElement {
   console.error("Detail route failed to load", error);
-  return EmptyCardComponent({
-    title,
-    body: "Try again shortly.",
-  });
+  return detailErrorNotice({ title });
+}
+
+/**
+ * Clears a detail route and renders a recoverable error state.
+ * @param options - Detail route columns, copy, failure, and retry handler.
+ * @param options.center - Main detail column.
+ * @param options.right - Right detail rail.
+ * @param options.title - Safe user-facing error title.
+ * @param options.error - Raw error logged to the console only.
+ * @param options.onRetry - Callback invoked by the Retry action.
+ */
+export function renderRecoverableDetailError({
+  center,
+  right,
+  title,
+  error,
+  onRetry,
+}: Readonly<
+  Record<"center" | "right", HTMLElement> &
+    Record<"title", string> &
+    Record<"error", unknown> &
+    Record<"onRetry", () => void>
+>): void {
+  console.error("Detail route failed to load", error);
+  clear(center);
+  clear(right);
+  center.appendChild(detailErrorNotice({ title, onRetry }));
 }
 
 /**
@@ -137,6 +163,29 @@ function hasResourceError(rows: unknown): boolean {
     "error" in rows &&
     Boolean((rows as Readonly<Record<string, unknown>>).error)
   );
+}
+
+/**
+ * Builds safe detail-route error copy and optional retry action.
+ * @param options - Display title and optional retry callback.
+ * @param options.title - Safe user-facing error title.
+ * @param options.onRetry - Optional callback invoked by the Retry action.
+ * @returns Error-state card.
+ */
+function detailErrorNotice({
+  title,
+  onRetry,
+}: Readonly<
+  Record<"title", string> & Partial<Record<"onRetry", () => void>>
+>): HTMLElement {
+  return AsyncStateNoticeComponent({
+    kind: "error",
+    title,
+    body: "Try again shortly.",
+    actionLabel: onRetry ? "Retry" : undefined,
+    onAction: onRetry,
+    attrs: { class: "detail-error-card" },
+  });
 }
 
 /**

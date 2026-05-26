@@ -11,6 +11,7 @@
 // chrome elsewhere.
 
 import { el } from "./dom.js";
+import { Heading } from "./atoms.js";
 import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
 
 // ─── ThreeColumnLayout ────────────────────────────────────────
@@ -30,6 +31,7 @@ import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
  * @param root0.refreshMe - refresh me used by this operation.
  * @param root0.logout - logout used by this operation.
  * @param root0.search - search used by this operation.
+ * @param root0.pageTitle - page title exposed as the route-level h1.
  * @param root0.build - build used by this operation.
  * @returns The computed value.
  */
@@ -38,6 +40,7 @@ export function mountThreeColumnPage({
   refreshMe,
   logout,
   search,
+  pageTitle,
   build,
 } = {}) {
   const layout = el("div", { class: "layout" });
@@ -47,6 +50,7 @@ export function mountThreeColumnPage({
   document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
   document.body.appendChild(layout);
   document.body.appendChild(SiteFooter());
+  appendPageTitle(layout, pageTitle);
   left.appendChild(primaryBrowseCard());
   layout.append(left, center, right);
 
@@ -66,7 +70,7 @@ function primaryBrowseCard() {
       { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory.html" },
+      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
 }
@@ -82,6 +86,7 @@ function primaryBrowseCard() {
  * @param root0.refreshMe - refresh me used by this operation.
  * @param root0.logout - logout used by this operation.
  * @param root0.search - search used by this operation.
+ * @param root0.pageTitle - page title exposed as the route-level h1.
  * @param root0.build - build used by this operation.
  */
 export function mountFullWidthPage({
@@ -89,6 +94,7 @@ export function mountFullWidthPage({
   refreshMe,
   logout,
   search,
+  pageTitle,
   build,
 } = {}) {
   const layout = el("div", { class: "layout" });
@@ -99,6 +105,7 @@ export function mountFullWidthPage({
   document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
   document.body.appendChild(layout);
   document.body.appendChild(SiteFooter());
+  appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
   build({ center, layout });
@@ -113,6 +120,7 @@ export function mountFullWidthPage({
  * @param root0.refreshMe - refresh me used by this operation.
  * @param root0.logout - logout used by this operation.
  * @param root0.search - search used by this operation.
+ * @param root0.pageTitle - page title exposed as the route-level h1.
  * @param root0.build - build used by this operation.
  * @param root0.maxWidth - max width used by this operation.
  */
@@ -121,6 +129,7 @@ export function mountCenteredNarrowPage({
   refreshMe,
   logout,
   search,
+  pageTitle,
   build,
   maxWidth = 420,
 } = {}) {
@@ -132,7 +141,25 @@ export function mountCenteredNarrowPage({
   document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
   document.body.appendChild(layout);
   document.body.appendChild(SiteFooter());
+  appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
   build({ center, layout });
+}
+
+/**
+ * Adds the single document-level heading for page semantics without changing
+ * the visible card hierarchy that route content owns.
+ * @param root - Layout root that should contain the heading.
+ * @param pageTitle - Route purpose label.
+ */
+function appendPageTitle(root, pageTitle) {
+  if (!pageTitle) return;
+  root.appendChild(
+    Heading({
+      level: 1,
+      attrs: { class: "ab-page-title" },
+      children: pageTitle,
+    })
+  );
 }

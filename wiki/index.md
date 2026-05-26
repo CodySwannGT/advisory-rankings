@@ -7,7 +7,7 @@
 | Page | Summary | Updated |
 |---|---|---|
 | [start-here](start-here.md) | Orientation and the wiki's purpose | 2026-05-23 |
-| [LLM Wiki Contract](schema/llm-wiki-contract.md) | The rules this wiki follows | 2026-05-23 |
+| [LLM Wiki Contract](schema/llm-wiki-contract.md) | The rules this wiki follows | 2026-05-25 |
 | [Preserved root README](documentation/root-readme.md) | The pre-wiki project README, retained before README stub mode was applied | 2026-05-23 |
 
 ## Architecture
@@ -27,6 +27,11 @@
 |---|---|---|
 | [Data model decisions](decisions/data-model-decisions.md) | Harper-compatible data model trade-offs and integrity implications | 2026-05-23 |
 
+## Requirements
+| Page | Summary | Updated |
+|---|---|---|
+| [AdvisorBook personas](requirements/advisorbook-personas.md) | Evidence-grounded user and evaluator personas for AdvisorBook product ideation | 2026-05-25 |
+
 ## Playbooks
 | Page | Summary | Updated |
 |---|---|---|
@@ -36,10 +41,12 @@
 ## Projects
 | Page | Summary | Updated |
 |---|---|---|
-| [Git history](projects/git-history.md) | Initial git-history ingest window and recent project themes | 2026-05-23 |
+| [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-05-26 |
 
 ## Sources
 | Source notes | Latest |
 |---|---|
-| [documentation](sources/documentation/2026-05-23-initial-project-docs.md) | Initial project docs ingest on 2026-05-23 |
-| [git](sources/git/2026-05-23-advisory-rankings-git.md) | Initial git history ingest on 2026-05-23 |
+| [documentation - project docs](sources/documentation/2026-05-23-initial-project-docs.md) | Initial project docs ingest on 2026-05-23 |
+| [documentation - AdvisorBook personas](sources/documentation/2026-05-25-advisorbook-personas.md) | Persona seed and app-evidence ingest on 2026-05-25 |
+| [git](sources/git/2026-05-26-advisory-rankings-git.md) | Incremental git history ingest on 2026-05-26 |
+| [roles](sources/roles/2026-05-26-roles.md) | Empty digital-staff roster ingest on 2026-05-26 |

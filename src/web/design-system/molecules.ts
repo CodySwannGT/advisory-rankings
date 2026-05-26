@@ -74,7 +74,7 @@ export function PostHeader({
   category,
   attrs = {},
 } = {}) {
-  const meta = [when, category].filter(isUsefulMeta).join(" · ");
+  const meta = [when, readableMeta(category)].filter(isUsefulMeta).join(" · ");
   return el(
     "div",
     { ...attrs, class: `post-header ${attrs.class || ""}`.trim() },
@@ -116,6 +116,18 @@ function isUsefulMeta(value) {
     text &&
     !["unknown", "n/a", "na", "none", "null", "undefined"].includes(text)
   );
+}
+
+/**
+ * Converts machine-readable metadata into visible reader copy.
+ * @param value - Raw metadata value.
+ * @returns Human-readable metadata text.
+ */
+function readableMeta(value) {
+  return String(value || "")
+    .replace(/_+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase())
+    .trim();
 }
 
 // ─── EntityRow ────────────────────────────────────────────────

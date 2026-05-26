@@ -1,0 +1,33 @@
+{
+  "connector": "documentation",
+  "profile": "advisorbook-personas",
+  "lastSuccessfulRunAt": "2026-05-25T23:26:05Z",
+  "cursor": {
+    "sourceSet": [
+      "user-prompt:advisorbook-personas-2026-05-25",
+      "docs/advisor-schema.md",
+      "harper-app/README.md",
+      "wiki/documentation/root-readme.md",
+      "wiki/entities/advisor-domain-model.md",
+      "src/web/index.ts",
+      "src/web/advisor.ts",
+      "src/web/recruiting.ts",
+      "src/web/rankings.ts",
+      "src/harper/resource-recruiting-market.ts",
+      "src/harper/resource-rankings-explorer.ts",
+      "src/harper/resource-mcp-tools.ts",
+      "https://advisory-rankings-de.cody-swann-org.harperfabric.com/Feed",
+      "https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3",
+      "https://advisory-rankings-de.cody-swann-org.harperfabric.com/RankingsExplorer?limit=3",
+      "https://advisory-rankings-de.cody-swann-org.harperfabric.com/Search?q=Cairnes",
+      "https://advisory-rankings-de.cody-swann-org.harperfabric.com/PublicAdvisors?limit=2"
+    ]
+  },
+  "sourceNotes": [
+    "wiki/sources/documentation/2026-05-25-advisorbook-personas.md"
+  ],
+  "synthesisPages": [
+    "wiki/requirements/advisorbook-personas.md"
+  ],
+  "schemaVersion": "1.0.0"
+}

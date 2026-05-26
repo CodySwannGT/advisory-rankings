@@ -44,6 +44,10 @@ import {
   identityCard,
   registrationApplicationsSection,
 } from "./advisor-sections.js";
+import {
+  advisorEvidenceProfileSections,
+  mobileEvidenceProfileSections,
+} from "./advisor-evidence-sections.js";
 
 mountThreeColumnPage({
   active: "advisors",
@@ -179,6 +183,7 @@ function advisorCenterSections(d) {
   const articles = resourceRows(d.articles);
   return [
     privateRatingCard(d.advisor.id),
+    mobileEvidenceProfileSections(d),
     careerSection(d),
     teamsSection(resourceRows(d.teams)),
     PartialFailureCard("Teams", d.teams),
@@ -219,6 +224,7 @@ function advisorCenterSections(d) {
 function advisorRightSections(d) {
   return [
     identityCard(d.advisor),
+    ...advisorEvidenceProfileSections(d),
     registrationApplicationsSection(resourceRows(d.registrationApplications)),
     PartialFailureCard("Registration applications", d.registrationApplications),
   ];

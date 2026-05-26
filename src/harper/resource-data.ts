@@ -3,6 +3,47 @@ import { canonicalizeFirmResourceRows } from "./resource-firm-canonicalization.j
 import { all, indexBy } from "./resource-pagination.js";
 
 /**
+ * Harper table handles consumed by public resource payload builders.
+ */
+export const RESOURCE_TABLE_SPECS = [
+  ["articles", "Article"],
+  ["advisors", "Advisor"],
+  ["firms", "Firm"],
+  ["teams", "Team"],
+  ["branches", "Branch"],
+  ["employments", "EmploymentHistory"],
+  ["memberships", "TeamMembership"],
+  ["teamSnaps", "TeamMetricSnapshot"],
+  ["advisorSnaps", "AdvisorMetricSnapshot"],
+  ["transitions", "TransitionEvent"],
+  ["deals", "RecruitingDealQuote"],
+  ["disclosures", "Disclosure"],
+  ["sanctions", "Sanction"],
+  ["obas", "OutsideBusinessActivity"],
+  ["clusters", "DisclosureCluster"],
+  ["regApps", "RegistrationApplication"],
+  ["branchAssignments", "BranchAssignment"],
+  ["rankings", "Ranking", true],
+  ["rankingEntries", "RankingEntry", true],
+  ["mAdv", "ArticleAdvisorMention"],
+  ["mFirm", "ArticleFirmMention"],
+  ["mTeam", "ArticleTeamMention"],
+  ["mTE", "ArticleTransitionEventMention"],
+  ["mDisc", "ArticleDisclosureMention"],
+  ["fieldAssertions", "FieldAssertion"],
+  ["researchChecks", "AdvisorResearchCheck", true],
+  ["bcSnaps", "BrokerCheckSnapshot", true],
+  ["licenses", "License", true],
+  ["designations", "Designation", true],
+  ["education", "Education", true],
+  ["firmAliases", "FirmAlias", true],
+] as const;
+
+export const RESOURCE_TABLE_NAMES = RESOURCE_TABLE_SPECS.map(
+  ([, tableName]) => tableName
+);
+
+/**
  * Loads all tables needed by public resources and builds join indexes.
  * @returns Table arrays and maps keyed by primary or foreign IDs.
  */
@@ -27,38 +68,11 @@ async function loadTableRows() {
  * @returns Table names, Harper handles, and whether missing handles are tolerated.
  */
 function tableSpecs() {
-  return [
-    ["articles", tables.Article],
-    ["advisors", tables.Advisor],
-    ["firms", tables.Firm],
-    ["teams", tables.Team],
-    ["branches", tables.Branch],
-    ["employments", tables.EmploymentHistory],
-    ["memberships", tables.TeamMembership],
-    ["teamSnaps", tables.TeamMetricSnapshot],
-    ["advisorSnaps", tables.AdvisorMetricSnapshot],
-    ["transitions", tables.TransitionEvent],
-    ["deals", tables.RecruitingDealQuote],
-    ["disclosures", tables.Disclosure],
-    ["sanctions", tables.Sanction],
-    ["obas", tables.OutsideBusinessActivity],
-    ["clusters", tables.DisclosureCluster],
-    ["regApps", tables.RegistrationApplication],
-    ["branchAssignments", tables.BranchAssignment],
-    ["rankings", tables.Ranking, true],
-    ["rankingEntries", tables.RankingEntry, true],
-    ["mAdv", tables.ArticleAdvisorMention],
-    ["mFirm", tables.ArticleFirmMention],
-    ["mTeam", tables.ArticleTeamMention],
-    ["mTE", tables.ArticleTransitionEventMention],
-    ["mDisc", tables.ArticleDisclosureMention],
-    ["fieldAssertions", tables.FieldAssertion],
-    ["bcSnaps", tables.BrokerCheckSnapshot, true],
-    ["licenses", tables.License, true],
-    ["designations", tables.Designation, true],
-    ["education", tables.Education, true],
-    ["firmAliases", tables.FirmAlias, true],
-  ].map(([key, table, optional]) => ({ key, table, optional }));
+  return RESOURCE_TABLE_SPECS.map(([key, tableName, optional]) => ({
+    key,
+    table: tables[tableName],
+    optional,
+  }));
 }
 
 /**

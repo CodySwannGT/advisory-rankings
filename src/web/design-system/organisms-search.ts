@@ -80,6 +80,9 @@ function hideDropdown(context) {
   context.view.dropdown.setAttribute(HIDDEN_ATTR, "");
   context.view.input.setAttribute(EXPANDED_ATTR, "false");
   context.state.set("activeIndex", -1);
+  context.view.dropdown
+    .querySelectorAll(".gs-item-active")
+    .forEach(row => row.classList.remove("gs-item-active"));
 }
 
 /**

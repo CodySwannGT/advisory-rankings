@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
@@ -126,6 +126,12 @@ describe("detail async states", () => {
             .locator(".detail-not-found-card")
             .getAttribute("data-recovery-href")
         ).toBe(detailCase.recoveryHref);
+        expect(
+          await page
+            .locator(".detail-not-found-card")
+            .getByRole("button", { name: "Retry" })
+            .count()
+        ).toBe(0);
 
         await action.click();
         await page.waitForURL(`**${detailCase.recoveryHref}`, {
@@ -137,19 +143,25 @@ describe("detail async states", () => {
     }
   });
 
-  it("renders route-level detail errors without removing navigation", async () => {
+  it("retries firm detail errors with the same id and renders due diligence", async () => {
     const page = await browser.newPage();
+    const firmProfileRequests: string[] = [];
 
     try {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
       await page.route("**/FirmProfile/firm-1", async route => {
-        await route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: JSON.stringify({ error: "temporary outage" }),
-        });
+        firmProfileRequests.push(route.request().url());
+        if (firmProfileRequests.length === 1) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "temporary outage" }),
+          });
+          return;
+        }
+        await route.fulfill({ json: firmDueDiligenceProfile() });
       });
 
       await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
@@ -166,6 +178,113 @@ describe("detail async states", () => {
       expect(await page.getByText("Try again shortly.").isVisible()).toBe(true);
       expect(await page.getByText("temporary outage").count()).toBe(0);
       expect(await firmsNav.isVisible()).toBe(true);
+
+      await page.getByRole("button", { name: "Retry" }).click();
+      await page.getByRole("heading", { name: "Firm due diligence" }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(
+        await page
+          .getByRole("heading", { name: "Recruiting momentum" })
+          .isVisible()
+      ).toBe(true);
+      expect(
+        firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
+      ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
+      expect(await page.getByText("Could not load firm").count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("renders shared recoverable detail errors without leaking details", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.goto(`${baseUrl}/__blank.html`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.addScriptTag({
+        type: "module",
+        content: `
+          import {
+            DetailNotFoundCard,
+            renderRecoverableDetailError,
+          } from "/detail-state.js";
+
+          const center = document.createElement("main");
+          const right = document.createElement("aside");
+          center.textContent = "stale center";
+          right.textContent = "stale right";
+          document.body.append(center, right);
+
+          let retryCount = 0;
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load firm",
+            error: new Error("temporary outage with raw backend details"),
+            onRetry: () => {
+              retryCount += 1;
+            },
+          });
+          center
+            .querySelector("button")
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+          const notFound = DetailNotFoundCard({
+            title: "Firm not found",
+            id: "firm-missing",
+            actionLabel: "Back to Firms",
+            href: "/firms",
+          });
+          document.body.append(notFound);
+
+          window.__detailRecoverableResult = {
+            title: center.querySelector(".card-title")?.textContent,
+            body: center.querySelector(".ab-empty")?.textContent,
+            buttonText: center.querySelector("button")?.textContent,
+            asyncState: center
+              .querySelector(".detail-error-card")
+              ?.getAttribute("data-async-state"),
+            retryRule: center
+              .querySelector(".detail-error-card")
+              ?.getAttribute("data-retry-rule"),
+            retryCount,
+            rightChildren: right.childElementCount,
+            staleCenterCleared: !center.textContent.includes("stale center"),
+            staleRightCleared: !right.textContent.includes("stale right"),
+            rawDetailsLeaked: center.textContent.includes("raw backend details"),
+            notFoundAction: notFound.querySelector("button")?.textContent,
+            notFoundRecoveryHref: notFound.getAttribute("data-recovery-href"),
+            notFoundRetryButtons: [...notFound.querySelectorAll("button")]
+              .filter(button => button.textContent === "Retry").length,
+          };
+        `,
+      });
+      await page.waitForFunction(() => "__detailRecoverableResult" in window);
+
+      const result = await page.evaluate(
+        () =>
+          (window as typeof window & { __detailRecoverableResult: unknown })
+            .__detailRecoverableResult
+      );
+
+      expect(result).toEqual({
+        title: "Could not load firm",
+        body: "Try again shortly.",
+        buttonText: "Retry",
+        asyncState: "error",
+        retryRule: "required",
+        retryCount: 1,
+        rightChildren: 0,
+        staleCenterCleared: true,
+        staleRightCleared: true,
+        rawDetailsLeaked: false,
+        notFoundAction: "Back to Firms",
+        notFoundRecoveryHref: "/firms",
+        notFoundRetryButtons: 0,
+      });
     } finally {
       await page.close();
     }
@@ -255,6 +374,82 @@ describe("detail async states", () => {
       await page.close();
     }
   });
+
+  it("renders advisor evidence panels for loaded, warning, and no-data states", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1180, height: 900 },
+    });
+    const mobilePage = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await routeAdvisorEvidence(page);
+      await page.goto(`${baseUrl}/advisor.html?id=advisor-loaded`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      const desktopEvidence = page
+        .locator(".right .card")
+        .filter({ hasText: "Evidence freshness" })
+        .first();
+      await desktopEvidence.waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await desktopEvidence
+          .locator(".tag")
+          .filter({ hasText: /^Loaded$/ })
+          .isVisible()
+      ).toBe(true);
+      expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
+        true
+      );
+      expect(await desktopEvidence.getByText("Firm Bio").isVisible()).toBe(
+        true
+      );
+      const confidence = page
+        .locator(".right .card")
+        .filter({ hasText: "Fact confidence" })
+        .first();
+      await confidence.waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await confidence.getByText("4 total").isVisible()).toBe(true);
+      expect(await confidence.getByText("Asserted").isVisible()).toBe(true);
+
+      await page.goto(`${baseUrl}/advisor.html?id=advisor-warning`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .locator(".right .card")
+        .filter({ hasText: "Evidence freshness" })
+        .locator(".tag")
+        .filter({ hasText: /^Warning$/ })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      await routeAdvisorEvidence(mobilePage);
+      await mobilePage.goto(`${baseUrl}/advisor.html?id=advisor-empty`, {
+        waitUntil: "domcontentloaded",
+      });
+      const mobileEvidence = mobilePage.locator(".advisor-mobile-evidence");
+      await mobileEvidence
+        .getByRole("heading", { name: "Evidence freshness" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await mobileEvidence.getByText("No evidence checks yet").isVisible()
+      ).toBe(true);
+      expect(
+        await mobileEvidence.getByText("No confidence rows yet").isVisible()
+      ).toBe(true);
+      expect(
+        await mobilePage.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth
+        )
+      ).toBe(true);
+    } finally {
+      await page.close();
+      await mobilePage.close();
+    }
+  });
 });
 
 /**
@@ -264,6 +459,12 @@ describe("detail async states", () => {
 async function startStaticServer(): Promise<Server> {
   const server = createServer(async (request, response) => {
     const filePath = request.url?.split("?")[0] || "/";
+    if (filePath === "/__blank.html") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      response.end("<!doctype html><html><body></body></html>");
+      return;
+    }
+
     const resolvedPath = resolveStaticPath(filePath);
 
     try {
@@ -524,6 +725,145 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
   };
 }
 
+async function routeAdvisorEvidence(page: Page) {
+  await page.route("**/Me", async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route("**/AdvisorProfile/*", async route => {
+    const id = route.request().url().split("/").pop() || "advisor-loaded";
+    await route.fulfill({ json: advisorEvidenceProfile(id) });
+  });
+}
+
+function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
+  const states = {
+    "advisor-loaded": {
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-25T12:00:00Z",
+        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        statusCounts: {
+          success: 2,
+          no_new_data: 1,
+          ambiguous: 0,
+          failed: 0,
+        },
+        sourceTypeCoverage: {
+          web_research: 1,
+          firm_bio: 1,
+          rankings: 0,
+          press: 1,
+        },
+      },
+      confidenceSummary: {
+        hasData: true,
+        asserted: 2,
+        inferred: 1,
+        derived: 1,
+        total: 4,
+      },
+    },
+    "advisor-warning": {
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-25T12:00:00Z",
+        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        statusCounts: {
+          success: 1,
+          no_new_data: 0,
+          ambiguous: 1,
+          failed: 1,
+        },
+        sourceTypeCoverage: {
+          web_research: 1,
+          firm_bio: 1,
+          rankings: 0,
+          press: 0,
+        },
+      },
+      confidenceSummary: {
+        hasData: true,
+        asserted: 1,
+        inferred: 1,
+        derived: 0,
+        total: 2,
+      },
+    },
+    "advisor-empty": {
+      evidenceFreshness: emptyEvidenceFreshness(),
+      confidenceSummary: emptyConfidenceSummary(),
+    },
+  } as const;
+  const state = states[id as keyof typeof states] || states["advisor-loaded"];
+
+  return {
+    advisor: {
+      id,
+      legalName: "Avery Stone",
+      preferredName: "Avery Stone",
+      headshotUrl: null,
+      careerStatus: "active",
+      yearsExperience: 12,
+      finraCrd: "12345",
+      secIard: null,
+      industryStartDate: "2014-01-01",
+      birthYear: null,
+      gender: "undisclosed",
+    },
+    displayName: "Avery Stone",
+    career: [
+      {
+        roleTitle: "Advisor",
+        firm: { id: "firm-a", name: "Example Wealth", short: "Example WM" },
+        branch: { id: "branch-a", name: "Atlanta", city: "Atlanta" },
+        startDate: "2020-01-01",
+        endDate: null,
+      },
+    ],
+    teams: [],
+    disclosures: [],
+    outsideBusinessActivities: [],
+    registrationApplications: [],
+    transitions: [],
+    articles: [],
+    licenses: [],
+    designations: [],
+    education: [],
+    brokerCheckSnapshot: null,
+    ...state,
+  };
+}
+
+function emptyEvidenceFreshness() {
+  return {
+    hasData: false,
+    lastCheckedAt: null,
+    nearestNextCheckAfter: null,
+    statusCounts: {
+      success: 0,
+      no_new_data: 0,
+      ambiguous: 0,
+      failed: 0,
+    },
+    sourceTypeCoverage: {
+      web_research: 0,
+      firm_bio: 0,
+      rankings: 0,
+      press: 0,
+    },
+  };
+}
+
+function emptyConfidenceSummary() {
+  return {
+    hasData: false,
+    asserted: 0,
+    inferred: 0,
+    derived: 0,
+    total: 0,
+  };
+}
+
 /**
  * Test payload for AdvisorProfile not-found responses.
  */
@@ -562,5 +902,6 @@ type ArticleWithPartialFailures = Readonly<{
 }>;
 
 type FirmDueDiligenceProfile = Readonly<Record<string, unknown>>;
+type AdvisorEvidenceProfile = Readonly<Record<string, unknown>>;
 
 /* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End self-contained browser fixture exception. */

@@ -169,6 +169,8 @@ async function getAdvisorProfile(args) {
     career: response.career ?? [],
     teams: compactRows(response.teams ?? response.currentTeams),
     disclosures: compactRows(response.disclosures),
+    evidenceFreshness: response.evidenceFreshness ?? null,
+    confidenceSummary: response.confidenceSummary ?? null,
     articles: articleLinks(response.articles),
     resource: resourceUri("advisor", advisor?.id),
     url: webUrl("advisor", advisor),
