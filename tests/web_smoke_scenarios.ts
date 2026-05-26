@@ -41,8 +41,7 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
-
-  return [
+  const initialFeedChecks = [
     check((await postCards.count()) >= 2, "/ feed: at least two post cards"),
     check(
       Boolean(await taylorCard.locator(".post-headline").textContent()),
@@ -79,6 +78,97 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
       "/ feed: right rail shows Trending firms"
     ),
   ];
+
+  await page
+    .locator('form.feed-filters select[name="mode"]')
+    .selectOption("event");
+  await page.waitForURL(/(?:\?|&)mode=event(?:&|$)/, {
+    timeout: QUICK_UI_TIMEOUT,
+  });
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll("article.card")].every(
+        card => card.querySelectorAll(".event-card").length > 0
+      ),
+    null,
+    { timeout: QUICK_UI_TIMEOUT }
+  );
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  await shot(page, "01-feed-event-filter");
+  const eventFilterUrl = page.url();
+  const eventFilterCardCount = await page.locator("article.card").count();
+  const eventFilterAllHaveCards = await page
+    .locator("article.card")
+    .evaluateAll(cards =>
+      cards.every(card => card.querySelectorAll(".event-card").length > 0)
+    );
+
+  const emptyCategory = await feedCategoryWithoutMoves(page);
+  if (emptyCategory) {
+    await page
+      .locator('form.feed-filters select[name="mode"]')
+      .selectOption("moves");
+    await page
+      .locator('form.feed-filters select[name="category"]')
+      .selectOption(emptyCategory);
+    await page.waitForSelector("text=No feed posts match these filters", {
+      timeout: QUICK_UI_TIMEOUT,
+    });
+    await shot(page, "01-feed-empty-filter");
+  }
+
+  return [
+    ...initialFeedChecks,
+    check(
+      eventFilterUrl.includes("mode=event"),
+      "/ feed filters: event-backed mode persists in URL",
+      eventFilterUrl
+    ),
+    check(
+      eventFilterCardCount >= 1,
+      "/ feed filters: event-backed mode keeps matching posts visible"
+    ),
+    check(
+      eventFilterAllHaveCards,
+      "/ feed filters: event-backed rows all include event cards"
+    ),
+    check(
+      !emptyCategory ||
+        (await page
+          .locator("text=No feed posts match these filters")
+          .count()) >= 1,
+      "/ feed filters: zero-result combinations show explicit empty state"
+    ),
+  ];
+}
+
+/**
+ * Finds a loaded feed category that should produce an empty recruiting-moves view.
+ * @param page - Browser page used for the scenario.
+ * @returns Category value or empty string when every category has a move.
+ */
+async function feedCategoryWithoutMoves(page: Page): Promise<string> {
+  return await page.evaluate(async () => {
+    const data = await fetch("/Feed").then(response => response.json());
+    const items = Array.isArray(data.items) ? data.items : [];
+    const categories = new Set(
+      items.map((item: any) => item.article?.category).filter(Boolean)
+    );
+    const moveCategories = new Set(
+      items
+        .filter((item: any) =>
+          (item.eventCards || []).some(
+            (event: any) => event.kind === "transition"
+          )
+        )
+        .map((item: any) => item.article?.category)
+        .filter(Boolean)
+    );
+    return (
+      [...categories].find(category => !moveCategories.has(category)) || ""
+    );
+  });
 }
 
 /**
