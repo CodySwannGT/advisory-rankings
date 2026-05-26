@@ -14,22 +14,48 @@ import { GlobalSearch } from "./organisms-search.js";
  */
 export function Navbar({ active, refreshMe, logout, search } = {}) {
   const drawerState = new Map([["open", false]]);
+  const mobileDrawerQuery = window.matchMedia("(max-width: 700px)");
   const meSpot = createMeSpot();
   const links = createLinks(active);
-  const burger = createBurger(() => toggleDrawer(drawerState, burger));
   const drawer = el("div", { class: "nav-drawer" }, links, meSpot);
+  const burger = createBurger(() =>
+    toggleDrawer({ state: drawerState, burger, drawer, mobileDrawerQuery })
+  );
   const scrim = el("div", {
     class: "nav-scrim",
-    onClick: () => toggleDrawer(drawerState, burger, false),
+    onClick: () =>
+      toggleDrawer({
+        state: drawerState,
+        burger,
+        drawer,
+        mobileDrawerQuery,
+        force: false,
+      }),
   });
   document.addEventListener("keydown", event =>
-    closeDrawerFromKeyboard({ event, state: drawerState, burger })
+    closeDrawerFromKeyboard({
+      event,
+      state: drawerState,
+      burger,
+      drawer,
+      mobileDrawerQuery,
+    })
   );
 
   links.addEventListener("click", event => {
     if (event.target.tagName === "A" || event.target.closest("a"))
-      toggleDrawer(drawerState, burger, false);
+      toggleDrawer({
+        state: drawerState,
+        burger,
+        drawer,
+        mobileDrawerQuery,
+        force: false,
+      });
   });
+  mobileDrawerQuery.addEventListener("change", () =>
+    syncDrawerAccessibility({ state: drawerState, drawer, mobileDrawerQuery })
+  );
+  syncDrawerAccessibility({ state: drawerState, drawer, mobileDrawerQuery });
   if (refreshMe) refreshMe().then(me => renderMe({ meSpot, me, logout }));
 
   return el(
@@ -166,16 +192,33 @@ function renderSessionFallback(meSpot, message) {
 }
 
 /**
- * Opens or closes the mobile drawer and mirrors state to ARIA.
- * @param state - Shared drawer state map.
- * @param burger - Button whose expanded state should match the drawer.
- * @param force - Optional explicit drawer state.
+ * Opens or closes the mobile drawer and mirrors state to ARIA/focusability.
+ * @param root0 - Drawer toggle context.
+ * @param root0.state - Shared drawer state map.
+ * @param root0.burger - Button whose expanded state should match the drawer.
+ * @param root0.drawer - Drawer element whose focusability should match state.
+ * @param root0.mobileDrawerQuery - Media query that distinguishes desktop nav from mobile drawer.
+ * @param root0.force - Optional explicit drawer state.
  */
-function toggleDrawer(state, burger, force) {
+function toggleDrawer({ state, burger, drawer, mobileDrawerQuery, force }) {
   const open = force ?? !state.get("open");
   state.set("open", open);
   document.body.classList.toggle("drawer-open", open);
   burger.setAttribute("aria-expanded", String(open));
+  syncDrawerAccessibility({ state, drawer, mobileDrawerQuery });
+}
+
+/**
+ * Keeps closed mobile drawer links out of keyboard traversal while preserving desktop nav.
+ * @param root0 - Drawer accessibility context.
+ * @param root0.state - Shared drawer state map.
+ * @param root0.drawer - Drawer element to update.
+ * @param root0.mobileDrawerQuery - Media query that distinguishes desktop nav from mobile drawer.
+ */
+function syncDrawerAccessibility({ state, drawer, mobileDrawerQuery }) {
+  const hiddenMobileDrawer = mobileDrawerQuery.matches && !state.get("open");
+  drawer.toggleAttribute("inert", hiddenMobileDrawer);
+  drawer.setAttribute("aria-hidden", String(hiddenMobileDrawer));
 }
 
 /**
@@ -184,8 +227,16 @@ function toggleDrawer(state, burger, force) {
  * @param root0.event - Key event to inspect.
  * @param root0.state - Shared drawer state map.
  * @param root0.burger - Button whose expanded state should match the drawer.
+ * @param root0.drawer - Drawer element whose focusability should match state.
+ * @param root0.mobileDrawerQuery - Media query that distinguishes desktop nav from mobile drawer.
  */
-function closeDrawerFromKeyboard({ event, state, burger }) {
+function closeDrawerFromKeyboard({
+  event,
+  state,
+  burger,
+  drawer,
+  mobileDrawerQuery,
+}) {
   if (event.key === "Escape" && state.get("open"))
-    toggleDrawer(state, burger, false);
+    toggleDrawer({ state, burger, drawer, mobileDrawerQuery, force: false });
 }
