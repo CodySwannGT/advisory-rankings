@@ -36,6 +36,7 @@ import {
 } from "./web_smoke_scenarios.js";
 import { smokeGlobalSearch } from "./web_smoke_search.js";
 import { smokeBreakpoints } from "./web_smoke_breakpoints.js";
+import { smokeMobileFocus } from "./web_smoke_mobile_focus.js";
 import { smokeRecruiting } from "./web_smoke_recruiting.js";
 import { smokeRankings } from "./web_smoke_rankings.js";
 
@@ -59,7 +60,7 @@ async function smokeMobile(
 ): Promise<readonly Check[]> {
   const mobile = await newContext(
     browser,
-    { width: 320, height: 740 },
+    { width: 390, height: 844 },
     extraHTTPHeaders
   );
   const page = await mobile.newPage();
@@ -70,7 +71,7 @@ async function smokeMobile(
   await smokeWaitForSelector(page, ARTICLE_CARD_SELECTOR);
   const closedMetrics = await readClosedMobileMetrics(page);
   await shot(page, "08-mobile-closed");
-  await openMobileDrawer(page);
+  const focusChecks = await smokeMobileFocus(page);
   const drawerLinkLabels = await readDrawerLinkLabels(page);
   const openMetrics = await readOpenMobileMetrics(page);
   await shot(page, "09-mobile-drawer-open");
@@ -81,14 +82,14 @@ async function smokeMobile(
   return await closeWithChecks(mobile, [
     check(
       closedMetrics.searchWidth >= 220,
-      "mobile: search readable at 320px",
+      "mobile: search readable at 390px",
       `width ${Math.round(closedMetrics.searchWidth)}px`
     ),
     check(await search.isVisible(), "mobile: search remains visible"),
     check(
       closedMetrics.scrollWidth <= closedMetrics.clientWidth &&
         openMetrics.scrollWidth <= openMetrics.clientWidth,
-      "mobile: no horizontal overflow at 320px",
+      "mobile: no horizontal overflow at 390px",
       `closed ${closedMetrics.scrollWidth}/${closedMetrics.clientWidth}, open ${openMetrics.scrollWidth}/${openMetrics.clientWidth}`
     ),
     check(
@@ -100,6 +101,7 @@ async function smokeMobile(
       !escapeResult.closed.open && escapeResult.closed.expanded === "false",
       "mobile: Escape closes drawer and resets aria-expanded"
     ),
+    ...focusChecks,
     check(
       escapeResult.reopened.open && escapeResult.reopened.expanded === "true",
       "mobile: drawer reopens after Escape dismissal"
@@ -108,7 +110,7 @@ async function smokeMobile(
       ["Home", "Firms", "Rankings", "Advisors", "Teams", "Sign in"].every(
         label => drawerLinkLabels.includes(label)
       ),
-      "mobile: drawer links visible at 320px",
+      "mobile: drawer links visible at 390px",
       drawerLinkLabels.join(", ")
     ),
     check(
