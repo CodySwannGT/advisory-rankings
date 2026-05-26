@@ -1,86 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Advisors — AdvisorBook</title>
-	<link rel="stylesheet" href="/app.css?v=20260521-media" />
-</head>
-<body>
-	<script type="module">
-		// Directory page: every advisor in the DB, paginated.
-		// `/PublicAdvisors` is cursor-paginated server-side; the
-		// Paginated organism handles infinite-scroll + Load-more UI.
-		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
-		import {
-			mountThreeColumnPage, SectionCard, DetailsCard,
-			Paginated, EntityRow, Avatar,
-		} from '/design-system/index.js?v=20260521-media';
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advisors — AdvisorBook</title>
+    <link rel="stylesheet" href="/app.css?v=20260521-media" />
+  </head>
+  <body>
+    <script type="module">
+      // Directory page: every advisor in the DB, paginated.
+      // `/PublicAdvisors` is cursor-paginated server-side; the
+      // Paginated organism handles infinite-scroll + Load-more UI.
+      import {
+        api,
+        refreshMe,
+        logout,
+        search,
+        humanize,
+        initials,
+        entityPath,
+      } from "/app.js?v=20260521-media";
+      import {
+        mountThreeColumnPage,
+        SectionCard,
+        DetailsCard,
+        Paginated,
+        EntityRow,
+        Avatar,
+        Button,
+        clear,
+        el,
+      } from "/design-system/index.js?v=20260521-media";
 
-		mountThreeColumnPage({
-			active: 'advisors',
-			refreshMe,
-			logout,
-			search,
-			pageTitle: 'Advisor directory',
-			build({ center, right }) {
-				let loaded = 0;
-				const stats = DetailsCard({
-					title: 'Advisor directory',
-					pairs: [
-						['Loaded', '0'],
-						['Total', 'Loading…'],
-						['Page size', '50'],
-					],
-				});
-				right.appendChild(stats);
-				const setStat = (label, value) => {
-					const labels = [...stats.querySelectorAll('dt')];
-					const key = labels.find((dt) => dt.textContent === label);
-					const val = key?.nextElementSibling;
-					if (val) val.textContent = Number.isFinite(value) ? value.toLocaleString() : String(value);
-				};
-				const card = SectionCard({
-					title: 'All advisors',
-					body: Paginated({
-						fetchPage: async (cursor) => {
-							const qs = new URLSearchParams({ limit: '50' });
-							if (cursor) qs.set('cursor', cursor);
-							return api(`/PublicAdvisors?${qs}`);
-						},
-						empty: 'No advisors on file.',
-						onTotal: (n) => {
-							const titleEl = card.querySelector('h2.card-title');
-							if (titleEl) titleEl.textContent = `All advisors (${n.toLocaleString()})`;
-							setStat('Total', n);
-						},
-						renderRow: (a) => {
-							const last = a.lastName || '';
-							const pref = a.preferredName;
-							const name = pref
-								? (last && pref.toLowerCase().endsWith(last.toLowerCase())
-									? pref
-									: `${pref} ${last}`.trim())
-								: (a.legalName || last || a.id);
-							const row = EntityRow({
-								avatar: Avatar({ initials: initials(name), imageUrl: a.headshotUrl, alt: name }),
-								name,
-								sub: [
-									humanize(a.careerStatus),
-									a.yearsExperience ? `${a.yearsExperience}y` : null,
-									a.finraCrd ? `CRD ${a.finraCrd}` : null,
-								].filter(Boolean).join(' · '),
-								href: entityPath('advisor', { ...a, name }),
-							});
-							loaded += 1;
-							setStat('Loaded', loaded);
-							return row;
-						},
-					}),
-				});
-				center.appendChild(card);
-			},
-		});
-	</script>
-</body>
+      const PAGE_SIZE = "50";
+
+      mountThreeColumnPage({
+        active: "advisors",
+        refreshMe,
+        logout,
+        search,
+        pageTitle: "Advisor directory",
+        build({ center, right }) {
+          let loaded = 0;
+          let activeFilters = readFilters();
+          const stats = DetailsCard({
+            title: "Advisor directory",
+            pairs: [
+              ["Loaded", "0"],
+              ["Total", "Loading…"],
+              ["Page size", PAGE_SIZE],
+            ],
+          });
+          right.appendChild(stats);
+          const setStat = (label, value) => {
+            const labels = [...stats.querySelectorAll("dt")];
+            const key = labels.find(dt => dt.textContent === label);
+            const val = key?.nextElementSibling;
+            if (val)
+              val.textContent = Number.isFinite(value)
+                ? value.toLocaleString()
+                : String(value);
+          };
+          const renderDirectory = () => {
+            loaded = 0;
+            activeFilters = readFilters();
+            setStat("Loaded", 0);
+            setStat("Total", "Loading…");
+            clear(center);
+            center.appendChild(filterCard(activeFilters, renderDirectory));
+            const card = SectionCard({
+              title: activeFilters.active
+                ? "Filtered advisors"
+                : "All advisors",
+              body: Paginated({
+                fetchPage: async cursor => {
+                  const qs = advisorQuery(activeFilters);
+                  qs.set("limit", PAGE_SIZE);
+                  if (cursor) qs.set("cursor", cursor);
+                  return api(`/PublicAdvisors?${qs}`);
+                },
+                empty: activeFilters.active
+                  ? "No advisors match these filters."
+                  : "No advisors on file.",
+                onTotal: n => {
+                  const titleEl = card.querySelector("h2.card-title");
+                  if (titleEl)
+                    titleEl.textContent = `${activeFilters.active ? "Filtered advisors" : "All advisors"} (${n.toLocaleString()})`;
+                  setStat("Total", n);
+                },
+                renderRow: a => {
+                  const last = a.lastName || "";
+                  const pref = a.preferredName;
+                  const name = pref
+                    ? last && pref.toLowerCase().endsWith(last.toLowerCase())
+                      ? pref
+                      : `${pref} ${last}`.trim()
+                    : a.legalName || last || a.id;
+                  const row = EntityRow({
+                    avatar: Avatar({
+                      initials: initials(name),
+                      imageUrl: a.headshotUrl,
+                      alt: name,
+                    }),
+                    name,
+                    sub: [
+                      humanize(a.careerStatus),
+                      a.yearsExperience ? `${a.yearsExperience}y` : null,
+                      a.finraCrd ? `CRD ${a.finraCrd}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                    href: entityPath("advisor", { ...a, name }),
+                  });
+                  loaded += 1;
+                  setStat("Loaded", loaded);
+                  return row;
+                },
+              }),
+            });
+            center.appendChild(card);
+          };
+          window.addEventListener("popstate", renderDirectory);
+          renderDirectory();
+        },
+      });
+
+      function filterCard(filters, renderDirectory) {
+        const form = document.createElement("form");
+        form.className = "advisor-directory-filters";
+        form.method = "get";
+        form.action = "/advisors";
+        form.append(
+          filterInput("Advisor", "q", filters.q, "Name or keyword"),
+          filterInput("Current firm", "firm", filters.firm, "Firm name"),
+          filterSelect("Career status", "careerStatus", filters.careerStatus, [
+            ["", "Any status"],
+            ["active", "Active"],
+            ["retired", "Retired"],
+            ["inactive", "Inactive"],
+            ["unknown", "Unknown"],
+          ]),
+          filterSelect("CRD", "hasCrd", filters.hasCrd, [
+            ["", "Any CRD state"],
+            ["true", "Has CRD"],
+            ["false", "Missing CRD"],
+          ]),
+          el("button", { class: "filter-button", type: "submit" }, "Apply"),
+          clearFiltersButton(filters.active, renderDirectory)
+        );
+        form.addEventListener("submit", event => {
+          event.preventDefault();
+          writeFilters(new FormData(form));
+          renderDirectory();
+        });
+        return SectionCard({ title: "Filters", body: form });
+      }
+
+      function filterInput(label, name, value, placeholder) {
+        return el(
+          "label",
+          { class: "filter-field" },
+          label,
+          el("input", { name, value, placeholder, autocomplete: "off" })
+        );
+      }
+
+      function filterSelect(label, name, value, options) {
+        return el(
+          "label",
+          { class: "filter-field" },
+          label,
+          el(
+            "select",
+            { name },
+            ...options.map(([optionValue, optionLabel]) =>
+              el(
+                "option",
+                { value: optionValue, selected: optionValue === value },
+                optionLabel
+              )
+            )
+          )
+        );
+      }
+
+      function clearFiltersButton(active, renderDirectory) {
+        return Button({
+          variant: "neutral",
+          children: "Clear",
+          onClick: () => {
+            history.pushState(null, "", "/advisors");
+            renderDirectory();
+          },
+          attrs: {
+            class: "feed-filter-clear",
+            disabled: active ? null : "",
+            type: "button",
+          },
+        });
+      }
+
+      function readFilters() {
+        const params = new URLSearchParams(window.location.search);
+        const filters = {
+          q: params.get("q") || "",
+          firm: params.get("firm") || "",
+          careerStatus: params.get("careerStatus") || "",
+          hasCrd: params.get("hasCrd") || "",
+        };
+        return { ...filters, active: [...advisorQuery(filters)].length > 0 };
+      }
+
+      function writeFilters(formData) {
+        const filters = {
+          q: String(formData.get("q") || "").trim(),
+          firm: String(formData.get("firm") || "").trim(),
+          careerStatus: String(formData.get("careerStatus") || "").trim(),
+          hasCrd: String(formData.get("hasCrd") || "").trim(),
+        };
+        const qs = advisorQuery(filters).toString();
+        history.pushState(null, "", qs ? `/advisors?${qs}` : "/advisors");
+      }
+
+      function advisorQuery(filters) {
+        const qs = new URLSearchParams();
+        for (const [key, value] of Object.entries(filters)) {
+          if (key === "active" || !value) continue;
+          qs.set(key, value);
+        }
+        return qs;
+      }
+    </script>
+  </body>
 </html>
