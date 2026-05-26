@@ -1,58 +1,188 @@
-// @ts-nocheck
 // AdvisorBook · Atomic Design — DOM helpers
 //
 // Lowest-level DOM creation utilities used by every layer of the
 // design system. Keep this file dependency-free — only browser
 // globals (document, etc.).
 
-export const $ = (sel, root = document) => root.querySelector(sel);
-
-// el(tag, attrs?, ...children) — terse hyperscript-style builder.
-//   attrs.class / attrs.className → element.className
-//   attrs.dataset                  → Object.assign(element.dataset, …)
-//   attrs.onClick / onSubmit / …   → addEventListener('click' | …)
-//   attrs.html                     → innerHTML (use sparingly)
-//   any other key                  → setAttribute(key, value)
-//   children: strings/numbers become text nodes; null/false/undefined
-//             are skipped; nested arrays are flattened.
 /**
- * Handles el for this workflow.
- * @param tag - HTML tag name.
- * @param attrs - Element attributes.
- * @param {...any} children - Child nodes or text values.
- * @returns Created DOM element with attributes and children applied.
+ * Attribute values accepted by {@link el}. Strings/numbers/booleans/null
+ * map to HTML attributes (false/null skips the attribute). Functions are
+ * registered as event listeners when the key starts with `on…`.
+ * `dataset` accepts a plain string-map merged into `element.dataset`.
  */
-export function el(tag, attrs = {}, ...children) {
+export type DomAttrValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | EventListenerOrEventListenerObject
+  | Readonly<Record<string, string>>;
+
+/**
+ * Attribute bag for {@link el}. Special keys:
+ * - `class` / `className` → `element.className`
+ * - `dataset` → merged into `element.dataset`
+ * - `on…` (e.g. `onClick`, `onSubmit`) → `addEventListener('click' | …)`
+ * - `html` → `innerHTML` (use sparingly)
+ * - any other key → `setAttribute(key, value)`
+ */
+export type DomAttrs = Readonly<Record<string, DomAttrValue>>;
+
+/**
+ * Leaf values produced by flattening a {@link DomChild}. After
+ * flattening, every entry is either a DOM node, a primitive text value,
+ * or a skip-marker (`boolean` / `null` / `undefined`). Booleans are
+ * tolerated so call sites can use idioms like `cond && el(...)` without
+ * an explicit `null` fallback; both `true` and `false` skip.
+ */
+export type DomChildLeaf = Node | string | number | boolean | null | undefined;
+
+/**
+ * Acceptable child values passed to {@link el}. Strings/numbers become
+ * text nodes; booleans / `null` / `undefined` are skipped; nested arrays
+ * are flattened to arbitrary depth so call sites can pass the recursive
+ * `Children` shapes used by `src/web/design-system/atoms.ts`.
+ */
+export type DomChild = DomChildLeaf | DomChildArray;
+
+/**
+ * Recursive helper for {@link DomChild} — nested arrays of children, to
+ * arbitrary depth. Named separately so {@link DomChild} avoids a forward
+ * self-reference.
+ */
+export interface DomChildArray extends ReadonlyArray<DomChild> {}
+
+/**
+ * Type-predicate counterpart to `Array.isArray` for {@link DomChild}.
+ * Narrows a child into the nested {@link DomChildArray} branch so the
+ * recursive flatten typechecks without a cast.
+ * @param child - Candidate child value.
+ * @returns `true` when `child` is a nested array of {@link DomChild}.
+ */
+function isDomChildArray(child: DomChild): child is DomChildArray {
+  return Array.isArray(child);
+}
+
+/**
+ * Recursively flattens a {@link DomChild} tree, preserving left-to-right
+ * source order. Replaces `Array.prototype.flat(Infinity)` so the depth is
+ * bounded by the actual nesting at runtime rather than asserted through
+ * a `flat<0>` cast.
+ * @param children - Child tree to flatten.
+ * @returns Flat sequence of {@link DomChildLeaf} entries in source order.
+ */
+function flattenChildren(
+  children: readonly DomChild[]
+): readonly DomChildLeaf[] {
+  return children.flatMap<DomChildLeaf>(child =>
+    isDomChildArray(child) ? flattenChildren(child) : [child]
+  );
+}
+
+/**
+ * Selects the first element matching `sel` within `root`.
+ * @param sel - CSS selector to match.
+ * @param root - Root node to search within. Defaults to `document`.
+ * @returns The first matching element, or `null` if none match.
+ */
+export const $ = <T extends Element = Element>(
+  sel: string,
+  root: ParentNode = document
+): T | null => root.querySelector<T>(sel);
+
+/**
+ * Terse hyperscript-style element builder.
+ *
+ * `attrs.class` / `attrs.className` → `element.className`.
+ * `attrs.dataset` → `Object.assign(element.dataset, …)`.
+ * `attrs.onClick` / `onSubmit` / … → `addEventListener('click' | …)`.
+ * `attrs.html` → `innerHTML` (use sparingly).
+ * Any other key → `setAttribute(key, value)`.
+ *
+ * Children: strings/numbers become text nodes; `null`/`false`/`undefined`
+ * are skipped; nested arrays are flattened.
+ *
+ * @param tag - HTML tag name.
+ * @param attrs - Element attributes; see above for special keys.
+ * @param children - Child nodes or text values.
+ * @returns The created DOM element with attributes and children applied.
+ */
+export function el(
+  tag: string,
+  attrs: DomAttrs = {},
+  ...children: readonly DomChild[]
+): HTMLElement {
   const node = document.createElement(tag);
-  Object.entries(attrs || {}).forEach(([k, v]) => applyAttr(node, k, v));
-  children
-    .flat(Infinity)
-    .filter(child => child != null && child !== false)
-    .forEach(child =>
-      node.appendChild(
-        typeof child === "string" || typeof child === "number"
-          ? document.createTextNode(String(child))
-          : child
-      )
+  const flat: readonly (Node | string)[] = flattenChildren(children)
+    .filter(
+      (child): child is Node | string | number =>
+        child != null && typeof child !== "boolean"
+    )
+    .map(child =>
+      typeof child === "string" || typeof child === "number"
+        ? document.createTextNode(String(child))
+        : child
     );
+  Object.entries(attrs).forEach(([k, v]) => applyAttr(node, k, v));
+  node.append(...flat);
   return node;
 }
 
 /**
  * Removes all child nodes from a DOM container before rerendering.
- * @param node - DOM node to update.
+ * @param node - Parent DOM node to empty.
  */
-export function clear(node) {
-  while (node.firstChild) node.removeChild(node.firstChild);
+export function clear(node: ParentNode): void {
+  node.replaceChildren();
 }
 
-const applyAttr = (node, key, value) => {
+/**
+ * Narrows a {@link DomAttrValue} to the plain string-map shape accepted
+ * by `element.dataset`. Excludes primitives and functions.
+ * @param value - Candidate attribute value.
+ * @returns `true` when `value` is a plain object suitable for `dataset`.
+ */
+function isDatasetMap(
+  value: DomAttrValue
+): value is Readonly<Record<string, string>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Narrows a {@link DomAttrValue} to the event-listener shape accepted by
+ * `addEventListener`. A function value is treated as a listener for any
+ * `on…` attribute key.
+ * @param value - Candidate attribute value.
+ * @returns `true` when `value` is callable.
+ */
+function isEventListener(
+  value: DomAttrValue
+): value is EventListenerOrEventListenerObject {
+  return typeof value === "function";
+}
+
+const applyAttr = (
+  node: HTMLElement,
+  key: string,
+  value: DomAttrValue
+): void => {
   if (value == null || value === false) return;
-  if (key === "class" || key === "className")
-    Object.assign(node, { className: value });
-  else if (key === "dataset") Object.assign(node.dataset, value);
-  else if (key.startsWith("on") && typeof value === "function")
+  if (key === "class" || key === "className") {
+    Object.assign(node, { className: String(value) });
+    return;
+  }
+  if (key === "dataset" && isDatasetMap(value)) {
+    Object.assign(node.dataset, value);
+    return;
+  }
+  if (key.startsWith("on") && isEventListener(value)) {
     node.addEventListener(key.slice(2).toLowerCase(), value);
-  else if (key === "html") Object.assign(node, { innerHTML: value });
-  else node.setAttribute(key, value);
+    return;
+  }
+  if (key === "html") {
+    Object.assign(node, { innerHTML: String(value) });
+    return;
+  }
+  node.setAttribute(key, String(value));
 };
