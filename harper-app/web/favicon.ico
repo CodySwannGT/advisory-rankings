@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AdvisorBook">
+  <rect width="64" height="64" rx="12" fill="#102a43" />
+  <path d="M16 46L28 14h8l12 32h-8l-2.4-7H26.4L24 46h-8zm12.6-13h6.8L32 22.8 28.6 33z" fill="#f7c948" />
+  <path d="M18 50h28v4H18z" fill="#9fb3c8" />
+</svg>
