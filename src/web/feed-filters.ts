@@ -7,6 +7,7 @@ import { Button, SectionCard, el } from "./design-system/index.js";
 const FEED_MODE_PARAM = "mode";
 const FEED_CATEGORY_PARAM = "category";
 const DEFAULT_FEED_MODE = "all";
+const FEED_MODE_ALIASES = new Map([["event-backed", "event"]]);
 const FEED_MODES = [
   ["all", "All posts"],
   ["event", "Event-backed"],
@@ -77,6 +78,7 @@ export function readFeedFilters(categories) {
     filters.category && categories.includes(filters.category)
       ? filters.category
       : "";
+  syncFeedFilterUrl({ ...filters, category });
   return {
     ...filters,
     category,
@@ -191,13 +193,38 @@ function readFormFilters(form) {
  * @returns Normalized filters.
  */
 function normalizeFeedFilters(filters) {
-  const mode = FEED_MODES.some(([value]) => value === filters.mode)
-    ? String(filters.mode)
+  const rawMode = String(filters.mode || "").trim();
+  const candidateMode = FEED_MODE_ALIASES.get(rawMode) || rawMode;
+  const mode = FEED_MODES.some(([value]) => value === candidateMode)
+    ? candidateMode
     : DEFAULT_FEED_MODE;
   return {
     mode,
     category: String(filters.category || "").trim(),
   };
+}
+
+/**
+ * Replaces deprecated or unsupported filter params with canonical URL state.
+ * @param filters - Current normalized filters.
+ */
+function syncFeedFilterUrl(filters) {
+  const params = new URLSearchParams(location.search);
+  if (filters.mode === DEFAULT_FEED_MODE) {
+    params.delete(FEED_MODE_PARAM);
+  } else {
+    params.set(FEED_MODE_PARAM, filters.mode);
+  }
+  if (filters.category) {
+    params.set(FEED_CATEGORY_PARAM, filters.category);
+  } else {
+    params.delete(FEED_CATEGORY_PARAM);
+  }
+  const query = params.size ? `?${params}` : "";
+  const nextUrl = `${location.pathname}${query}${location.hash}`;
+  if (nextUrl !== `${location.pathname}${location.search}${location.hash}`) {
+    history.replaceState(null, "", nextUrl);
+  }
 }
 
 /**
