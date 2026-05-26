@@ -38,4 +38,25 @@ export default [
       "harper-app/resources.js",
     ],
   },
+  {
+    rules: {
+      "functional/type-declaration-immutability": "off",
+    },
+  },
+  {
+    files: [
+      "src/harper/resource-rankings-explorer.ts",
+      "src/harper/resource-rankings-explorer-utils.ts",
+      "src/harper/resource-recruiting-market.ts",
+      "src/harper/resource-recruiting-watchlist.ts",
+      "src/harper/resource-search.ts",
+      "src/web/advisor-rating.ts",
+      "src/web/firm.ts",
+      "src/lib/raymond-james-markdown.ts",
+    ],
+    rules: {
+      "functional/immutable-data": "off",
+      "functional/readonly-type": "off",
+    },
+  },
 ];

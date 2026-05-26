@@ -12,7 +12,6 @@ export interface UbsAddress {
 }
 
 /** AdditionalData object returned by the UBS locator API. */
-// eslint-disable-next-line functional/type-declaration-immutability -- External JSON DTO with nested optional fields.
 export interface UbsAdditionalData {
   readonly Emails?: string | null;
   readonly EntityId?: string | null;
@@ -43,7 +42,6 @@ export interface UbsAdvisorEntity {
 }
 
 /** Search envelope returned by the UBS locator API. */
-// eslint-disable-next-line functional/type-declaration-immutability -- External JSON DTO with nested optional fields.
 export interface UbsSearchResponse {
   readonly Entity?: ReadonlyArray<UbsAdvisorEntity> | null;
 }

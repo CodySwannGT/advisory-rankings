@@ -1,4 +1,4 @@
-/* eslint-disable jsdoc/require-jsdoc, functional/immutable-data -- Private aggregation helpers build compact response objects in local maps. */
+/* eslint-disable jsdoc/require-jsdoc -- Private aggregation helpers are covered through the public endpoint. */
 // @ts-nocheck
 import { loadAll } from "./resource-data.js";
 import { firmChip, transitionRow } from "./resource-feed.js";
@@ -287,4 +287,4 @@ function dateDesc(field) {
     String(right?.[field] || "").localeCompare(String(left?.[field] || ""));
 }
 
-/* eslint-enable jsdoc/require-jsdoc, functional/immutable-data -- End local private-helper exception. */
+/* eslint-enable jsdoc/require-jsdoc -- End local private-helper exception. */
