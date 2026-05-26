@@ -796,6 +796,33 @@ describe("Harper feed and profile builders", () => {
         representedFirms: 0,
         representedStates: 1,
       },
+      coverage: {
+        totalEntries: 1,
+        buckets: [
+          {
+            key: "Next Gen:2025",
+            category: "Next Gen",
+            year: 2025,
+            query: "/rankings?category=Next+Gen&year=2025",
+            total: 1,
+            resolved: 0,
+            unresolved: 1,
+            missingFirm: 1,
+            missingMarket: 0,
+            missingScore: 1,
+            latestLoadedAt: "2026-05-25",
+            sourceLabels: ["AdvisorHub Next Gen 2025"],
+            sampleRows: [
+              {
+                id: "ranking-entry-b",
+                label: "Jordan Example",
+                firmText: "Unresolved Capital",
+                sourceLabel: "AdvisorHub Next Gen 2025",
+              },
+            ],
+          },
+        ],
+      },
       facets: {
         categories: ["Advisors to Watch", "Next Gen"],
         years: [2025],
@@ -839,6 +866,24 @@ describe("Harper feed and profile builders", () => {
         rankingId: "ranking-b",
       },
     });
+    expect(payload.coverage.gapBuckets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "source-backed",
+          count: 1,
+          query: "/rankings",
+        }),
+        expect.objectContaining({
+          status: "unresolved-firm",
+          count: 1,
+          query: "/rankings?resolved=unresolved",
+        }),
+        expect.objectContaining({
+          status: "missing-scale",
+          count: 1,
+        }),
+      ])
+    );
   });
 
   it("filters and sorts resolved rankings explorer rows", async () => {
@@ -975,6 +1020,12 @@ describe("Harper feed and profile builders", () => {
       },
       summary: {
         totalEntries: 0,
+      },
+      coverage: {
+        totalEntries: 0,
+        buckets: [],
+        gapBuckets: [],
+        emptyState: "No ranking rows are loaded for this coverage slice.",
       },
       emptyState:
         "No matching public ranking rows are loaded for these filters.",
