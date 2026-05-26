@@ -1,9 +1,11 @@
 import type { Page } from "playwright";
 import {
+  BASE,
   FEED_HEADLINE_SELECTOR,
   QUICK_UI_TIMEOUT,
   check,
   shot,
+  smokeGoto,
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
@@ -13,7 +15,9 @@ const EVENT_CARD = ".event-card";
 const FEED_LOAD_MORE = ".feed-load-more";
 const FEED_MODE_SELECT = 'form.feed-filters select[name="mode"]';
 const FEED_CATEGORY_SELECT = 'form.feed-filters select[name="category"]';
+const FEED_FILTER_SUMMARY = ".feed-filter-summary";
 const FILTER_EMPTY_TEXT = "text=No feed posts match these filters";
+const SEMANTIC_URL_CATEGORY = "firm_bio";
 
 /** Minimal event card shape returned by the feed resource. */
 interface FeedEvent {
@@ -47,6 +51,10 @@ interface EventFilterResult {
  * @returns Smoke assertions for feed filters.
  */
 export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
+  const semanticMode = await verifySemanticModeUrl(page);
+  const unsupportedMode = await verifyUnsupportedModeUrl(page);
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const eventFilter = await selectEventBackedMode(page);
   const emptyCategory = await feedCategoryWithoutMoves(page);
   const emptyVisible = emptyCategory
@@ -54,6 +62,19 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
     : true;
 
   return [
+    check(
+      semanticMode.canonicalUrl &&
+        semanticMode.selectedMode === "event" &&
+        semanticMode.summaryMatches &&
+        semanticMode.allHaveCards,
+      "/ feed filters: semantic event-backed URL canonicalizes to matching state",
+      `${semanticMode.url} | ${semanticMode.selectedMode} | ${semanticMode.summary}`
+    ),
+    check(
+      unsupportedMode.normalizedUrl && unsupportedMode.selectedMode === "all",
+      "/ feed filters: unsupported URL mode safely normalizes",
+      `${unsupportedMode.url} | ${unsupportedMode.selectedMode}`
+    ),
     check(
       eventFilter.url.includes("mode=event"),
       "/ feed filters: event-backed mode persists in URL",
@@ -86,6 +107,67 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
       "/ feed filters: zero-result combinations show explicit empty state"
     ),
   ];
+}
+
+/**
+ * Opens the legacy semantic event-backed mode URL and verifies canonical state.
+ * @param page - Browser page used for the scenario.
+ * @returns Captured URL, select value, summary, and card state.
+ */
+async function verifySemanticModeUrl(page: Page): Promise<{
+  readonly allHaveCards: boolean;
+  readonly canonicalUrl: boolean;
+  readonly selectedMode: string;
+  readonly summary: string;
+  readonly summaryMatches: boolean;
+  readonly url: string;
+}> {
+  await smokeGoto(
+    page,
+    `${BASE}/?mode=event-backed&category=${SEMANTIC_URL_CATEGORY}`
+  );
+  await page.waitForSelector(FEED_FILTER_SUMMARY, {
+    timeout: QUICK_UI_TIMEOUT,
+  });
+  await waitForAllCardsToHaveEvents(page);
+  await shot(page, "01-feed-semantic-mode-url");
+  const url = page.url();
+  const selectedMode = await page.locator(FEED_MODE_SELECT).inputValue();
+  const summary = (await page.locator(FEED_FILTER_SUMMARY).textContent()) || "";
+  return {
+    allHaveCards: await allCardsHaveEvents(page),
+    canonicalUrl: new URL(url).searchParams.get("mode") === "event",
+    selectedMode,
+    summary,
+    summaryMatches: /event-backed/i.test(summary) && /firm bio/i.test(summary),
+    url,
+  };
+}
+
+/**
+ * Opens an unsupported feed mode and verifies it is removed from URL state.
+ * @param page - Browser page used for the scenario.
+ * @returns Captured URL and selected mode.
+ */
+async function verifyUnsupportedModeUrl(page: Page): Promise<{
+  readonly normalizedUrl: boolean;
+  readonly selectedMode: string;
+  readonly url: string;
+}> {
+  await smokeGoto(
+    page,
+    `${BASE}/?mode=unsupported-feed-mode&category=${SEMANTIC_URL_CATEGORY}`
+  );
+  await page.waitForSelector(FEED_FILTER_SUMMARY, {
+    timeout: QUICK_UI_TIMEOUT,
+  });
+  await shot(page, "01-feed-unsupported-mode-url");
+  const url = page.url();
+  return {
+    normalizedUrl: !new URL(url).searchParams.has("mode"),
+    selectedMode: await page.locator(FEED_MODE_SELECT).inputValue(),
+    url,
+  };
 }
 
 /**
