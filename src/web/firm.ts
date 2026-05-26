@@ -209,6 +209,7 @@ function dueDiligenceSection(diligence) {
   if (!diligence?.modules) return null;
   const body = el("div", { class: "firm-dd" });
   const moduleEntries = dueDiligenceModules(diligence.modules);
+  const emptyState = dueDiligenceEmptyState();
   const grid = el(
     "div",
     { class: "firm-dd-grid" },
@@ -217,7 +218,7 @@ function dueDiligenceSection(diligence) {
       return node;
     })
   );
-  const filters = dueDiligenceFilters(grid);
+  const filters = dueDiligenceFilters(grid, emptyState);
   body.append(
     el(
       "div",
@@ -236,6 +237,7 @@ function dueDiligenceSection(diligence) {
     ),
     filters,
     grid,
+    emptyState,
     dataConfidenceBlock(diligence.dataConfidence)
   );
   return SectionCard({
@@ -278,9 +280,10 @@ function dueDiligenceModules(modules) {
 /**
  * Builds a compact filter control for module availability.
  * @param grid - Module grid node to filter.
+ * @param emptyState - Empty-state node to show for zero-match filters.
  * @returns Filter control node.
  */
-function dueDiligenceFilters(grid) {
+function dueDiligenceFilters(grid, emptyState) {
   const buttons = [
     ["all", "All"],
     ["loaded", "Source-backed"],
@@ -294,9 +297,17 @@ function dueDiligenceFilters(grid) {
         "data-filter": filter,
         "aria-pressed": filter === "all" ? "true" : "false",
       },
-      onClick: event => applyDueDiligenceFilter(grid, event.currentTarget),
+      onClick: event =>
+        applyDueDiligenceFilter(grid, emptyState, event.currentTarget),
     })
   );
+  const allButton = buttons[0];
+  emptyState
+    .querySelector("[data-firm-dd-reset]")
+    ?.addEventListener("click", () => {
+      applyDueDiligenceFilter(grid, emptyState, allButton);
+      allButton.focus();
+    });
   return el(
     "div",
     { class: "firm-dd-filters", "aria-label": "Due diligence module filter" },
@@ -307,10 +318,15 @@ function dueDiligenceFilters(grid) {
 /**
  * Applies a module filter without changing resource state.
  * @param grid - Module grid node.
+ * @param emptyState - Empty-state node to show for zero-match filters.
  * @param activeButton - Clicked filter button.
  */
-function applyDueDiligenceFilter(grid, activeButton) {
+function applyDueDiligenceFilter(grid, emptyState, activeButton) {
   const filter = activeButton.dataset.filter || "all";
+  const modules = [...grid.querySelectorAll(".firm-dd-module")];
+  const isVisible = module =>
+    filter === "all" || module.dataset.firmDdStatus === filter;
+  const visibleCount = modules.filter(isVisible).length;
   activeButton.parentElement
     ?.querySelectorAll(".firm-dd-filter")
     .forEach(button => {
@@ -319,10 +335,36 @@ function applyDueDiligenceFilter(grid, activeButton) {
       button.classList.toggle("ab-btn--primary", active);
       button.classList.toggle("ab-btn--neutral", !active);
     });
-  grid.querySelectorAll(".firm-dd-module").forEach(module => {
-    const status = module.dataset.firmDdStatus;
-    module.hidden = filter !== "all" && status !== filter;
+  modules.forEach(module => {
+    module.hidden = !isVisible(module);
   });
+  emptyState.hidden = visibleCount > 0;
+  emptyState.querySelector("[data-firm-dd-empty-copy]").textContent =
+    filter === "missing"
+      ? "No modules currently need data."
+      : "No due-diligence modules match this filter.";
+}
+
+/**
+ * Builds the zero-match due-diligence filter empty state.
+ * @returns Filter empty-state node.
+ */
+function dueDiligenceEmptyState() {
+  return el(
+    "div",
+    { class: "firm-dd-empty", hidden: "" },
+    el("strong", {}, "No matching modules"),
+    el(
+      "p",
+      { "data-firm-dd-empty-copy": "" },
+      "No due-diligence modules match this filter."
+    ),
+    Button({
+      variant: "neutral",
+      children: "Show all modules",
+      attrs: { "data-firm-dd-reset": "" },
+    })
+  );
 }
 
 /**
