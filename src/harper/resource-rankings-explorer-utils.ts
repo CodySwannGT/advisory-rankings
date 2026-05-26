@@ -79,11 +79,13 @@ export function summarize(entries) {
 }
 
 export function rankingsCoverage(entries) {
-  const buckets = new Map();
-  for (const entry of entries) addCoverageEntry(buckets, entry);
+  const grouped = Map.groupBy(entries, coverageKey);
+  const buckets = Array.from(grouped, ([key, items]) =>
+    items.reduce(mergeCoverageEntry, emptyCoverageBucket(key, items[0]))
+  );
   return {
     totalEntries: entries.length,
-    buckets: [...buckets.values()].sort(compareCoverageBuckets),
+    buckets: buckets.toSorted(compareCoverageBuckets),
     gapBuckets: sourceStatusBuckets(entries),
     emptyState:
       entries.length === 0
@@ -92,80 +94,86 @@ export function rankingsCoverage(entries) {
   };
 }
 
-function addCoverageEntry(buckets, entry) {
-  const key = coverageKey(entry);
-  const bucket =
-    buckets.get(key) ||
-    buckets
-      .set(key, {
-        key,
-        category: entry.ranking.name,
-        year: entry.ranking.year,
-        query: coverageQuery(entry),
-        total: 0,
-        resolved: 0,
-        unresolved: 0,
-        missingFirm: 0,
-        missingMarket: 0,
-        missingScore: 0,
-        latestLoadedAt: null,
-        sourceLabels: [],
-        sampleRows: [],
-      })
-      .get(key);
-  bucket.total += 1;
-  bucket.resolved += entry.resolutionStatus === "resolved" ? 1 : 0;
-  bucket.unresolved += entry.resolutionStatus === "resolved" ? 0 : 1;
-  bucket.missingFirm += entry.firm ? 0 : 1;
-  bucket.missingMarket += entry.location.state ? 0 : 1;
-  bucket.missingScore += hasMissingScore(entry) ? 1 : 0;
-  bucket.latestLoadedAt = latestDate(
-    bucket.latestLoadedAt,
-    entry.source.loadedAt
-  );
-  appendUnique(bucket.sourceLabels, entry.source.label);
-  appendSample(bucket.sampleRows, entry);
+function emptyCoverageBucket(key, entry) {
+  return {
+    key,
+    category: entry.ranking.name,
+    year: entry.ranking.year,
+    query: coverageQuery(entry),
+    total: 0,
+    resolved: 0,
+    unresolved: 0,
+    missingFirm: 0,
+    missingMarket: 0,
+    missingScore: 0,
+    latestLoadedAt: null,
+    sourceLabels: [],
+    sampleRows: [],
+  };
+}
+
+function mergeCoverageEntry(bucket, entry) {
+  return {
+    ...bucket,
+    total: bucket.total + 1,
+    resolved: bucket.resolved + (entry.resolutionStatus === "resolved" ? 1 : 0),
+    unresolved:
+      bucket.unresolved + (entry.resolutionStatus === "resolved" ? 0 : 1),
+    missingFirm: bucket.missingFirm + (entry.firm ? 0 : 1),
+    missingMarket: bucket.missingMarket + (entry.location.state ? 0 : 1),
+    missingScore: bucket.missingScore + (hasMissingScore(entry) ? 1 : 0),
+    latestLoadedAt: latestDate(bucket.latestLoadedAt, entry.source.loadedAt),
+    sourceLabels: withUnique(bucket.sourceLabels, entry.source.label),
+    sampleRows: withSample(bucket.sampleRows, entry),
+  };
 }
 
 function sourceStatusBuckets(entries) {
-  const buckets = new Map();
-  for (const entry of entries) {
-    for (const status of entry.sourceStatus) {
-      const bucket =
-        buckets.get(status) ||
-        buckets
-          .set(status, {
-            status,
-            count: 0,
-            query: sourceStatusQuery(status),
-            sourceLabels: [],
-            sampleRows: [],
-          })
-          .get(status);
-      bucket.count += 1;
-      appendUnique(bucket.sourceLabels, entry.source.label);
-      appendSample(bucket.sampleRows, entry);
-    }
-  }
-  return [...buckets.values()].sort(
+  const pairs = entries.flatMap(entry =>
+    entry.sourceStatus.map(status => ({ status, entry }))
+  );
+  const grouped = Map.groupBy(pairs, pair => pair.status);
+  const buckets = Array.from(grouped, ([status, items]) =>
+    items.reduce(mergeStatusBucket, {
+      status,
+      count: 0,
+      query: sourceStatusQuery(status),
+      sourceLabels: [],
+      sampleRows: [],
+    })
+  );
+  return buckets.toSorted(
     (left, right) =>
       right.count - left.count || left.status.localeCompare(right.status)
   );
 }
 
-function appendSample(samples, entry) {
-  if (samples.length >= 3) return;
-  samples.push({
-    id: entry.id,
-    label: entry.subject.displayName,
-    firmText: entry.firmText,
-    sourceLabel: entry.source.label,
-    sourceStatus: entry.sourceStatus,
-  });
+function mergeStatusBucket(bucket, pair) {
+  return {
+    ...bucket,
+    count: bucket.count + 1,
+    sourceLabels: withUnique(bucket.sourceLabels, pair.entry.source.label),
+    sampleRows: withSample(bucket.sampleRows, pair.entry),
+  };
 }
 
-function appendUnique(values, value) {
-  if (value && !values.includes(value)) values.push(value);
+function withSample(samples, entry) {
+  if (samples.length >= 3) return samples;
+  return [
+    ...samples,
+    {
+      id: entry.id,
+      label: entry.subject.displayName,
+      firmText: entry.firmText,
+      sourceLabel: entry.source.label,
+      sourceStatus: entry.sourceStatus,
+    },
+  ];
+}
+
+function withUnique(values, value) {
+  if (!value || values.includes(value)) return values;
+  return [...values, value];
 }
 
 function coverageKey(entry) {
@@ -212,34 +220,36 @@ function compareCoverageBuckets(left, right) {
 }
 
 export function topFirms(entries) {
-  const byFirm = new Map();
-  for (const entry of entries) addFirmEntry(byFirm, entry);
-  return [...byFirm.values()].sort(
+  const grouped = Map.groupBy(
+    entries,
+    entry => entry.firm?.id || entry.firmText || "Unknown firm"
+  );
+  const rows = Array.from(grouped, ([, items]) =>
+    items.reduce(mergeFirmEntry, {
+      firm: items[0].firm,
+      firmText: items[0].firmText || items[0].firm?.name || "Unknown firm",
+      count: 0,
+      sourceIds: [],
+    })
+  );
+  return rows.toSorted(
     (left, right) =>
       right.count - left.count || left.firmText.localeCompare(right.firmText)
   );
 }
 
-function addFirmEntry(byFirm, entry) {
-  const key = entry.firm?.id || entry.firmText || "Unknown firm";
-  const row =
-    byFirm.get(key) ||
-    byFirm
-      .set(key, {
-        firm: entry.firm,
-        firmText: entry.firmText || entry.firm?.name || "Unknown firm",
-        count: 0,
-        sourceIds: [],
-      })
-      .get(key);
-  row.count += 1;
-  row.sourceIds.push(entry.id);
+function mergeFirmEntry(row, entry) {
+  return {
+    ...row,
+    count: row.count + 1,
+    sourceIds: [...row.sourceIds, entry.id],
+  };
 }
 
 export function facets(entries) {
   return {
     categories: uniqueSorted(entries.map(entry => entry.ranking.name)),
-    years: uniqueSorted(entries.map(entry => entry.ranking.year)).sort(
+    years: uniqueSorted(entries.map(entry => entry.ranking.year)).toSorted(
       (left, right) => right - left
     ),
     firms: uniqueSorted(entries.map(entry => entry.firmText).filter(Boolean)),

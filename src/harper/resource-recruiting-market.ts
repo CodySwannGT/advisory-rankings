@@ -145,11 +145,10 @@ function filteredMoves(moves, filters) {
 }
 
 function firmMomentum(db, moves) {
-  const byFirm = new Map();
-  for (const move of moves) {
-    addFirmMove(byFirm, move.toFirm, "inbound", move);
-    addFirmMove(byFirm, move.fromFirm, "outbound", move);
-  }
+  const byFirm = moves.reduce((acc, move) => {
+    const withInbound = foldFirmMove(acc, move.toFirm, "inbound", move);
+    return foldFirmMove(withInbound, move.fromFirm, "outbound", move);
+  }, new Map());
   return [...byFirm.values()]
     .map(row => ({
       ...row,
@@ -163,40 +162,37 @@ function firmMomentum(db, moves) {
     }));
 }
 
-function addFirmMove(byFirm, firm, direction, move) {
-  if (!firm?.id) return;
-  const row =
-    byFirm.get(firm.id) ||
-    byFirm
-      .set(firm.id, {
-        firm,
-        inbound: emptySummary(),
-        outbound: emptySummary(),
-        sourceMoveIds: [],
-      })
-      .get(firm.id);
-  row[direction] = addToSummary(row[direction], move);
-  row.sourceMoveIds.push(move.id);
+function foldFirmMove(byFirm, firm, direction, move) {
+  if (!firm?.id) return byFirm;
+  const previous = byFirm.get(firm.id) || {
+    firm,
+    inbound: emptySummary(),
+    outbound: emptySummary(),
+    sourceMoveIds: [],
+  };
+  return new Map(byFirm).set(firm.id, {
+    ...previous,
+    [direction]: addToSummary(previous[direction], move),
+    sourceMoveIds: [...previous.sourceMoveIds, move.id],
+  });
 }
 
 function marketActivity(moves) {
-  const byMarket = new Map();
-  for (const move of moves) {
+  const byMarket = moves.reduce((acc, move) => {
     const key = move.location.label || "Unknown market";
-    const row =
-      byMarket.get(key) ||
-      byMarket
-        .set(key, {
-          market: key,
-          city: move.location.city,
-          state: move.location.state,
-          summary: emptySummary(),
-          sourceMoveIds: [],
-        })
-        .get(key);
-    row.summary = addToSummary(row.summary, move);
-    row.sourceMoveIds.push(move.id);
-  }
+    const previous = acc.get(key) || {
+      market: key,
+      city: move.location.city,
+      state: move.location.state,
+      summary: emptySummary(),
+      sourceMoveIds: [],
+    };
+    return new Map(acc).set(key, {
+      ...previous,
+      summary: addToSummary(previous.summary, move),
+      sourceMoveIds: [...previous.sourceMoveIds, move.id],
+    });
+  }, new Map());
   return [...byMarket.values()].sort(
     (left, right) =>
       right.summary.knownAum - left.summary.knownAum ||

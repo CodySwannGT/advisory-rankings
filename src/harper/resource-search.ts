@@ -25,15 +25,13 @@ function scoreName(name, query) {
  * @returns Map keyed by advisor ID.
  */
 export function currentEmploymentByAdvisor(employments) {
-  const current = new Map();
-  for (const employment of employments) {
-    if (employment.endDate) continue;
+  return employments.reduce((current, employment) => {
+    if (employment.endDate) return current;
     const existing = current.get(employment.advisorId);
-    if (!existing || cmpDesc("startDate")(employment, existing) < 0) {
-      current.set(employment.advisorId, employment);
-    }
-  }
-  return current;
+    if (existing && cmpDesc("startDate")(employment, existing) >= 0)
+      return current;
+    return new Map(current).set(employment.advisorId, employment);
+  }, new Map());
 }
 
 /**

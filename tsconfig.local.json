@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["ES2022", "ESNext.Array", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "ESNext.Array", "ESNext.Collection", "DOM", "DOM.Iterable"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", ".build", "dist", "**/*.test.ts", "**/*.spec.ts"]
