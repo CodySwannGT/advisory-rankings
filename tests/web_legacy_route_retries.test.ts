@@ -16,6 +16,7 @@ interface RetryRouteCase {
   readonly path: string;
   readonly resource: string;
   readonly errorTitle: string;
+  readonly paginated?: boolean;
   readonly successText: string;
   readonly successPayload: unknown;
   readonly screenshotName: string;
@@ -26,34 +27,44 @@ const retryRouteCases: readonly RetryRouteCase[] = [
     name: "firm directory",
     path: "/firms",
     resource: "/PublicFirms",
-    errorTitle: "Could not load firms",
+    errorTitle: "Couldn't load more",
+    paginated: true,
     successText: ACME_ADVISORY,
     screenshotName: "issue-277-firms-retry.png",
-    successPayload: [
-      {
-        id: "firm-1",
-        name: ACME_ADVISORY,
-        channel: "ria",
-        hqCity: "Austin",
-        hqState: "TX",
-      },
-    ],
+    successPayload: {
+      items: [
+        {
+          id: "firm-1",
+          name: ACME_ADVISORY,
+          channel: "ria",
+          hqCity: "Austin",
+          hqState: "TX",
+        },
+      ],
+      nextCursor: null,
+      total: 1,
+    },
   },
   {
     name: "team directory",
     path: "/teams",
     resource: "/PublicTeams",
-    errorTitle: "Could not load teams",
+    errorTitle: "Couldn't load more",
+    paginated: true,
     successText: "Summit Wealth Team",
     screenshotName: "issue-277-teams-retry.png",
-    successPayload: [
-      {
-        id: "team-1",
-        name: "Summit Wealth Team",
-        currentFirmName: ACME_ADVISORY,
-        serviceModel: "ensemble",
-      },
-    ],
+    successPayload: {
+      items: [
+        {
+          id: "team-1",
+          name: "Summit Wealth Team",
+          currentFirmName: ACME_ADVISORY,
+          serviceModel: "ensemble",
+        },
+      ],
+      nextCursor: null,
+      total: 1,
+    },
   },
   {
     name: "compliance events",
@@ -112,7 +123,7 @@ describe("legacy directory and compliance route retries", () => {
         await page.route("**/Me", async route => {
           await route.fulfill({ json: { authenticated: false } });
         });
-        await page.route(`**${routeCase.resource}`, async route => {
+        await page.route(`**${routeCase.resource}**`, async route => {
           requestCount += 1;
           if (requestCount === 1) {
             await route.fulfill({
@@ -132,9 +143,15 @@ describe("legacy directory and compliance route retries", () => {
         await page.getByText(routeCase.errorTitle).waitFor({
           timeout: QUICK_TIMEOUT,
         });
-        expect(await page.getByText("temporary outage").count()).toBe(0);
+        if (!routeCase.paginated) {
+          expect(await page.getByText("temporary outage").count()).toBe(0);
+        }
 
-        await page.getByRole("button", { name: "Retry" }).click();
+        await page
+          .getByRole("button", {
+            name: routeCase.paginated ? "Load more" : "Retry",
+          })
+          .click();
         await page.getByText(routeCase.successText).first().waitFor({
           timeout: QUICK_TIMEOUT,
         });
