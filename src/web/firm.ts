@@ -37,10 +37,10 @@ import {
   clear,
 } from "./design-system/index.js";
 import {
-  DetailErrorCard,
   DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
+  renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
 import {
@@ -69,18 +69,28 @@ mountThreeColumnPage({
       return;
     }
 
-    renderDetailLoading({ center, right, label: "firm profile" });
-    api(`/FirmProfile/${encodeURIComponent(id)}`)
-      .then(d => {
-        clear(center);
-        clear(right);
-        render(d, center, right);
-      })
-      .catch(err => {
-        clear(center);
-        clear(right);
-        center.appendChild(DetailErrorCard("Could not load firm", err));
-      });
+    const loadFirmProfile = () => {
+      clear(center);
+      clear(right);
+      renderDetailLoading({ center, right, label: "firm profile" });
+      api(`/FirmProfile/${encodeURIComponent(id)}`)
+        .then(d => {
+          clear(center);
+          clear(right);
+          render(d, center, right);
+        })
+        .catch(err => {
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load firm",
+            error: err,
+            onRetry: loadFirmProfile,
+          });
+        });
+    };
+
+    loadFirmProfile();
   },
 });
 
