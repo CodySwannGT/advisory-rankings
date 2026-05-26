@@ -1,6 +1,5 @@
 // @ts-nocheck
 /* eslint-disable jsdoc/require-jsdoc -- Local helpers keep the public Resource methods readable. */
-import { all } from "./resource-pagination.js";
 import { normalizeId } from "./resource-routing.js";
 
 const RATING_FIELDS = [
@@ -78,11 +77,30 @@ function currentUserId(resource) {
 }
 
 async function findRating(userId, advisorId) {
-  const rows = await all(tables.UserRating);
-  return (
-    rows.find(row => row.userId === userId && row.advisorId === advisorId) ||
-    null
-  );
+  const id = ratingId(userId, advisorId);
+  try {
+    if (typeof tables.UserRating?.get === "function") {
+      const row = await tables.UserRating.get(id);
+      if (!row) return null;
+      // Defense-in-depth: ignore a row whose owner/advisor doesn't match
+      // the requested pair (should be impossible with our derived id, but
+      // protects against legacy rows or hash-collision-resistant changes).
+      if (row.userId !== userId || row.advisorId !== advisorId) return null;
+      return row;
+    }
+    // Fallback for environments without primary-key get (kept for the in-process
+    // test fixture). Filter by indexed userId rather than scanning every row.
+    const iter = tables.UserRating.search({
+      conditions: [{ attribute: "userId", value: userId }],
+    });
+    const rows = await Array.fromAsync(iter);
+    return rows.find(row => row.advisorId === advisorId) || null;
+  } catch (error) {
+    throwStatus(
+      `Failed to load private rating: ${(error as Error)?.message ?? error}`,
+      500
+    );
+  }
 }
 
 function ratingPayload(body) {
@@ -118,28 +136,35 @@ function sanitizeRating(row) {
 }
 
 async function writeRow(row) {
-  if (typeof tables.UserRating?.put === "function")
-    return tables.UserRating.put(row);
-  if (typeof tables.UserRating?.insert === "function")
-    return tables.UserRating.insert(row);
-  if (typeof tables.UserRating?.create === "function")
-    return tables.UserRating.create(row);
+  try {
+    if (typeof tables.UserRating?.put === "function")
+      return await tables.UserRating.put(row);
+    if (typeof tables.UserRating?.insert === "function")
+      return await tables.UserRating.insert(row);
+    if (typeof tables.UserRating?.create === "function")
+      return await tables.UserRating.create(row);
+  } catch (error) {
+    throwStatus(
+      `Failed to save private rating: ${(error as Error)?.message ?? error}`,
+      500
+    );
+  }
   throwStatus("UserRating writes are unavailable", 503);
 }
 
+// encodeURIComponent gives a non-lossy, collision-free encoding for the
+// (userId, advisorId) pair — distinct inputs always produce distinct keys,
+// and ':' is reserved by encodeURIComponent so the delimiter never collides
+// with a real id character.
 function ratingId(userId, advisorId) {
-  return `${slug(userId)}:${slug(advisorId)}`;
-}
-
-function slug(value) {
-  return String(value)
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .slice(0, 120);
+  return `${encodeURIComponent(String(userId))}:${encodeURIComponent(String(advisorId))}`;
 }
 
 function isBody(value) {
   return (
-    value && typeof value === "object" && RATING_FIELDS.some(f => f in value)
+    value &&
+    typeof value === "object" &&
+    (RATING_FIELDS.some(f => f in value) || "reviewText" in value)
   );
 }
 

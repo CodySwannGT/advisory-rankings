@@ -15,9 +15,17 @@ const rows: any[] = [];
 
 (globalThis as any).tables = {
   UserRating: {
-    search: () =>
+    get: async (id: string) => rows.find(row => row.id === id) ?? null,
+    search: ({
+      conditions,
+    }: { conditions?: Array<{ attribute: string; value: unknown }> } = {}) =>
       (async function* () {
-        for (const row of rows) yield row;
+        const matches = conditions?.length
+          ? rows.filter(row =>
+              conditions.every(c => row[c.attribute] === c.value)
+            )
+          : rows;
+        for (const row of matches) yield row;
       })(),
     put: async (row: any) => {
       const index = rows.findIndex(existing => existing.id === row.id);
@@ -100,6 +108,24 @@ describe("AdvisorRating resource", () => {
     });
     expect(rows).toHaveLength(2);
     expect(rows.find(row => row.userId === "user-b")?.ratingInt).toBe(2);
+  });
+
+  it("persists reviewText-only POST payloads", async () => {
+    const endpoint = new resources.AdvisorRating() as any;
+    endpoint.user = { username: "user-a" };
+
+    await expect(
+      endpoint.post(target("advisor-a"), { reviewText: "Just a note" })
+    ).resolves.toMatchObject({
+      authenticated: true,
+      rating: {
+        advisorId: "advisor-a",
+        ratingInt: null,
+        reviewText: "Just a note",
+      },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.reviewText).toBe("Just a note");
   });
 });
 /* eslint-enable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
