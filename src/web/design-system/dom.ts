@@ -32,45 +32,52 @@ export type DomAttrs = Readonly<Record<string, DomAttrValue>>;
 /**
  * Leaf values produced by flattening a {@link DomChild}. After
  * flattening, every entry is either a DOM node, a primitive text value,
- * or a skip-marker (`null` / `false` / `undefined`).
+ * or a skip-marker (`boolean` / `null` / `undefined`). Booleans are
+ * tolerated so call sites can use idioms like `cond && el(...)` without
+ * an explicit `null` fallback; both `true` and `false` skip.
  */
-export type DomChildLeaf = Node | string | number | false | null | undefined;
+export type DomChildLeaf = Node | string | number | boolean | null | undefined;
 
 /**
  * Acceptable child values passed to {@link el}. Strings/numbers become
- * text nodes; `null` / `false` / `undefined` are skipped. A single level
- * of array nesting is flattened — call sites that need deeper nesting
- * must spread their own arrays at the boundary (the established pattern
- * across `src/web/`, where helpers like `arrify(...)` and
- * `headings.map(...)` are always spread into `el(...)`).
+ * text nodes; booleans / `null` / `undefined` are skipped; nested arrays
+ * are flattened to arbitrary depth so call sites can pass the recursive
+ * `Children` shapes used by `src/web/design-system/atoms.ts`.
  */
-export type DomChild = DomChildLeaf | readonly DomChildLeaf[];
+export type DomChild = DomChildLeaf | DomChildArray;
 
 /**
- * Narrows a {@link DomChild} to the single-level array branch.
- * Combined with `Array.isArray`'s runtime check, this produces a sound
- * narrowing that distinguishes nested arrays from leaf values without a
- * cast.
- * @param child - Candidate child value.
- * @returns `true` when `child` is an array of {@link DomChildLeaf}.
+ * Recursive helper for {@link DomChild} — nested arrays of children, to
+ * arbitrary depth. Named separately so {@link DomChild} avoids a forward
+ * self-reference.
  */
-function isLeafArray(child: DomChild): child is readonly DomChildLeaf[] {
+export interface DomChildArray extends ReadonlyArray<DomChild> {}
+
+/**
+ * Type-predicate counterpart to `Array.isArray` for {@link DomChild}.
+ * Narrows a child into the nested {@link DomChildArray} branch so the
+ * recursive flatten typechecks without a cast.
+ * @param child - Candidate child value.
+ * @returns `true` when `child` is a nested array of {@link DomChild}.
+ */
+function isDomChildArray(child: DomChild): child is DomChildArray {
   return Array.isArray(child);
 }
 
 /**
- * Flattens a one-level {@link DomChild} sequence into the leaf form
- * consumed by `el`'s child pipeline, preserving left-to-right source
- * order. Replaces the previous `Array.prototype.flat(Infinity)` call so
- * the depth is bounded by the actual data — and asserted by the type
- * system rather than a `flat<0>` cast.
- * @param children - Child sequence to flatten.
+ * Recursively flattens a {@link DomChild} tree, preserving left-to-right
+ * source order. Replaces `Array.prototype.flat(Infinity)` so the depth is
+ * bounded by the actual nesting at runtime rather than asserted through
+ * a `flat<0>` cast.
+ * @param children - Child tree to flatten.
  * @returns Flat sequence of {@link DomChildLeaf} entries in source order.
  */
 function flattenChildren(
   children: readonly DomChild[]
 ): readonly DomChildLeaf[] {
-  return children.flatMap(child => (isLeafArray(child) ? child : [child]));
+  return children.flatMap<DomChildLeaf>(child =>
+    isDomChildArray(child) ? flattenChildren(child) : [child]
+  );
 }
 
 /**
@@ -96,21 +103,11 @@ export const $ = <T extends Element = Element>(
  * Children: strings/numbers become text nodes; `null`/`false`/`undefined`
  * are skipped; nested arrays are flattened.
  *
- * @param tag - HTML tag name (intrinsic key of `HTMLElementTagNameMap`).
+ * @param tag - HTML tag name.
  * @param attrs - Element attributes; see above for special keys.
  * @param children - Child nodes or text values.
  * @returns The created DOM element with attributes and children applied.
  */
-export function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  attrs?: DomAttrs,
-  ...children: readonly DomChild[]
-): HTMLElementTagNameMap[K];
-export function el(
-  tag: string,
-  attrs?: DomAttrs,
-  ...children: readonly DomChild[]
-): HTMLElement;
 export function el(
   tag: string,
   attrs: DomAttrs = {},
@@ -120,7 +117,7 @@ export function el(
   const flat: readonly (Node | string)[] = flattenChildren(children)
     .filter(
       (child): child is Node | string | number =>
-        child != null && child !== false
+        child != null && typeof child !== "boolean"
     )
     .map(child =>
       typeof child === "string" || typeof child === "number"
