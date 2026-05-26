@@ -18,6 +18,7 @@ import {
   smokeAdvisorDirectoryPagination,
   smokePaginatedDirectory,
 } from "./web_smoke_directory_pagination.js";
+import { revealFeedCard } from "./web_smoke_feed_pagination.js";
 
 const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
 
@@ -133,6 +134,7 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
 async function findArticleWithProvenance(page: Page): Promise<string> {
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  await revealFeedCard(page, TAYLOR_GROUP_TEXT);
   return (
     (await page
       .locator(ARTICLE_CARD_SELECTOR)

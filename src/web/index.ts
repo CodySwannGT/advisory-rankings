@@ -28,6 +28,7 @@ import {
   EntityList,
   EntityRow,
   Heading,
+  Button,
   el,
   Avatar,
 } from "./design-system/index.js";
@@ -39,6 +40,8 @@ import {
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
+
+const FEED_PAGE_SIZE = 20;
 
 mountThreeColumnPage({
   active: "home",
@@ -73,26 +76,31 @@ mountThreeColumnPage({
  */
 function renderFeed(layout, items) {
   const categories = feedCategories(items);
-  const renderCurrentState = () => {
+  const renderCurrentState = (visibleLimit = FEED_PAGE_SIZE) => {
     const filters = readFeedFilters(categories);
     const filteredItems = filterFeedItems(items, filters);
+    const visibleItems = filteredItems.slice(0, visibleLimit);
 
-    renderCenter(layout.center, filteredItems, {
+    renderCenter(layout.center, visibleItems, {
       categories,
-      count: filteredItems.length,
+      count: visibleItems.length,
       filters,
-      total: items.length,
+      hasMore: visibleItems.length < filteredItems.length,
+      total: filteredItems.length,
       onChange: nextFilters => {
         writeFeedFilters(nextFilters);
-        renderCurrentState();
+        renderCurrentState(FEED_PAGE_SIZE);
+      },
+      onLoadMore: () => {
+        renderCurrentState(visibleLimit + FEED_PAGE_SIZE);
       },
     });
-    renderLeft(layout.left, filteredItems);
-    renderRight(layout.right, filteredItems);
+    renderLeft(layout.left, visibleItems);
+    renderRight(layout.right, visibleItems);
   };
 
   renderCurrentState();
-  window.addEventListener("popstate", renderCurrentState);
+  window.addEventListener("popstate", () => renderCurrentState());
 }
 
 /**
@@ -120,6 +128,16 @@ function renderCenter(root, items, state) {
     return;
   }
   for (const item of items) root.appendChild(FeedPostCard(item, fmts));
+  if (state.hasMore) {
+    root.appendChild(
+      Button({
+        variant: "neutral",
+        onClick: state.onLoadMore,
+        children: "Load more posts",
+        attrs: { class: "feed-load-more" },
+      })
+    );
+  }
 }
 
 /**

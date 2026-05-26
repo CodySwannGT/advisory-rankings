@@ -25,6 +25,11 @@ import {
   browseLabelChecks,
   feedCopyGuardrailChecks,
 } from "./web_smoke_copy_guardrails.js";
+import {
+  revealFeedCard,
+  revealFeedSelector,
+  smokeFeedPagination,
+} from "./web_smoke_feed_pagination.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -43,13 +48,17 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  const paginationChecks = await smokeFeedPagination(page);
+  await revealFeedCard(page, TAYLOR_GROUP_TEXT);
+  await revealFeedSelector(page, DISCLOSURE_CARD_SELECTOR);
   await taylorCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await transition.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
+  const initialPostCount = await postCards.count();
   const initialFeedChecks = [
-    check((await postCards.count()) >= 2, "/ feed: at least two post cards"),
+    check(initialPostCount >= 2, "/ feed: at least two post cards"),
     check(
       Boolean(await taylorCard.locator(".post-headline").textContent()),
       "/ feed: Taylor article headline present"
@@ -88,6 +97,7 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
 
   return [
     ...initialFeedChecks,
+    ...paginationChecks,
     ...(await smokeFeedFilters(page)),
     ...(await feedCopyGuardrailChecks(page)),
   ];
@@ -122,6 +132,7 @@ export async function smokeFirm(
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  await revealFeedCard(page, TAYLOR_GROUP_TEXT);
   await wellsChip.click();
   await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
   await pastBlock.scrollIntoViewIfNeeded();

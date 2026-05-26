@@ -10,6 +10,7 @@ import {
 
 const ARTICLE_CARD = "article.card";
 const EVENT_CARD = ".event-card";
+const FEED_LOAD_MORE = ".feed-load-more";
 const FEED_MODE_SELECT = 'form.feed-filters select[name="mode"]';
 const FEED_CATEGORY_SELECT = 'form.feed-filters select[name="category"]';
 const FILTER_EMPTY_TEXT = "text=No feed posts match these filters";
@@ -32,9 +33,12 @@ interface FeedResponse {
 
 /** Result captured after exercising event-backed filter state. */
 interface EventFilterResult {
-  readonly url: string;
-  readonly cardCount: number;
+  readonly afterLoadCount: number;
+  readonly afterLoadUrl: string;
   readonly allHaveCards: boolean;
+  readonly cardCount: number;
+  readonly noDuplicateLinks: boolean;
+  readonly url: string;
 }
 
 /**
@@ -64,6 +68,20 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
       "/ feed filters: event-backed rows all include event cards"
     ),
     check(
+      eventFilter.afterLoadUrl === eventFilter.url,
+      "/ feed filters: Load more preserves URL filter state",
+      eventFilter.afterLoadUrl
+    ),
+    check(
+      eventFilter.afterLoadCount >= eventFilter.cardCount,
+      "/ feed filters: Load more keeps filtered posts visible",
+      `${eventFilter.cardCount} -> ${eventFilter.afterLoadCount}`
+    ),
+    check(
+      eventFilter.noDuplicateLinks,
+      "/ feed filters: Load more appends unique filtered posts"
+    ),
+    check(
       emptyVisible,
       "/ feed filters: zero-result combinations show explicit empty state"
     ),
@@ -85,12 +103,52 @@ async function selectEventBackedMode(page: Page): Promise<EventFilterResult> {
   await page.reload({ waitUntil: "domcontentloaded" });
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await shot(page, "01-feed-event-filter");
+  const beforeLinks = await feedPostLinks(page);
+  const cardCount = await page.locator(ARTICLE_CARD).count();
+  const url = page.url();
+  await clickLoadMoreIfAvailable(page);
+  const afterLinks = await feedPostLinks(page);
+  const appendedLinks = afterLinks.slice(beforeLinks.length);
+  const beforeLinkSet = new Set(beforeLinks);
 
   return {
-    url: page.url(),
-    cardCount: await page.locator(ARTICLE_CARD).count(),
+    afterLoadCount: await page.locator(ARTICLE_CARD).count(),
+    afterLoadUrl: page.url(),
+    cardCount,
     allHaveCards: await allCardsHaveEvents(page),
+    noDuplicateLinks: appendedLinks.every(link => !beforeLinkSet.has(link)),
+    url,
   };
+}
+
+/**
+ * Clicks the feed load-more control when the current filtered view has one.
+ * @param page - Browser page on the feed.
+ */
+async function clickLoadMoreIfAvailable(page: Page): Promise<void> {
+  const loadMore = page.locator(FEED_LOAD_MORE);
+  if ((await loadMore.count()) === 0) return;
+  const previousCount = await page.locator(ARTICLE_CARD).count();
+  await loadMore.click();
+  await page.waitForFunction(
+    ({ articleSelector, count }) =>
+      document.querySelectorAll(articleSelector).length > count,
+    { articleSelector: ARTICLE_CARD, count: previousCount },
+    { timeout: QUICK_UI_TIMEOUT }
+  );
+}
+
+/**
+ * Reads stable article links from rendered feed cards.
+ * @param page - Browser page on the feed.
+ * @returns Feed article hrefs.
+ */
+async function feedPostLinks(page: Page): Promise<readonly string[]> {
+  return await page
+    .locator(`${ARTICLE_CARD} .post-headline a`)
+    .evaluateAll(links =>
+      links.map(link => link.getAttribute("href") || "").filter(Boolean)
+    );
 }
 
 /**
