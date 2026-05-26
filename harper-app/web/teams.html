@@ -1,53 +1,94 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Teams — AdvisorBook</title>
-	<link rel="stylesheet" href="/app.css?v=20260521-media" />
-</head>
-<body>
-	<script type="module">
-		// Directory page: every team in the DB. UI from the design system.
-		import { api, refreshMe, logout, search, humanize, initials, entityPath } from '/app.js?v=20260521-media';
-		import {
-			mountThreeColumnPage, SectionCard, EmptyCard, DetailsCard,
-			EntityList, EntityRow,
-		} from '/design-system/index.js?v=20260521-media';
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teams — AdvisorBook</title>
+    <link rel="stylesheet" href="/app.css?v=20260521-media" />
+  </head>
+  <body>
+    <script type="module">
+      // Directory page: every team in the DB. UI from the design system.
+      import {
+        api,
+        refreshMe,
+        logout,
+        search,
+        humanize,
+        initials,
+        entityPath,
+        clear,
+      } from "/app.js?v=20260521-media";
+      import {
+        mountThreeColumnPage,
+        SectionCard,
+        AsyncStateCard,
+        DetailsCard,
+        EntityList,
+        EntityRow,
+      } from "/design-system/index.js?v=20260521-media";
 
-		mountThreeColumnPage({
-			active: 'teams',
-			refreshMe,
-			logout,
-			search,
-			build({ center, right }) {
-				api('/PublicTeams').then((teams) => {
-					center.appendChild(SectionCard({
-						title: `All teams (${teams.length.toLocaleString()})`,
-						body: EntityList({
-							rows: teams.map((t) => EntityRow({
-								avatar: initials(t.name),
-								name: t.name,
-								sub: [t.currentFirmName, humanize(t.serviceModel)].filter(Boolean).join(' · '),
-								href: entityPath('team', t),
-							})),
-						}),
-					}));
-					const firms = new Set(teams.map((t) => t.currentFirmName).filter(Boolean));
-					const serviceModels = new Set(teams.map((t) => humanize(t.serviceModel)).filter(Boolean));
-					right.appendChild(DetailsCard({
-						title: 'Team directory',
-						pairs: [
-							['Teams', teams.length.toLocaleString()],
-							['Current firms', firms.size.toLocaleString()],
-							['Service models', serviceModels.size.toLocaleString()],
-						],
-					}));
-				}).catch((err) => {
-					center.appendChild(EmptyCard({ title: 'Could not load teams', body: String(err.message || err) }));
-				});
-			},
-		});
-	</script>
-</body>
+      mountThreeColumnPage({
+        active: "teams",
+        refreshMe,
+        logout,
+        search,
+        build({ center, right }) {
+          const loadTeams = () => {
+            clear(center);
+            clear(right);
+            api("/PublicTeams")
+              .then(teams => {
+                center.appendChild(
+                  SectionCard({
+                    title: `All teams (${teams.length.toLocaleString()})`,
+                    body: EntityList({
+                      rows: teams.map(t =>
+                        EntityRow({
+                          avatar: initials(t.name),
+                          name: t.name,
+                          sub: [t.currentFirmName, humanize(t.serviceModel)]
+                            .filter(Boolean)
+                            .join(" · "),
+                          href: entityPath("team", t),
+                        })
+                      ),
+                    }),
+                  })
+                );
+                const firms = new Set(
+                  teams.map(t => t.currentFirmName).filter(Boolean)
+                );
+                const serviceModels = new Set(
+                  teams.map(t => humanize(t.serviceModel)).filter(Boolean)
+                );
+                right.appendChild(
+                  DetailsCard({
+                    title: "Team directory",
+                    pairs: [
+                      ["Teams", teams.length.toLocaleString()],
+                      ["Current firms", firms.size.toLocaleString()],
+                      ["Service models", serviceModels.size.toLocaleString()],
+                    ],
+                  })
+                );
+              })
+              .catch(err => {
+                console.error("Team directory failed to load", err);
+                center.appendChild(
+                  AsyncStateCard({
+                    kind: "transient",
+                    title: "Could not load teams",
+                    body: "Retry the request to refresh this directory.",
+                    actionLabel: "Retry",
+                    onAction: loadTeams,
+                  })
+                );
+              });
+          };
+          loadTeams();
+        },
+      });
+    </script>
+  </body>
 </html>
