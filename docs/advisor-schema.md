@@ -625,6 +625,12 @@ source-of-record table; any fact discovered still needs a
 | `notes` | text | short explanation, especially for ambiguity/failure |
 | `next_check_after` | date | optional backoff for failures or low-value advisors |
 
+Advisor profile resources expose these rows as an `evidenceFreshness`
+summary with `lastCheckedAt`, status counts, nearest `nextCheckAfter`,
+and source-type coverage. Profiles with no research-check rows return
+the same keys with zero counts and null dates rather than omitting the
+section.
+
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 
 | Field | Type |
@@ -700,6 +706,10 @@ For each fact stored from prose, attach `confidence ∈ {asserted, inferred, der
 - **asserted** — verbatim from article ("$5.94 billion in assets")
 - **inferred** — pattern-derived ("16-year broker" → `industry_start_date = today - 16y`)
 - **derived** — computed (`years_experience`, growth %)
+
+Advisor profile resources summarize advisor-targeted `FieldAssertion`
+rows as `confidenceSummary` with `asserted`, `inferred`, `derived`,
+and `total` counts. Advisors with no rows return explicit zero counts.
 
 ### 6.4 Multi-source mention extraction
 

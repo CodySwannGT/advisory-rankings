@@ -9,6 +9,10 @@ import {
   transitionRow,
 } from "./resource-feed.js";
 
+const RESEARCH_STATUSES = ["success", "no_new_data", "ambiguous", "failed"];
+const RESEARCH_SOURCE_TYPES = ["web_research", "firm_bio", "rankings", "press"];
+const CONFIDENCE_LEVELS = ["asserted", "inferred", "derived"];
+
 /**
  * Builds the advisor profile response from the loaded table snapshot.
  * @param db - Loaded resource index bundle.
@@ -31,6 +35,8 @@ export function advisorProfilePayload(db, advisor) {
     articles: advisorArticles(db, advisorId),
     ...advisorCredentials(db, advisorId),
     brokerCheckSnapshot: advisorBrokerCheckSnapshot(db, advisorId),
+    evidenceFreshness: advisorEvidenceFreshness(db, advisorId),
+    confidenceSummary: advisorConfidenceSummary(db, advisorId),
   };
 }
 
@@ -182,6 +188,115 @@ function advisorBrokerCheckSnapshot(db, advisorId) {
       examCount: snapshot.examCount,
     }
   );
+}
+
+/**
+ * Summarizes bounded source-check freshness for one advisor.
+ * @param db - Loaded resource index bundle.
+ * @param advisorId - Advisor ID to match against research checks.
+ * @returns Deterministic freshness summary, including explicit no-data state.
+ */
+function advisorEvidenceFreshness(db, advisorId) {
+  const checks = (db.researchChecks || []).filter(
+    check => check.advisorId === advisorId
+  );
+
+  return {
+    hasData: checks.length > 0,
+    lastCheckedAt: latestDate(checks.map(check => check.checkedAt)),
+    nearestNextCheckAfter: earliestDate(
+      checks.map(check => check.nextCheckAfter)
+    ),
+    statusCounts: countMap(
+      RESEARCH_STATUSES,
+      checks.map(check => check.status)
+    ),
+    sourceTypeCoverage: countMap(
+      RESEARCH_SOURCE_TYPES,
+      checks.map(check => check.sourceType)
+    ),
+  };
+}
+
+/**
+ * Counts advisor-targeted assertion confidence values.
+ * @param db - Loaded resource index bundle.
+ * @param advisorId - Advisor ID to match against field assertions.
+ * @returns Confidence mix with explicit no-data state.
+ */
+function advisorConfidenceSummary(db, advisorId) {
+  const assertions = db.fieldAssertions.filter(
+    field =>
+      String(field.targetTable || "").toLowerCase() === "advisor" &&
+      field.targetId === advisorId
+  );
+  const counts = countMap(
+    CONFIDENCE_LEVELS,
+    assertions.map(assertion => assertion.confidence)
+  );
+
+  return {
+    hasData: assertions.length > 0,
+    asserted: counts.asserted,
+    inferred: counts.inferred,
+    derived: counts.derived,
+    total: assertions.length,
+  };
+}
+
+/**
+ * Builds a stable tally object with every public key present.
+ * @param keys - Keys that should always be present.
+ * @param values - Source values to tally.
+ * @returns Count object with every requested key represented.
+ */
+function countMap(keys, values = []) {
+  return Object.fromEntries(
+    keys.map(key => [
+      key,
+      values.filter(value => String(value || "").toLowerCase() === key).length,
+    ])
+  );
+}
+
+/**
+ * Returns the latest date-like value, preserving the original string.
+ * @param values - Candidate dates.
+ * @returns Latest date-like value or null.
+ */
+function latestDate(values) {
+  return values.reduce(laterDate, null);
+}
+
+/**
+ * Returns the earliest date-like value, preserving the original string.
+ * @param values - Candidate dates.
+ * @returns Earliest date-like value or null.
+ */
+function earliestDate(values) {
+  return values.reduce(earlierDate, null);
+}
+
+/**
+ * Returns the later of two date-like values, preserving the original string.
+ * @param current - Current winning date.
+ * @param candidate - Candidate date.
+ * @returns Later date-like value or null.
+ */
+function laterDate(current, candidate) {
+  if (!candidate) return current;
+  return !current || dateMs(candidate) > dateMs(current) ? candidate : current;
+}
+
+/**
+ * Returns the earlier of two date-like values, preserving the original string.
+ * @param current - Current winning date.
+ * @param candidate - Candidate date.
+ * @returns Earlier date-like value or null.
+ */
+function earlierDate(current, candidate) {
+  if (!candidate) return current;
+  return !current || dateMs(candidate) < dateMs(current) ? candidate : current;
 }
 
 /**

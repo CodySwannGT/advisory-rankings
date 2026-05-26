@@ -53,6 +53,7 @@ function tableSpecs() {
     ["mTE", tables.ArticleTransitionEventMention],
     ["mDisc", tables.ArticleDisclosureMention],
     ["fieldAssertions", tables.FieldAssertion],
+    ["researchChecks", tables.AdvisorResearchCheck, true],
     ["bcSnaps", tables.BrokerCheckSnapshot, true],
     ["licenses", tables.License, true],
     ["designations", tables.Designation, true],
