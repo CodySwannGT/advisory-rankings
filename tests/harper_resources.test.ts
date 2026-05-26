@@ -50,6 +50,7 @@ const table = (name: string) => ({
   OutsideBusinessActivity: table("OutsideBusinessActivity"),
   Ranking: table("Ranking"),
   RankingEntry: table("RankingEntry"),
+  AdvisorResearchCheck: table("AdvisorResearchCheck"),
   RecruitingDealQuote: table("RecruitingDealQuote"),
   RegistrationApplication: table("RegistrationApplication"),
   Sanction: table("Sanction"),
@@ -391,7 +392,47 @@ const baseRows = () => {
       fieldName: "legalName",
       assertedValue: JSON.stringify("Avery Stone"),
       quotePhrase: "Avery Stone",
-      confidence: 0.9,
+      confidence: "asserted",
+    },
+    {
+      id: "field-b",
+      articleId: "article-b",
+      targetTable: "Advisor",
+      targetId: "advisor-a",
+      fieldName: "roleTitle",
+      assertedValue: JSON.stringify("Partner"),
+      quotePhrase: "Partner",
+      confidence: "inferred",
+    },
+    {
+      id: "field-c",
+      articleId: "article-b",
+      targetTable: "Advisor",
+      targetId: "advisor-a",
+      fieldName: "careerStatus",
+      assertedValue: JSON.stringify("active"),
+      quotePhrase: "active",
+      confidence: "derived",
+    },
+  ]);
+  setRows("AdvisorResearchCheck", [
+    {
+      id: "research-a",
+      advisorId: "advisor-a",
+      sourceType: "web_research",
+      checkedAt: "2026-05-24T10:00:00Z",
+      status: "success",
+      sourcesChecked: ["https://example.com/avery"],
+      nextCheckAfter: "2026-06-15T00:00:00Z",
+    },
+    {
+      id: "research-b",
+      advisorId: "advisor-a",
+      sourceType: "firm_bio",
+      checkedAt: "2026-05-25T12:00:00Z",
+      status: "ambiguous",
+      sourcesChecked: ["https://example.com/team"],
+      nextCheckAfter: "2026-06-01T00:00:00Z",
     },
   ]);
 };
@@ -480,6 +521,59 @@ describe("Harper feed and profile builders", () => {
     });
     expect(payload.brokerCheckSnapshot).toMatchObject({ subjectCrd: "12345" });
     expect(payload.articles[0]).toMatchObject({ id: "article-a" });
+    expect(payload.evidenceFreshness).toEqual({
+      hasData: true,
+      lastCheckedAt: "2026-05-25T12:00:00Z",
+      nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+      statusCounts: {
+        success: 1,
+        no_new_data: 0,
+        ambiguous: 1,
+        failed: 0,
+      },
+      sourceTypeCoverage: {
+        web_research: 1,
+        firm_bio: 1,
+        rankings: 0,
+        press: 0,
+      },
+    });
+    expect(payload.confidenceSummary).toEqual({
+      hasData: true,
+      asserted: 1,
+      inferred: 1,
+      derived: 1,
+      total: 3,
+    });
+
+    const noDataPayload = advisorResource.advisorProfilePayload(
+      db,
+      db.byAdvisor.get("advisor-b")
+    );
+    expect(noDataPayload.evidenceFreshness).toEqual({
+      hasData: false,
+      lastCheckedAt: null,
+      nearestNextCheckAfter: null,
+      statusCounts: {
+        success: 0,
+        no_new_data: 0,
+        ambiguous: 0,
+        failed: 0,
+      },
+      sourceTypeCoverage: {
+        web_research: 0,
+        firm_bio: 0,
+        rankings: 0,
+        press: 0,
+      },
+    });
+    expect(noDataPayload.confidenceSummary).toEqual({
+      hasData: false,
+      asserted: 0,
+      inferred: 0,
+      derived: 0,
+      total: 0,
+    });
   });
 
   it("covers advisor fallback dates and optional credential groups", async () => {
@@ -1184,6 +1278,16 @@ describe("Harper resource endpoints", () => {
     });
     expect(advisorResult).toMatchObject({
       advisor: { id: "advisor-a" },
+      evidenceFreshness: {
+        hasData: true,
+        statusCounts: { success: 1, ambiguous: 1 },
+      },
+      confidenceSummary: {
+        asserted: 1,
+        inferred: 1,
+        derived: 1,
+        total: 3,
+      },
       resource: "advisorbook://advisor/advisor-a",
     });
     expect(firmResult).toMatchObject({
