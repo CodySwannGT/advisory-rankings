@@ -336,13 +336,16 @@ function applyDueDiligenceFilter(grid, emptyState, activeButton) {
       button.classList.toggle("ab-btn--neutral", !active);
     });
   modules.forEach(module => {
-    module.hidden = !isVisible(module);
+    module.toggleAttribute("hidden", !isVisible(module));
   });
-  emptyState.hidden = visibleCount > 0;
-  emptyState.querySelector("[data-firm-dd-empty-copy]").textContent =
-    filter === "missing"
-      ? "No modules currently need data."
-      : "No due-diligence modules match this filter.";
+  emptyState.toggleAttribute("hidden", visibleCount > 0);
+  emptyState
+    .querySelector("[data-firm-dd-empty-copy]")
+    .replaceChildren(
+      filter === "missing"
+        ? "No modules currently need data."
+        : "No due-diligence modules match this filter."
+    );
 }
 
 /**

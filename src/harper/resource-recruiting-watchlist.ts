@@ -10,17 +10,19 @@ const NO_MATCHING_MOVES = "no-matching-moves";
 const UNRESOLVED_FIRM = "unresolved-firm";
 
 export function watchlistFilters(target, db) {
-  const seen = new Set();
-  return collectFirmFilters(target)
-    .map(query => {
+  const { items } = collectFirmFilters(target).reduce(
+    (acc, query) => {
       const firm = resolveFirm(db, normalizeId(query));
       const key = firm?.id || `query:${query.toLowerCase()}`;
-      if (seen.has(key)) return null;
-      seen.add(key);
-      return { query, firm };
-    })
-    .filter(Boolean)
-    .slice(0, MAX_WATCHLIST_ITEMS);
+      if (acc.seen.has(key)) return acc;
+      return {
+        seen: new Set([...acc.seen, key]),
+        items: [...acc.items, { query, firm }],
+      };
+    },
+    { seen: new Set(), items: [] }
+  );
+  return items.slice(0, MAX_WATCHLIST_ITEMS);
 }
 
 export function firmIdsForFilter(filters) {
@@ -67,11 +69,11 @@ function collectFirmFilters(target) {
 }
 
 function targetValues(target, name) {
-  const values = [];
-  if (typeof target?.getAll === "function") values.push(...target.getAll(name));
-  const value = target?.get?.(name);
-  if (value != null && value !== "") values.push(value);
-  return [...new Set(values.map(String))];
+  const fromGetAll =
+    typeof target?.getAll === "function" ? [...target.getAll(name)] : [];
+  const single = target?.get?.(name);
+  const fromGet = single != null && single !== "" ? [single] : [];
+  return [...new Set([...fromGetAll, ...fromGet].map(String))];
 }
 
 function splitListValue(value) {

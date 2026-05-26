@@ -147,7 +147,7 @@ function ratingField(label, input) {
 
 async function saveRating(event, advisorId, controls, status) {
   event.preventDefault();
-  status.textContent = "Saving...";
+  status.replaceChildren("Saving...");
   try {
     await postJson(`/AdvisorRating/${encodeURIComponent(advisorId)}`, {
       ratingInt: controls.ratingInt.value,
@@ -157,11 +157,13 @@ async function saveRating(event, advisorId, controls, status) {
       planningDepth: controls.planningDepth.value,
       reviewText: controls.reviewText.value,
     });
-    status.textContent = "Saved.";
+    status.replaceChildren("Saved.");
   } catch (error) {
-    status.textContent = isAuthFailure(error)
-      ? "Sign in again to save ratings."
-      : "Could not save rating.";
+    status.replaceChildren(
+      isAuthFailure(error)
+        ? "Sign in again to save ratings."
+        : "Could not save rating."
+    );
   }
 }
 /* eslint-enable jsdoc/require-jsdoc -- This module owns form DOM wiring for the advisor rating card. */

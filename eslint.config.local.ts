@@ -53,20 +53,6 @@ export default [
       // and load-bearing in this repo; the rule was never the mechanism
       // protecting them.
       "functional/type-declaration-immutability": "off",
-      // The Harper resource modules and the legacy DOM-wired web pages
-      // build response objects and DOM fragments by mutating local
-      // accumulators. Until that imperative code is refactored as part
-      // of a separate cleanup, the `functional/immutable-data` rule is
-      // not actionable without per-file `eslint-disable` comments — which
-      // Epic #383 forbids. Disable here so existing in-source disables
-      // can be removed without regressing lint.
-      "functional/immutable-data": "off",
-      // The legacy `raymond-james-markdown` parser uses a regex-walk over
-      // mutable cursor state and declares its parse output as plain
-      // (non-readonly) interfaces. Removing the in-file disable of
-      // `functional/readonly-type` per Epic #383 would otherwise trigger
-      // new lint errors without any user-visible improvement.
-      "functional/readonly-type": "off",
     },
   },
   {
