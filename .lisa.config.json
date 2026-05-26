@@ -12,8 +12,8 @@
         "review": "status:code-review",
         "blocked": "status:blocked",
         "done": {
-          "dev": "status:on-dev",
-          "staging": "status:on-stg",
+          "dev": "status:done",
+          "staging": "status:done",
           "production": "status:done"
         }
       },
