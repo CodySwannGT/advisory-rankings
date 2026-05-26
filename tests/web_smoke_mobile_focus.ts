@@ -7,7 +7,8 @@ const NAV_BURGER_SELECTOR = ".nav-burger";
 /** Focus trail captured while tabbing through the mobile header. */
 interface TabSequence {
   readonly labels: readonly string[];
-  readonly reachedDrawer: boolean;
+  readonly reachedHiddenDrawer: boolean;
+  readonly reachedVisibleDrawer: boolean;
 }
 
 /**
@@ -26,17 +27,17 @@ export async function smokeMobileFocus(page: Page): Promise<readonly Check[]> {
 
   return [
     check(
-      !closedTabSequence.reachedDrawer,
+      !closedTabSequence.reachedHiddenDrawer,
       "mobile: closed drawer links are skipped by Tab",
       formatTabSequence(closedTabSequence)
     ),
     check(
-      openTabSequence.reachedDrawer,
+      openTabSequence.reachedVisibleDrawer,
       "mobile: open drawer links are reachable by Tab",
       formatTabSequence(openTabSequence)
     ),
     check(
-      !reclosedTabSequence.reachedDrawer,
+      !reclosedTabSequence.reachedHiddenDrawer,
       "mobile: re-closed drawer links are skipped by Tab",
       formatTabSequence(reclosedTabSequence)
     ),
@@ -80,10 +81,17 @@ async function readDrawerTabSequence(page: Page): Promise<TabSequence> {
       const focus = await readActiveFocus(page);
       return {
         labels: [...previous.labels, focus.label],
-        reachedDrawer: previous.reachedDrawer || focus.inDrawer,
+        reachedHiddenDrawer:
+          previous.reachedHiddenDrawer || (focus.inDrawer && !focus.inViewport),
+        reachedVisibleDrawer:
+          previous.reachedVisibleDrawer || (focus.inDrawer && focus.inViewport),
       };
     },
-    Promise.resolve({ labels: [], reachedDrawer: false })
+    Promise.resolve({
+      labels: [],
+      reachedHiddenDrawer: false,
+      reachedVisibleDrawer: false,
+    })
   );
 }
 
@@ -94,13 +102,21 @@ async function readDrawerTabSequence(page: Page): Promise<TabSequence> {
  */
 async function readActiveFocus(page: Page): Promise<{
   readonly inDrawer: boolean;
+  readonly inViewport: boolean;
   readonly label: string;
 }> {
   return await page.evaluate(() => {
     const active = document.activeElement;
-    if (!active) return { inDrawer: false, label: "none" };
+    if (!active) return { inDrawer: false, inViewport: false, label: "none" };
+    const rect = active.getBoundingClientRect();
     return {
       inDrawer: Boolean(active.closest(".nav-drawer")),
+      inViewport: Boolean(
+        rect.right > 0 &&
+        rect.left < window.innerWidth &&
+        rect.bottom > 0 &&
+        rect.top < window.innerHeight
+      ),
       label:
         active.textContent?.trim() ||
         active.getAttribute("aria-label") ||
