@@ -1189,6 +1189,15 @@ describe("Harper resource endpoints", () => {
     const eventBacked = await new (resources as any).Feed().get(
       routeTarget("", { mode: "event-backed" })
     );
+    const browserEvent = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "event" })
+    );
+    const browserMoves = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "moves" })
+    );
+    const browserCompliance = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "compliance" })
+    );
     const compliance = await new (resources as any).Feed().get(
       routeTarget("", {
         category: "compliance",
@@ -1213,6 +1222,45 @@ describe("Harper resource endpoints", () => {
     expect(
       eventBacked.items.every((item: any) => item.eventCards.length > 0)
     ).toBe(true);
+    expect(browserEvent).toMatchObject({
+      count: 2,
+      filters: { mode: "event-backed", category: "all" },
+      summary: {
+        returned: 2,
+        total: 3,
+        modeTotal: 2,
+        categoryTotal: 3,
+      },
+    });
+    expect(
+      browserEvent.items.every((item: any) => item.eventCards.length > 0)
+    ).toBe(true);
+    expect(browserMoves).toMatchObject({
+      count: 1,
+      filters: { mode: "recruiting-moves", category: "all" },
+      items: [
+        expect.objectContaining({
+          eventCards: [
+            expect.objectContaining({
+              kind: "transition",
+            }),
+          ],
+        }),
+      ],
+    });
+    expect(browserCompliance).toMatchObject({
+      count: 1,
+      filters: { mode: "compliance-disclosures", category: "all" },
+      items: [
+        expect.objectContaining({
+          eventCards: [
+            expect.objectContaining({
+              kind: "disclosure",
+            }),
+          ],
+        }),
+      ],
+    });
     expect(compliance).toMatchObject({
       count: 1,
       filters: { mode: "compliance-disclosures", category: "compliance" },
