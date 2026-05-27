@@ -1,8 +1,40 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
+
+/**
+ * Running count of WordPress REST requests made during a crawl.
+ */
+interface CrawlState {
+  readonly requests: number;
+}
+
+/**
+ * Inputs threaded through each recursive `crawlPage` call.
+ */
+interface CrawlPageInput {
+  readonly type: string;
+  readonly dir: string;
+  readonly page: number;
+  readonly requests: number;
+}
+
+/**
+ * Minimal shape required from a WordPress REST row to write a fixture.
+ */
+interface WpRow {
+  readonly id: number | string;
+  readonly [key: string]: unknown;
+}
+
+/**
+ * Result of applying the optional `--since` cutoff to one page of rows.
+ */
+interface FreshRowsResult {
+  readonly freshRows: ReadonlyArray<WpRow>;
+  readonly reachedSince: boolean;
+}
 
 const BASE = "https://www.advisorhub.com/wp-json/wp/v2";
 const TYPES = ["posts", "recruiting_moves", "firm", "team_bio"];
@@ -94,7 +126,7 @@ async function fetchJson(url: string, userAgent: string): Promise<unknown> {
  * @param page - Playwright page with AdvisorHub-compatible context.
  * @returns Parsed JSON payload.
  */
-async function fetchJsonWithBrowser(url: string, page): Promise<unknown> {
+async function fetchJsonWithBrowser(url: string, page: Page): Promise<unknown> {
   const response = await page.goto(url, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
@@ -135,8 +167,8 @@ try {
  * @param state - Running request count carried across types.
  * @returns Final request count.
  */
-async function crawlTypes(state) {
-  return TYPES.reduce(
+async function crawlTypes(state: CrawlState): Promise<CrawlState> {
+  return TYPES.reduce<Promise<CrawlState>>(
     async (previous, type) => crawlType(type, await previous),
     Promise.resolve(state)
   );
@@ -148,7 +180,7 @@ async function crawlTypes(state) {
  * @param state - Running request count carried across types.
  * @returns Updated request count after this type completes.
  */
-async function crawlType(type, state) {
+async function crawlType(type: string, state: CrawlState): Promise<CrawlState> {
   const dir = join(out, type);
   await mkdir(dir, { recursive: true });
   return crawlPage({ type, dir, page: 1, requests: state.requests });
@@ -159,13 +191,14 @@ async function crawlType(type, state) {
  * @param input - Crawl state for the current page.
  * @returns Updated request count after the page and its descendants complete.
  */
-async function crawlPage(input) {
+async function crawlPage(input: CrawlPageInput): Promise<CrawlState> {
   if (shouldStop(input)) return { requests: input.requests };
   const url = `${BASE}/${input.type}?per_page=${perPage}&page=${input.page}&_embed=wp:featuredmedia`;
   try {
-    const rows = await readRows(url);
+    const payload = await readRows(url);
     const requests = input.requests + 1;
-    if (!Array.isArray(rows) || rows.length === 0) return { requests };
+    const rows = toWpRows(payload);
+    if (rows.length === 0) return { requests };
     const { freshRows, reachedSince } = filterFreshRows(rows);
     await writeRows(input.dir, freshRows);
     console.error(
@@ -187,11 +220,33 @@ async function crawlPage(input) {
 }
 
 /**
+ * Narrows an unknown WordPress payload into typed rows.
+ * @param payload - Parsed JSON returned by fetch or browser fallback.
+ * @returns Typed rows when payload is an array, otherwise empty.
+ */
+function toWpRows(payload: unknown): ReadonlyArray<WpRow> {
+  if (!Array.isArray(payload)) return [];
+  return payload.filter(isWpRow);
+}
+
+/**
+ * Type guard that confirms a parsed JSON value looks like a WordPress row.
+ * @param value - Single element from the WordPress REST response array.
+ * @returns True when the value has an `id` field of `number` or `string`.
+ */
+function isWpRow(value: unknown): value is WpRow {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("id" in value)) return false;
+  const { id } = value;
+  return typeof id === "number" || typeof id === "string";
+}
+
+/**
  * Checks configured page and request limits before each request.
  * @param input - Crawl state for the current page.
  * @returns True when no more requests should be made.
  */
-function shouldStop(input) {
+function shouldStop(input: CrawlPageInput): boolean {
   return Boolean(
     (maxPages && input.page > maxPages) ||
     (maxRequests && input.requests >= maxRequests)
@@ -203,7 +258,7 @@ function shouldStop(input) {
  * @param url - WordPress REST page URL.
  * @returns Parsed JSON payload.
  */
-function readRows(url) {
+function readRows(url: string): Promise<unknown> {
   return browserPage
     ? fetchJsonWithBrowser(url, browserPage)
     : fetchJson(url, userAgent);
@@ -214,17 +269,18 @@ function readRows(url) {
  * @param rows - WordPress rows returned for one page.
  * @returns Rows to write and whether the cutoff was reached.
  */
-function filterFreshRows(rows) {
+function filterFreshRows(rows: ReadonlyArray<WpRow>): FreshRowsResult {
   if (!since) return { freshRows: rows, reachedSince: false };
+  const cutoff = since;
   const freshRows = rows.filter(row => {
     const date = rowDate(row);
-    return !date || date >= since;
+    return !date || date >= cutoff;
   });
   return {
     freshRows,
     reachedSince: rows.some(row => {
       const date = rowDate(row);
-      return Boolean(date && date < since);
+      return Boolean(date && date < cutoff);
     }),
   };
 }
@@ -235,7 +291,10 @@ function filterFreshRows(rows) {
  * @param rows - Fresh rows that passed the optional cutoff.
  * @returns Promise that resolves when all rows are written.
  */
-function writeRows(dir, rows) {
+function writeRows(
+  dir: string,
+  rows: ReadonlyArray<WpRow>
+): Promise<ReadonlyArray<void>> {
   return Promise.all(
     rows.map(row =>
       writeFile(
@@ -255,7 +314,13 @@ function writeRows(dir, rows) {
  * @param reachedSince - Whether the since cutoff stopped this type.
  * @returns Human-readable progress summary.
  */
-function pageSummary(type, page, freshCount, totalCount, reachedSince) {
+function pageSummary(
+  type: string,
+  page: number,
+  freshCount: number,
+  totalCount: number,
+  reachedSince: boolean
+): string {
   return `[${type}] page ${page}: ${freshCount}/${totalCount}${
     reachedSince ? " (since cutoff reached)" : ""
   }`;
