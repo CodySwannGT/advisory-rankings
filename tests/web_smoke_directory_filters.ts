@@ -1,14 +1,10 @@
 import type { Page } from "playwright";
+import { BASE, check, type Check } from "./web_smoke_support.js";
 import {
-  BASE,
-  DEPLOYED_DATA_TIMEOUT,
-  check,
-  shot,
-  smokeGoto,
-  type Check,
-} from "./web_smoke_support.js";
-
-const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
+  captureEmptyState,
+  captureFilteredState,
+  mobileOverflow,
+} from "./web_smoke_directory_filter_support.js";
 
 /** Minimal firm row shape needed for filter smoke assertions. */
 interface FirmFixture {
@@ -20,14 +16,6 @@ interface FirmFixture {
 interface TeamFixture {
   readonly currentFirmName?: string;
   readonly serviceModel?: string;
-}
-
-/** Browser state read from a filtered directory page. */
-interface FilteredDirectoryState {
-  readonly activeValue?: string;
-  readonly channelValue?: string;
-  readonly firmValue?: string;
-  readonly rowCount: number;
 }
 
 /**
@@ -55,6 +43,20 @@ async function smokeFirmDirectoryFilters(
   const fixture = await firstFirmFilterFixture(page);
   const qs = firmFilterQuery(fixture);
   const filtered = await captureFilteredState(page, "firms", qs);
+  const wide390 = await mobileOverflow(
+    page,
+    "firms",
+    qs,
+    390,
+    "06-firms-filtered-mobile-390"
+  );
+  const wide320 = await mobileOverflow(
+    page,
+    "firms",
+    qs,
+    320,
+    "06-firms-filtered-mobile-320"
+  );
   const emptyControlsAvailable = await captureEmptyState(
     page,
     "firms",
@@ -75,6 +77,19 @@ async function smokeFirmDirectoryFilters(
     ),
     check(filtered.rowCount >= 1, "firms filters: filtered rows render"),
     check(
+      filtered.loaded === filtered.rowCount &&
+        filtered.total >= filtered.loaded,
+      "firms filters: loaded and total counts render",
+      `${filtered.loaded}/${filtered.total}`
+    ),
+    check(
+      /^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
+      "firms filters: first row links to canonical firm profile",
+      filtered.firstHref
+    ),
+    check(!wide390, "firms filters: 390px layout has no horizontal overflow"),
+    check(!wide320, "firms filters: 320px layout has no horizontal overflow"),
+    check(
       emptyControlsAvailable,
       "firms filters: empty state keeps controls available"
     ),
@@ -94,12 +109,14 @@ async function smokeTeamDirectoryFilters(
   const filtered = await captureFilteredState(page, "teams", qs);
   const wide390 = await mobileOverflow(
     page,
+    "teams",
     qs,
     390,
     "06-teams-filtered-mobile-390"
   );
   const wide320 = await mobileOverflow(
     page,
+    "teams",
     qs,
     320,
     "06-teams-filtered-mobile-320"
@@ -118,7 +135,24 @@ async function smokeTeamDirectoryFilters(
       "teams filters: current firm restores from URL",
       filtered.firmValue
     ),
+    check(
+      !fixture.serviceModel ||
+        filtered.serviceModelValue?.toLowerCase() === fixture.serviceModel,
+      "teams filters: service model restores from URL",
+      filtered.serviceModelValue
+    ),
     check(filtered.rowCount >= 1, "teams filters: filtered rows render"),
+    check(
+      filtered.loaded === filtered.rowCount &&
+        filtered.total >= filtered.loaded,
+      "teams filters: loaded and total counts render",
+      `${filtered.loaded}/${filtered.total}`
+    ),
+    check(
+      /^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
+      "teams filters: first row links to canonical team profile",
+      filtered.firstHref
+    ),
     check(!wide390, "teams filters: 390px layout has no horizontal overflow"),
     check(!wide320, "teams filters: 320px layout has no horizontal overflow"),
     check(
@@ -187,104 +221,4 @@ function teamFilterQuery(fixture: TeamFixture): URLSearchParams {
   if (fixture.currentFirmName) qs.set("firm", fixture.currentFirmName);
   if (fixture.serviceModel) qs.set("serviceModel", fixture.serviceModel);
   return qs;
-}
-
-/**
- * Opens a filtered directory, reloads it, and reads restored controls.
- * @param page - Browser page to inspect.
- * @param pageName - Directory route name.
- * @param qs - Filter query used for the directory.
- * @returns Visible filter control values and rendered row count.
- */
-async function captureFilteredState(
-  page: Page,
-  pageName: "firms" | "teams",
-  qs: URLSearchParams
-): Promise<FilteredDirectoryState> {
-  await smokeGoto(page, `${BASE}/${pageName}?${qs.toString()}`);
-  await page.locator(".directory-filters").waitFor({
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
-  const state = {
-    activeValue:
-      pageName === "firms"
-        ? await page.locator('[name="active"]').inputValue()
-        : undefined,
-    channelValue:
-      pageName === "firms"
-        ? await page.locator('[name="channel"]').inputValue()
-        : undefined,
-    firmValue:
-      pageName === "teams"
-        ? await page.locator('[name="firm"]').inputValue()
-        : undefined,
-    rowCount: await page.locator(DIRECTORY_ROW_SELECTOR).count(),
-  };
-  await shot(page, `06-${pageName}-filtered-url-state`);
-  return state;
-}
-
-/**
- * Opens a zero-result filter combination and confirms controls remain.
- * @param page - Browser page to inspect.
- * @param pageName - Directory route name.
- * @param expectedCopy - Empty-state copy expected on the page.
- * @param shotName - Screenshot basename.
- * @returns Whether controls remain enabled.
- */
-async function captureEmptyState(
-  page: Page,
-  pageName: "firms" | "teams",
-  expectedCopy: string,
-  shotName: string
-): Promise<boolean> {
-  await smokeGoto(page, `${BASE}/${pageName}?q=zzzz-no-${pageName}-match`);
-  await page.getByText(expectedCopy).waitFor({
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
-  const controlsAvailable = await controlsRemainAvailable(page);
-  await shot(page, shotName);
-  return controlsAvailable;
-}
-
-/**
- * Opens a filtered team directory at a mobile width and checks overflow.
- * @param page - Browser page to inspect.
- * @param qs - Filter query used for the directory.
- * @param width - Mobile viewport width.
- * @param shotName - Screenshot basename.
- * @returns True when content is wider than the viewport.
- */
-async function mobileOverflow(
-  page: Page,
-  qs: URLSearchParams,
-  width: number,
-  shotName: string
-): Promise<boolean> {
-  await page.setViewportSize({ width, height: 900 });
-  await smokeGoto(page, `${BASE}/teams?${qs.toString()}`);
-  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
-  const hasOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth + 1
-  );
-  await shot(page, shotName);
-  return hasOverflow;
-}
-
-/**
- * Checks that filter controls are still interactable.
- * @param page - Browser page to inspect.
- * @returns Whether an enabled filter form remains visible.
- */
-async function controlsRemainAvailable(page: Page): Promise<boolean> {
-  return await page
-    .locator(".directory-filters input, .directory-filters select")
-    .first()
-    .isEnabled();
 }

@@ -55,11 +55,14 @@ export async function smokeAdvisorDirectoryFilters(
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile390 = await viewportOverflow(page);
+  await shot(page, "06-advisors-filtered-mobile-390");
 
   await page.setViewportSize({ width: 320, height: 720 });
-  await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
+  await smokeGoto(page, filteredUrl);
+  await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile320 = await viewportOverflow(page);
+  await shot(page, "06-advisors-filtered-mobile-320");
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
@@ -138,6 +141,19 @@ function filterChecks(facts: {
       `${facts.filteredFacts.rowCount} of ${facts.filteredFacts.total}`
     ),
     check(
+      facts.filteredFacts.loaded === facts.filteredFacts.rowCount &&
+        facts.filteredFacts.loaded > 0,
+      "advisors filters: loaded count tracks rendered rows",
+      `${facts.filteredFacts.loaded}/${facts.filteredFacts.rowCount}`
+    ),
+    check(
+      /^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(
+        facts.filteredFacts.firstHref
+      ),
+      "advisors filters: first row links to canonical advisor profile",
+      facts.filteredFacts.firstHref
+    ),
+    check(
       facts.filteredFacts.rowTexts.every(
         text => /active/i.test(text) && /CRD/i.test(text)
       ),
@@ -203,14 +219,21 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
       const total = labels.find(label => label.textContent === "Total");
+      const loaded = labels.find(label => label.textContent === "Loaded");
       const totalValue = total?.nextElementSibling?.textContent ?? "";
+      const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
       const rows = Array.from(document.querySelectorAll(rowSelector));
 
       return {
         bodyText: document.body.textContent || "",
         careerStatus: valueOf("careerStatus"),
         firm: valueOf("firm"),
+        firstHref:
+          rows[0]?.closest("a")?.getAttribute("href") ||
+          rows[0]?.querySelector("a")?.getAttribute("href") ||
+          "",
         hasCrd: valueOf("hasCrd"),
+        loaded: Number(loadedValue.replace(/,/g, "")),
         rowCount: rows.length,
         rowTexts: rows
           .slice(0, 5)
@@ -243,7 +266,9 @@ interface AdvisorFilterFacts {
   readonly bodyText: string;
   readonly careerStatus: string;
   readonly firm: string;
+  readonly firstHref: string;
   readonly hasCrd: string;
+  readonly loaded: number;
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
   readonly total: number;
