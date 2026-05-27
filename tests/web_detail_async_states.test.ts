@@ -391,6 +391,34 @@ describe("detail async states", () => {
     }
   });
 
+  it("keeps active firm due-diligence filters chip-sized", async () => {
+    const viewports = [
+      { width: 1180, height: 900 },
+      { width: 390, height: 900 },
+    ];
+
+    for (const viewport of viewports) {
+      const page = await browser.newPage({ viewport });
+
+      try {
+        await page.route("**/Me", async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route("**/FirmProfile/firm-1", async route => {
+          await route.fulfill({ json: firmDueDiligenceProfile() });
+        });
+
+        await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        await expectCompactFirmDueDiligenceFilters(page);
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it("shows a firm due-diligence empty state when a filter has no modules", async () => {
     const viewports = [
       { width: 1180, height: 900 },
@@ -1039,6 +1067,38 @@ function emptyConfidenceSummary() {
     derived: 0,
     total: 0,
   };
+}
+
+async function expectCompactFirmDueDiligenceFilters(page: Page): Promise<void> {
+  const section = page.locator(".firm-dd-card").first();
+  await section
+    .getByRole("heading", { name: "Firm due diligence" })
+    .waitFor({ timeout: QUICK_TIMEOUT });
+
+  for (const name of ["All", "Source-backed", "Needs data"]) {
+    await section.getByRole("button", { name }).click();
+    const activeMetric = await section
+      .locator(".firm-dd-filter[aria-pressed='true']")
+      .evaluate(button => {
+        const box = button.getBoundingClientRect();
+        const parentBox = button.parentElement?.getBoundingClientRect();
+
+        return {
+          width: Math.round(box.width),
+          parentWidth: Math.round(parentBox?.width || 0),
+        };
+      });
+
+    expect(activeMetric.width).toBeGreaterThan(0);
+    expect(activeMetric.width).toBeLessThan(activeMetric.parentWidth * 0.7);
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth
+      )
+    ).toBe(true);
+  }
 }
 
 /**
