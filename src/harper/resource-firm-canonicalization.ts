@@ -1,10 +1,41 @@
-// @ts-nocheck
+/**
+ * Public-resource firm canonicalization: collapses curated alias duplicates
+ * (e.g. "Morgan Stanley Wealth Management") into their canonical firm row
+ * and rewrites foreign-key references across the loaded resource bundle.
+ *
+ * Typed against the raw rows-by-key shape produced upstream by the public
+ * resource loader: each row is a `Readonly<Record<string, unknown>>` because
+ * Harper hands back arbitrary column maps and the downstream
+ * `narrowResourceTableRows` step is what enforces the per-table interfaces
+ * from `src/types/harper-schema.ts`. Typing rows as `unknown`-valued maps
+ * here keeps the canonicalizer honest about what it actually knows about
+ * its inputs (id, name, plus configured foreign-key fields by name).
+ */
+
+/** Single row pulled from a Harper table read; values are field-keyed. */
+type RawRow = Readonly<Record<string, unknown>>;
+
+/**
+ * Raw rows-by-key map shared with the public resource loader. Matches the
+ * shape produced by `loadTableRows` in `resource-data.ts`: every key the
+ * caller cares about is present and points to an array (possibly empty).
+ *
+ * The directory endpoint callers under `resource-directory-endpoints.ts`
+ * cherry-pick only the keys they need; that file is still `@ts-nocheck`,
+ * so its looser usage typechecks against this signature without the
+ * canonicalizer having to advertise an optional-value contract here.
+ */
+type RawRowsByKey = Readonly<Record<string, readonly RawRow[]>>;
+
+/** Field names on each table that carry firm IDs eligible for rewriting. */
+type FirmReferenceFieldMap = Readonly<Record<string, readonly string[]>>;
+
 const MORGAN_STANLEY_ID = "8e106b7e-efcc-5aed-8827-fd0ea645b6df";
 const MORGAN_STANLEY_NAME = "Morgan Stanley";
 const MORGAN_STANLEY_WEALTH_MANAGEMENT_ALIAS =
   "Morgan Stanley Wealth Management";
 
-const FIRM_REFERENCE_FIELDS = {
+const FIRM_REFERENCE_FIELDS: FirmReferenceFieldMap = {
   branches: ["firmId"],
   branchAssignments: ["firmId"],
   employments: ["firmId"],
@@ -22,9 +53,10 @@ const FIRM_REFERENCE_FIELDS = {
  * @param rows - Raw rows loaded from Harper tables for one public request.
  * @returns Rows with stale alias firm IDs resolved to their canonical firm IDs.
  */
-export function canonicalizeFirmResourceRows(rows) {
-  const staleAliasRows = (rows.firms ?? []).filter(isMorganStanleyAliasFirm);
-  const replacements = new Map(
+export function canonicalizeFirmResourceRows(rows: RawRowsByKey): RawRowsByKey {
+  const firms = rows.firms ?? [];
+  const staleAliasRows = firms.filter(isMorganStanleyAliasFirm);
+  const replacements = new Map<string, string>(
     staleAliasRows.map(firm => [String(firm.id), MORGAN_STANLEY_ID])
   );
   if (!staleAliasRows.length) {
@@ -34,7 +66,7 @@ export function canonicalizeFirmResourceRows(rows) {
   return rewriteFirmReferences(
     {
       ...rows,
-      firms: canonicalFirmRows(rows.firms ?? [], staleAliasRows),
+      firms: canonicalFirmRows(firms, staleAliasRows),
       firmAliases: aliasRows(rows.firmAliases),
     },
     replacements
@@ -46,10 +78,10 @@ export function canonicalizeFirmResourceRows(rows) {
  * @param firm - Candidate Firm row from Harper.
  * @returns True when the row should render as Morgan Stanley.
  */
-function isMorganStanleyAliasFirm(firm) {
+function isMorganStanleyAliasFirm(firm: RawRow): boolean {
   return (
-    firm?.id !== MORGAN_STANLEY_ID &&
-    normalizeFirmAlias(firm?.name) ===
+    firm.id !== MORGAN_STANLEY_ID &&
+    normalizeFirmAlias(firm.name) ===
       normalizeFirmAlias(MORGAN_STANLEY_WEALTH_MANAGEMENT_ALIAS)
   );
 }
@@ -60,15 +92,18 @@ function isMorganStanleyAliasFirm(firm) {
  * @param staleAliasRows - Alias rows that should not be publicly visible.
  * @returns Firm rows containing one canonical Morgan Stanley row.
  */
-function canonicalFirmRows(firms, staleAliasRows) {
-  const canonical =
+function canonicalFirmRows(
+  firms: readonly RawRow[],
+  staleAliasRows: readonly RawRow[]
+): readonly RawRow[] {
+  const canonical: RawRow =
     firms.find(firm => firm.id === MORGAN_STANLEY_ID) ??
     staleAliasRows.reduce(
       (best, firm) =>
         filledFieldCount(firm) > filledFieldCount(best) ? firm : best,
-      staleAliasRows[0]
+      staleAliasRows[0] as RawRow
     );
-  const merged = staleAliasRows.reduce(
+  const merged = staleAliasRows.reduce<RawRow>(
     (current, firm) => mergeFirmRows(current, firm),
     canonical
   );
@@ -90,10 +125,10 @@ function canonicalFirmRows(firms, staleAliasRows) {
  * @param alias - Stale alias Firm payload.
  * @returns Canonical Firm payload with useful alias details retained.
  */
-function mergeFirmRows(canonical, alias) {
-  const base =
+function mergeFirmRows(canonical: RawRow, alias: RawRow): RawRow {
+  const base: RawRow =
     filledFieldCount(alias) > filledFieldCount(canonical) ? alias : canonical;
-  const fallback = base === alias ? canonical : alias;
+  const fallback: RawRow = base === alias ? canonical : alias;
   return {
     ...fallback,
     ...base,
@@ -110,8 +145,8 @@ function mergeFirmRows(canonical, alias) {
  * @param existingAliases - FirmAlias rows already present in Harper.
  * @returns Alias rows containing the Morgan Stanley Wealth Management alias.
  */
-function aliasRows(existingAliases = []) {
-  const curatedAlias = {
+function aliasRows(existingAliases: readonly RawRow[] = []): readonly RawRow[] {
+  const curatedAlias: RawRow = {
     id: "68e35dd7-ed75-54a6-9ea2-417545e25f17",
     firmId: MORGAN_STANLEY_ID,
     alias: MORGAN_STANLEY_WEALTH_MANAGEMENT_ALIAS,
@@ -132,7 +167,10 @@ function aliasRows(existingAliases = []) {
  * @param replacements - Stale firm ID to canonical firm ID replacements.
  * @returns Public resource rows with rewritten firm references.
  */
-function rewriteFirmReferences(rows, replacements) {
+function rewriteFirmReferences(
+  rows: RawRowsByKey,
+  replacements: ReadonlyMap<string, string>
+): RawRowsByKey {
   return Object.fromEntries(
     Object.entries(rows).map(([key, value]) => [
       key,
@@ -148,13 +186,19 @@ function rewriteFirmReferences(rows, replacements) {
  * @param replacements - Stale firm ID to canonical firm ID replacements.
  * @returns Rows with matching firm IDs rewritten.
  */
-function rewriteTableRows(tableRows, fields, replacements) {
-  if (!Array.isArray(tableRows) || !fields.length) return tableRows;
+function rewriteTableRows(
+  tableRows: readonly RawRow[],
+  fields: readonly string[],
+  replacements: ReadonlyMap<string, string>
+): readonly RawRow[] {
+  if (!fields.length) return tableRows;
   return tableRows.map(row =>
     Object.fromEntries(
       Object.entries(row).map(([field, value]) => [
         field,
-        fields.includes(field) && replacements.has(value)
+        fields.includes(field) &&
+        typeof value === "string" &&
+        replacements.has(value)
           ? replacements.get(value)
           : value,
       ])
@@ -167,7 +211,7 @@ function rewriteTableRows(tableRows, fields, replacements) {
  * @param value - Firm name or alias text.
  * @returns Case-folded firm alias key.
  */
-function normalizeFirmAlias(value) {
+function normalizeFirmAlias(value: unknown): string {
   return String(value || "")
     .toLowerCase()
     .replaceAll("&", " and ")
@@ -182,7 +226,7 @@ function normalizeFirmAlias(value) {
  * @param row - Row being compared for detail preservation.
  * @returns Number of non-empty values.
  */
-function filledFieldCount(row) {
+function filledFieldCount(row: RawRow | undefined): number {
   return Object.values(row ?? {}).filter(hasValue).length;
 }
 
@@ -191,7 +235,7 @@ function filledFieldCount(row) {
  * @param value - Field value from a row.
  * @returns True when the value should be preserved.
  */
-function hasValue(value) {
+function hasValue(value: unknown): boolean {
   if (value == null) return false;
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
