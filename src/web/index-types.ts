@@ -19,6 +19,7 @@ import {
   Heading,
   Button,
   Avatar,
+  AsyncStateNotice,
 } from "./design-system/index.js";
 import type {
   FeedFilterCardState,
@@ -105,3 +106,6 @@ export const HeadingC = Heading as unknown as DesignSystemComponent;
 export const ButtonC = Button as unknown as DesignSystemComponent;
 /** Typed adapter for `Avatar`. */
 export const AvatarC = Avatar as unknown as DesignSystemComponent;
+/** Typed adapter for `AsyncStateNotice`. */
+export const AsyncStateNoticeC =
+  AsyncStateNotice as unknown as DesignSystemComponent;

@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+/* eslint-disable max-lines -- Browser fixture coverage for async page states stays self-contained. */
 import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -13,6 +14,7 @@ const ME_ROUTE = "**/Me";
 const FEED_ROUTE = "**/Feed";
 const NO_ARTICLES_TEXT = "No articles yet";
 const FEED_ERROR_TITLE = "Could not load feed";
+const TEMPORARY_OUTAGE = "temporary outage";
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
   { name: "mobile", width: 320, height: 740 },
@@ -114,7 +116,7 @@ browserDescribe("web async states", () => {
       await route.fulfill({
         status: 503,
         contentType: "application/json",
-        body: JSON.stringify({ error: "temporary outage" }),
+        body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
       });
     });
 
@@ -123,9 +125,50 @@ browserDescribe("web async states", () => {
     await page.getByText(FEED_ERROR_TITLE).waitFor({
       timeout: QUICK_TIMEOUT,
     });
-    await page.getByText(/GET \/Feed .* 503/).waitFor();
+    expect(await page.getByText("Try again shortly.").isVisible()).toBe(true);
+    expect(await page.getByRole("button", { name: "Retry" }).isVisible()).toBe(
+      true
+    );
+    expect(await page.getByText(TEMPORARY_OUTAGE).count()).toBe(0);
     expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(1);
     await page.locator(".nav a", { hasText: "Home" }).waitFor();
+    await page.close();
+  });
+
+  it("retries feed failures in place and renders the successful feed", async () => {
+    const page = await browser.newPage();
+    const feedRequests: string[] = [];
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      feedRequests.push(route.request().url());
+      if (feedRequests.length === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+        return;
+      }
+      await route.fulfill({ json: feedWithArticle() });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+    await page.getByText(FEED_ERROR_TITLE).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByRole("link", { name: "Retry recovery article" }).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    expect(
+      feedRequests.map(requestUrl => new URL(requestUrl).pathname)
+    ).toEqual(["/Feed", "/Feed"]);
+    expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(0);
     await page.close();
   });
 
@@ -237,7 +280,7 @@ async function captureFeedErrorEvidence(
     await route.fulfill({
       status: 503,
       contentType: "application/json",
-      body: JSON.stringify({ error: "temporary outage" }),
+      body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
     });
   });
 
@@ -260,6 +303,59 @@ async function captureFeedErrorEvidence(
  */
 function evidencePath(viewportName: string, stateName: string): string {
   return join(SHOTS, `async-${viewportName}-${stateName}.png`);
+}
+
+/** Article stub used in the minimal feed payload. */
+type FeedArticleStub = {
+  readonly id: string;
+  readonly headline: string;
+  readonly dek: string;
+  readonly category: string;
+  readonly publishedDate: string;
+  readonly modifiedDate: string;
+  readonly authors: readonly string[];
+  readonly url: string;
+};
+
+/** Single feed item used in the minimal feed payload. */
+type FeedItemStub = {
+  readonly article: FeedArticleStub;
+  readonly eventCards: readonly never[];
+  readonly firms: readonly never[];
+  readonly teams: readonly never[];
+  readonly advisors: readonly never[];
+};
+
+/** Return type of `feedWithArticle()`: minimal Feed payload with one article. */
+type FeedWithArticle = {
+  readonly items: readonly FeedItemStub[];
+};
+
+/**
+ * Builds a minimal feed payload that exercises the post-card success path.
+ * @returns Feed resource payload with one article.
+ */
+function feedWithArticle(): FeedWithArticle {
+  return {
+    items: [
+      {
+        article: {
+          id: "article-retry",
+          headline: "Retry recovery article",
+          dek: "Loaded after a manual retry.",
+          category: "transitions",
+          publishedDate: "2026-05-27T00:00:00.000Z",
+          modifiedDate: "2026-05-27T00:00:00.000Z",
+          authors: ["AdvisorBook"],
+          url: "https://example.com/retry-recovery",
+        },
+        eventCards: [],
+        firms: [],
+        teams: [],
+        advisors: [],
+      },
+    ],
+  };
 }
 
 /**
@@ -330,3 +426,5 @@ function contentType(filePath: string): string {
       return "application/octet-stream";
   }
 }
+
+/* eslint-enable max-lines -- End self-contained async-state browser coverage. */

@@ -33,6 +33,7 @@ import {
 } from "./feed-filters.js";
 import {
   AvatarC,
+  AsyncStateNoticeC,
   BrowseCardC,
   ButtonC,
   EmptyCardC,
@@ -66,22 +67,32 @@ MountThreeColumnPage({
   search,
   pageTitle: "AdvisorBook feed",
   build({ left, center, right }: ThreeColumnLayout): void {
-    // Skeleton until /Feed resolves.
-    center.append(SkeletonCardC(), SkeletonCardC());
+    const loadFeed = (): void => {
+      clear(left);
+      clear(center);
+      clear(right);
+      center.append(SkeletonCardC(), SkeletonCardC());
 
-    (api as unknown as (path: string) => Promise<FeedPayload>)("/Feed")
-      .then((payload: FeedPayload) => {
-        renderFeed({ left, center, right }, payload.items ?? []);
-      })
-      .catch((err: unknown) => {
-        clear(center);
-        center.appendChild(
-          EmptyCardC({
-            title: "Could not load feed",
-            body: errorMessage(err),
-          })
-        );
-      });
+      (api as unknown as (path: string) => Promise<FeedPayload>)("/Feed")
+        .then((payload: FeedPayload) => {
+          renderFeed({ left, center, right }, payload.items ?? []);
+        })
+        .catch((err: unknown) => {
+          console.error("Feed route failed to load", err);
+          clear(center);
+          center.appendChild(
+            AsyncStateNoticeC({
+              kind: "error",
+              title: "Could not load feed",
+              body: "Try again shortly.",
+              actionLabel: "Retry",
+              onAction: loadFeed,
+            })
+          );
+        });
+    };
+
+    loadFeed();
   },
 });
 
@@ -319,14 +330,4 @@ function isTransitionCard(card: FeedEventCard): card is TransitionEventCard {
  */
 function isDisclosureCard(card: FeedEventCard): card is DisclosureEventCard {
   return card.kind === "disclosure";
-}
-
-/**
- * Coerces an unknown rejection value into a user-facing error string.
- * @param err - Rejection value from the `/Feed` request.
- * @returns Display string for the empty card.
- */
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
 }

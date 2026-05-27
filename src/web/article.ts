@@ -43,10 +43,10 @@ import {
   clear,
 } from "./design-system/index.js";
 import {
-  DetailErrorCard,
   DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
+  renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
 
@@ -66,18 +66,28 @@ mountThreeColumnPage({
       );
       return;
     }
-    renderDetailLoading({ center, right, label: "article" });
-    api<ArticleViewPayload>(`/ArticleView/${encodeURIComponent(id)}`)
-      .then(d => {
-        clear(center);
-        clear(right);
-        render(d, center, right);
-      })
-      .catch((err: unknown) => {
-        clear(center);
-        clear(right);
-        center.appendChild(DetailErrorCard("Could not load article", err));
-      });
+    const loadArticle = (): void => {
+      clear(center);
+      clear(right);
+      renderDetailLoading({ center, right, label: "article" });
+      api<ArticleViewPayload>(`/ArticleView/${encodeURIComponent(id)}`)
+        .then(d => {
+          clear(center);
+          clear(right);
+          render(d, center, right);
+        })
+        .catch((err: unknown) => {
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load article",
+            error: err,
+            onRetry: loadArticle,
+          });
+        });
+    };
+
+    loadArticle();
   },
 });
 
