@@ -49,6 +49,15 @@ import {
   advisorEvidenceProfileSections,
   mobileEvidenceProfileSections,
 } from "./advisor-evidence-sections.js";
+import {
+  isAdvisorTeamRow,
+  isDesignationStub,
+  isEducationStub,
+  isLicenseStub,
+  isOutsideBusinessActivityRow,
+  isRegistrationApplicationRow,
+  narrowRows,
+} from "./advisor-row-predicates.js";
 
 /**
  * Narrow callable type for design-system helpers that still opt out of TS.
@@ -159,7 +168,7 @@ function isErrorPayload(
     typeof payload === "object" &&
     payload !== null &&
     "error" in payload &&
-    Boolean((payload as ErrorPayload).error)
+    Boolean(payload.error)
   );
 }
 
@@ -247,7 +256,7 @@ function advisorSubtitle(d: AdvisorProfilePayload): string {
  */
 function firmNameOf(firm: unknown): string | undefined {
   if (firm && typeof firm === "object" && "name" in firm) {
-    const name = (firm as Readonly<Record<string, unknown>>).name;
+    const name = firm.name;
     if (typeof name === "string") return name;
   }
   return undefined;
@@ -281,17 +290,27 @@ function advisorCenterSections(
     privateRatingCard(d.advisor.id),
     mobileEvidenceProfileSections(d),
     careerSection(d),
-    teamsSection(resourceRows(d.teams)),
+    teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
     PartialFailureCard("Teams", d.teams),
-    licensesSection(resourceRows(d.licenses), d.brokerCheckSnapshot),
+    licensesSection(
+      narrowRows(resourceRows(d.licenses), isLicenseStub),
+      d.brokerCheckSnapshot
+    ),
     PartialFailureCard("Licenses", d.licenses),
-    designationsSection(resourceRows(d.designations)),
+    designationsSection(
+      narrowRows(resourceRows(d.designations), isDesignationStub)
+    ),
     PartialFailureCard("Designations", d.designations),
-    educationSection(resourceRows(d.education)),
+    educationSection(narrowRows(resourceRows(d.education), isEducationStub)),
     PartialFailureCard("Education", d.education),
     disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
     PartialFailureCard("Disclosures", d.disclosures),
-    outsideActivitiesSection(resourceRows(d.outsideBusinessActivities)),
+    outsideActivitiesSection(
+      narrowRows(
+        resourceRows(d.outsideBusinessActivities),
+        isOutsideBusinessActivityRow
+      )
+    ),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
     transitions.length
       ? SectionCardComponent({
@@ -323,7 +342,12 @@ function advisorRightSections(
   return [
     identityCard(d.advisor),
     ...advisorEvidenceProfileSections(d),
-    registrationApplicationsSection(resourceRows(d.registrationApplications)),
+    registrationApplicationsSection(
+      narrowRows(
+        resourceRows(d.registrationApplications),
+        isRegistrationApplicationRow
+      )
+    ),
     PartialFailureCard("Registration applications", d.registrationApplications),
   ];
 }
