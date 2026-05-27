@@ -1,7 +1,99 @@
-// @ts-nocheck
 import { el, clear } from "./dom.js";
 import { Button } from "./atoms.js";
-import { GlobalSearch } from "./organisms-search.js";
+import * as Search from "./organisms-search.js";
+
+/**
+ * Normalized `/Me` response consumed by the navbar.
+ *
+ * Produced by `src/web/app.ts#refreshMe`, which is still `@ts-nocheck`'d in
+ * a parallel change. Restated here so the navbar can render auth state
+ * without leaning on `any`. All fields are optional because the producer
+ * may emit an authenticated payload, an unauthenticated payload, or a
+ * temporary fallback when `/Me` fails.
+ */
+export interface NavbarMe {
+  readonly authenticated?: boolean;
+  readonly authUnavailable?: boolean;
+  readonly message?: string;
+  readonly username?: string;
+}
+
+/**
+ * Adapter for a single global-search request used by the header search box.
+ * Mirrors `app.ts#search`, but kept narrow so the organism only depends on
+ * what it actually consumes.
+ */
+export type NavbarSearch = (query: string) => Promise<unknown>;
+
+/** Optional refresher that resolves the current `/Me` snapshot. */
+export type NavbarRefreshMe = () => Promise<NavbarMe>;
+
+/** Optional logout handler invoked by the sign-out affordance. */
+export type NavbarLogout = () => void;
+
+/** Navbar rendering options. */
+export interface NavbarOptions {
+  readonly active?: string;
+  readonly refreshMe?: NavbarRefreshMe;
+  readonly logout?: NavbarLogout;
+  readonly search?: NavbarSearch;
+}
+
+/**
+ * Typed view of the `organisms-search.ts` exports actually consumed by
+ * this organism. The producer module is still `@ts-nocheck`'d in a
+ * parallel change, so its inferred shapes leak `any`s that don't match
+ * the real contract. This shim restates the contract once.
+ */
+/** Option bag forwarded to the underlying `GlobalSearch` organism. */
+interface GlobalSearchShimOptions {
+  readonly search?: NavbarSearch;
+}
+
+/** Typed view of `organisms-search.ts` consumed via {@link SearchModule}. */
+interface SearchShim {
+  readonly GlobalSearch: (options: GlobalSearchShimOptions) => HTMLElement;
+}
+
+/**
+ * Single `unknown` adapter cast for the whole `organisms-search` module —
+ * see {@link SearchShim}. Restated as one local module-level cast so the
+ * public navbar code can call typed wrappers below.
+ */
+const SearchModule = Search as unknown as SearchShim;
+
+const DRAWER_OPEN_CLASS = "drawer-open";
+
+/**
+ * Returns the current open/closed state of the mobile drawer by reading
+ * the body class that {@link toggleDrawer} owns. The DOM is the single
+ * source of truth so the organism stays free of mutable in-memory state
+ * — satisfying `functional/immutable-data` without a class escape hatch.
+ * @returns True when the drawer is currently open.
+ */
+function isDrawerOpen(): boolean {
+  return document.body.classList.contains(DRAWER_OPEN_CLASS);
+}
+
+/** Render context shared by the auth helpers. */
+interface MeRenderContext {
+  readonly meSpot: HTMLElement;
+  readonly me: NavbarMe;
+  readonly logout?: NavbarLogout;
+}
+
+/** Drawer focus-state context. */
+interface DrawerFocusContext {
+  readonly drawer: HTMLElement;
+  readonly open: boolean;
+}
+
+/** Keyboard close context shared with the global listener. */
+interface DrawerKeyboardContext {
+  readonly event: KeyboardEvent;
+  readonly burger: HTMLElement;
+  readonly drawer: HTMLElement;
+}
 
 /**
  * Sticky top navigation with search, auth status, and a mobile drawer.
@@ -12,28 +104,31 @@ import { GlobalSearch } from "./organisms-search.js";
  * @param root0.search - Optional global search adapter.
  * @returns Fully wired navigation element.
  */
-export function Navbar({ active, refreshMe, logout, search } = {}) {
-  const drawerState = new Map([["open", false]]);
+export function Navbar({
+  active,
+  refreshMe,
+  logout,
+  search,
+}: NavbarOptions = {}): HTMLElement {
   const meSpot = createMeSpot();
   const links = createLinks(active);
-  const burger = createBurger(() => toggleDrawer(drawerState, burger, drawer));
+  const burger = createBurger(() => toggleDrawer(burger, drawer));
   const drawer = el("div", { class: "nav-drawer" }, links, meSpot);
   const scrim = el("div", {
     class: "nav-scrim",
-    onClick: () => toggleDrawer(drawerState, burger, drawer, false),
+    onClick: () => toggleDrawer(burger, drawer, false),
   });
   const mobileDrawerQuery = window.matchMedia("(max-width: 700px)");
   syncDrawerFocusState({ drawer, open: false });
   mobileDrawerQuery.addEventListener("change", () =>
-    syncDrawerFocusState({ drawer, open: drawerState.get("open") })
+    syncDrawerFocusState({ drawer, open: isDrawerOpen() })
   );
   document.addEventListener("keydown", event =>
-    closeDrawerFromKeyboard({ event, state: drawerState, burger, drawer })
+    closeDrawerFromKeyboard({ event, burger, drawer })
   );
 
   links.addEventListener("click", event => {
-    if (event.target.tagName === "A" || event.target.closest("a"))
-      toggleDrawer(drawerState, burger, drawer, false);
+    if (isLinkActivation(event)) toggleDrawer(burger, drawer, false);
   });
   if (refreshMe) refreshMe().then(me => renderMe({ meSpot, me, logout }));
 
@@ -42,17 +137,29 @@ export function Navbar({ active, refreshMe, logout, search } = {}) {
     { class: "nav" },
     burger,
     el("div", { class: "logo" }, el("a", { href: "/" }, "AdvisorBook")),
-    GlobalSearch({ search }),
+    SearchModule.GlobalSearch({ search }),
     drawer,
     scrim
   );
 }
 
 /**
+ * Detects clicks on anchor elements (or their descendants) inside the
+ * drawer link list so the drawer auto-closes after navigation.
+ * @param event - Click event captured on the link container.
+ * @returns True when the event originated inside an `<a>` element.
+ */
+function isLinkActivation(event: Event): boolean {
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+  return target.tagName === "A" || target.closest("a") !== null;
+}
+
+/**
  * Creates the auth status container shown in the drawer.
  * @returns Placeholder container while session state loads.
  */
-function createMeSpot() {
+function createMeSpot(): HTMLElement {
   return el("div", { class: "me-spot" }, el("span", { class: "me-loading" }));
 }
 
@@ -61,8 +168,8 @@ function createMeSpot() {
  * @param active - Current section name.
  * @returns Link container for desktop and drawer layouts.
  */
-function createLinks(active) {
-  const link = (href, label) =>
+function createLinks(active: string | undefined): HTMLElement {
+  const link = (href: string, label: string): HTMLElement =>
     el(
       "a",
       { href, class: active === label.toLowerCase() ? "active" : null },
@@ -85,7 +192,7 @@ function createLinks(active) {
  * @param onClick - Toggle callback wired to the button.
  * @returns Hamburger button with accessibility state.
  */
-function createBurger(onClick) {
+function createBurger(onClick: EventListener): HTMLElement {
   return el(
     "button",
     {
@@ -107,9 +214,9 @@ function createBurger(onClick) {
  * @param root0.me - Normalized `/Me` response.
  * @param root0.logout - Optional logout handler for the sign-out button.
  */
-function renderMe({ meSpot, me, logout }) {
+function renderMe({ meSpot, me, logout }: MeRenderContext): void {
   clear(meSpot);
-  if (me?.authenticated) {
+  if (me?.authenticated && typeof me.username === "string") {
     renderSignedInUser({ meSpot, me, logout });
     return;
   }
@@ -124,13 +231,10 @@ function renderMe({ meSpot, me, logout }) {
  * @param root0.me - Normalized authenticated user response.
  * @param root0.logout - Optional logout handler.
  */
-function renderSignedInUser({ meSpot, me, logout }) {
+function renderSignedInUser({ meSpot, me, logout }: MeRenderContext): void {
+  const username = me.username ?? "";
   meSpot.appendChild(
-    el(
-      "span",
-      { class: "me-user", title: me.username },
-      me.username.split("@")[0]
-    )
+    el("span", { class: "me-user", title: username }, username.split("@")[0])
   );
   meSpot.appendChild(
     Button({
@@ -138,7 +242,7 @@ function renderSignedInUser({ meSpot, me, logout }) {
       attrs: { class: "me-action" },
       onClick: event => {
         event.preventDefault();
-        logout && logout();
+        if (logout) logout();
       },
       children: "Sign out",
     })
@@ -149,7 +253,7 @@ function renderSignedInUser({ meSpot, me, logout }) {
  * Renders the fallback login link when no session is active.
  * @param meSpot - Container reserved for auth controls.
  */
-function renderSignInLink(meSpot) {
+function renderSignInLink(meSpot: HTMLElement): void {
   meSpot.appendChild(
     el("a", { class: "me-action", href: "/login.html" }, "Sign in")
   );
@@ -160,7 +264,10 @@ function renderSignInLink(meSpot) {
  * @param meSpot - Container reserved for auth controls.
  * @param message - Public-facing fallback copy.
  */
-function renderSessionFallback(meSpot, message) {
+function renderSessionFallback(
+  meSpot: HTMLElement,
+  message: string | undefined
+): void {
   meSpot.appendChild(
     el(
       "span",
@@ -172,15 +279,17 @@ function renderSessionFallback(meSpot, message) {
 
 /**
  * Opens or closes the mobile drawer and mirrors state to ARIA.
- * @param state - Shared drawer state map.
  * @param burger - Button whose expanded state should match the drawer.
  * @param drawer - Drawer whose focusability should match mobile visibility.
  * @param force - Optional explicit drawer state.
  */
-function toggleDrawer(state, burger, drawer, force) {
-  const open = force ?? !state.get("open");
-  state.set("open", open);
-  document.body.classList.toggle("drawer-open", open);
+function toggleDrawer(
+  burger: HTMLElement,
+  drawer: HTMLElement,
+  force?: boolean
+): void {
+  const open = force ?? !isDrawerOpen();
+  document.body.classList.toggle(DRAWER_OPEN_CLASS, open);
   burger.setAttribute("aria-expanded", String(open));
   syncDrawerFocusState({ drawer, open });
 }
@@ -191,7 +300,7 @@ function toggleDrawer(state, burger, drawer, force) {
  * @param root0.drawer - Drawer element to expose or hide from focus.
  * @param root0.open - Whether the drawer is currently open.
  */
-function syncDrawerFocusState({ drawer, open }) {
+function syncDrawerFocusState({ drawer, open }: DrawerFocusContext): void {
   const mobile = window.matchMedia("(max-width: 700px)").matches;
   const hidden = mobile && !open;
   drawer.toggleAttribute("inert", hidden);
@@ -202,11 +311,14 @@ function syncDrawerFocusState({ drawer, open }) {
  * Closes the mobile drawer from keyboard dismissal without hijacking other keys.
  * @param root0 - Keyboard close context.
  * @param root0.event - Key event to inspect.
- * @param root0.state - Shared drawer state map.
  * @param root0.burger - Button whose expanded state should match the drawer.
  * @param root0.drawer - Drawer whose focusability should match mobile visibility.
  */
-function closeDrawerFromKeyboard({ event, state, burger, drawer }) {
-  if (event.key === "Escape" && state.get("open"))
-    toggleDrawer(state, burger, drawer, false);
+function closeDrawerFromKeyboard({
+  event,
+  burger,
+  drawer,
+}: DrawerKeyboardContext): void {
+  if (event.key === "Escape" && isDrawerOpen())
+    toggleDrawer(burger, drawer, false);
 }
