@@ -7,7 +7,7 @@ import {
   nameFor,
 } from "../lib/media-backfill.js";
 import { restPut } from "../lib/rest.js";
-import { bearerHeaders, createAuthTokens, loadCreds } from "./_auth.js";
+import { createAuthTokens, loadCreds } from "./_auth.js";
 
 /** CLI target values accepted by `--target`. */
 type TargetKind = "advisors" | "firms" | "all";
@@ -89,9 +89,11 @@ async function getRows(
   token: string,
   baseUrl: string
 ): Promise<ReadonlyArray<Row>> {
-  const res = await fetch(`${baseUrl}/${table}/`, {
-    headers: bearerHeaders(token),
-  });
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+  };
+  const res = await fetch(`${baseUrl}/${table}/`, { headers });
   if (!res.ok) throw new Error(`GET /${table}/ -> ${res.status}`);
   const rows: unknown = await res.json();
   return isRowArray(rows) ? rows : [];
