@@ -235,6 +235,40 @@ export async function newContext(
   return context;
 }
 
+/** Heavy endpoints whose first post-restart request pays a cold index load. */
+const WARMUP_PATHS: readonly string[] = [
+  "/Feed",
+  "/Search?q=wells",
+  "/Search?q=wells&kind=firm",
+  "/PublicAdvisors?limit=24",
+  "/PublicFirms?limit=24",
+  "/PublicTeams?limit=24",
+];
+
+/**
+ * Warms the deployed cluster's heavy endpoints once before scenarios run.
+ * The smoke executes immediately after Harper is restarted by the deploy, so
+ * the FIRST request to each endpoint pays a large cold-start (index load) —
+ * measured ~17s for `/Search` — which, compounded by concurrency, blows past
+ * even generous per-wait budgets. Issuing one sequential request per endpoint
+ * pays that cost up front so the scenarios run against a warm cluster.
+ * Failures are swallowed: warming is best-effort and must never fail the gate.
+ * Skipped against a local dev server.
+ * @param page - Browser page whose request context (cookies/headers) is reused.
+ */
+export async function warmDeployedEndpoints(page: Page): Promise<void> {
+  if (isLocalDev) return;
+  await WARMUP_PATHS.reduce<Promise<unknown>>(
+    (previous, path) =>
+      previous.then(() =>
+        page.request
+          .get(`${BASE}${path}`, { timeout: DEPLOYED_DATA_TIMEOUT })
+          .catch(() => undefined)
+      ),
+    Promise.resolve()
+  );
+}
+
 /**
  * Asserts a FINRA CRD badge renders for an advisor that actually has one,
  * picked from the live directory (`hasCrd=true`) rather than a fixed fixture
