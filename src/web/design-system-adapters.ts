@@ -16,6 +16,7 @@ import {
   CareerTimeline,
   DisclosureEventCard,
   SourceAttribution,
+  Paginated,
 } from "./design-system/index.js";
 
 /** Narrow callable type for design-system helpers that still opt out of TS. */
@@ -36,6 +37,28 @@ export type DisclosureEventCardAdapter = (
   fmts?: unknown
 ) => HTMLElement;
 
+/** Page response surface produced by a `PaginatedAdapter` page loader. */
+export interface PaginatedAdapterPage<TItem> {
+  readonly items?: readonly TItem[];
+  readonly nextCursor?: string | null;
+  readonly total?: number;
+}
+
+/** Options accepted by the typed `Paginated` adapter. */
+export interface PaginatedAdapterOptions<TItem> {
+  readonly fetchPage: (
+    cursor: string | null
+  ) => Promise<PaginatedAdapterPage<TItem>>;
+  readonly renderRow: (item: TItem) => HTMLElement;
+  readonly empty?: string;
+  readonly onTotal?: (total: number) => void;
+}
+
+/** Typed `Paginated` adapter — cursor-paginated list organism. */
+export type PaginatedAdapter = <TItem>(
+  options: PaginatedAdapterOptions<TItem>
+) => HTMLElement;
+
 export const EmptyTextC = EmptyText as unknown as DesignSystemComponent;
 export const SectionCardC = SectionCard as unknown as DesignSystemComponent;
 export const EntityListC = EntityList as unknown as DesignSystemComponent;
@@ -48,4 +71,5 @@ export const SourceAttributionC =
   SourceAttribution as unknown as DesignSystemComponent;
 export const DisclosureEventCardC =
   DisclosureEventCard as unknown as DisclosureEventCardAdapter;
+export const PaginatedC = Paginated as unknown as PaginatedAdapter;
 export const elC = el as unknown as ElAdapter;
