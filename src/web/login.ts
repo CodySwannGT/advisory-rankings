@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Sign-in page.
 // All UI comes from the design system — see docs/design-system.md.
 
@@ -13,11 +12,27 @@ import {
   LabeledField,
 } from "./design-system/index.js";
 
+/** Shared DOM controls used by the login submit lifecycle. */
+interface SignInControls {
+  readonly error: HTMLElement;
+  readonly submit: HTMLButtonElement;
+  readonly email: HTMLInputElement;
+  readonly password: HTMLInputElement;
+}
+
+/** Single-column template context used by the centered login page. */
+interface CenteredBuildContext {
+  readonly center: HTMLElement;
+}
+
+/** Attribute subset used by the login form's text inputs. */
+type SignInTextInputAttrs = Readonly<Record<string, string | boolean>>;
+
 mountCenteredNarrowPage({
   active: "home",
   refreshMe,
   search,
-  build({ center }) {
+  build({ center }: CenteredBuildContext): void {
     const controls = signInControls();
     const form = signInForm(controls);
 
@@ -51,7 +66,7 @@ mountCenteredNarrowPage({
  * Creates the form controls that need to be shared with submit handling.
  * @returns Email input, password input, submit button, and error block.
  */
-function signInControls() {
+function signInControls(): SignInControls {
   return {
     error: el("div", {
       class: "ab-empty",
@@ -61,15 +76,15 @@ function signInControls() {
       variant: "primary",
       type: "submit",
       children: "Sign in",
-    }),
-    email: TextInput({
+    }) as HTMLButtonElement,
+    email: signInTextInput({
       type: "email",
       name: "email",
       autocomplete: "username",
       required: true,
       placeholder: "you@example.com",
     }),
-    password: TextInput({
+    password: signInTextInput({
       type: "password",
       name: "password",
       autocomplete: "current-password",
@@ -83,10 +98,10 @@ function signInControls() {
  * @param controls - Shared form controls.
  * @returns Form node for the centered login page.
  */
-function signInForm(controls) {
+function signInForm(controls: SignInControls): HTMLElement {
   return el(
     "form",
-    { onSubmit: event => submitSignIn(event, controls) },
+    { onSubmit: (event: Event) => void submitSignIn(event, controls) },
     LabeledField({ label: "Email", input: controls.email }),
     LabeledField({ label: "Password", input: controls.password }),
     el("div", { style: "margin-top: 16px;" }, controls.submit),
@@ -99,7 +114,10 @@ function signInForm(controls) {
  * @param event - Browser submit event.
  * @param controls - Shared form controls.
  */
-async function submitSignIn(event, controls) {
+async function submitSignIn(
+  event: Event,
+  controls: SignInControls
+): Promise<void> {
   event.preventDefault();
   setError(controls, "");
   setSubmitting(controls, true);
@@ -122,7 +140,7 @@ async function submitSignIn(event, controls) {
  * @param controls - Shared form controls.
  * @param submitting - Whether the request is active.
  */
-function setSubmitting(controls, submitting) {
+function setSubmitting(controls: SignInControls, submitting: boolean): void {
   Object.assign(controls.submit, {
     disabled: submitting,
     textContent: submitting ? "Signing in…" : "Sign in",
@@ -134,12 +152,23 @@ function setSubmitting(controls, submitting) {
  * @param controls - Shared form controls.
  * @param error - Error thrown by the login request, or empty to clear.
  */
-function setError(controls, error) {
+function setError(controls: SignInControls, error: unknown): void {
   const message = error
     ? isAuthFailure(error)
       ? "Sign in failed. Check your account access or return to public pages."
-      : String(error.message || error)
+      : error instanceof Error
+        ? error.message
+        : String(error)
     : "";
   Object.assign(controls.error, { textContent: message });
   Object.assign(controls.error.style, { display: message ? "block" : "none" });
+}
+
+/**
+ * Creates a typed input from the design-system's currently generic element API.
+ * @param attrs - Input attributes forwarded to the shared TextInput atom.
+ * @returns Text input narrowed to the DOM type used by login handlers.
+ */
+function signInTextInput(attrs: SignInTextInputAttrs): HTMLInputElement {
+  return TextInput(attrs) as HTMLInputElement;
 }
