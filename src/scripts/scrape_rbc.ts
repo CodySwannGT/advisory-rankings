@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
@@ -247,18 +246,30 @@ const requestHeaders = (): Record<string, string> => ({
   "user-agent": "Mozilla/5.0 advisory-rankings RBC scraper",
 });
 
-const mergeRows = (left: RbcRows, right: RbcRows): RbcRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as RbcRows;
-};
+const mergeRows = (left: RbcRows, right: RbcRows): RbcRows => ({
+  Firm: mergeTableRows(left.Firm, right.Firm),
+  FirmAlias: mergeTableRows(left.FirmAlias, right.FirmAlias),
+  Branch: mergeTableRows(left.Branch, right.Branch),
+  Advisor: mergeTableRows(left.Advisor, right.Advisor),
+  EmploymentHistory: mergeTableRows(
+    left.EmploymentHistory,
+    right.EmploymentHistory
+  ),
+  Designation: mergeTableRows(left.Designation, right.Designation),
+  Team: mergeTableRows(left.Team, right.Team),
+  TeamMembership: mergeTableRows(left.TeamMembership, right.TeamMembership),
+  AdvisorResearchCheck: mergeTableRows(
+    left.AdvisorResearchCheck,
+    right.AdvisorResearchCheck
+  ),
+});
+
+const mergeTableRows = <T extends Record<string, unknown>>(
+  left: ReadonlyArray<T>,
+  right: ReadonlyArray<T>
+): ReadonlyArray<T> => [
+  ...new Map([...left, ...right].map(row => [String(row.id), row])).values(),
+];
 
 const targetUrl = (): string | undefined => {
   const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;
