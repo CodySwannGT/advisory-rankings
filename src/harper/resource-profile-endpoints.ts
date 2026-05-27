@@ -79,7 +79,7 @@ export class Feed extends Resource {
     const db = await loadAll();
     const items: readonly FeedItem[] = [...db.articles]
       .sort(cmpDesc("publishedDate"))
-      .map(article => feedItem(article, db) as FeedItem);
+      .map(article => feedItem(article, db));
     const filters = parseFeedFilters(target);
     const modeItems = items.filter(item => matchesFeedMode(item, filters.mode));
     const filteredItems = modeItems.filter(item =>
@@ -120,7 +120,7 @@ export class ArticleView extends Resource {
     const fieldAssertions = db.fieldAssertions
       .filter(field => field.articleId === article.id)
       .map(fieldAssertionPayload);
-    const base = feedItem(article, db) as FeedItem;
+    const base = feedItem(article, db);
     return {
       ...base,
       body: { html: article.bodyHtml || null, text: article.bodyText || null },

@@ -8,8 +8,8 @@ import type {
   FeedEmptyState,
   FeedFilters,
   FeedSummary,
-  FeedFilterableItem,
 } from "./resource-feed-filters.js";
+import type { FeedItem } from "./resource-feed-types.js";
 import type {
   FirmDueDiligencePayload,
   FirmDueDiligenceProfile,
@@ -18,14 +18,8 @@ import type { FirmAdvisorRow } from "./resource-firm.js";
 import type { ResolvableFirm, ResolvableTeam } from "./resource-routing.js";
 import type { TeamMemberGroups } from "./resource-team.js";
 
-/**
- * Loose feed-item shape produced by the still-`@ts-nocheck`'d
- * `feedItem` in `resource-feed.ts`. The full payload carries advisor,
- * firm, and team chip arrays plus the article envelope and event cards;
- * this module only filters and re-emits items, so it sees the producer's
- * shape through the structural slice `FeedFilterableItem` already covers.
- */
-export type FeedItem = FeedFilterableItem & Readonly<Record<string, unknown>>;
+/** Re-export the canonical `FeedItem` shape produced by `feedItem()`. */
+export type { FeedItem } from "./resource-feed-types.js";
 
 /** Response shape returned by the public `Feed` resource. */
 export interface FeedResponse {
