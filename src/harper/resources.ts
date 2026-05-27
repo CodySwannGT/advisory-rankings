@@ -3,6 +3,7 @@ export * from "./resource-profile-endpoints.js";
 export * from "./resource-directory-endpoints.js";
 export * from "./resource-auth-endpoints.js";
 export * from "./resource-user-rating.js";
+export * from "./resource-user-watchlists.js";
 export * from "./resource-mcp.js";
 export * from "./resource-recruiting-market.js";
 export * from "./resource-rankings-explorer.js";
