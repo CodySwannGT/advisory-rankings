@@ -1,31 +1,25 @@
-// @ts-nocheck
-import { Search } from "./resource-directory-endpoints.js";
+import { idSchema, limitSchema, objectSchema } from "./resource-mcp-format.js";
+import type { ToolArgs, ToolInputSchema } from "./resource-mcp-format.js";
 import {
-  articleLinks,
-  compactRows,
-  feedResult,
-  idSchema,
-  limitArg,
-  limitSchema,
-  objectSchema,
-  requiredIdTarget,
-  requiredString,
-  resourceUri,
-  routeTarget,
-  searchResult,
-  webUrl,
-} from "./resource-mcp-format.js";
-import {
-  AdvisorProfile,
-  ArticleView,
-  Feed,
-  FirmProfile,
-  TeamProfile,
-} from "./resource-profile-endpoints.js";
+  getAdvisorProfile,
+  getArticle,
+  getFeed,
+  getFirmProfile,
+  getTeamProfile,
+  searchAdvisorBook,
+} from "./resource-mcp-tools-handlers.js";
 
 export const MCP_TOOL_CAPABILITIES = { tools: { listChanged: false } };
 
-export const MCP_TOOL_DEFINITIONS = [
+/** Per-tool MCP definition row exposed to clients via `tools/list`. */
+interface McpToolDefinition {
+  readonly name: string;
+  readonly title: string;
+  readonly description: string;
+  readonly inputSchema: ToolInputSchema;
+}
+
+export const MCP_TOOL_DEFINITIONS: ReadonlyArray<McpToolDefinition> = [
   {
     name: "search_advisorbook",
     title: "Search AdvisorBook",
@@ -37,7 +31,7 @@ export const MCP_TOOL_DEFINITIONS = [
           type: "string",
           description: "Search query. At least two characters.",
         },
-        limit: limitSchema(),
+        limit: { ...limitSchema() },
       },
       ["query"]
     ),
@@ -46,7 +40,7 @@ export const MCP_TOOL_DEFINITIONS = [
     name: "get_feed",
     title: "Get AdvisorBook feed",
     description: "Return recent public AdvisorBook article feed items.",
-    inputSchema: objectSchema({ limit: limitSchema() }),
+    inputSchema: objectSchema({ limit: { ...limitSchema() } }),
   },
   {
     name: "get_advisor_profile",
@@ -80,7 +74,10 @@ export const MCP_TOOL_DEFINITIONS = [
  * @param args - Tool arguments.
  * @returns Curated tool payload.
  */
-export async function callMcpTool(name, args) {
+export async function callMcpTool(
+  name: string,
+  args: ToolArgs
+): Promise<unknown> {
   switch (name) {
     case "search_advisorbook":
       return searchAdvisorBook(args);
@@ -99,12 +96,24 @@ export async function callMcpTool(name, args) {
   }
 }
 
+/** Single text chunk emitted in an MCP tool result. */
+interface ToolResultTextChunk {
+  readonly type: "text";
+  readonly text: string;
+}
+
+/** MCP tool result envelope returned to JSON-RPC clients. */
+interface ToolResult {
+  readonly content: ReadonlyArray<ToolResultTextChunk>;
+  readonly structuredContent: unknown;
+}
+
 /**
  * Wraps structured payloads in MCP text content.
  * @param result - Tool payload.
  * @returns MCP tool result.
  */
-export function toolResult(result) {
+export function toolResult(result: unknown): ToolResult {
   return {
     content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     structuredContent: result,
@@ -116,129 +125,6 @@ export function toolResult(result) {
  * @param error - Unknown thrown value.
  * @returns Error message.
  */
-export function toolErrorMessage(error) {
+export function toolErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Tool call failed";
-}
-
-/**
- * Searches public AdvisorBook entities.
- * @param args - Search tool arguments.
- * @returns Compact ranked matches.
- */
-async function searchAdvisorBook(args) {
-  const query = requiredString(args, "query");
-  const response = await new Search().get(
-    routeTarget("", { q: query, limit: String(limitArg(args)) })
-  );
-  return {
-    query: response.q,
-    counts: response.counts,
-    items: response.items.map(searchResult),
-  };
-}
-
-/**
- * Returns recent public feed items.
- * @param args - Feed tool arguments.
- * @returns Compact feed payload.
- */
-async function getFeed(args) {
-  const response = await new Feed().get();
-  return {
-    generatedAt: response.generatedAt,
-    count: response.count,
-    items: response.items.slice(0, limitArg(args)).map(feedResult),
-    resource: "advisorbook://feed",
-    url: "https://advisory-rankings-de.cody-swann-org.harperfabric.com/",
-  };
-}
-
-/**
- * Returns a curated advisor profile.
- * @param args - Profile tool arguments.
- * @returns Compact advisor payload.
- */
-async function getAdvisorProfile(args) {
-  const response = await new AdvisorProfile().get(requiredIdTarget(args));
-  if (response.error) return response;
-  const advisor = response.advisor;
-  return {
-    advisor,
-    displayName: response.displayName,
-    currentFirm: response.currentFirm ?? null,
-    career: response.career ?? [],
-    teams: compactRows(response.teams ?? response.currentTeams),
-    disclosures: compactRows(response.disclosures),
-    evidenceFreshness: response.evidenceFreshness ?? null,
-    confidenceSummary: response.confidenceSummary ?? null,
-    articles: articleLinks(response.articles),
-    resource: resourceUri("advisor", advisor?.id),
-    url: webUrl("advisor", advisor),
-  };
-}
-
-/**
- * Returns a curated firm profile.
- * @param args - Firm tool arguments.
- * @returns Compact firm payload.
- */
-async function getFirmProfile(args) {
-  const response = await new FirmProfile().get(requiredIdTarget(args));
-  if (response.error) return response;
-  const firm = response.firm;
-  return {
-    firm,
-    currentAdvisorCount: response.currentAdvisorCount,
-    pastAdvisorCount: response.pastAdvisorCount,
-    currentTeams: compactRows(response.currentTeams),
-    transitionsIn: compactRows(response.transitionsIn),
-    transitionsOut: compactRows(response.transitionsOut),
-    articles: articleLinks(response.articles),
-    brokerCheckSnapshot: response.brokerCheckSnapshot ?? null,
-    resource: resourceUri("firm", firm?.id),
-    url: webUrl("firm", firm),
-  };
-}
-
-/**
- * Returns a curated team profile.
- * @param args - Team tool arguments.
- * @returns Compact team payload.
- */
-async function getTeamProfile(args) {
-  const response = await new TeamProfile().get(requiredIdTarget(args));
-  if (response.error) return response;
-  const team = response.team;
-  return {
-    team,
-    currentMembers: compactRows(response.currentMembers),
-    pastMembers: compactRows(response.pastMembers),
-    metrics: response.metrics ?? response.latestSnapshot ?? null,
-    transitions: compactRows(response.transitions),
-    articles: articleLinks(response.articles),
-    resource: resourceUri("team", team?.id),
-    url: webUrl("team", team),
-  };
-}
-
-/**
- * Returns public article details.
- * @param args - Article tool arguments.
- * @returns Compact article payload.
- */
-async function getArticle(args) {
-  const response = await new ArticleView().get(requiredIdTarget(args));
-  if (response.error) return response;
-  const article = response.article;
-  return {
-    article,
-    body: response.body ?? null,
-    provenance: compactRows(response.provenance),
-    eventCards: compactRows(response.eventCards),
-    advisors: compactRows(response.advisors),
-    firms: compactRows(response.firms),
-    teams: compactRows(response.teams),
-    resource: resourceUri("article", article?.id),
-    url: webUrl("article", article),
-  };
 }
