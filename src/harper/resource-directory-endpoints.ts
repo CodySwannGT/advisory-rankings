@@ -11,7 +11,11 @@ import {
   paginate,
   parsePagination,
 } from "./resource-pagination.js";
-import { currentEmploymentByAdvisor, searchCounts } from "./resource-search.js";
+import {
+  currentEmploymentByAdvisor,
+  currentFirmNameByAdvisor,
+  searchCounts,
+} from "./resource-search.js";
 import {
   canonicalizeForAdvisorsDirectory,
   canonicalizeForFirmsDirectory,
@@ -29,6 +33,7 @@ import {
   queryValue,
 } from "./resource-directory-filters.js";
 import { allRows, optionalAll } from "./resource-directory-tables.js";
+import { requiredTable, rowsFor } from "./resource-user-watchlists-store.js";
 import {
   advisorDirectoryKey,
   compareAdvisorDirectoryRows,
@@ -206,37 +211,107 @@ export class Search extends Resource {
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
-    const [advisors, firms, teams, employments, firmAliases] =
-      await Promise.all([
-        allRows<AdvisorRow>(tables.Advisor),
-        allRows<FirmRow>(tables.Firm),
-        allRows<TeamRow>(tables.Team),
-        allRows<EmploymentHistoryRow>(tables.EmploymentHistory),
-        optionalAll<FirmAliasRow>(tables.FirmAlias),
-      ]);
+    // Load only the bounded tables fully. The largest table —
+    // EmploymentHistory — is NOT scanned here; its rows are fetched per
+    // displayed advisor below via the `advisorId` index. Scanning the whole
+    // table on every navbar request was the root cause of ~16s backend time
+    // under the homepage's concurrent fan-out.
+    const [advisors, firms, teams, firmAliases] = await Promise.all([
+      allRows<AdvisorRow>(tables.Advisor),
+      allRows<FirmRow>(tables.Firm),
+      allRows<TeamRow>(tables.Team),
+      optionalAll<FirmAliasRow>(tables.FirmAlias),
+    ]);
+    // Canonicalize firms/teams with an empty employment set: firm/team
+    // scoring and the `byFirm` subtitle map do not depend on employments,
+    // and the advisor subtitle is resolved separately below.
     const rows = canonicalizeForSearch({
       firms,
       teams,
-      employments,
+      employments: [],
       firmAliases,
     });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    const currentFirmByAdvisor = currentEmploymentByAdvisor(
-      rows.employments
-    ) as ReadonlyMap<string, EmploymentHistoryRow>;
+    // Pass an EMPTY current-employment map so advisor subtitles fall back to
+    // careerStatus during scoring. Score, sortKey, counts, and ordering do
+    // not depend on `sub`, so this is safe; subtitles are overridden below.
     const matches = rankedSearchMatches({
       advisors,
       firms: rows.firms,
       teams: rows.teams,
       byFirm,
-      currentFirmByAdvisor,
+      currentFirmByAdvisor: new Map<string, EmploymentHistoryRow>(),
       norm,
     }).filter(match => kind === "all" || match.kind === kind);
+    const displayed = matches.slice(0, cap);
+    // Fetch current employment ONLY for the advisors actually displayed.
+    const advisorIds = displayed
+      .filter(match => match.kind === "advisor")
+      .map(match => match.id);
+    const subtitleByAdvisor = await resolveDisplayedAdvisorFirms(
+      advisorIds,
+      firms,
+      teams,
+      firmAliases,
+      byFirm
+    );
+    const advisorById = new Map(advisors.map(advisor => [advisor.id, advisor]));
     return {
       q: norm,
       kind,
-      items: matches.slice(0, cap).map(({ sortKey, ...row }) => row),
+      items: displayed.map(({ sortKey, ...row }) =>
+        row.kind === "advisor"
+          ? {
+              ...row,
+              // Mirror advisorSearchMatches exactly: resolved firm name, else
+              // `careerStatus || null` (empty string folds to null).
+              sub:
+                subtitleByAdvisor.get(row.id) ??
+                (advisorById.get(row.id)?.careerStatus || null),
+            }
+          : row
+      ),
       counts: searchCounts(matches),
     };
   }
+}
+
+/**
+ * Resolves current-firm subtitles for the displayed advisor slice using
+ * targeted indexed `EmploymentHistory` lookups instead of a full-table scan.
+ * For each advisor id it queries `EmploymentHistory` by the `@indexed`
+ * `advisorId` attribute in parallel, canonicalizes just those rows against
+ * the already-loaded firms/teams/firmAliases, and resolves each advisor's
+ * current firm name via {@link currentFirmNameByAdvisor}.
+ * @param advisorIds - IDs of the advisors in the displayed result slice.
+ * @param firms - Firm rows already loaded for the request.
+ * @param teams - Team rows already loaded for the request.
+ * @param firmAliases - Firm-alias rows already loaded for the request.
+ * @param byFirm - Canonical firm lookup keyed by firm ID.
+ * @returns Map of advisor ID to resolved current firm name (advisors with no
+ *   current employment or an unresolved firm are omitted).
+ */
+async function resolveDisplayedAdvisorFirms(
+  advisorIds: ReadonlyArray<string>,
+  firms: ReadonlyArray<FirmRow>,
+  teams: ReadonlyArray<TeamRow>,
+  firmAliases: ReadonlyArray<FirmAliasRow>,
+  byFirm: ReadonlyMap<string, FirmRow>
+): Promise<ReadonlyMap<string, string>> {
+  if (!advisorIds.length) return new Map<string, string>();
+  const employmentTable =
+    requiredTable<EmploymentHistoryRow>("EmploymentHistory");
+  const fetched = await Promise.all(
+    advisorIds.map(id => rowsFor(employmentTable, "advisorId", id))
+  );
+  const employments = fetched.flat();
+  // Canonicalize the small employment set so firm-ID alias rewrites match
+  // the canonical `byFirm` keys produced for the rest of the response.
+  const canonical = canonicalizeForSearch({
+    firms,
+    teams,
+    employments,
+    firmAliases,
+  });
+  return currentFirmNameByAdvisor(canonical.employments, byFirm);
 }

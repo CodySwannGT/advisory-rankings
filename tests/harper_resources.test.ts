@@ -2587,5 +2587,94 @@ describe("Harper directory and search resources", () => {
     expect(current.get("advisor-a")).toMatchObject({ firmId: "firm-b" });
     expect(current.get("advisor-b")).toMatchObject({ firmId: "firm-c" });
   });
+
+  it("currentEmploymentByAdvisor keeps the first-seen row on a startDate tie", () => {
+    const employments = [
+      { advisorId: "advisor-a", firmId: "firm-first", startDate: "2024-01-01" },
+      {
+        advisorId: "advisor-a",
+        firmId: "firm-second",
+        startDate: "2024-01-01",
+      },
+    ];
+
+    const current = search.currentEmploymentByAdvisor(employments);
+
+    expect(current.get("advisor-a")).toMatchObject({ firmId: "firm-first" });
+  });
+
+  it("currentFirmNameByAdvisor resolves names only for known firms", () => {
+    const employments = [
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2024-01-01" },
+      {
+        advisorId: "advisor-b",
+        firmId: "missing-firm",
+        startDate: "2024-01-01",
+      },
+      {
+        advisorId: "advisor-c",
+        firmId: "firm-a",
+        startDate: "2023-01-01",
+        endDate: "2024-01-01",
+      },
+    ];
+    const byFirm = new Map([
+      ["firm-a", { id: "firm-a", name: "Example Wealth" }],
+    ]);
+
+    const names = search.currentFirmNameByAdvisor(
+      employments as any,
+      byFirm as any
+    );
+
+    expect(names.get("advisor-a")).toBe("Example Wealth");
+    expect(names.has("advisor-b")).toBe(false);
+    expect(names.has("advisor-c")).toBe(false);
+  });
+
+  it("populates advisor subtitles via a scoped employment lookup, not a full scan", async () => {
+    baseRows();
+    const queriedAdvisorIds: string[] = [];
+    const employmentRows = tableRows.get("EmploymentHistory") ?? [];
+    const original = (globalThis as any).tables.EmploymentHistory;
+    (globalThis as any).tables.EmploymentHistory = {
+      search: (query: any) => {
+        const condition = query?.conditions?.[0];
+        if (!condition || condition.attribute !== "advisorId") {
+          throw new Error("Search must query EmploymentHistory by advisorId");
+        }
+        queriedAdvisorIds.push(condition.value);
+        return (async function* () {
+          for (const row of employmentRows)
+            if (row.advisorId === condition.value) yield row;
+        })();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).Search().get(
+        routeTarget("", { q: "stone", limit: "5" })
+      );
+
+      const advisorItem = result.items.find(
+        (item: any) => item.kind === "advisor"
+      );
+      expect(advisorItem).toMatchObject({
+        id: "advisor-a",
+        sub: "Example Wealth Management",
+      });
+      expect(result.counts).toEqual({
+        firms: 0,
+        advisors: 1,
+        teams: 1,
+        total: 2,
+      });
+      // Only the displayed advisor was queried — no full-table scan, and
+      // advisor-b (no name match for "stone") was never fetched.
+      expect(queriedAdvisorIds).toEqual(["advisor-a"]);
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
 });
 /* eslint-enable max-lines, sonarjs/no-duplicate-string -- Re-enable fixture-only suppressions. */
