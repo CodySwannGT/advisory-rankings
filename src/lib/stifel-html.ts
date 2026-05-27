@@ -1,5 +1,5 @@
-// @ts-nocheck
 import * as cheerio from "cheerio";
+import type { AnyNode, Element } from "domhandler";
 
 import {
   cleanText,
@@ -81,7 +81,7 @@ export function parseStifelSearchResults(
 
 const parseAdvisor = (
   $: cheerio.CheerioAPI,
-  row: unknown,
+  row: Element,
   searchUrl: string
 ): StifelAdvisorSource | null => {
   const root = $(row);
@@ -122,7 +122,7 @@ const parseAdvisor = (
 
 const parseNameDetails = (
   $: cheerio.CheerioAPI,
-  root: cheerio.Cheerio<unknown>,
+  root: cheerio.Cheerio<AnyNode>,
   advisorName: string
 ): Readonly<Record<"roleTitle" | "location", string | undefined>> => {
   const values = root
