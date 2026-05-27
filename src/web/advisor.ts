@@ -28,10 +28,10 @@ import {
 } from "./design-system/index.js";
 import { privateRatingCard } from "./advisor-rating.js";
 import {
-  DetailErrorCard,
   DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
+  renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
 import {
@@ -104,18 +104,28 @@ mountThreeColumnPage({
       );
       return;
     }
-    renderDetailLoading({ center, right, label: "advisor profile" });
-    api(`/AdvisorProfile/${encodeURIComponent(id)}`)
-      .then((d: AdvisorProfilePayload) => {
-        clear(center);
-        clear(right);
-        render(d, center, right);
-      })
-      .catch((err: unknown) => {
-        clear(center);
-        clear(right);
-        center.appendChild(DetailErrorCard("Could not load advisor", err));
-      });
+    const loadAdvisorProfile = (): void => {
+      clear(center);
+      clear(right);
+      renderDetailLoading({ center, right, label: "advisor profile" });
+      api(`/AdvisorProfile/${encodeURIComponent(id)}`)
+        .then((d: AdvisorProfilePayload) => {
+          clear(center);
+          clear(right);
+          render(d, center, right);
+        })
+        .catch((err: unknown) => {
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load advisor",
+            error: err,
+            onRetry: loadAdvisorProfile,
+          });
+        });
+    };
+
+    loadAdvisorProfile();
   },
 });
 

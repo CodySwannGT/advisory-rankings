@@ -19,10 +19,10 @@ import {
   clear,
 } from "./design-system/index.js";
 import {
-  DetailErrorCard,
   DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
+  renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
 import {
@@ -78,18 +78,28 @@ mountThreeColumnPage({
       );
       return;
     }
-    renderDetailLoading({ center, right, label: "team profile" });
-    api(`/TeamProfile/${encodeURIComponent(id)}`)
-      .then((d: TeamProfilePayloadOrError) => {
-        clear(center);
-        clear(right);
-        render(d, center, right);
-      })
-      .catch((err: unknown) => {
-        clear(center);
-        clear(right);
-        center.appendChild(DetailErrorCard("Could not load team", err));
-      });
+    const loadTeamProfile = (): void => {
+      clear(center);
+      clear(right);
+      renderDetailLoading({ center, right, label: "team profile" });
+      api(`/TeamProfile/${encodeURIComponent(id)}`)
+        .then((d: TeamProfilePayloadOrError) => {
+          clear(center);
+          clear(right);
+          render(d, center, right);
+        })
+        .catch((err: unknown) => {
+          renderRecoverableDetailError({
+            center,
+            right,
+            title: "Could not load team",
+            error: err,
+            onRetry: loadTeamProfile,
+          });
+        });
+    };
+
+    loadTeamProfile();
   },
 });
 

@@ -143,6 +143,79 @@ describe("detail async states", () => {
     }
   });
 
+  it("retries article, advisor, and team errors with the same id", async () => {
+    const cases = [
+      {
+        path: "/article.html?id=article-1",
+        resource: "/ArticleView/article-1",
+        title: "Could not load article",
+        successText: "Advisor moves in test market",
+        payload: articleWithPartialFailures(),
+      },
+      {
+        path: "/advisor.html?id=advisor-loaded",
+        resource: "/AdvisorProfile/advisor-loaded",
+        title: "Could not load advisor",
+        successText: "Avery Stone",
+        payload: advisorEvidenceProfile("advisor-loaded"),
+      },
+      {
+        path: "/team.html?id=team-1",
+        resource: "/TeamProfile/team-1",
+        title: "Could not load team",
+        successText: "Summit Wealth Team",
+        payload: teamProfile(),
+      },
+    ];
+
+    for (const detailCase of cases) {
+      const page = await browser.newPage();
+      const requests: string[] = [];
+
+      try {
+        await page.route("**/Me", async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(`**${detailCase.resource}`, async route => {
+          requests.push(route.request().url());
+          if (requests.length === 1) {
+            await route.fulfill({
+              status: 503,
+              contentType: "application/json",
+              body: JSON.stringify({ error: "temporary outage" }),
+            });
+            return;
+          }
+          await route.fulfill({ json: detailCase.payload });
+        });
+
+        await page.goto(`${baseUrl}${detailCase.path}`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        await page.getByText(detailCase.title).waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+        expect(await page.getByText("Try again shortly.").isVisible()).toBe(
+          true
+        );
+        expect(await page.getByText("temporary outage").count()).toBe(0);
+
+        await page.getByRole("button", { name: "Retry" }).click();
+        await page.getByText(detailCase.successText).first().waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+
+        expect(
+          requests.map(requestUrl => new URL(requestUrl).pathname)
+        ).toEqual([detailCase.resource, detailCase.resource]);
+        expect(await page.getByText(detailCase.title).count()).toBe(0);
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it("retries firm detail errors with the same id and renders due diligence", async () => {
     const page = await browser.newPage();
     const firmProfileRequests: string[] = [];
@@ -972,6 +1045,49 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
   };
 }
 
+function teamProfile(): TeamProfileFixture {
+  return {
+    team: {
+      id: "team-1",
+      name: "Summit Wealth Team",
+      serviceModel: "ensemble",
+      firmProgram: "Private wealth",
+      foundedYear: 2020,
+    },
+    currentFirm: { id: "firm-1", name: "Example Wealth" },
+    currentBranch: {
+      id: "branch-1",
+      name: "Atlanta",
+      city: "Atlanta",
+      state: "GA",
+    },
+    currentMembers: [
+      {
+        advisor: {
+          id: "advisor-1",
+          name: "Avery Stone",
+          careerStatus: "active",
+        },
+        role: "lead_advisor",
+        startDate: "2024-01-01",
+      },
+    ],
+    pastMembers: [],
+    metricSnapshots: [
+      {
+        asOf: "2026-05-27",
+        aum: 1000000000,
+        annualRevenue: 5000000,
+        householdCount: 120,
+        teamSize: 3,
+        sourceType: "manual",
+      },
+    ],
+    transitions: [],
+    articles: [],
+  };
+}
+
 function emptyEvidenceFreshness() {
   return {
     hasData: false,
@@ -1041,5 +1157,6 @@ type ArticleWithPartialFailures = Readonly<{
 
 type FirmDueDiligenceProfile = Readonly<Record<string, unknown>>;
 type AdvisorEvidenceProfile = Readonly<Record<string, unknown>>;
+type TeamProfileFixture = Readonly<Record<string, unknown>>;
 
 /* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End self-contained browser fixture exception. */
