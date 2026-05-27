@@ -211,21 +211,9 @@ function tableSpecs(): readonly ResourceTableSpec[] {
  * @returns Searchable table handle, or undefined when absent.
  */
 function tableHandle(tableName: string): SearchableTable | undefined {
-  const candidate: unknown = Reflect.get(tables, tableName);
-  return isSearchableTable(candidate) ? candidate : undefined;
-}
-
-/**
- * Type guard that narrows an ambient Harper table handle to the structural
- * `search()` shape `all()` consumes. Used as the typed predicate adapter
- * for the `tables` global so the rest of this module stays cast-free.
- * @param value - Candidate value pulled from the `tables` global.
- * @returns True when the value exposes a `search` function.
- */
-function isSearchableTable(value: unknown): value is SearchableTable {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("search" in value)) return false;
-  return typeof Reflect.get(value, "search") === "function";
+  const registry = tables as unknown as Readonly<Record<string, unknown>>;
+  const candidate = registry[tableName];
+  return candidate ? (candidate as SearchableTable) : undefined;
 }
 
 /**
