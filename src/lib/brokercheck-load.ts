@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { HarperREST } from "./brokercheck-rest.js";
 import {
   advisorId as canonicalAdvisorId,
@@ -14,6 +13,21 @@ import {
   normalizeFirmAlias,
   resolveFirmIdentity,
 } from "./firm-identity.js";
+import {
+  asRows,
+  datePrefix,
+  firmNameMatch,
+  initialStats,
+  matchAdvisorFirstLast,
+  matchAdvisorLegalName,
+  rowString,
+  type AdvisorResolverOptions,
+  type FirmCrdHit,
+  type HarperRow,
+  type ResolverStatKey,
+  type ResolverStats,
+} from "./brokercheck-resolver-helpers.js";
+
 export {
   hashContent,
   loadFirm,
@@ -21,53 +35,62 @@ export {
 } from "./brokercheck-load-records.js";
 export { HarperREST } from "./brokercheck-rest.js";
 
-/** Runtime Harper row returned by REST list endpoints. */
-interface HarperRow {
-  readonly [key: string]: unknown;
+/** Per-instance cached listings and resolver counters for the Resolver. */
+interface ResolverState {
+  readonly firmListing: ReadonlyArray<HarperRow> | null;
+  readonly firmAliasListing: ReadonlyArray<HarperRow> | null;
+  readonly advisorListing: ReadonlyArray<HarperRow> | null;
+  readonly stats: ResolverStats;
 }
-
-/** Optional advisor name hints used when BrokerCheck lacks a reusable CRD match. */
-interface AdvisorResolverOptions {
-  readonly firstEmployer?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-}
-
-const asRows = (value: unknown): ReadonlyArray<HarperRow> =>
-  Array.isArray(value) ? value.filter(isHarperRow) : [];
-const isHarperRow = (value: unknown): value is HarperRow =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
- * Handles resolver for this workflow.
+ * Resolves BrokerCheck firm and advisor mentions to canonical Harper IDs.
  */
 export class Resolver {
   readonly rest: HarperREST;
   readonly cache = new Map<string, string>();
-  readonly firmListing: ReadonlyArray<HarperRow> | null = null;
-  readonly firmAliasListing: ReadonlyArray<HarperRow> | null = null;
-  readonly advisorListing: ReadonlyArray<HarperRow> | null = null;
-  readonly stats = {
-    advisor_matched_crd: 0,
-    advisor_matched_name: 0,
-    advisor_minted: 0,
-    firm_matched_crd: 0,
-    firm_matched_name: 0,
-    firm_minted: 0,
-    disclosure_matched: 0,
-    disclosure_minted: 0,
-    employment_matched: 0,
-    employment_minted: 0,
-    sanction_matched: 0,
-    sanction_minted: 0,
-    license_matched: 0,
-    license_minted: 0,
+  readonly state: ResolverState = {
+    firmListing: null,
+    firmAliasListing: null,
+    advisorListing: null,
+    stats: initialStats(),
   };
 
   /**
-   * Handles constructor for this workflow.
-   * @param rest - rest used by this operation.
-   * @returns The computed value.
+   * Exposes the mutable resolver statistic counters.
+   * @returns The current statistic counter map.
+   */
+  get stats(): ResolverStats {
+    return this.state.stats;
+  }
+
+  /**
+   * Exposes the cached Harper firm listing for downstream record builders.
+   * @returns Cached firm rows, or null when not yet loaded.
+   */
+  get firmListing(): ReadonlyArray<HarperRow> | null {
+    return this.state.firmListing;
+  }
+
+  /**
+   * Exposes the cached Harper advisor listing for downstream record builders.
+   * @returns Cached advisor rows, or null when not yet loaded.
+   */
+  get advisorListing(): ReadonlyArray<HarperRow> | null {
+    return this.state.advisorListing;
+  }
+
+  /**
+   * Exposes the cached Harper firm-alias listing for downstream record builders.
+   * @returns Cached firm-alias rows, or null when not yet loaded.
+   */
+  get firmAliasListing(): ReadonlyArray<HarperRow> | null {
+    return this.state.firmAliasListing;
+  }
+
+  /**
+   * Stores a HarperREST handle that backs every Resolver lookup.
+   * @param rest - REST client used for `/Firm/`, `/Advisor/`, `/Disclosure/` reads.
    */
   constructor(rest: HarperREST) {
     this.rest = rest;
@@ -101,33 +124,33 @@ export class Resolver {
   }
 
   /**
-   * Resolves curated firm id from ids, slugs, or aliases.
-   * @param names - names used by this operation.
-   * @returns The computed value.
+   * Resolves a curated firm ID from ids, slugs, or aliases.
+   * @param names - Candidate names from BrokerCheck.
+   * @returns Canonical firm ID, or null when no curated alias matches.
    */
   resolveCuratedFirmId(names: readonly string[]): string | null {
     for (const name of names) {
       const identity = resolveFirmIdentity(name);
-      if (
+      const reuseCurated =
         identity.canonicalName !== name ||
-        identity.canonicalId === canonicalFirmId(name)
-      ) {
-        if (identity.matchedAlias || identity.canonicalName !== name)
-          return identity.canonicalId;
-      }
+        identity.canonicalId === canonicalFirmId(name);
+      const aliasOrCanonical =
+        identity.matchedAlias || identity.canonicalName !== name;
+      if (reuseCurated && aliasOrCanonical) return identity.canonicalId;
     }
     return null;
   }
 
   /**
-   * Handles match firm alias for this workflow.
-   * @param names - names used by this operation.
-   * @returns The computed value.
+   * Matches a firm by curated or stored alias names.
+   * @param names - Candidate names from BrokerCheck.
+   * @returns Canonical firm ID when an alias matches, otherwise null.
    */
   async matchFirmAlias(names: readonly string[]): Promise<string | null> {
-    const storedAliases = (this.firmAliasListing ??= asRows(
-      await this.rest.get("/FirmAlias/")
-    ));
+    const storedAliases = await this.loadListing(
+      "firmAliasListing",
+      "/FirmAlias/"
+    );
     const aliases = [...curatedFirmAliasRows(), ...storedAliases];
     for (const name of names) {
       const normalized = normalizeFirmAlias(name);
@@ -172,8 +195,8 @@ export class Resolver {
    * @param stat - Resolver statistic that explains how the ID was found.
    * @returns The resolved entity ID.
    */
-  remember(cacheKey: string, id: string, stat: string): string {
-    this.stats[stat]++;
+  remember(cacheKey: string, id: string, stat: ResolverStatKey): string {
+    this.state.stats[stat]++;
     this.cache.set(cacheKey, id);
     return id;
   }
@@ -183,14 +206,14 @@ export class Resolver {
    * @param finraCrd - FINRA firm CRD from BrokerCheck.
    * @returns Matched firm ID and match type, or null when none exists.
    */
-  async matchFirmByCrd(finraCrd: string): Promise<HarperRow | null> {
+  async matchFirmByCrd(finraCrd: string): Promise<FirmCrdHit | null> {
     const hit = asRows(await this.rest.get("/Firm/", { finraCrd }));
     const row = hit[0];
     if (!row) return null;
-    const canonicalHitId = this.resolveCuratedFirmId([String(row.name ?? "")]);
+    const canonicalHitId = this.resolveCuratedFirmId([rowString(row.name)]);
     return canonicalHitId
       ? { id: canonicalHitId, stat: "firm_matched_name" }
-      : { id: String(row.id), stat: "firm_matched_crd" };
+      : { id: rowString(row.id), stat: "firm_matched_crd" };
   }
 
   /**
@@ -199,13 +222,13 @@ export class Resolver {
    * @returns Existing firm ID when exactly a stored display name matches.
    */
   async matchFirmListing(firmNames: readonly string[]): Promise<string | null> {
-    this.firmListing ??= asRows(await this.rest.get("/Firm/"));
+    const firmListing = await this.loadListing("firmListing", "/Firm/");
     const match = firmNames
-      .flatMap(name => this.firmListing.map(row => ({ name, row })))
+      .flatMap(name => firmListing.map(row => ({ name, row })))
       .find(candidate =>
-        firmNameMatch(candidate.row.name ?? "", candidate.name)
+        firmNameMatch(rowString(candidate.row.name), candidate.name)
       );
-    return match ? String(match.row.id) : null;
+    return match ? rowString(match.row.id) : null;
   }
 
   /**
@@ -214,11 +237,8 @@ export class Resolver {
    * @returns Existing advisor ID, or null when the CRD is not loaded yet.
    */
   async matchAdvisorByCrd(finraCrd: string): Promise<string | null> {
-    return (
-      String(
-        asRows(await this.rest.get("/Advisor/", { finraCrd }))[0]?.id ?? ""
-      ) || null
-    );
+    const row = asRows(await this.rest.get("/Advisor/", { finraCrd }))[0];
+    return row ? rowString(row.id) || null : null;
   }
 
   /**
@@ -231,77 +251,41 @@ export class Resolver {
     legalName: string,
     opts: AdvisorResolverOptions
   ): Promise<string | null> {
-    this.advisorListing ??= asRows(await this.rest.get("/Advisor/"));
+    const advisorListing = await this.loadListing(
+      "advisorListing",
+      "/Advisor/"
+    );
     return (
-      this.matchAdvisorLegalName(legalName) ?? this.matchAdvisorFirstLast(opts)
+      matchAdvisorLegalName(advisorListing, legalName) ??
+      matchAdvisorFirstLast(advisorListing, opts)
     );
   }
 
   /**
-   * Matches advisors by exact lowercased legal name.
-   * @param legalName - Full legal name from BrokerCheck.
-   * @returns Existing advisor ID, or null when no exact name match exists.
+   * Lazily loads a cached Harper listing into resolver state.
+   * @param key - Listing slot on {@link ResolverState} to populate and return.
+   * @param path - Harper REST path that produces the listing rows.
+   * @returns Cached or freshly fetched listing rows.
    */
-  matchAdvisorLegalName(legalName: string): string | null {
-    const lower = legalName.toLowerCase();
-    const match = lower
-      ? this.advisorListing.find(
-          row => String(row.legalName ?? "").toLowerCase() === lower
-        )
-      : null;
-    return match ? String(match.id) : null;
+  private async loadListing(
+    key: "firmListing" | "firmAliasListing" | "advisorListing",
+    path: string
+  ): Promise<ReadonlyArray<HarperRow>> {
+    const cached = this.state[key];
+    if (cached) return cached;
+    const rows = asRows(await this.rest.get(path));
+    Object.assign(this.state, { [key]: rows });
+    return rows;
   }
 
   /**
-   * Matches advisors by first and last name, including initial/full-name pairs.
-   * @param opts - Parsed first and last names from BrokerCheck.
-   * @returns Existing advisor ID only when the fallback result is unambiguous.
-   */
-  matchAdvisorFirstLast(opts: AdvisorResolverOptions): string | null {
-    const first = (opts.firstName ?? "").toLowerCase();
-    const last = (opts.lastName ?? "").toLowerCase();
-    if (!first || !last) return null;
-    const firstLast = this.advisorListing.filter(
-      row =>
-        String(row.firstName ?? "").toLowerCase() === first &&
-        String(row.lastName ?? "").toLowerCase() === last
-    );
-    if (firstLast.length === 1) return String(firstLast[0].id);
-    return firstLast.length === 0
-      ? this.matchAdvisorLastNameInitial(first, last)
-      : null;
-  }
-
-  /**
-   * Resolves cases where one source has a first initial and the other has a full name.
-   * @param first - Lowercased first name from BrokerCheck.
-   * @param last - Lowercased last name from BrokerCheck.
-   * @returns Existing advisor ID when the last-name match is unique and compatible.
-   */
-  matchAdvisorLastNameInitial(first: string, last: string): string | null {
-    const lastOnly = this.advisorListing.filter(
-      row => String(row.lastName ?? "").toLowerCase() === last
-    );
-    const candidate = lastOnly.length === 1 ? lastOnly[0] : null;
-    const candidateFirst = String(candidate?.firstName ?? "")
-      .toLowerCase()
-      .replace(/\.$/, "");
-    const cleanFirst = first.replace(/\.$/, "");
-    return candidateFirst &&
-      (candidateFirst.startsWith(cleanFirst) ||
-        cleanFirst.startsWith(candidateFirst))
-      ? String(candidate.id)
-      : null;
-  }
-
-  /**
-   * Handles disclosure for this workflow.
+   * Resolves or mints a disclosure ID for an advisor, deduplicating against Harper.
    * @param advisorIdValue - Advisor id used in deterministic ids.
    * @param disclosureType - Disclosure category.
-   * @param dateInitiated - date initiated used by this operation.
-   * @param docketNumber - docket number used by this operation.
-   * @param regulator - Regulator label.
-   * @returns The computed value.
+   * @param dateInitiated - Date the disclosure was initiated.
+   * @param docketNumber - Optional docket number for the disclosure.
+   * @param regulator - Optional regulator label used when no docket is present.
+   * @returns Existing or freshly minted disclosure ID.
    */
   async disclosure(
     advisorIdValue: string,
@@ -318,22 +302,18 @@ export class Resolver {
       docketNumber ?? "",
       regulator,
     ]);
-    if (this.cache.has(cacheKey)) return this.cache.get(cacheKey)!;
-    const existing = await this.rest.get("/Disclosure/", {
-      advisorId: advisorIdValue,
-    });
-    if (Array.isArray(existing)) {
-      for (const d of existing) {
-        if (
-          d.disclosureType === disclosureType &&
-          datePrefix(d.dateInitiated) === datePrefix(dateInitiated) &&
-          ((docketNumber && d.docketNumber === docketNumber) || !docketNumber)
-        ) {
-          this.stats.disclosure_matched++;
-          this.cache.set(cacheKey, d.id);
-          return d.id;
-        }
-      }
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
+    const matched = await this.findDisclosureMatch(
+      advisorIdValue,
+      disclosureType,
+      dateInitiated,
+      docketNumber
+    );
+    if (matched) {
+      this.state.stats.disclosure_matched++;
+      this.cache.set(cacheKey, matched);
+      return matched;
     }
     const id = disclosureId(
       advisorIdValue,
@@ -341,17 +321,44 @@ export class Resolver {
       datePrefix(dateInitiated),
       docketNumber || regulator
     );
-    this.stats.disclosure_minted++;
+    this.state.stats.disclosure_minted++;
     this.cache.set(cacheKey, id);
     return id;
   }
 
   /**
-   * Handles employment for this workflow.
+   * Searches existing Harper disclosures for an exact dedup match.
+   * @param advisorIdValue - Advisor id used to scope the search.
+   * @param disclosureType - Disclosure category that must match.
+   * @param dateInitiated - Date prefix that must match.
+   * @param docketNumber - Optional docket number that must match when provided.
+   * @returns Matching disclosure ID, or null when nothing matches.
+   */
+  private async findDisclosureMatch(
+    advisorIdValue: string,
+    disclosureType: string,
+    dateInitiated: string,
+    docketNumber: string | undefined
+  ): Promise<string | null> {
+    const existing = asRows(
+      await this.rest.get("/Disclosure/", { advisorId: advisorIdValue })
+    );
+    const wantDate = datePrefix(dateInitiated);
+    const match = existing.find(
+      d =>
+        d.disclosureType === disclosureType &&
+        datePrefix(d.dateInitiated) === wantDate &&
+        ((docketNumber && d.docketNumber === docketNumber) || !docketNumber)
+    );
+    return match ? rowString(match.id) : null;
+  }
+
+  /**
+   * Builds a deterministic employment-history ID for an advisor/firm/start tuple.
    * @param advisorIdValue - Advisor id used in deterministic ids.
    * @param firmIdValue - Firm id used in deterministic ids.
-   * @param startDate - start date used by this operation.
-   * @returns The computed value.
+   * @param startDate - Employment start date.
+   * @returns Deterministic employment-history ID.
    */
   employment(
     advisorIdValue: string,
@@ -366,12 +373,12 @@ export class Resolver {
   }
 
   /**
-   * Handles sanction for this workflow.
-   * @param disclosureIdValue - disclosure id value used by this operation.
-   * @param sanctionType - sanction type used by this operation.
-   * @param amount - amount used by this operation.
-   * @param duration - duration used by this operation.
-   * @returns The computed value.
+   * Builds a deterministic sanction ID for a disclosure/type/amount/duration tuple.
+   * @param disclosureIdValue - Parent disclosure id.
+   * @param sanctionType - Sanction category.
+   * @param amount - Optional monetary amount.
+   * @param duration - Optional duration in months.
+   * @returns Deterministic sanction ID.
    */
   sanction(
     disclosureIdValue: string,
@@ -388,11 +395,11 @@ export class Resolver {
   }
 
   /**
-   * Handles license for this workflow.
+   * Builds a deterministic license ID for an advisor/license/date tuple.
    * @param advisorIdValue - Advisor id used in deterministic ids.
-   * @param licenseType - license type used by this operation.
-   * @param grantedDate - granted date used by this operation.
-   * @returns The computed value.
+   * @param licenseType - License or registration type.
+   * @param grantedDate - Date the license was granted.
+   * @returns Deterministic license ID.
    */
   license(
     advisorIdValue: string,
@@ -403,49 +410,4 @@ export class Resolver {
       `lic:${advisorIdValue}:${slugify(licenseType)}:${datePrefix(grantedDate)}`
     );
   }
-}
-
-/**
- * Handles firm name match for this workflow.
- * @param a - Advisor row.
- * @param b - b used by this operation.
- * @returns The computed value.
- */
-function firmNameMatch(a: string, b: string): boolean {
-  return Boolean(a && b) && normalizeFirmName(a) === normalizeFirmName(b);
-}
-
-/**
- * Normalizes firm name for consistent comparisons.
- * @param value - Raw value to normalize or parse.
- * @returns The normalized value.
- */
-function normalizeFirmName(value: string): string {
-  const compact = value
-    .toLowerCase()
-    .trim()
-    .replaceAll(",", " ")
-    .replaceAll(".", " ");
-  const token = [
-    " llc",
-    " l l c",
-    " inc",
-    " l p",
-    " lp",
-    " corporation",
-    " corp",
-  ].find(suffix => compact.endsWith(suffix));
-  const withoutSuffix = token ? compact.slice(0, -token.length) : compact;
-  return withoutSuffix.split(/\s+/u).join(" ");
-}
-
-/**
- * Extracts the date part from BrokerCheck date/time values.
- * @param value - Raw date value from parsed BrokerCheck content.
- * @returns An ISO-like `YYYY-MM-DD` prefix, or an empty string for missing values.
- */
-function datePrefix(value: unknown): string {
-  if (!value) return "";
-  const s = String(value);
-  return s.length >= 10 ? s.slice(0, 10) : s;
 }
