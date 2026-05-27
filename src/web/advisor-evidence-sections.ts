@@ -1,19 +1,65 @@
-// @ts-nocheck
 // Advisor profile evidence sections.
 
+import type {
+  AdvisorProfilePayload,
+  ConfidenceSummary,
+  EvidenceFreshness,
+  ResearchSourceTypeKey,
+  ResearchStatusKey,
+} from "../types/advisor-profile.js";
 import { fmtDate, humanize } from "./app.js";
 import { el, Heading, SectionCard, Tag } from "./design-system/index.js";
 
-const RESEARCH_STATUSES = ["success", "no_new_data", "ambiguous", "failed"];
-const RESEARCH_SOURCE_TYPES = ["web_research", "firm_bio", "rankings", "press"];
-const CONFIDENCE_LEVELS = ["asserted", "inferred", "derived"];
+/**
+ * Narrow callable type for design-system helpers whose source files still opt
+ * out of TS. Mirrors the adapter convention used in `detail-state.ts` so
+ * call sites can pass typed option bags without `any` leakage.
+ */
+type DesignSystemComponent = (
+  options: Readonly<Record<string, unknown>>
+) => HTMLElement;
+
+const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
+
+/** Evidence card tone — drives the surface variant and tag color. */
+type EvidenceTone = "ok" | "warn" | "neutral";
+
+/** Compact state copy rendered in the header of an evidence card. */
+interface EvidenceState {
+  readonly label: string;
+  readonly tone: EvidenceTone;
+  readonly body: string;
+}
+
+/** Keys printed in the confidence distribution grid. */
+type ConfidenceLevel = "asserted" | "inferred" | "derived";
+
+const RESEARCH_STATUSES: readonly ResearchStatusKey[] = [
+  "success",
+  "no_new_data",
+  "ambiguous",
+  "failed",
+];
+const RESEARCH_SOURCE_TYPES: readonly ResearchSourceTypeKey[] = [
+  "web_research",
+  "firm_bio",
+  "rankings",
+  "press",
+];
+const CONFIDENCE_LEVELS: readonly ConfidenceLevel[] = [
+  "asserted",
+  "inferred",
+  "derived",
+];
 
 /**
  * Builds mobile advisor evidence cards for the center column.
  * @param profile - AdvisorProfile payload.
  * @returns Mobile-only evidence cards.
  */
-export function mobileEvidenceProfileSections(profile) {
+export function mobileEvidenceProfileSections(
+  profile: AdvisorProfilePayload
+): HTMLElement {
   return el(
     "div",
     { class: "advisor-mobile-evidence" },
@@ -26,7 +72,9 @@ export function mobileEvidenceProfileSections(profile) {
  * @param profile - AdvisorProfile payload.
  * @returns Evidence freshness and confidence sections.
  */
-export function advisorEvidenceProfileSections(profile) {
+export function advisorEvidenceProfileSections(
+  profile: AdvisorProfilePayload
+): readonly HTMLElement[] {
   return [
     evidenceFreshnessSection(profile.evidenceFreshness),
     factConfidenceSection(profile.confidenceSummary),
@@ -38,9 +86,9 @@ export function advisorEvidenceProfileSections(profile) {
  * @param freshness - Evidence freshness summary.
  * @returns Evidence freshness section.
  */
-function evidenceFreshnessSection(freshness = {}) {
+function evidenceFreshnessSection(freshness: EvidenceFreshness): HTMLElement {
   const state = evidenceFreshnessState(freshness);
-  return SectionCard({
+  return SectionCardComponent({
     title: "Evidence freshness",
     attrs: {
       class: `advisor-evidence-card advisor-evidence-card--${state.tone}`,
@@ -73,9 +121,9 @@ function evidenceFreshnessSection(freshness = {}) {
  * @param confidence - Confidence summary payload.
  * @returns Fact confidence section.
  */
-function factConfidenceSection(confidence = {}) {
+function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
   const total = numericCount(confidence.total);
-  return SectionCard({
+  return SectionCardComponent({
     title: "Fact confidence",
     attrs: { class: "advisor-evidence-card advisor-evidence-card--neutral" },
     body: el(
@@ -113,7 +161,7 @@ function factConfidenceSection(confidence = {}) {
  * @param explanation - Public explanation copy.
  * @returns Help text disclosure.
  */
-function helpText(label, explanation) {
+function helpText(label: string, explanation: string): HTMLElement {
   return el(
     "details",
     { class: "advisor-evidence-help" },
@@ -127,7 +175,7 @@ function helpText(label, explanation) {
  * @param state - State copy and tone.
  * @returns Header node.
  */
-function evidenceStateHeader(state) {
+function evidenceStateHeader(state: EvidenceState): HTMLElement {
   return el(
     "div",
     { class: "advisor-evidence-state" },
@@ -141,7 +189,7 @@ function evidenceStateHeader(state) {
  * @param freshness - Evidence freshness summary.
  * @returns Date metric grid.
  */
-function evidenceDateGrid(freshness = {}) {
+function evidenceDateGrid(freshness: EvidenceFreshness): HTMLElement {
   return el(
     "div",
     { class: "advisor-evidence-metrics" },
@@ -167,7 +215,11 @@ function evidenceDateGrid(freshness = {}) {
  * @param counts - Count payload.
  * @returns Count grid node.
  */
-function evidenceCountGrid(title, keys, counts = {}) {
+function evidenceCountGrid<K extends string>(
+  title: string,
+  keys: readonly K[],
+  counts: Readonly<Partial<Record<K, number>>>
+): HTMLElement {
   return el(
     "div",
     { class: "advisor-evidence-group" },
@@ -186,13 +238,16 @@ function evidenceCountGrid(title, keys, counts = {}) {
   );
 }
 
+/** Leaf text values accepted by the local metric helper. */
+type MetricText = string | number | null | undefined;
+
 /**
  * Builds one evidence metric tile.
  * @param label - Metric label.
  * @param value - Metric value.
  * @returns Metric node.
  */
-function evidenceMetric(label, value) {
+function evidenceMetric(label: MetricText, value: MetricText): HTMLElement {
   return el(
     "div",
     { class: "advisor-evidence-metric" },
@@ -207,7 +262,10 @@ function evidenceMetric(label, value) {
  * @param total - Total confidence rows.
  * @returns Distribution node or null.
  */
-function confidenceDistribution(confidence, total) {
+function confidenceDistribution(
+  confidence: ConfidenceSummary,
+  total: number
+): HTMLElement | null {
   if (!total) return null;
   return el(
     "div",
@@ -230,7 +288,7 @@ function confidenceDistribution(confidence, total) {
  * @param freshness - Evidence freshness summary.
  * @returns State copy and tone.
  */
-function evidenceFreshnessState(freshness = {}) {
+function evidenceFreshnessState(freshness: EvidenceFreshness): EvidenceState {
   if (!freshness.hasData) {
     return {
       label: "No data",
@@ -269,7 +327,7 @@ function evidenceFreshnessState(freshness = {}) {
  * @param tone - Evidence tone.
  * @returns Tag kind.
  */
-function tagTone(tone) {
+function tagTone(tone: EvidenceTone): "ok" | "warn" | "default" {
   return tone === "ok" ? "ok" : tone === "warn" ? "warn" : "default";
 }
 
@@ -278,7 +336,7 @@ function tagTone(tone) {
  * @param value - Count-like value.
  * @returns Numeric count.
  */
-function numericCount(value) {
+function numericCount(value: unknown): number {
   const count = Number(value || 0);
   return Number.isFinite(count) && count > 0 ? count : 0;
 }
@@ -288,7 +346,7 @@ function numericCount(value) {
  * @param value - Count-like value.
  * @returns Localized count.
  */
-function formatNumber(value) {
+function formatNumber(value: unknown): string {
   return numericCount(value).toLocaleString();
 }
 
@@ -297,7 +355,7 @@ function formatNumber(value) {
  * @param value - Date-like value.
  * @returns True when the date is in the past.
  */
-function isPastDate(value) {
+function isPastDate(value: Date | string | null | undefined): boolean {
   if (!value) return false;
   const time = new Date(value).getTime();
   return Number.isFinite(time) && time < Date.now();
