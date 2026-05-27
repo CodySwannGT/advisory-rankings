@@ -12,37 +12,62 @@ class Resource {
 (globalThis as any).Resource = Resource;
 
 const rows: any[] = [];
+const lists: any[] = [];
+const entries: any[] = [];
+
+const table = (source: any[]) => ({
+  get: async (id: string) => source.find(row => row.id === id) ?? null,
+  search: (query: TableQuery = {}) => matchingRows(source, query.conditions),
+  put: async (row: any) => {
+    const index = source.findIndex(existing => existing.id === row.id);
+    if (index >= 0) source[index] = row;
+    else source.push(row);
+    return row;
+  },
+  delete: async (id: string) => {
+    const index = source.findIndex(existing => existing.id === id);
+    if (index >= 0) source.splice(index, 1);
+  },
+});
+
+type TableQuery = Readonly<{
+  readonly conditions?: ReadonlyArray<{
+    readonly attribute: string;
+    readonly value: unknown;
+  }>;
+}>;
+
+async function* matchingRows(
+  source: any[],
+  conditions: TableQuery["conditions"]
+) {
+  const matches = conditions?.length
+    ? source.filter(row => matchesConditions(row, conditions))
+    : source;
+  for (const row of matches) yield row;
+}
+
+function matchesConditions(row: any, conditions: TableQuery["conditions"]) {
+  return conditions?.every(c => row[c.attribute] === c.value) ?? true;
+}
 
 (globalThis as any).tables = {
-  UserRating: {
-    get: async (id: string) => rows.find(row => row.id === id) ?? null,
-    search: ({
-      conditions,
-    }: { conditions?: Array<{ attribute: string; value: unknown }> } = {}) =>
-      (async function* () {
-        const matches = conditions?.length
-          ? rows.filter(row =>
-              conditions.every(c => row[c.attribute] === c.value)
-            )
-          : rows;
-        for (const row of matches) yield row;
-      })(),
-    put: async (row: any) => {
-      const index = rows.findIndex(existing => existing.id === row.id);
-      if (index >= 0) rows[index] = row;
-      else rows.push(row);
-      return row;
-    },
-  },
+  UserRating: table(rows),
+  UserList: table(lists),
+  UserListEntry: table(entries),
 };
 
 const resources = await import("../src/harper/resource-user-rating.js");
+const watchlistResources =
+  await import("../src/harper/resource-user-watchlists.js");
 
 const target = (id: string) => ({ id, toString: () => id });
 
 describe("AdvisorRating resource", () => {
   beforeEach(() => {
     rows.length = 0;
+    lists.length = 0;
+    entries.length = 0;
   });
 
   it("does not leak private ratings to signed-out users", async () => {
@@ -126,6 +151,116 @@ describe("AdvisorRating resource", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.reviewText).toBe("Just a note");
+  });
+});
+
+describe("UserWatchlists resource", () => {
+  beforeEach(() => {
+    rows.length = 0;
+    lists.length = 0;
+    entries.length = 0;
+  });
+
+  it("requires sign-in for mutations and returns empty private state", async () => {
+    const endpoint = new watchlistResources.UserWatchlists() as any;
+
+    await expect(endpoint.get()).resolves.toEqual({
+      authenticated: false,
+      lists: [],
+    });
+    await expect(
+      endpoint.post({ action: "create", name: "Targets" })
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("creates, renames, adds, reorders, annotates, and deletes entries", async () => {
+    const endpoint = new watchlistResources.UserWatchlists() as any;
+    endpoint.user = { username: "user-a" };
+
+    const created = await endpoint.post({
+      action: "create",
+      name: "  Recruiting targets  ",
+    });
+    const listId = created.list.id;
+
+    await expect(
+      endpoint.post({ action: "rename", listId, name: "Priority advisors" })
+    ).resolves.toMatchObject({
+      authenticated: true,
+      list: { id: listId, name: "Priority advisors", entries: [] },
+    });
+
+    await endpoint.post({
+      action: "addEntry",
+      listId,
+      advisorId: "advisor-b",
+      rank: 2,
+      note: "Second call",
+    });
+    await expect(
+      endpoint.post({
+        action: "addEntry",
+        listId,
+        advisorId: "advisor-a",
+        rank: 1,
+        note: "Top fit",
+      })
+    ).resolves.toMatchObject({
+      list: {
+        entries: [
+          { advisorId: "advisor-a", rank: 1, note: "Top fit" },
+          { advisorId: "advisor-b", rank: 2, note: "Second call" },
+        ],
+      },
+    });
+
+    await expect(
+      endpoint.post({
+        action: "updateEntry",
+        listId,
+        advisorId: "advisor-b",
+        rank: 3,
+        note: "Promoted after review",
+      })
+    ).resolves.toMatchObject({
+      list: {
+        entries: [
+          { advisorId: "advisor-a", rank: 1 },
+          { advisorId: "advisor-b", rank: 3, note: "Promoted after review" },
+        ],
+      },
+    });
+
+    await expect(
+      endpoint.post({ action: "deleteEntry", listId, advisorId: "advisor-a" })
+    ).resolves.toMatchObject({
+      authenticated: true,
+      deleted: true,
+      list: { entries: [{ advisorId: "advisor-b" }] },
+    });
+  });
+
+  it("isolates watchlists by server-side current user", async () => {
+    lists.push({ id: "list-a", userId: "user-a", name: "A" });
+    lists.push({ id: "list-b", userId: "user-b", name: "B" });
+    entries.push({
+      id: "list-a:advisor-a",
+      listId: "list-a",
+      advisorId: "advisor-a",
+      rank: 1,
+      note: "private",
+    });
+    const endpoint = new watchlistResources.UserWatchlists() as any;
+    endpoint.user = { username: "user-b" };
+
+    await expect(endpoint.get()).resolves.toEqual({
+      authenticated: true,
+      lists: [{ id: "list-b", name: "B", entries: [] }],
+    });
+    await expect(
+      endpoint.post({ action: "rename", listId: "list-a", name: "Stolen" })
+    ).rejects.toMatchObject({ status: 404 });
+    expect(lists.find(row => row.id === "list-a")?.name).toBe("A");
   });
 });
 /* eslint-enable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
