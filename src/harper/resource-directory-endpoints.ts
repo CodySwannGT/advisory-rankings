@@ -167,26 +167,18 @@ async function filterCandidatesByFirm(
   firms: ReadonlyArray<FirmRow>,
   firmFilter: string
 ): Promise<ReadonlyArray<AdvisorRow>> {
+  if (!candidates.length) return [];
   const matchingFirmIds = firms
     .filter(firm => firmFilterMatchesFirm(firmFilter, firm))
     .map(firm => firm.id);
   if (!matchingFirmIds.length) return [];
-  const employmentsPerFirm = await Promise.all(
-    matchingFirmIds.map(firmId =>
-      rowsByAttribute<EmploymentHistoryRow>(
-        tables.EmploymentHistory,
-        "firmId",
-        firmId
-      )
-    )
-  );
+  const employments = await currentEmploymentsForFirms(matchingFirmIds);
   const matchingFirmIdSet = new Set(matchingFirmIds);
   // Keep only CURRENT rows (no endDate) at a matching firm. The `firmId`
   // guard re-applies the index condition defensively in case the runtime
   // returns extra rows.
   const advisorIds = new Set(
-    employmentsPerFirm
-      .flat()
+    employments
       .filter(
         employment =>
           matchingFirmIdSet.has(employment.firmId) && !employment.endDate
@@ -194,6 +186,52 @@ async function filterCandidatesByFirm(
       .map(employment => employment.advisorId)
   );
   return candidates.filter(advisor => advisorIds.has(advisor.id));
+}
+
+/** Max indexed firmId lookups issued concurrently in one batch. */
+const FIRM_LOOKUP_BATCH = 25;
+
+/**
+ * Fetches employment rows for the given firm IDs via indexed `firmId`
+ * lookups, bounding concurrency so a broad `firm` filter (matching many
+ * firms) cannot fan out into an unbounded burst of simultaneous queries.
+ * Lookup failures are re-thrown with local context.
+ * @param firmIds - Canonical firm IDs whose employments to fetch.
+ * @returns Flattened employment rows across all requested firms.
+ */
+async function currentEmploymentsForFirms(
+  firmIds: ReadonlyArray<string>
+): Promise<ReadonlyArray<EmploymentHistoryRow>> {
+  const batches = Array.from(
+    { length: Math.ceil(firmIds.length / FIRM_LOOKUP_BATCH) },
+    (_unused, batchIndex) =>
+      firmIds.slice(
+        batchIndex * FIRM_LOOKUP_BATCH,
+        batchIndex * FIRM_LOOKUP_BATCH + FIRM_LOOKUP_BATCH
+      )
+  );
+  try {
+    return await batches.reduce<Promise<ReadonlyArray<EmploymentHistoryRow>>>(
+      async (accumulated, batch) => {
+        const rows = await accumulated;
+        const fetched = await Promise.all(
+          batch.map(firmId =>
+            rowsByAttribute<EmploymentHistoryRow>(
+              tables.EmploymentHistory,
+              "firmId",
+              firmId
+            )
+          )
+        );
+        return [...rows, ...fetched.flat()];
+      },
+      Promise.resolve([])
+    );
+  } catch (error) {
+    throw new Error("Failed to resolve advisor firm filter", {
+      cause: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }
 
 /** Public team directory resource. */
