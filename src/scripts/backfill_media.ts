@@ -1,30 +1,42 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
-  extractMediaCandidates,
-  parseDuckDuckGoResults,
-} from "../lib/media-enrichment.js";
+  type MediaMode,
+  type MediaRow,
+  discoverMedia,
+  mediaField,
+  nameFor,
+} from "../lib/media-backfill.js";
 import { restPut } from "../lib/rest.js";
 import { bearerHeaders, createAuthTokens, loadCreds } from "./_auth.js";
 
-const USER_AGENT = "advisory-rankings-media-backfill/0.1";
-const SEARCH_URL = "https://duckduckgo.com/html/";
-const DEFAULT_MIN_SCORE = 5;
-const BLOCKED_SOURCE_HOST_PATTERNS = [
-  /dnb\.com$/i,
-  /facebook\.com$/i,
-  /linkedin\.com$/i,
-  /rocketreach\.co$/i,
-  /visualvisitor\.com$/i,
-  /zoominfo\.com$/i,
-] as const;
-
-/** Entity kinds with media fields supported by the backfill. */
-type MediaMode = "advisor" | "firm";
 /** CLI target values accepted by `--target`. */
 type TargetKind = "advisors" | "firms" | "all";
-/** Untyped Harper row returned by the deployed REST resources. */
-type Row = Readonly<Record<string, unknown>>;
+
+/** Convenience alias matching the lib-side row contract. */
+type Row = MediaRow;
+
+/** Options shared by every row-processing pass. */
+interface ProcessRowsInput {
+  readonly rows: ReadonlyArray<Row>;
+  readonly table: string;
+  readonly mode: MediaMode;
+  readonly baseUrl: string;
+  readonly token: string;
+  readonly max: number;
+  readonly write: boolean;
+  readonly delayMs: number;
+}
+
+/** Running tally of successful candidates produced by `processRow`. */
+interface RowSummary {
+  readonly found: number;
+  readonly written: number;
+}
+
+/** Scanned-row totals returned by `processRows`. */
+interface RowSummaryWithScanned extends RowSummary {
+  readonly scanned: number;
+}
 
 /**
  * Reads one CLI option by name.
@@ -50,7 +62,7 @@ function has(name: string): boolean {
  * @param ms - Delay in milliseconds.
  * @returns Promise that resolves after the delay.
  */
-function sleep(ms: number) {
+function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -66,171 +78,6 @@ function targetKind(): TargetKind {
 }
 
 /**
- * Selects the display name field for the entity kind being enriched.
- * @param row - Advisor or firm row from Harper.
- * @param mode - Entity media mode.
- * @returns Name used for search queries.
- */
-function nameFor(row: Row, mode: MediaMode): string {
-  const value = mode === "advisor" ? row.legalName : row.name;
-  return typeof value === "string" ? value : "";
-}
-
-/**
- * Selects the destination media URL field for the entity kind.
- * @param mode - Entity media mode.
- * @returns Harper field that stores the discovered media URL.
- */
-function mediaField(mode: MediaMode): string {
-  return mode === "advisor" ? "headshotUrl" : "logoUrl";
-}
-
-/**
- * Removes common legal suffixes that make firm logo searches worse.
- * @param name - Firm display or legal name.
- * @returns Search-friendly firm name.
- */
-function cleanFirmSearchName(name: string): string {
-  const normalized = name.replace(/[,.]/g, " ").replace(/\s+/g, " ").trim();
-  const suffixes = new Set([
-    "inc",
-    "incorporated",
-    "llc",
-    "ltd",
-    "lp",
-    "corp",
-    "corporation",
-  ]);
-  const words = normalized.split(" ");
-  return suffixes.has(words.at(-1)?.toLowerCase() ?? "")
-    ? words.slice(0, -1).join(" ")
-    : normalized;
-}
-
-/**
- * Builds a search query tuned for advisor headshots or firm logos.
- * @param row - Advisor or firm row from Harper.
- * @param mode - Entity media mode.
- * @returns DuckDuckGo search query.
- */
-function searchQuery(row: Row, mode: MediaMode): string {
-  const name = nameFor(row, mode);
-  if (mode === "firm") return `"${cleanFirmSearchName(name)}" logo official`;
-  const firmName = row._currentFirmName;
-  const firmHint = typeof firmName === "string" ? ` "${firmName}"` : "";
-  return `"${name}"${firmHint} financial advisor headshot`;
-}
-
-/**
- * Rejects search-result hosts that are usually gated directories or social pages.
- * @param url - Candidate source page URL.
- * @returns True when the page is worth fetching.
- */
-function sourceAllowed(url: string): boolean {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    return !BLOCKED_SOURCE_HOST_PATTERNS.some(pattern => pattern.test(host));
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Fetches text/html content with a short timeout.
- * @param url - URL to fetch.
- * @returns HTML text or null for failed/non-HTML responses.
- */
-async function fetchText(url: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12_000);
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: "text/html,*/*", "User-Agent": USER_AGENT },
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    const type = res.headers.get("content-type") ?? "";
-    if (!type.includes("text/html")) return null;
-    return await res.text();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Verifies that a discovered media URL is reachable as an image.
- * @param url - Candidate image URL.
- * @returns True when the URL appears to serve image content.
- */
-async function isReachableImage(url: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
-  try {
-    const res = await fetch(url, {
-      method: "HEAD",
-      headers: { "User-Agent": USER_AGENT },
-      signal: controller.signal,
-    });
-    if (!res.ok) return false;
-    const type = res.headers.get("content-type") ?? "";
-    return type.startsWith("image/");
-  } catch {
-    return imageExtensionFallback(url);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Falls back to extension checks when HEAD requests are blocked.
- * @param url - Candidate image URL.
- * @returns True when the URL path ends in a known image extension.
- */
-function imageExtensionFallback(url: string): boolean {
-  const path = url.split(/[?#]/u)[0].toLowerCase();
-  return [".avif", ".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"].some(
-    extension => path.endsWith(extension)
-  );
-}
-
-/**
- * Runs one DuckDuckGo HTML search and filters noisy source hosts.
- * @param query - Search query for advisor or firm media.
- * @returns Up to five source page URLs.
- */
-async function search(query: string): Promise<ReadonlyArray<string>> {
-  const url = `${SEARCH_URL}?q=${encodeURIComponent(query)}`;
-  const html = await fetchText(url);
-  if (!html) return [];
-  return parseDuckDuckGoResults(html).filter(sourceAllowed).slice(0, 5);
-}
-
-/**
- * Searches source pages and returns the first reachable high-confidence media URL.
- * @param row - Advisor or firm row from Harper.
- * @param mode - Entity media mode.
- * @returns Best media candidate or null when none pass validation.
- */
-async function discoverMedia(row: Row, mode: MediaMode) {
-  const name = nameFor(row, mode);
-  const explicitSourceUrl = arg("--source-url");
-  const urls = explicitSourceUrl
-    ? [explicitSourceUrl]
-    : await search(searchQuery(row, mode));
-  for (const sourceUrl of urls) {
-    const html = await fetchText(sourceUrl);
-    if (!html) continue;
-    const candidate = extractMediaCandidates(html, sourceUrl, name, mode)[0];
-    if (!candidate || candidate.score < DEFAULT_MIN_SCORE) continue;
-    if (!(await isReachableImage(candidate.url))) continue;
-    return candidate;
-  }
-  return null;
-}
-
-/**
  * Loads rows from one Harper table through the REST facade.
  * @param table - Harper table name.
  * @param token - Operation token for bearer auth.
@@ -238,16 +85,28 @@ async function discoverMedia(row: Row, mode: MediaMode) {
  * @returns Table rows, or an empty array when the response shape is unexpected.
  */
 async function getRows(
-  table: "Advisor" | "Firm",
+  table: "Advisor" | "Firm" | "EmploymentHistory",
   token: string,
   baseUrl: string
-) {
+): Promise<ReadonlyArray<Row>> {
   const res = await fetch(`${baseUrl}/${table}/`, {
     headers: bearerHeaders(token),
   });
   if (!res.ok) throw new Error(`GET /${table}/ -> ${res.status}`);
-  const rows = await res.json();
-  return Array.isArray(rows) ? rows : [];
+  const rows: unknown = await res.json();
+  return isRowArray(rows) ? rows : [];
+}
+
+/**
+ * Type predicate that narrows an unknown REST payload to a Harper row list.
+ * @param value - Raw JSON value returned by Harper.
+ * @returns True when the payload is an array of row-shaped objects.
+ */
+function isRowArray(value: unknown): value is ReadonlyArray<Row> {
+  return (
+    Array.isArray(value) &&
+    value.every(item => typeof item === "object" && item !== null)
+  );
 }
 
 /**
@@ -261,8 +120,8 @@ function attachCurrentFirmNames(
   advisors: ReadonlyArray<Row>,
   firms: ReadonlyArray<Row>,
   employments: ReadonlyArray<Row>
-) {
-  const byFirm = new Map(firms.map(firm => [firm.id, firm]));
+): ReadonlyArray<Row> {
+  const byFirm = new Map<unknown, Row>(firms.map(firm => [firm.id, firm]));
   return advisors.map(advisor => ({
     ...advisor,
     _currentFirmName: byFirm.get(
@@ -280,7 +139,7 @@ function attachCurrentFirmNames(
 function currentEmployment(
   employments: ReadonlyArray<Row>,
   advisorId: unknown
-) {
+): Row | undefined {
   return employments
     .filter(row => row.advisorId === advisorId && !row.endDate)
     .sort((left, right) =>
@@ -301,24 +160,18 @@ async function updateRow(
   token: string,
   table: string,
   row: Row
-) {
+): Promise<boolean> {
   return await restPut(baseUrl, table, row, `Bearer ${token}`);
 }
 
 /**
  * Processes selected rows sequentially to keep search and source requests polite.
  * @param input - Row selection, auth, and write options.
- * @param input.rows - Candidate rows loaded from Harper.
- * @param input.table - Harper table to update.
- * @param input.mode - Entity media mode.
- * @param input.baseUrl - Harper base URL.
- * @param input.token - Operation token for bearer auth.
- * @param input.max - Maximum number of rows to process.
- * @param input.write - Whether discovered media should be persisted.
- * @param input.delayMs - Delay between processed rows.
  * @returns Summary counts for scanned, found, and written rows.
  */
-async function processRows(input) {
+async function processRows(
+  input: ProcessRowsInput
+): Promise<RowSummaryWithScanned> {
   const field = mediaField(input.mode);
   const missing = input.rows.filter(
     row => row.id && nameFor(row, input.mode) && !row[field]
@@ -330,7 +183,7 @@ async function processRows(input) {
       )
     : missing;
   const selected = input.max > 0 ? filtered.slice(0, input.max) : filtered;
-  const summary = await selected.reduce(
+  const summary = await selected.reduce<Promise<RowSummary>>(
     async (previous, row) => processRow(input, field, row, await previous),
     Promise.resolve({ found: 0, written: 0 })
   );
@@ -349,9 +202,14 @@ async function processRows(input) {
  * @param summary - Running summary counts.
  * @returns Updated summary counts.
  */
-async function processRow(input, field, row, summary) {
+async function processRow(
+  input: ProcessRowsInput,
+  field: string,
+  row: Row,
+  summary: RowSummary
+): Promise<RowSummary> {
   const name = nameFor(row, input.mode);
-  const candidate = await discoverMedia(row, input.mode);
+  const candidate = await discoverMedia(row, input.mode, arg("--source-url"));
   if (!candidate) {
     console.log(`${input.table}\tMISS\t${name}`);
     await sleep(input.delayMs);
@@ -378,7 +236,12 @@ async function processRow(input, field, row, summary) {
  * @param url - Discovered media URL.
  * @returns True when a write occurred and succeeded.
  */
-function updateMediaRow(input, field, row, url) {
+function updateMediaRow(
+  input: ProcessRowsInput,
+  field: string,
+  row: Row,
+  url: string
+): Promise<boolean> {
   return updateRow(input.baseUrl, input.token, input.table, {
     ...row,
     [field]: url,
@@ -386,10 +249,19 @@ function updateMediaRow(input, field, row, url) {
 }
 
 /**
+ * Removes trailing slashes without using backtracking-prone regexes.
+ * @param value - URL string that may include trailing slash characters.
+ * @returns URL without trailing slashes.
+ */
+function stripTrailingSlashes(value: string): string {
+  return value.endsWith("/") ? stripTrailingSlashes(value.slice(0, -1)) : value;
+}
+
+/**
  * Runs the media backfill CLI.
  * @returns Promise that resolves when selected targets complete.
  */
-async function main() {
+async function main(): Promise<void> {
   const creds = loadCreds();
   const tokens = await createAuthTokens(creds);
   const baseUrl = stripTrailingSlashes(creds.clusterUrl);
@@ -402,7 +274,9 @@ async function main() {
   const [advisors, firms, employments] = await Promise.all([
     getRows("Advisor", token, baseUrl),
     getRows("Firm", token, baseUrl),
-    getRows("EmploymentHistory", token, baseUrl).catch(() => []),
+    getRows("EmploymentHistory", token, baseUrl).catch(
+      (): ReadonlyArray<Row> => []
+    ),
   ]);
 
   if (target === "advisors" || target === "all") {
@@ -429,15 +303,6 @@ async function main() {
       delayMs,
     });
   }
-}
-
-/**
- * Removes trailing slashes without using backtracking-prone regexes.
- * @param value - URL string that may include trailing slash characters.
- * @returns URL without trailing slashes.
- */
-function stripTrailingSlashes(value: string): string {
-  return value.endsWith("/") ? stripTrailingSlashes(value.slice(0, -1)) : value;
 }
 
 main().catch(error => {
