@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   advisorId,
   branchId,
@@ -9,6 +8,7 @@ import {
 } from "./ids.js";
 import { canonicalFirmId, firmAliasId } from "./firm-identity.js";
 import type { MerrillRows, MerrillYextAdvisor } from "./merrill-types.js";
+import type { YextAddress } from "./morgan-stanley-types.js";
 import {
   addressKey,
   certificationCode,
@@ -142,13 +142,17 @@ const advisorRow = (source: MerrillYextAdvisor): Record<string, unknown> => {
   const legalName = displayName(source);
   const names = splitName(legalName);
   const notes = [
-    source.c_jobTitle,
-    source.c_recognitionTitle,
-    listNote("Client focuses", source.c_clientFocuses),
+    asString(source.c_jobTitle),
+    asString(source.c_recognitionTitle),
+    listNote("Client focuses", asStringArray(source.c_clientFocuses)),
     listNote("Languages", languageValues(source)),
   ].filter(Boolean);
+  const emails = asStringArray(source.emails);
   return withoutEmpty({
-    id: advisorId(legalName, `merrill-${source.id ?? source.uid ?? ""}`),
+    id: advisorId(
+      legalName,
+      `merrill-${asString(source.id) ?? asString(source.uid) ?? ""}`
+    ),
     legalName,
     firstName: cleanText(
       String(source.c_advisorFirstName ?? names.firstName ?? "")
@@ -160,24 +164,28 @@ const advisorRow = (source: MerrillYextAdvisor): Record<string, unknown> => {
     careerStatus: ACTIVE_STATUS,
     headshotUrl: imageUrl(source.c_profilePicture),
     bioText: notes.length ? notes.join("\n") : undefined,
-    businessEmail: Array.isArray(source.emails) ? source.emails[0] : undefined,
+    businessEmail: emails ? emails[0] : undefined,
     businessPhone: normalizePhone(String(source.mainPhone ?? "")),
     piiLevel: "public",
   });
 };
 
 const branchRow = (source: MerrillYextAdvisor): Record<string, unknown> => {
-  const address = source.address ?? {};
+  const address: YextAddress = asRecord(source.address) ?? {};
+  const city = asString(address.city);
+  const region = asString(address.region);
+  const line1 = asString(address.line1);
+  const line2 = asString(address.line2);
   return withoutEmpty({
     id: branchId(MERRILL_FIRM_NAME, "branch", addressKey(address)),
     firmId: MERRILL_FIRM_ID,
     level: "branch",
-    name: [address.city, address.region].filter(Boolean).join(", "),
-    address: [address.line1, address.line2].filter(Boolean).join(", "),
-    city: address.city,
-    state: address.region,
-    country: address.countryCode,
-    postalCode: address.postalCode,
+    name: [city, region].filter(Boolean).join(", "),
+    address: [line1, line2].filter(Boolean).join(", "),
+    city,
+    state: region,
+    country: asString(address.countryCode),
+    postalCode: asString(address.postalCode),
   });
 };
 
@@ -195,8 +203,8 @@ const employmentRow = (
     advisorId: advisor.id,
     firmId: MERRILL_FIRM_ID,
     branchId: branch.id,
-    roleTitle: source.c_jobTitle,
-    startDate: source.c_currentPositionStartDate,
+    roleTitle: asString(source.c_jobTitle),
+    startDate: asString(source.c_currentPositionStartDate),
     sourceType: MERRILL_SOURCE_TYPE,
     sourceRef: sourceUrl(source),
   });
@@ -206,7 +214,8 @@ const designationRows = (
   advisor: Record<string, unknown>,
   source: MerrillYextAdvisor
 ): ReadonlyArray<Record<string, unknown>> => {
-  return (source.certifications ?? []).map(certification =>
+  const certifications = asStringArray(source.certifications) ?? [];
+  return certifications.map(certification =>
     withoutEmpty({
       id: uid(`designation:${advisor.id}:${certificationCode(certification)}`),
       advisorId: advisor.id,
@@ -263,22 +272,43 @@ const displayName = (source: MerrillYextAdvisor): string => {
 const languageValues = (
   source: MerrillYextAdvisor
 ): ReadonlyArray<string> | undefined => {
-  if (Array.isArray(source.c_languagesV2)) return source.c_languagesV2;
+  const v2 = asStringArray(source.c_languagesV2);
+  if (v2) return v2;
   if (!Array.isArray(source.c_language)) return undefined;
   return source.c_language
-    .map(language => language?.language)
+    .map(language => asString(asRecord(language)?.language))
     .filter((value): value is string => Boolean(value));
 };
 
 const imageUrl = (image: unknown): string | undefined => {
-  if (!image || typeof image !== "object") return undefined;
-  return normalizeUrl((image as Record<string, string>).url);
+  const record = asRecord(image);
+  if (!record) return undefined;
+  return normalizeUrl(asString(record.url));
 };
 
 const sourceUrl = (source: MerrillYextAdvisor): string | undefined => {
-  const explicit =
-    source.c_pagesURL ?? source.websiteUrl?.url ?? source.website;
+  const websiteUrlRecord = asRecord(source.websiteUrl);
+  const explicit = source.c_pagesURL ?? websiteUrlRecord?.url ?? source.website;
   if (typeof explicit === "string") return normalizeUrl(explicit);
   const slug = source.slug ? String(source.slug) : "";
   return slug ? `https://advisor.ml.com/${slug}` : undefined;
+};
+
+const asString = (value: unknown): string | undefined => {
+  return typeof value === "string" ? value : undefined;
+};
+
+const asStringArray = (value: unknown): ReadonlyArray<string> | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  return value.every((item): item is string => typeof item === "string")
+    ? value
+    : undefined;
+};
+
+const isRecord = (value: unknown): value is YextAddress => {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+};
+
+const asRecord = (value: unknown): YextAddress | undefined => {
+  return isRecord(value) ? value : undefined;
 };
