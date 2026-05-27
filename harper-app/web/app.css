@@ -808,14 +808,17 @@ body.drawer-open .nav .nav-scrim {
 .firm-dd-filter-help {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
   min-width: 0;
 }
 .firm-dd-filter-help {
   align-items: flex-start;
 }
-.firm-dd-filter {
+.firm-dd-filter.ab-btn,
+.firm-dd-filter.ab-btn--primary {
   min-height: 34px;
+  max-width: 100%;
   width: auto;
   flex: 0 0 auto;
 }
