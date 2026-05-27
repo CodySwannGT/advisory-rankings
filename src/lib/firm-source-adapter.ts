@@ -46,12 +46,12 @@ export interface FirmSourceDiscovery {
 
 /** Shared command-line options expected on firm-source scraper scripts. */
 export class FirmSourceRunOptions {
-  readonly checkedAt = "";
-  readonly json = false;
-  readonly maxAdvisors = DEFAULT_FIRM_SOURCE_MAX_ADVISORS;
-  readonly pageSize = DEFAULT_FIRM_SOURCE_PAGE_SIZE;
+  readonly checkedAt: string = "";
+  readonly json: boolean = false;
+  readonly maxAdvisors: number = DEFAULT_FIRM_SOURCE_MAX_ADVISORS;
+  readonly pageSize: number = DEFAULT_FIRM_SOURCE_PAGE_SIZE;
   readonly queries: readonly string[] = [];
-  readonly write = false;
+  readonly write: boolean = false;
 }
 
 /** Pure adapter surface shared by public firm locator imports. */
