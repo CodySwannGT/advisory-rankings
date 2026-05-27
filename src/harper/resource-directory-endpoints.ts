@@ -11,16 +11,18 @@ import {
   paginate,
   parsePagination,
 } from "./resource-pagination.js";
-import { currentFirmNameByAdvisor, searchCounts } from "./resource-search.js";
+import { searchCounts } from "./resource-search.js";
 import {
-  canonicalizeForAdvisorsDirectory,
   canonicalizeForFirmsDirectory,
   canonicalizeForSearch,
   canonicalizeForTeamsDirectory,
 } from "./resource-firm-canonicalization.js";
 import {
+  advisorsMatchingFirm,
+  resolveDisplayedAdvisorFirms,
+} from "./resource-directory-advisor-firm.js";
+import {
   advisorMatchesNonFirmFilters,
-  firmFilterMatchesFirm,
   firmMatchesFilters,
   parseAdvisorDirectoryFilters,
   parseFirmDirectoryFilters,
@@ -29,11 +31,7 @@ import {
   teamMatchesFilters,
   queryValue,
 } from "./resource-directory-filters.js";
-import {
-  allRows,
-  optionalAll,
-  rowsByAttribute,
-} from "./resource-directory-tables.js";
+import { allRows, optionalAll } from "./resource-directory-tables.js";
 import {
   advisorDirectoryKey,
   compareAdvisorDirectoryRows,
@@ -107,30 +105,17 @@ export class PublicAdvisors extends Resource {
    * @returns Advisor page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<AdvisorRow>> {
-    // Load only the bounded tables. The largest table — EmploymentHistory
-    // (~50k+ rows) — is NOT scanned here; scanning it (plus all advisors) on
-    // every request was the root cause of >30s backend time under the smoke
-    // gate's concurrent page load. Employment is needed ONLY when a `firm`
-    // filter is active, and is then resolved via indexed `firmId` lookups.
-    const [advisors, firms, firmAliases] = await Promise.all([
-      allRows<AdvisorRow>(tables.Advisor),
-      allRows<FirmRow>(tables.Firm),
-      optionalAll<FirmAliasRow>(tables.FirmAlias),
-    ]);
-    const rows = canonicalizeForAdvisorsDirectory({
-      firms,
-      employments: [],
-      firmAliases,
-    });
     const filters = parseAdvisorDirectoryFilters(target);
-    // Apply the advisor-field-only filters (q/careerStatus/hasCrd) up front,
-    // without any employment data.
-    const candidates = advisors.filter(advisor =>
-      advisorMatchesNonFirmFilters(advisor, filters)
-    );
+    // When a `firm` filter is active, drive the result from the firm's current
+    // employees (a bounded, indexed `firmId` lookup) and load ONLY those
+    // advisors by id — never scanning the 13k-row Advisor table. Without a
+    // firm filter the directory genuinely enumerates all advisors to sort and
+    // paginate them, so the full load is unavoidable there.
     const matched = filters.firm
-      ? await filterCandidatesByFirm(candidates, rows.firms, filters.firm)
-      : candidates;
+      ? await advisorsMatchingFirm(filters, filters.firm)
+      : (await allRows<AdvisorRow>(tables.Advisor)).filter(advisor =>
+          advisorMatchesNonFirmFilters(advisor, filters)
+        );
     const sorted = [...matched].sort(compareAdvisorDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
@@ -139,98 +124,6 @@ export class PublicAdvisors extends Resource {
       advisorDirectoryKey
     );
     return { items, nextCursor, total: sorted.length };
-  }
-}
-
-/**
- * Narrows advisor candidates to those with a CURRENT employment at a firm
- * matching the `firm` filter, without scanning the whole `EmploymentHistory`
- * table. Canonical firms whose id/name matches the filter are resolved first,
- * then each matching firm's current employments are fetched via the indexed
- * `firmId` attribute (in parallel) and reduced to the set of advisor IDs that
- * are currently employed there.
- *
- * Documented divergence: matching is based on having a current (no `endDate`)
- * employment at a firm whose id/name matches the filter, rather than
- * re-deriving each advisor's single global "current" employment and matching
- * that. This intentionally avoids the full-table scan that previously caused
- * >30s backend time under load. In practice an advisor has one current
- * employment, so the observable result matches; the divergence only surfaces
- * for the rare case of overlapping open-ended employment rows.
- * @param candidates - Advisors already passing the non-firm filters.
- * @param firms - Canonical firm rows for the request.
- * @param firmFilter - Normalized non-empty `firm` filter value.
- * @returns Candidates currently employed at a matching firm.
- */
-async function filterCandidatesByFirm(
-  candidates: ReadonlyArray<AdvisorRow>,
-  firms: ReadonlyArray<FirmRow>,
-  firmFilter: string
-): Promise<ReadonlyArray<AdvisorRow>> {
-  if (!candidates.length) return [];
-  const matchingFirmIds = firms
-    .filter(firm => firmFilterMatchesFirm(firmFilter, firm))
-    .map(firm => firm.id);
-  if (!matchingFirmIds.length) return [];
-  const employments = await currentEmploymentsForFirms(matchingFirmIds);
-  const matchingFirmIdSet = new Set(matchingFirmIds);
-  // Keep only CURRENT rows (no endDate) at a matching firm. The `firmId`
-  // guard re-applies the index condition defensively in case the runtime
-  // returns extra rows.
-  const advisorIds = new Set(
-    employments
-      .filter(
-        employment =>
-          matchingFirmIdSet.has(employment.firmId) && !employment.endDate
-      )
-      .map(employment => employment.advisorId)
-  );
-  return candidates.filter(advisor => advisorIds.has(advisor.id));
-}
-
-/** Max indexed firmId lookups issued concurrently in one batch. */
-const FIRM_LOOKUP_BATCH = 25;
-
-/**
- * Fetches employment rows for the given firm IDs via indexed `firmId`
- * lookups, bounding concurrency so a broad `firm` filter (matching many
- * firms) cannot fan out into an unbounded burst of simultaneous queries.
- * Lookup failures are re-thrown with local context.
- * @param firmIds - Canonical firm IDs whose employments to fetch.
- * @returns Flattened employment rows across all requested firms.
- */
-async function currentEmploymentsForFirms(
-  firmIds: ReadonlyArray<string>
-): Promise<ReadonlyArray<EmploymentHistoryRow>> {
-  const batches = Array.from(
-    { length: Math.ceil(firmIds.length / FIRM_LOOKUP_BATCH) },
-    (_unused, batchIndex) =>
-      firmIds.slice(
-        batchIndex * FIRM_LOOKUP_BATCH,
-        batchIndex * FIRM_LOOKUP_BATCH + FIRM_LOOKUP_BATCH
-      )
-  );
-  try {
-    return await batches.reduce<Promise<ReadonlyArray<EmploymentHistoryRow>>>(
-      async (accumulated, batch) => {
-        const rows = await accumulated;
-        const fetched = await Promise.all(
-          batch.map(firmId =>
-            rowsByAttribute<EmploymentHistoryRow>(
-              tables.EmploymentHistory,
-              "firmId",
-              firmId
-            )
-          )
-        );
-        return [...rows, ...fetched.flat()];
-      },
-      Promise.resolve([])
-    );
-  } catch (error) {
-    throw new Error("Failed to resolve advisor firm filter", {
-      cause: error instanceof Error ? error : new Error(String(error)),
-    });
   }
 }
 
@@ -380,48 +273,4 @@ export class Search extends Resource {
       counts: searchCounts(matches),
     };
   }
-}
-
-/**
- * Resolves current-firm subtitles for the displayed advisor slice using
- * targeted indexed `EmploymentHistory` lookups instead of a full-table scan.
- * For each advisor id it queries `EmploymentHistory` by the `@indexed`
- * `advisorId` attribute in parallel, canonicalizes just those rows against
- * the already-loaded firms/teams/firmAliases, and resolves each advisor's
- * current firm name via {@link currentFirmNameByAdvisor}.
- * @param advisorIds - IDs of the advisors in the displayed result slice.
- * @param firms - Firm rows already loaded for the request.
- * @param teams - Team rows already loaded for the request.
- * @param firmAliases - Firm-alias rows already loaded for the request.
- * @param byFirm - Canonical firm lookup keyed by firm ID.
- * @returns Map of advisor ID to resolved current firm name (advisors with no
- *   current employment or an unresolved firm are omitted).
- */
-async function resolveDisplayedAdvisorFirms(
-  advisorIds: ReadonlyArray<string>,
-  firms: ReadonlyArray<FirmRow>,
-  teams: ReadonlyArray<TeamRow>,
-  firmAliases: ReadonlyArray<FirmAliasRow>,
-  byFirm: ReadonlyMap<string, FirmRow>
-): Promise<ReadonlyMap<string, string>> {
-  if (!advisorIds.length) return new Map<string, string>();
-  const fetched = await Promise.all(
-    advisorIds.map(id =>
-      rowsByAttribute<EmploymentHistoryRow>(
-        tables.EmploymentHistory,
-        "advisorId",
-        id
-      )
-    )
-  );
-  const employments = fetched.flat();
-  // Canonicalize the small employment set so firm-ID alias rewrites match
-  // the canonical `byFirm` keys produced for the rest of the response.
-  const canonical = canonicalizeForSearch({
-    firms,
-    teams,
-    employments,
-    firmAliases,
-  });
-  return currentFirmNameByAdvisor(canonical.employments, byFirm);
 }
