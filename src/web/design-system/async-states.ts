@@ -1,13 +1,82 @@
-// @ts-nocheck
 import { el } from "./dom.js";
 import { Button, EmptyText, Skeleton } from "./atoms.js";
 import { SectionCard } from "./organisms-core.js";
 
-const LOADING_SURFACES = new Map([
-  ["list", [70, 95, 85]],
-  ["detail", [45, 100, 90, 65]],
-  ["inline", [60]],
-]);
+/** Discriminator literal identifying an async state kind. */
+type AsyncStateKind =
+  | "loading"
+  | "error"
+  | "empty"
+  | "notFound"
+  | "permission"
+  | "partial";
+
+/** Layout family for {@link LoadingState} skeleton placeholders. */
+type LoadingSurface = "list" | "detail" | "inline";
+
+/** Attribute value shape forwarded to {@link el}. */
+type AttrValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | EventListener
+  | Readonly<Record<string, string>>;
+
+/** Attribute bag forwarded to rendered DOM nodes. */
+type DOMAttrs = Readonly<Record<string, AttrValue>>;
+
+/** Canonical PRD-defined async fallback contract. */
+interface AsyncStateFallback {
+  readonly kind: AsyncStateKind;
+  readonly title: string;
+  readonly messageIntent: string;
+  readonly primaryAction: string;
+  readonly retryRule: string;
+  readonly tone: string;
+  readonly actionLabel?: string;
+}
+
+/** Overrides allowed when resolving a fallback for a specific surface. */
+interface AsyncStateFallbackOverrides {
+  readonly title?: string;
+  readonly messageIntent?: string;
+  readonly actionLabel?: string;
+}
+
+/** Resolved fallback merged with caller overrides. */
+type ResolvedAsyncStateFallback = AsyncStateFallback;
+
+/** Options for the {@link LoadingState} placeholder. */
+interface LoadingStateOptions {
+  readonly surface?: LoadingSurface;
+  readonly rows?: number;
+  readonly attrs?: DOMAttrs;
+}
+
+/** Options for the {@link AsyncStateNotice} fallback card. */
+interface AsyncStateNoticeOptions {
+  readonly kind?: AsyncStateKind;
+  readonly title?: string;
+  readonly body?: string;
+  readonly actionLabel?: string;
+  readonly onAction?: EventListener;
+  readonly details?: string;
+  readonly attrs?: DOMAttrs;
+}
+
+/** Narrow callable shape for design-system helpers still opting out of TS. */
+type DesignSystemComponent = (
+  options: Readonly<Record<string, unknown>>
+) => HTMLElement;
+
+const LOADING_SURFACES: ReadonlyMap<LoadingSurface, readonly number[]> =
+  new Map([
+    ["list", [70, 95, 85]],
+    ["detail", [45, 100, 90, 65]],
+    ["inline", [60]],
+  ]);
 
 /**
  * Canonical async fallback contract from PRD #141.
@@ -16,7 +85,9 @@ const LOADING_SURFACES = new Map([
  * same source of truth for message intent and retry behavior while still
  * allowing surface-specific title/action wording.
  */
-export const ASYNC_STATE_FALLBACKS = Object.freeze({
+export const ASYNC_STATE_FALLBACKS: Readonly<
+  Record<AsyncStateKind, AsyncStateFallback>
+> = Object.freeze({
   loading: Object.freeze({
     kind: "loading",
     title: "Loading",
@@ -70,7 +141,12 @@ export const ASYNC_STATE_FALLBACKS = Object.freeze({
     tone: "warning",
     actionLabel: "Retry section",
   }),
-});
+} satisfies Record<AsyncStateKind, AsyncStateFallback>);
+
+// `SectionCard` is currently emitted from a producer that still opts out of
+// strict checking. Adapt it here through the shared narrow callable shape so
+// the rest of this module stays typed without a `@ts-*` directive.
+const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
 
 /**
  * Resolves a canonical async fallback with surface-specific display overrides.
@@ -81,9 +157,22 @@ export const ASYNC_STATE_FALLBACKS = Object.freeze({
  * @param overrides - Surface-specific display values.
  * @returns Immutable fallback config merged with caller overrides.
  */
-export function resolveAsyncStateFallback(kind, overrides = {}) {
-  const fallback = ASYNC_STATE_FALLBACKS[kind] || ASYNC_STATE_FALLBACKS.error;
-  return { ...fallback, ...overrides, kind: fallback.kind };
+export function resolveAsyncStateFallback(
+  kind: AsyncStateKind | string,
+  overrides: AsyncStateFallbackOverrides = {}
+): ResolvedAsyncStateFallback {
+  const fallback = isAsyncStateKind(kind)
+    ? ASYNC_STATE_FALLBACKS[kind]
+    : ASYNC_STATE_FALLBACKS.error;
+  return {
+    kind: fallback.kind,
+    title: overrides.title ?? fallback.title,
+    messageIntent: overrides.messageIntent ?? fallback.messageIntent,
+    primaryAction: fallback.primaryAction,
+    retryRule: fallback.retryRule,
+    tone: fallback.tone,
+    actionLabel: overrides.actionLabel ?? fallback.actionLabel,
+  };
 }
 
 /**
@@ -97,8 +186,13 @@ export function resolveAsyncStateFallback(kind, overrides = {}) {
  * @param root0.attrs - Element attributes for the wrapper.
  * @returns Loading-state DOM node.
  */
-export function LoadingState({ surface = "list", rows = 1, attrs = {} } = {}) {
-  const widths = LOADING_SURFACES.get(surface) || LOADING_SURFACES.get("list");
+export function LoadingState({
+  surface = "list",
+  rows = 1,
+  attrs = {},
+}: LoadingStateOptions = {}): HTMLElement {
+  const widths =
+    LOADING_SURFACES.get(surface) ?? LOADING_SURFACES.get("list") ?? [];
   const children = Array.from({ length: Math.max(1, rows) }, () =>
     el(
       "div",
@@ -106,11 +200,8 @@ export function LoadingState({ surface = "list", rows = 1, attrs = {} } = {}) {
       ...widths.map(width => Skeleton({ width: `${width}%` }))
     )
   );
-  return el(
-    "div",
-    { ...attrs, class: `ab-loading-state ${attrs.class || ""}`.trim() },
-    ...children
-  );
+  const wrapperClass = `ab-loading-state ${attrClassName(attrs)}`.trim();
+  return el("div", { ...attrs, class: wrapperClass }, ...children);
 }
 
 /**
@@ -136,7 +227,7 @@ export function AsyncStateNotice({
   onAction,
   details,
   attrs = {},
-} = {}) {
+}: AsyncStateNoticeOptions = {}): HTMLElement {
   const fallback = resolveAsyncStateFallback(kind, {
     title,
     messageIntent: body,
@@ -145,18 +236,18 @@ export function AsyncStateNotice({
   const className = [
     "ab-async-state",
     `ab-async-state--${fallback.kind}`,
-    attrs.class || "",
+    attrClassName(attrs),
   ]
     .filter(Boolean)
     .join(" ");
 
-  return SectionCard({
+  return SectionCardComponent({
     title: fallback.title,
     attrs: {
       ...attrs,
       class: className,
       dataset: {
-        ...attrs.dataset,
+        ...attrDatasetMap(attrs),
         asyncState: fallback.kind,
         retryRule: fallback.retryRule,
       },
@@ -174,4 +265,51 @@ export function AsyncStateNotice({
         : null,
     ],
   });
+}
+
+/**
+ * Type predicate for the {@link AsyncStateKind} discriminator literal.
+ * @param value - Candidate kind value.
+ * @returns `true` when `value` matches a known async state kind.
+ */
+function isAsyncStateKind(value: string): value is AsyncStateKind {
+  return Object.prototype.hasOwnProperty.call(ASYNC_STATE_FALLBACKS, value);
+}
+
+/**
+ * Reads an attribute bag's `class` value as a string for safe concatenation.
+ * @param attrs - Attribute bag forwarded to a DOM helper.
+ * @returns Existing class string, or an empty string when none is set.
+ */
+function attrClassName(attrs: DOMAttrs): string {
+  const raw = attrs.class;
+  return typeof raw === "string" ? raw : "";
+}
+
+/**
+ * Reads an attribute bag's `dataset` value as a plain string-map.
+ * @param attrs - Attribute bag forwarded to a DOM helper.
+ * @returns Dataset map when present, otherwise an empty object.
+ */
+function attrDatasetMap(attrs: DOMAttrs): Readonly<Record<string, string>> {
+  const raw = attrs.dataset;
+  if (!isDatasetMap(raw)) return {};
+  return raw;
+}
+
+/**
+ * Type predicate that narrows an attribute value into the plain string-map
+ * shape accepted by `element.dataset`.
+ * @param value - Candidate attribute value.
+ * @returns `true` when `value` is a plain object suitable for `dataset`.
+ */
+function isDatasetMap(
+  value: AttrValue
+): value is Readonly<Record<string, string>> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof value !== "function"
+  );
 }
