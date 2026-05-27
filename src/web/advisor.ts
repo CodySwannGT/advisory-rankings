@@ -1,7 +1,8 @@
-// @ts-nocheck
 // Advisor profile page.
 // All UI comes from the design system — see docs/design-system.md.
 
+import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
+import type { AdvisorRow } from "../types/harper-schema.js";
 import {
   api,
   refreshMe,
@@ -48,17 +49,55 @@ import {
   advisorEvidenceProfileSections,
   mobileEvidenceProfileSections,
 } from "./advisor-evidence-sections.js";
+import {
+  isAdvisorTeamRow,
+  isDesignationStub,
+  isEducationStub,
+  isLicenseStub,
+  isOutsideBusinessActivityRow,
+  isRegistrationApplicationRow,
+  narrowRows,
+} from "./advisor-row-predicates.js";
+
+/**
+ * Narrow callable type for design-system helpers that still opt out of TS.
+ * Producers under `src/web/design-system/` still carry `@ts-nocheck`, so
+ * their exports leak inferred narrow shapes (or `any`) across module
+ * boundaries; this adapter restores a single uniform call signature for
+ * every component this page uses.
+ */
+type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
+
+const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
+const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
+const ProfileHeadComponent = ProfileHead as unknown as DesignSystemComponent;
+const ArticleListBlockComponent =
+  ArticleListBlock as unknown as DesignSystemComponent;
+const TransitionEventCardComponent =
+  TransitionEventCard as unknown as DesignSystemComponent;
+
+/** Tag descriptor accepted by `ProfileHead.tags`. */
+interface ProfileTag {
+  readonly kind?: string;
+  readonly label: string;
+}
+
+/** Column references provided by `mountThreeColumnPage`'s `build` callback. */
+interface PageColumns {
+  readonly center: HTMLElement;
+  readonly right: HTMLElement;
+}
 
 mountThreeColumnPage({
   active: "advisors",
   refreshMe,
   logout,
   search,
-  build({ center, right }) {
+  build({ center, right }: PageColumns): void {
     const id = getEntityIdParam();
     if (!id) {
       center.appendChild(
-        EmptyCard({
+        EmptyCardComponent({
           title: "No advisor selected",
           body: "Pick an advisor from the feed.",
         })
@@ -67,12 +106,12 @@ mountThreeColumnPage({
     }
     renderDetailLoading({ center, right, label: "advisor profile" });
     api(`/AdvisorProfile/${encodeURIComponent(id)}`)
-      .then(d => {
+      .then((d: AdvisorProfilePayload) => {
         clear(center);
         clear(right);
         render(d, center, right);
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         clear(center);
         clear(right);
         center.appendChild(DetailErrorCard("Could not load advisor", err));
@@ -82,13 +121,17 @@ mountThreeColumnPage({
 
 /**
  * Renders an advisor profile from the AdvisorProfile resource payload.
- * @param d - d used by this operation.
+ * @param d - Advisor profile payload returned by the AdvisorProfile resource.
  * @param center - Main content column.
  * @param right - Right sidebar column.
  * @returns Nothing; writes profile sections into the supplied columns.
  */
-function render(d, center, right) {
-  if (d.error) {
+function render(
+  d: AdvisorProfilePayload,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  if (isErrorPayload(d)) {
     center.appendChild(
       DetailNotFoundCard({
         title: "Advisor not found",
@@ -100,7 +143,7 @@ function render(d, center, right) {
     return;
   }
   const a = d.advisor;
-  const profile = ProfileHead({
+  const profile = ProfileHeadComponent({
     initialsText: initials(d.displayName),
     imageUrl: a.headshotUrl,
     title: d.displayName,
@@ -114,12 +157,39 @@ function render(d, center, right) {
 }
 
 /**
+ * Discriminates a not-found error envelope from a normal advisor payload.
+ * @param payload - Resource response under inspection.
+ * @returns Whether the payload represents a not-found / error envelope.
+ */
+function isErrorPayload(
+  payload: AdvisorProfilePayload | ErrorPayload
+): payload is ErrorPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "error" in payload &&
+    Boolean(payload.error)
+  );
+}
+
+/** Error envelope shape returned by AdvisorProfile when the record is missing. */
+interface ErrorPayload {
+  readonly error: unknown;
+  readonly id?: string;
+}
+
+/**
  * Appends present profile sections to a column.
  * @param root - Column node.
  * @param sections - Candidate sections.
  */
-function appendSections(root, sections) {
-  sections.filter(Boolean).forEach(section => root.appendChild(section));
+function appendSections(
+  root: HTMLElement,
+  sections: readonly (HTMLElement | null | undefined)[]
+): void {
+  sections.forEach(section => {
+    if (section) root.appendChild(section);
+  });
 }
 
 /**
@@ -127,8 +197,8 @@ function appendSections(root, sections) {
  * @param advisor - Advisor record.
  * @returns Tags for ProfileHead.
  */
-function advisorTags(advisor) {
-  return [
+function advisorTags(advisor: AdvisorRow): readonly ProfileTag[] {
+  const candidates: readonly (ProfileTag | null)[] = [
     advisor.careerStatus
       ? {
           kind: careerStatusKind(advisor.careerStatus),
@@ -139,7 +209,8 @@ function advisorTags(advisor) {
       ? { label: `${advisor.yearsExperience}y experience` }
       : null,
     advisor.finraCrd ? { label: `CRD ${advisor.finraCrd}` } : null,
-  ].filter(Boolean);
+  ];
+  return candidates.filter((tag): tag is ProfileTag => tag !== null);
 }
 
 /**
@@ -147,7 +218,7 @@ function advisorTags(advisor) {
  * @param status - Career status value.
  * @returns Tag kind.
  */
-function careerStatusKind(status) {
+function careerStatusKind(status: string): string {
   if (status === "active") return "ok";
   if (status === "barred" || status === "suspended") return "danger";
   if (status === "retired" || status === "deceased") return "warn";
@@ -159,18 +230,50 @@ function careerStatusKind(status) {
  * @param d - AdvisorProfile payload.
  * @returns Subtitle text for ProfileHead.
  */
-function advisorSubtitle(d) {
+function advisorSubtitle(d: AdvisorProfilePayload): string {
   const currentEh = d.career.find(c => !c.endDate);
-  if (currentEh)
+  if (currentEh) {
+    const firmName = firmNameOf(currentEh.firm);
+    const branchName = branchNameOf(currentEh.branch);
     return [
-      [currentEh.roleTitle, currentEh.firm?.name].filter(Boolean).join(" at "),
-      currentEh.branch?.name,
+      [currentEh.roleTitle, firmName].filter(Boolean).join(" at "),
+      branchName,
     ]
       .filter(Boolean)
       .join(" · ");
-  if (d.career.length)
-    return `Last seen at ${d.career[d.career.length - 1].firm?.name || "?"}`;
+  }
+  if (d.career.length) {
+    const lastFirm = firmNameOf(d.career[d.career.length - 1]?.firm);
+    return `Last seen at ${lastFirm || "?"}`;
+  }
   return "";
+}
+
+/**
+ * Safely reads a firm display name from an opaque chip payload.
+ * @param firm - Firm chip value as returned by the resource.
+ * @returns Firm display name when present.
+ */
+function firmNameOf(firm: unknown): string | undefined {
+  if (firm && typeof firm === "object" && "name" in firm) {
+    const name = firm.name;
+    if (typeof name === "string") return name;
+  }
+  return undefined;
+}
+
+/**
+ * Safely reads a branch display name from an advisor career row.
+ * @param branch - Branch chip value as returned by the resource.
+ * @returns Branch display name when present.
+ */
+function branchNameOf(branch: BranchNamePart | null): string | undefined {
+  return branch?.name;
+}
+
+/** Minimal branch shape required for subtitle formatting. */
+interface BranchNamePart {
+  readonly name: string | undefined;
 }
 
 /**
@@ -178,39 +281,51 @@ function advisorSubtitle(d) {
  * @param d - AdvisorProfile payload.
  * @returns Ordered center-column sections.
  */
-function advisorCenterSections(d) {
+function advisorCenterSections(
+  d: AdvisorProfilePayload
+): readonly (HTMLElement | null)[] {
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
   return [
     privateRatingCard(d.advisor.id),
     mobileEvidenceProfileSections(d),
     careerSection(d),
-    teamsSection(resourceRows(d.teams)),
+    teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
     PartialFailureCard("Teams", d.teams),
-    licensesSection(resourceRows(d.licenses), d.brokerCheckSnapshot),
+    licensesSection(
+      narrowRows(resourceRows(d.licenses), isLicenseStub),
+      d.brokerCheckSnapshot
+    ),
     PartialFailureCard("Licenses", d.licenses),
-    designationsSection(resourceRows(d.designations)),
+    designationsSection(
+      narrowRows(resourceRows(d.designations), isDesignationStub)
+    ),
     PartialFailureCard("Designations", d.designations),
-    educationSection(resourceRows(d.education)),
+    educationSection(narrowRows(resourceRows(d.education), isEducationStub)),
     PartialFailureCard("Education", d.education),
     disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
     PartialFailureCard("Disclosures", d.disclosures),
-    outsideActivitiesSection(resourceRows(d.outsideBusinessActivities)),
+    outsideActivitiesSection(
+      narrowRows(
+        resourceRows(d.outsideBusinessActivities),
+        isOutsideBusinessActivityRow
+      )
+    ),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
     transitions.length
-      ? SectionCard({
+      ? SectionCardComponent({
           title: "Transitions involving this advisor",
           body: el(
             "div",
             {},
-            ...transitions.map(t => TransitionEventCard(t, fmts))
+            ...transitions.map(t => TransitionEventCardComponent(t, fmts))
           ),
         })
       : null,
     PartialFailureCard("Transitions involving this advisor", d.transitions),
-    SectionCard({
+    SectionCardComponent({
       title: `Coverage (${articles.length.toLocaleString()})`,
-      body: ArticleListBlock({ articles, fmtDate, articleSource }),
+      body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
     }),
     PartialFailureCard("Coverage", d.articles),
   ];
@@ -221,11 +336,18 @@ function advisorCenterSections(d) {
  * @param d - AdvisorProfile payload.
  * @returns Ordered right-rail sections.
  */
-function advisorRightSections(d) {
+function advisorRightSections(
+  d: AdvisorProfilePayload
+): readonly (HTMLElement | null)[] {
   return [
     identityCard(d.advisor),
     ...advisorEvidenceProfileSections(d),
-    registrationApplicationsSection(resourceRows(d.registrationApplications)),
+    registrationApplicationsSection(
+      narrowRows(
+        resourceRows(d.registrationApplications),
+        isRegistrationApplicationRow
+      )
+    ),
     PartialFailureCard("Registration applications", d.registrationApplications),
   ];
 }
