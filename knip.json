@@ -19,7 +19,6 @@
   ],
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],
   "ignoreBinaries": ["audit", "harperdb", "knip", "playwright", "tsx"],
-  "tags": ["-internal"],
   "rules": {
     "devDependencies": "off"
   }
