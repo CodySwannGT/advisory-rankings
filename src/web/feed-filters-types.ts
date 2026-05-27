@@ -1,6 +1,7 @@
 // Types and pure helpers for the home feed filter card.
 
 import * as app from "./app.js";
+import { feedCategoryLabel } from "./feed-category-labels.js";
 
 /** Feed signal mode supported by the home-feed filter card. */
 export type FeedMode = "all" | "event" | "moves" | "compliance";
@@ -64,16 +65,12 @@ export const FEED_MODES: readonly FeedModeOption[] = [
  */
 interface AppModuleAdapter {
   readonly getQueryParam: (name: string) => string | null;
-  readonly humanize: (value: unknown) => string | null;
 }
 const appAdapter = app as unknown as AppModuleAdapter;
 
 /** Untyped `getQueryParam` re-exposed with a real signature. */
 export const getQueryParamFn: AppModuleAdapter["getQueryParam"] =
   appAdapter.getQueryParam;
-
-/** Untyped `humanize` re-exposed with a real signature. */
-export const humanizeFn: AppModuleAdapter["humanize"] = appAdapter.humanize;
 
 /**
  * Coerces an unknown form-data value into a string.
@@ -119,15 +116,4 @@ export function modeLabelFor(mode: FeedMode): string {
   return FEED_MODES.find(([value]) => value === mode)?.[1] ?? "All posts";
 }
 
-/**
- * Humanizes feed category values without hiding placeholder-like source values.
- * @param value - Raw article category.
- * @returns Visible category label.
- */
-export function categoryLabel(value: string): string {
-  const humanized = humanizeFn(value);
-  if (humanized) return humanized;
-  return String(value || "uncategorized")
-    .replace(/_+/g, " ")
-    .replace(/\b\w/g, char => char.toUpperCase());
-}
+export { feedCategoryLabel as categoryLabel };

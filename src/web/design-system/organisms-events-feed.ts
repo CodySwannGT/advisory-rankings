@@ -8,6 +8,7 @@
 
 import { el } from "./dom.js";
 import { Tag } from "./atoms.js";
+import { feedCategoryLabel } from "../feed-category-labels.js";
 import { articlePath, entityPath } from "../urls.js";
 import type { SanctionRow } from "../../types/harper-schema.js";
 import type {
@@ -226,7 +227,7 @@ export function FeedPostCard(
       when: fmtDate
         ? fmtDate(a.publishedDate ?? null, { mode: "rel" })
         : (a.publishedDate ?? null),
-      category: a.category,
+      category: feedCategoryLabel(a.category ?? ""),
     }),
     el(
       "h2",
