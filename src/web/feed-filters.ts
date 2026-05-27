@@ -55,7 +55,6 @@ export function feedFilterCard(state: FeedFilterCardState): HTMLElement {
         (value): FeedFilterOption => [value, categoryLabel(value)]
       ),
     ]),
-    el("button", { class: "filter-button", type: "submit" }, "Apply"),
     Button({
       variant: "neutral",
       onClick: () => state.onChange({ mode: DEFAULT_FEED_MODE, category: "" }),
