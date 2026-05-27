@@ -1,25 +1,57 @@
-// @ts-nocheck
 import { canonicalFirmName } from "./firm-identity.js";
 import { uid } from "./ids.js";
 import type { Resolver } from "./brokercheck-load.js";
+import type { HarperREST } from "./brokercheck-rest.js";
 import {
   baseSnapshotRow,
-  brokerFirmDisplayName,
   firmResolverNames,
   individualDryRunCounts,
   licenseRow,
-  optionalNumber,
-  optionalString,
   stringValue,
   withoutNullish,
   writeIndividualRows,
+  type BrokerRow,
+  type IndividualRows,
 } from "./brokercheck-load-record-utils.js";
+import {
+  buildDisclosureRows,
+  buildEmploymentRow,
+  firmRowsFromEmployments,
+  type DisclosureBlock,
+} from "./brokercheck-load-record-builders.js";
 export { hashContent } from "./brokercheck-load-record-utils.js";
 
-/** Runtime row shape emitted by the BrokerCheck parser and written to Harper. */
-interface BrokerRow {
-  readonly [key: string]: unknown;
+/** Options shared by `loadIndividual` and `loadFirm`. */
+interface LoadOpts {
+  readonly rest: HarperREST;
+  readonly resolver: Resolver;
+  readonly write?: boolean;
 }
+
+/** Subset of `parseIndividual` output consumed by the loader. */
+interface ParsedIndividual extends BrokerRow {
+  readonly advisor: BrokerRow;
+  readonly employments: readonly BrokerRow[];
+  readonly disclosures: readonly BrokerRow[];
+  readonly licenses: readonly BrokerRow[];
+  readonly summary?: BrokerRow;
+}
+
+/** Subset of `parseFirm` output consumed by the loader. */
+interface ParsedFirm extends BrokerRow {
+  readonly firm: BrokerRow;
+  readonly summary?: BrokerRow;
+}
+
+/**
+ * Single-cast adapter used to narrow `unknown` parser output to the
+ * record-loader's consumer shape. This is the only `as` cast in the file:
+ * downstream parsers are still `@ts-nocheck`'d, so the loader treats them
+ * as `unknown` producers and validates required fields at runtime.
+ * @param value - Parsed payload from `parseIndividual` or `parseFirm`.
+ * @returns The value re-typed as `T` without runtime conversion.
+ */
+const narrowParsed = <T extends BrokerRow>(value: unknown): T => value as T;
 
 /**
  * Loads a parsed BrokerCheck individual into Harper rows.
@@ -34,9 +66,9 @@ interface BrokerRow {
 export async function loadIndividual(
   parsedValue: unknown,
   rawContent: unknown,
-  opts: BrokerRow
+  opts: LoadOpts
 ): Promise<Record<string, number>> {
-  const parsed = parsedValue as BrokerRow;
+  const parsed = narrowParsed<ParsedIndividual>(parsedValue);
   const crd = stringValue(parsed.advisor.finraCrd);
   if (!crd) throw new Error("parsed individual missing finraCrd");
   const rows = await buildIndividualRows(
@@ -63,9 +95,9 @@ export async function loadIndividual(
 export async function loadFirm(
   parsedValue: unknown,
   rawContent: unknown,
-  opts: BrokerRow
+  opts: LoadOpts
 ): Promise<Record<string, number>> {
-  const parsed = parsedValue as BrokerRow;
+  const parsed = narrowParsed<ParsedFirm>(parsedValue);
   const crd = stringValue(parsed.firm.finraCrd);
   if (!crd) throw new Error("parsed firm missing finraCrd");
   const firmUuid = await opts.resolver.firm(
@@ -98,17 +130,18 @@ export async function loadFirm(
 }
 
 const buildIndividualRows = async (
-  parsed: BrokerRow,
+  parsed: ParsedIndividual,
   rawContent: unknown,
   crd: string,
   resolver: Resolver
-): Promise<BrokerRow> => {
+): Promise<IndividualRows> => {
   const snapshotId = uid(`bcsnap:individual:${crd}`);
+  const lastEmployment = parsed.employments.at(-1);
   const advisorUuid = await resolver.advisor(
     crd,
     stringValue(parsed.advisor.legalName),
     {
-      firstEmployer: stringValue(parsed.employments.at(-1)?._firmName),
+      firstEmployer: stringValue(lastEmployment?._firmName),
       firstName: stringValue(parsed.advisor.firstName),
       lastName: stringValue(parsed.advisor.lastName),
     }
@@ -120,7 +153,12 @@ const buildIndividualRows = async (
   );
   const disclosureResults = await Promise.all(
     parsed.disclosures.map(block =>
-      buildDisclosureRows(block, resolver, advisorUuid, snapshotId)
+      buildDisclosureRows(
+        narrowParsed<DisclosureBlock>(block),
+        resolver,
+        advisorUuid,
+        snapshotId
+      )
     )
   );
   return {
@@ -140,117 +178,6 @@ const buildIndividualRows = async (
       snapshotId
     ),
   };
-};
-
-const buildEmploymentRow = async (
-  employment: BrokerRow,
-  resolver: Resolver,
-  advisorUuid: string,
-  snapshotId: string
-): Promise<BrokerRow> => {
-  const firmUuid = await resolver.firm(
-    stringValue(employment._firmName)
-      ? [stringValue(employment._firmName)]
-      : [],
-    stringValue(employment._firmFinraId)
-  );
-  return {
-    firmId: firmUuid,
-    sourceEmployment: employment,
-    employmentRow: {
-      id: resolver.employment(
-        advisorUuid,
-        firmUuid,
-        stringValue(employment.startDate)
-      ),
-      advisorId: advisorUuid,
-      firmId: firmUuid,
-      startDate: employment.startDate,
-      endDate: employment.endDate,
-      sourceType: "brokercheck",
-      sourceRef: snapshotId,
-    },
-  };
-};
-
-const buildDisclosureRows = async (
-  block: BrokerRow,
-  resolver: Resolver,
-  advisorUuid: string,
-  snapshotId: string
-): Promise<BrokerRow> => {
-  const disclosure = block.disclosure;
-  const disclosureUuid = await resolver.disclosure(
-    advisorUuid,
-    stringValue(disclosure.disclosureType),
-    stringValue(disclosure.dateInitiated),
-    optionalString(disclosure.docketNumber),
-    stringValue(disclosure.regulator)
-  );
-  return {
-    disclosureRows: [
-      {
-        ...disclosure,
-        id: disclosureUuid,
-        advisorId: advisorUuid,
-        sourceType: "brokercheck",
-        sourceRef: snapshotId,
-      },
-    ],
-    sanctionRows: block.sanctions.map(sanction => ({
-      ...sanction,
-      id: resolver.sanction(
-        disclosureUuid,
-        stringValue(sanction.sanctionType),
-        optionalNumber(sanction.amount),
-        optionalNumber(sanction.durationMonths)
-      ),
-      disclosureId: disclosureUuid,
-    })),
-  };
-};
-
-const firmRowsFromEmployments = (
-  employmentResults: ReadonlyArray<BrokerRow>,
-  resolver: Resolver,
-  snapshotId: string
-): ReadonlyArray<BrokerRow> => {
-  const listingById = Object.fromEntries(
-    (resolver.firmListing ?? []).map(firm => [String(firm.id), firm])
-  );
-  return employmentResults
-    .filter(
-      (result, index, results) =>
-        results.findIndex(candidate => candidate.firmId === result.firmId) ===
-        index
-    )
-    .map(result => firmRowFromEmployment(result, listingById, snapshotId));
-};
-
-const firmRowFromEmployment = (
-  result: BrokerRow,
-  listingById: Readonly<Record<string, BrokerRow>>,
-  snapshotId: string
-): BrokerRow => {
-  const employment = result.sourceEmployment;
-  const name = brokerFirmDisplayName(stringValue(employment._firmName));
-  const update = {
-    id: result.firmId,
-    name: name || null,
-    finraCrd: employment._firmFinraId || null,
-  };
-  const existing = listingById[result.firmId];
-  return existing
-    ? {
-        ...existing,
-        ...withoutNullish(update),
-        name: existing.name || update.name,
-      }
-    : {
-        ...update,
-        channel: employment._iaOnly ? "pure_ria" : "unknown",
-        notes: `Auto-discovered via FINRA BrokerCheck (firmId=${stringValue(employment._firmFinraId)}, snapshot=${snapshotId})`,
-      };
 };
 
 const brokerFirmRow = (

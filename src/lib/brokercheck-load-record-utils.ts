@@ -9,14 +9,14 @@ import type { HarperREST } from "./brokercheck-rest.js";
  * the point of use; this mirrors the parser's runtime contract where keys vary
  * by record kind.
  */
-interface BrokerRow {
+export interface BrokerRow {
   readonly [key: string]: unknown;
 }
 
 /**
  * Per-individual collection of rows ready to be persisted across Harper tables.
  */
-interface IndividualRows {
+export interface IndividualRows {
   readonly firmRows: ReadonlyArray<BrokerRow>;
   readonly advisorRow: BrokerRow;
   readonly employmentRows: ReadonlyArray<BrokerRow>;
@@ -24,6 +24,19 @@ interface IndividualRows {
   readonly sanctionRows: ReadonlyArray<BrokerRow>;
   readonly licenseRows: ReadonlyArray<BrokerRow>;
   readonly snapshotRow: BrokerRow;
+}
+
+/** Per-employment build result that carries the Harper row plus loader context. */
+export interface EmploymentBuildResult {
+  readonly firmId: string;
+  readonly sourceEmployment: BrokerRow;
+  readonly employmentRow: BrokerRow;
+}
+
+/** Per-disclosure-block build result containing flattened disclosure and sanction rows. */
+export interface DisclosureBuildResult {
+  readonly disclosureRows: ReadonlyArray<BrokerRow>;
+  readonly sanctionRows: ReadonlyArray<BrokerRow>;
 }
 
 /**
