@@ -31,7 +31,7 @@ interface SearchResponse {
 }
 
 /** Caller-supplied function that resolves `/Search` matches for a query. */
-type SearchAdapter = (
+export type SearchAdapter = (
   query: string
 ) => Promise<SearchResponse> | SearchResponse;
 
