@@ -79,7 +79,54 @@ const retryFabricUpsert = async (
 };
 
 /**
+ * Sequentially upserts each batch and returns the running touched-record count.
+ *
+ * Implemented recursively so each batch's `retryFabricUpsert` call is awaited
+ * before the next batch is sent, preserving order and avoiding accidental
+ * parallel writes against the Fabric cluster.
+ * @param session - Authenticated Studio session.
+ * @param clusterId - Target Harper Fabric cluster identifier.
+ * @param table - Destination table name.
+ * @param remaining - Batches still to upsert.
+ * @param touched - Running sum of upserted/touched record counts.
+ * @returns Total records touched once every batch has been written.
+ */
+const fabricUpsertBatches = async (
+  session: StudioSession,
+  clusterId: string,
+  table: string,
+  remaining: ReadonlyArray<ReadonlyArray<Record<string, unknown>>>,
+  touched: number
+): Promise<number> => {
+  if (remaining.length === 0) return touched;
+  const [batch, ...rest] = remaining;
+  const response = await retryFabricUpsert(() =>
+    session.clusterOp(clusterId, "upsert", {
+      database: "data",
+      table,
+      records: batch,
+    })
+  );
+  const body = response.body as Partial<
+    Record<"upserted_hashes", ReadonlyArray<unknown>>
+  >;
+  const written = Array.isArray(body.upserted_hashes)
+    ? body.upserted_hashes.length
+    : batch.length;
+  return fabricUpsertBatches(
+    session,
+    clusterId,
+    table,
+    rest,
+    touched + written
+  );
+};
+
+/**
  * Upserts records to a Harper table via the Fabric Studio API.
+ *
+ * Batches are written sequentially — a parallel reduce would race against the
+ * Fabric cluster and lose ordering/throttling guarantees.
  * @param table - Destination table name.
  * @param records - Records to upsert.
  * @returns Number of records touched.
@@ -91,26 +138,13 @@ const fabricUpsert = async (
   if (records.length === 0) return 0;
   const creds = loadCreds();
   const session = await studio();
-  return await batches(records, FABRIC_UPSERT_BATCH_SIZE).reduce<
-    Promise<number>
-  >(async (previous, batch) => {
-    const response = await retryFabricUpsert(() =>
-      session.clusterOp(creds.clusterId, "upsert", {
-        database: "data",
-        table,
-        records: batch,
-      })
-    );
-    const body = response.body as Partial<
-      Record<"upserted_hashes", ReadonlyArray<unknown>>
-    >;
-    return (
-      (await previous) +
-      (Array.isArray(body.upserted_hashes)
-        ? body.upserted_hashes.length
-        : batch.length)
-    );
-  }, Promise.resolve(0));
+  return fabricUpsertBatches(
+    session,
+    creds.clusterId,
+    table,
+    batches(records, FABRIC_UPSERT_BATCH_SIZE),
+    0
+  );
 };
 
 /**
