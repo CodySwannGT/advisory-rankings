@@ -25,12 +25,7 @@ import type {
 // Re-export credential stub types so the advisor module remains a
 // single entry point for callers that only know about the public
 // payload surface.
-export type {
-  AdvisorCredentialGroups,
-  DesignationStub,
-  EducationStub,
-  LicenseStub,
-};
+export type { DesignationStub, EducationStub, LicenseStub };
 
 /** Branch slice shown on advisor career rows. */
 export interface AdvisorCareerBranch {

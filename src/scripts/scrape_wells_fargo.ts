@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
@@ -7,7 +6,6 @@ import {
   parseWellsFargoBranchAdvisors,
   parseWellsFargoLocatorBranches,
   WELLS_FARGO_SOURCE_ADAPTER,
-  type FirmSourceRunOptions,
   type FirmSourceTable,
   type WellsFargoAdvisorSource,
   type WellsFargoBranchSource,
@@ -18,6 +16,16 @@ import { loadCreds, StudioSession } from "./_auth.js";
 
 /** Fabric operation response returned by the Studio cluster API. */
 type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
+
+/** CLI options resolved for one Wells Fargo scraper run. */
+interface WellsFargoRunOptions {
+  readonly checkedAt: string;
+  readonly json: boolean;
+  readonly maxAdvisors: number;
+  readonly pageSize: number;
+  readonly queries: readonly string[];
+  readonly write: boolean;
+}
 
 /** Harper tables written by the Wells Fargo scraper. */
 const TABLE_ORDER = [
@@ -123,7 +131,7 @@ async function main(): Promise<void> {
   }
 }
 
-const runOptions = (): FirmSourceRunOptions => ({
+const runOptions = (): WellsFargoRunOptions => ({
   write: has("--write"),
   json: has("--json"),
   maxAdvisors: numberArg("--max-advisors", DEFAULT_FIRM_SOURCE_MAX_ADVISORS),
@@ -181,7 +189,7 @@ const collectBranchAdvisors = async (
   }
   const [branch, ...remaining] = branches;
   const branchAdvisors = branch.branchUrl
-    ? await fetchBranchAdvisors(branch)
+    ? await fetchBranchAdvisors(branch.branchUrl, branch)
     : [];
   return collectBranchAdvisors(remaining, maxAdvisors, [
     ...collected,
@@ -190,14 +198,15 @@ const collectBranchAdvisors = async (
 };
 
 const fetchBranchAdvisors = async (
+  branchUrl: string,
   branch: WellsFargoBranchSource
 ): Promise<ReadonlyArray<WellsFargoAdvisorSource>> => {
   try {
-    const html = await fetchHtml(branch.branchUrl);
-    return parseWellsFargoBranchAdvisors(html, branch.branchUrl, branch);
+    const html = await fetchHtml(branchUrl);
+    return parseWellsFargoBranchAdvisors(html, branchUrl, branch);
   } catch (error) {
     console.error(
-      `[wells-fargo] skipped branch ${branch.branchUrl}: ${String(error)}`
+      `[wells-fargo] skipped branch ${branchUrl}: ${String(error)}`
     );
     return [];
   }
@@ -221,18 +230,30 @@ const fetchHtml = async (url: string): Promise<string> => {
 const mergeRows = (
   left: WellsFargoRows,
   right: WellsFargoRows
-): WellsFargoRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as WellsFargoRows;
-};
+): WellsFargoRows => ({
+  Firm: mergeTableRows(left.Firm, right.Firm),
+  FirmAlias: mergeTableRows(left.FirmAlias, right.FirmAlias),
+  Branch: mergeTableRows(left.Branch, right.Branch),
+  Advisor: mergeTableRows(left.Advisor, right.Advisor),
+  EmploymentHistory: mergeTableRows(
+    left.EmploymentHistory,
+    right.EmploymentHistory
+  ),
+  Designation: mergeTableRows(left.Designation, right.Designation),
+  Team: mergeTableRows(left.Team, right.Team),
+  TeamMembership: mergeTableRows(left.TeamMembership, right.TeamMembership),
+  AdvisorResearchCheck: mergeTableRows(
+    left.AdvisorResearchCheck,
+    right.AdvisorResearchCheck
+  ),
+});
+
+const mergeTableRows = (
+  left: ReadonlyArray<Record<string, unknown>>,
+  right: ReadonlyArray<Record<string, unknown>>
+): ReadonlyArray<Record<string, unknown>> => [
+  ...new Map([...left, ...right].map(row => [String(row.id), row])).values(),
+];
 
 const targetUrl = (): string | undefined => {
   const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;

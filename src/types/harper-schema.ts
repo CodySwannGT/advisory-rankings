@@ -70,7 +70,10 @@ export interface FirmAliasRow {
   readonly updatedAt?: HarperDate;
 }
 
-/** Firm merge audit row. */
+/**
+ * Firm merge audit row.
+ * @internal Canonical schema row contract reserved for merge-audit reads.
+ */
 export interface FirmMergeAuditRow {
   readonly id: string;
   readonly oldFirmId: string;
@@ -82,7 +85,10 @@ export interface FirmMergeAuditRow {
   readonly createdAt?: HarperDate;
 }
 
-/** Firm succession row. */
+/**
+ * Firm succession row.
+ * @internal Canonical schema row contract reserved for succession reads.
+ */
 export interface FirmSuccessionRow {
   readonly id: string;
   readonly predecessorFirmId: string;
@@ -383,7 +389,10 @@ export interface OutsideBusinessActivityRow {
 
 // ─── SPECIALIZATION ────────────────────────────────────────────────
 
-/** Employer concentration row. */
+/**
+ * Employer concentration row.
+ * @internal Canonical schema row contract reserved for specialization reads.
+ */
 export interface EmployerConcentrationRow {
   readonly id: string;
   readonly subjectType: string;
@@ -544,7 +553,10 @@ export interface AdvisorResearchCheckRow {
 
 // ─── USER LAYER ────────────────────────────────────────────────────
 
-/** User row. */
+/**
+ * User row.
+ * @internal Canonical schema row contract reserved for user-layer reads.
+ */
 export interface UserRow {
   readonly id: string;
   readonly email: string;
@@ -552,7 +564,10 @@ export interface UserRow {
   readonly createdAt?: HarperDate;
 }
 
-/** User rating row. */
+/**
+ * User rating row.
+ * @internal Canonical schema row contract reserved for user-rating reads.
+ */
 export interface UserRatingRow {
   readonly id: string;
   readonly advisorId: string;
