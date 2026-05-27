@@ -1,7 +1,29 @@
-// @ts-nocheck
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
+import {
+  CardComponent,
+  ChipRowComponent,
+  DetailsCardComponent,
+  DisclosureEventCardComponent,
+  PostHeaderComponent,
+  ScrollableTableComponent,
+  SectionCardComponent,
+  TransitionEventCardComponent,
+} from "./article-types.js";
+import type {
+  ArticleBodyPayload,
+  ArticleEventCard,
+  ArticleMetadata,
+  ArticleProvenancePayload,
+  ArticleSourceMetadata,
+  ArticleViewErrorPayload,
+  ArticleViewPayload,
+  ArticleViewSuccessPayload,
+  CompactProvenanceAccumulator,
+  EntityChipPayload,
+  EvidenceTableRow,
+} from "./article-types.js";
 import {
   api,
   refreshMe,
@@ -18,14 +40,6 @@ import {
   mountThreeColumnPage,
   el,
   EmptyCard,
-  SectionCard,
-  Card,
-  PostHeader,
-  ChipRow,
-  DetailsCard,
-  TransitionEventCard,
-  DisclosureEventCard,
-  ScrollableTable,
   clear,
 } from "./design-system/index.js";
 import {
@@ -41,7 +55,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
-  build({ center, right }) {
+  build({ center, right }: Readonly<Record<"center" | "right", HTMLElement>>) {
     const id = getArticleIdParam();
     if (!id) {
       center.appendChild(
@@ -54,12 +68,12 @@ mountThreeColumnPage({
     }
     renderDetailLoading({ center, right, label: "article" });
     api(`/ArticleView/${encodeURIComponent(id)}`)
-      .then(d => {
+      .then((d: ArticleViewPayload) => {
         clear(center);
         clear(right);
         render(d, center, right);
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         clear(center);
         clear(right);
         center.appendChild(DetailErrorCard("Could not load article", err));
@@ -74,8 +88,12 @@ mountThreeColumnPage({
  * @param right - Right sidebar column.
  * @returns The rendered DOM node or section.
  */
-function render(d, center, right) {
-  if (d.error) {
+function render(
+  d: ArticleViewPayload,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  if (isArticleViewError(d)) {
     center.appendChild(
       DetailNotFoundCard({
         title: "Article not found",
@@ -87,7 +105,9 @@ function render(d, center, right) {
     return;
   }
   const a = d.article;
-  const evidenceRows = compactProvenance(resourceRows(d.provenance));
+  const evidenceRows = compactProvenance(
+    resourceRows(d.provenance) as readonly ArticleProvenancePayload[]
+  );
 
   canonicalizeArticleRoute(a);
   center.appendChild(articleHead(d, a));
@@ -108,13 +128,18 @@ function render(d, center, right) {
  * @param article - Article metadata row.
  * @returns Header card for the article detail page.
  */
-function articleHead(d, article) {
-  const src = articleSource(article);
-  const eventCardRows = resourceRows(d.eventCards);
-  return Card({
+function articleHead(
+  d: ArticleViewSuccessPayload,
+  article: ArticleMetadata
+): HTMLElement {
+  const src = articleSource(article) as ArticleSourceMetadata;
+  const eventCardRows = resourceRows(
+    d.eventCards
+  ) as readonly ArticleEventCard[];
+  return CardComponent({
     tag: "article",
     children: [
-      PostHeader({
+      PostHeaderComponent({
         initials: src.initials,
         source: src.source,
         authors: article.authors,
@@ -124,10 +149,10 @@ function articleHead(d, article) {
       el("h2", { class: "post-headline" }, article.headline || "(untitled)"),
       article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
       ...eventCards(eventCardRows),
-      ChipRow({
-        firms: resourceRows(d.firms),
-        teams: resourceRows(d.teams),
-        advisors: resourceRows(d.advisors),
+      ChipRowComponent({
+        firms: resourceRows(d.firms) as readonly EntityChipPayload[],
+        teams: resourceRows(d.teams) as readonly EntityChipPayload[],
+        advisors: resourceRows(d.advisors) as readonly EntityChipPayload[],
       }),
       articleFooter(article, src),
     ],
@@ -139,16 +164,18 @@ function articleHead(d, article) {
  * @param cards - Transition and disclosure card payloads.
  * @returns Rendered event card nodes.
  */
-function eventCards(cards) {
+function eventCards(
+  cards: readonly ArticleEventCard[]
+): readonly HTMLElement[] {
   return cards
     .map(card =>
       card.kind === "transition"
-        ? TransitionEventCard(card, fmts)
+        ? TransitionEventCardComponent(card, fmts)
         : card.kind === "disclosure"
-          ? DisclosureEventCard(card, fmts)
+          ? DisclosureEventCardComponent(card, fmts)
           : null
     )
-    .filter(Boolean);
+    .filter((card): card is HTMLElement => card !== null);
 }
 
 /**
@@ -157,7 +184,10 @@ function eventCards(cards) {
  * @param source - Source attribution metadata.
  * @returns Footer node with the original article link.
  */
-function articleFooter(article, source) {
+function articleFooter(
+  article: ArticleMetadata,
+  source: ArticleSourceMetadata
+): HTMLElement {
   return el(
     "div",
     { class: "post-footer" },
@@ -181,11 +211,12 @@ function articleFooter(article, source) {
  * @param body - Article body payload from ArticleView.
  * @returns Body card or null when no text is available.
  */
-function articleBodyCard(body) {
-  return body?.text
-    ? SectionCard({
+function articleBodyCard(body: unknown): HTMLElement | null {
+  const articleBody = body as ArticleBodyPayload | null | undefined;
+  return articleBody?.text
+    ? SectionCardComponent({
         title: "Article body",
-        body: el("div", {}, ...paragraphs(body.text)),
+        body: el("div", {}, ...paragraphs(articleBody.text)),
       })
     : null;
 }
@@ -195,11 +226,13 @@ function articleBodyCard(body) {
  * @param rows - Deduplicated provenance rows.
  * @returns Evidence card or null when no extracted facts exist.
  */
-function evidenceSection(rows) {
+function evidenceSection(
+  rows: readonly EvidenceTableRow[]
+): HTMLElement | null {
   return rows.length
-    ? SectionCard({
+    ? SectionCardComponent({
         title: `Extracted facts (${rows.length})`,
-        body: ScrollableTable(evidenceTable(rows)),
+        body: ScrollableTableComponent(evidenceTable(rows)),
       })
     : null;
 }
@@ -209,7 +242,7 @@ function evidenceSection(rows) {
  * @param rows - Deduplicated provenance rows.
  * @returns Table node wrapped by the evidence section.
  */
-function evidenceTable(rows) {
+function evidenceTable(rows: readonly EvidenceTableRow[]): HTMLElement {
   return el(
     "table",
     { class: "snap-table" },
@@ -229,9 +262,9 @@ function evidenceTable(rows) {
  * @param article - Article metadata row.
  * @returns Details card for the right rail.
  */
-function metadataSection(article) {
-  const src = articleSource(article);
-  return DetailsCard({
+function metadataSection(article: ArticleMetadata): HTMLElement {
+  const src = articleSource(article) as ArticleSourceMetadata;
+  return DetailsCardComponent({
     title: "Article metadata",
     pairs: [
       ["Slug", article.slug],
@@ -258,8 +291,19 @@ function metadataSection(article) {
  * @param parent - Parent column node.
  * @param child - Optional section node.
  */
-function appendIfPresent(parent, child) {
+function appendIfPresent(parent: HTMLElement, child: HTMLElement | null): void {
   if (child) parent.appendChild(child);
+}
+
+/**
+ * Narrows ArticleView responses to the route error envelope.
+ * @param payload - ArticleView response payload.
+ * @returns Whether the payload is an error response.
+ */
+function isArticleViewError(
+  payload: ArticleViewPayload
+): payload is ArticleViewErrorPayload {
+  return "error" in payload && Boolean(payload.error);
 }
 
 /**
@@ -267,7 +311,7 @@ function appendIfPresent(parent, child) {
  * @param text - Source text to parse.
  * @returns Paragraph nodes.
  */
-function paragraphs(text) {
+function paragraphs(text: string): readonly HTMLElement[] {
   return text.split(/\n{2,}/).map(p => el("p", {}, p));
 }
 
@@ -276,9 +320,11 @@ function paragraphs(text) {
  * @param rows - Provenance rows returned by ArticleView.
  * @returns Compact provenance rows for display.
  */
-function compactProvenance(rows) {
+function compactProvenance(
+  rows: readonly ArticleProvenancePayload[]
+): readonly EvidenceTableRow[] {
   return rows.reduce(
-    (acc, row) => {
+    (acc: CompactProvenanceAccumulator, row) => {
       const field = humanize(row.fieldName);
       const value = String(row.assertedValue || row.quotePhrase || "").trim();
       if (!field || !value) return acc;
