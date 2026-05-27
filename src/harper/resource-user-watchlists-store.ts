@@ -105,7 +105,7 @@ export function throwStatus(message: string, status: number): never {
   throw error;
 }
 
-export function requiredTable<Row>(name: string): SearchableTable<Row> {
+function requiredTable<Row>(name: string): SearchableTable<Row> {
   const candidate: unknown = Reflect.get(tables, name);
   if (isSearchableTable<Row>(candidate)) return candidate;
   throwStatus(`${name} table is unavailable`, 503);
