@@ -1,7 +1,6 @@
-// @ts-nocheck
 // Section renderers for the Recruiting Market Map page.
 
-import { fmtMoney, fmtDate, humanize, entityPath, articlePath } from "./app.js";
+import { fmtMoney, fmtDate } from "./app.js";
 import {
   el,
   EmptyCard,
@@ -12,8 +11,30 @@ import {
   ScrollableTable,
   Tag,
 } from "./design-system/index.js";
+import type {
+  FirmMomentumRow,
+  MarketActivityRow,
+  PublicMove,
+  RecruitingMarketResponse,
+} from "../harper/resource-recruiting-market-types.js";
+import type { WatchlistPayload } from "../harper/resource-recruiting-watchlist.js";
+import {
+  firmCell,
+  fmtNumber,
+  metricBlock,
+  moveCell,
+  netValue,
+  sourceCell,
+  statusTag,
+  summaryCell,
+  summaryValue,
+  table,
+  valueOrMissing,
+  watchlistItem,
+} from "./recruiting-section-cells.js";
 
-const STACKED_CELL_CLASS = "stacked-cell";
+export { fmtNumber } from "./recruiting-section-cells.js";
+
 const MISSING_LOCATION = "missing-location";
 
 /**
@@ -21,7 +42,7 @@ const MISSING_LOCATION = "missing-location";
  * @param rows - Firm momentum rows.
  * @returns Momentum card.
  */
-export function momentumCard(rows) {
+export function momentumCard(rows: readonly FirmMomentumRow[]): HTMLElement {
   if (!rows.length) {
     return EmptyCard({
       title: "Firm momentum",
@@ -51,7 +72,9 @@ export function momentumCard(rows) {
  * @param watchlist - Recruiting watchlist payload.
  * @returns Watchlist card.
  */
-export function watchlistCard(watchlist) {
+export function watchlistCard(
+  watchlist: WatchlistPayload | null
+): HTMLElement | null {
   if (!watchlist?.items?.length) return null;
   return SectionCard({
     title: "Recruiting watchlist",
@@ -84,7 +107,7 @@ export function watchlistCard(watchlist) {
  * @param rows - Market activity rows.
  * @returns Market card.
  */
-export function marketCard(rows) {
+export function marketCard(rows: readonly MarketActivityRow[]): HTMLElement {
   if (!rows.length) {
     return EmptyCard({
       title: "Market activity",
@@ -114,7 +137,7 @@ export function marketCard(rows) {
  * @param rows - Recent move rows.
  * @returns Recent moves card.
  */
-export function recentMovesCard(rows) {
+export function recentMovesCard(rows: readonly PublicMove[]): HTMLElement {
   if (!rows.length) {
     return EmptyCard({
       title: "Recent moves",
@@ -145,7 +168,7 @@ export function recentMovesCard(rows) {
  * @param data - RecruitingMarket response.
  * @returns Summary details card.
  */
-export function summaryCard(data) {
+export function summaryCard(data: RecruitingMarketResponse): HTMLElement {
   return DetailsCard({
     title: "Recruiting summary",
     pairs: [
@@ -163,8 +186,10 @@ export function summaryCard(data) {
  * @param rows - Market activity rows.
  * @returns Top markets card.
  */
-export function topMarketsCard(rows) {
-  return RollupCard({
+export function topMarketsCard(
+  rows: readonly MarketActivityRow[]
+): HTMLElement {
+  return RollupCard<MarketActivityRow>({
     title: "Top markets",
     rows: rows.slice(0, 5),
     renderRow: row => ({
@@ -180,7 +205,7 @@ export function topMarketsCard(rows) {
  * @param data - RecruitingMarket response.
  * @returns Source card.
  */
-export function sourceCard(data) {
+export function sourceCard(data: RecruitingMarketResponse): HTMLElement {
   return SectionCard({
     title: "Source transparency",
     body: [
@@ -195,233 +220,4 @@ export function sourceCard(data) {
       ),
     ],
   });
-}
-
-/**
- * Renders a table with normalized cell content.
- * @param tableClass - Recruiting table subtype class.
- * @param headings - Header labels.
- * @param rows - Body rows.
- * @returns Table node.
- */
-function table(tableClass, headings, rows) {
-  return el(
-    "table",
-    { class: `snap-table recruiting-table ${tableClass}` },
-    el("thead", {}, el("tr", {}, ...headings.map(h => el("th", {}, h)))),
-    el(
-      "tbody",
-      {},
-      ...rows.map(row =>
-        el(
-          "tr",
-          {},
-          ...row.map((cell, index) =>
-            el("td", { "data-label": headings[index] }, cell)
-          )
-        )
-      )
-    )
-  );
-}
-
-/**
- * Renders a firm chip or fallback text.
- * @param firm - Firm chip payload.
- * @returns Firm cell content.
- */
-function firmCell(firm) {
-  if (!firm?.id) return "Unresolved firm";
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    el(
-      "a",
-      { class: "recruiting-firm-link", href: entityPath("firm", firm) },
-      firm.short || firm.name || firm.id
-    ),
-    firm.hq ? el("span", {}, firm.hq) : null
-  );
-}
-
-/**
- * Renders one watchlist firm row as a compact panel.
- * @param item - Watchlist item payload.
- * @returns Watchlist item node.
- */
-function watchlistItem(item) {
-  return el(
-    "article",
-    { class: "watchlist-item" },
-    el(
-      "div",
-      { class: "watchlist-item-head" },
-      firmCell(item.firm),
-      item.query ? el("span", { class: "watchlist-query" }, item.query) : null
-    ),
-    el(
-      "div",
-      { class: "watchlist-metrics" },
-      metricBlock("Inbound", summaryValue(item.inbound)),
-      metricBlock("Outbound", summaryValue(item.outbound)),
-      metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
-    ),
-    item.sourceStatus?.length
-      ? el(
-          "div",
-          { class: "tag-list watchlist-status" },
-          ...item.sourceStatus.map(status => statusTag(status))
-        )
-      : null
-  );
-}
-
-/**
- * Renders a labeled watchlist metric.
- * @param label - Metric label.
- * @param value - Metric body node.
- * @returns Metric block.
- */
-function metricBlock(label, value) {
-  return el(
-    "div",
-    { class: "watchlist-metric" },
-    el("span", { class: "watchlist-metric-label" }, label),
-    value
-  );
-}
-
-/**
- * Renders count and known AUM for a watchlist side.
- * @param summary - Inbound or outbound summary.
- * @returns Summary metric node.
- */
-function summaryValue(summary) {
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    el("strong", {}, fmtMoney(summary?.knownAum)),
-    el("span", {}, `${fmtNumber(summary?.count)} moves`)
-  );
-}
-
-/**
- * Renders net movement and known AUM.
- * @param knownAum - Net known AUM.
- * @param moveCount - Net move count.
- * @returns Net metric node.
- */
-function netValue(knownAum, moveCount) {
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    el("strong", {}, fmtMoney(knownAum)),
-    el("span", {}, `${fmtNumber(moveCount)} net moves`)
-  );
-}
-
-/**
- * Renders inbound/outbound summary metrics.
- * @param summary - Move summary.
- * @returns Summary cell node.
- */
-function summaryCell(summary) {
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    el("strong", {}, fmtMoney(summary.knownAum)),
-    el("span", {}, `${fmtNumber(summary.count)} moves`)
-  );
-}
-
-/**
- * Renders move subject and firms.
- * @param row - Recent move row.
- * @returns Move cell node.
- */
-function moveCell(row) {
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    el("strong", {}, subjectLabel(row.subject)),
-    el(
-      "span",
-      {},
-      row.fromFirm?.short || row.fromFirm?.name || "?",
-      " -> ",
-      row.toFirm?.short || row.toFirm?.name || "?"
-    )
-  );
-}
-
-/**
- * Renders the source article link and status badges.
- * @param row - Recent move row.
- * @returns Source cell node.
- */
-function sourceCell(row) {
-  const source =
-    row.article?.id || row.article?.url
-      ? el(
-          "a",
-          {
-            href: row.article.id ? articlePath(row.article) : row.article.url,
-            target: row.article.id ? null : "_blank",
-            rel: row.article.id ? null : "noreferrer",
-          },
-          row.article?.headline || "Source"
-        )
-      : statusTag("missing-source");
-  return el(
-    "div",
-    { class: STACKED_CELL_CLASS },
-    source,
-    el(
-      "span",
-      { class: "tag-list" },
-      ...row.sourceStatus.map(status => statusTag(status))
-    )
-  );
-}
-
-/**
- * Renders values with an explicit missing tag.
- * @param value - Raw value.
- * @param format - Formatter for present values.
- * @returns Value or missing badge.
- */
-function valueOrMissing(value, format) {
-  return value == null ? statusTag("missing") : format(value);
-}
-
-/**
- * Creates a compact status tag.
- * @param status - Source-status token.
- * @returns Tag node.
- */
-function statusTag(status) {
-  return Tag({
-    kind: status.includes("missing") ? "warn" : "ok",
-    children: humanize(status.replace(/-/g, "_")),
-  });
-}
-
-/**
- * Returns a readable subject name.
- * @param subject - Move subject payload.
- * @returns Display label.
- */
-function subjectLabel(subject) {
-  if (!subject) return "Unresolved move";
-  if (typeof subject === "string") return subject;
-  return subject.name || subject.id || "Unresolved move";
-}
-
-/**
- * Formats a count.
- * @param value - Numeric count.
- * @returns Localized count.
- */
-export function fmtNumber(value) {
-  return Number(value || 0).toLocaleString();
 }
