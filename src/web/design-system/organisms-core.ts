@@ -1,8 +1,23 @@
-// @ts-nocheck
-import { el } from "./dom.js";
+import { el, type DomChild } from "./dom.js";
 import { Avatar, Tag, EmptyText, Heading, Button, Skeleton } from "./atoms.js";
-import { EntityRow, EntityChip, KvList, NavRow } from "./molecules.js";
 import { APP_VERSION } from "../version.js";
+import {
+  ASYNC_STATE_DEFAULTS,
+  M,
+  arrify,
+  type AsyncStateCardOptions,
+  type BrowseCardOptions,
+  type CardOptions,
+  type ChipRowOptions,
+  type DetailsCardOptions,
+  type EmptyCardOptions,
+  type EntityListOptions,
+  type ProfileHeadOptions,
+  type RollupCardOptions,
+  type SectionCardOptions,
+} from "./organisms-core-types.js";
+
+const { EntityChip, EntityRow, KvList, NavRow } = M;
 
 const CARD_SUBTITLE_CLASS = "card-subtitle";
 
@@ -19,8 +34,12 @@ const CARD_SUBTITLE_CLASS = "card-subtitle";
  * @param root0.attrs - Element attributes.
  * @returns Rendered DOM node.
  */
-export function Card({ tag = "div", children, attrs = {} } = {}) {
-  const cls = `card ${attrs.class || ""}`.trim();
+export function Card({
+  tag = "div",
+  children,
+  attrs = {},
+}: CardOptions = {}): HTMLElement {
+  const cls = `card ${attrs.class ?? ""}`.trim();
   return el(tag, { ...attrs, class: cls }, ...arrify(children));
 }
 
@@ -39,7 +58,11 @@ export function Card({ tag = "div", children, attrs = {} } = {}) {
  * @param root0.attrs - Element attributes.
  * @returns Rendered DOM node.
  */
-export function SectionCard({ title, body, attrs = {} } = {}) {
+export function SectionCard({
+  title,
+  body,
+  attrs = {},
+}: SectionCardOptions = {}): HTMLElement {
   return Card({
     attrs,
     children: [
@@ -60,32 +83,9 @@ export function SectionCard({ title, body, attrs = {} } = {}) {
  * @param root0.body - Body content rendered inside the card.
  * @returns Rendered DOM node.
  */
-export function EmptyCard({ title, body }) {
+export function EmptyCard({ title, body }: EmptyCardOptions): HTMLElement {
   return SectionCard({ title, body: EmptyText({ children: body }) });
 }
-
-const ASYNC_STATE_DEFAULTS = {
-  empty: {
-    title: "No results yet",
-    body: "New data will appear here once it is available.",
-  },
-  "not-found": {
-    title: "Not found",
-    body: "This record may have moved, been removed, or not been loaded yet.",
-  },
-  permission: {
-    title: "Sign in required",
-    body: "Sign in again or continue browsing public pages.",
-  },
-  transient: {
-    title: "Could not load this section",
-    body: "Refresh this section or try again in a moment.",
-  },
-  partial: {
-    title: "Some details are unavailable",
-    body: "The main record loaded, but one supporting section failed.",
-  },
-};
 
 // ─── AsyncStateCard ───────────────────────────────────────────
 // Canonical full-card fallbacks for page and section async states.
@@ -108,10 +108,10 @@ export function AsyncStateCard({
   actionLabel,
   onAction,
   attrs = {},
-} = {}) {
-  const defaults = ASYNC_STATE_DEFAULTS[kind] || ASYNC_STATE_DEFAULTS.transient;
+}: AsyncStateCardOptions = {}): HTMLElement {
+  const defaults = ASYNC_STATE_DEFAULTS[kind] ?? ASYNC_STATE_DEFAULTS.transient;
   const cls =
-    `ab-async-state ab-async-state--${kind} ${attrs.class || ""}`.trim();
+    `ab-async-state ab-async-state--${kind} ${attrs.class ?? ""}`.trim();
   const action =
     actionLabel && onAction
       ? Button({
@@ -123,11 +123,11 @@ export function AsyncStateCard({
       : null;
 
   return SectionCard({
-    title: title || defaults.title,
+    title: title ?? defaults.title,
     attrs: { ...attrs, class: cls },
     body: [
       EmptyText({
-        children: body || defaults.body,
+        children: body ?? defaults.body,
         attrs: { class: "ab-async-state-body" },
       }),
       action,
@@ -146,7 +146,11 @@ export function AsyncStateCard({
  * @param root0.advisors - Advisor rows to evaluate.
  * @returns Rendered DOM node.
  */
-export function ChipRow({ firms = [], teams = [], advisors = [] } = {}) {
+export function ChipRow({
+  firms = [],
+  teams = [],
+  advisors = [],
+}: ChipRowOptions = {}): HTMLElement | null {
   if (!firms.length && !teams.length && !advisors.length) return null;
   return el(
     "div",
@@ -167,7 +171,10 @@ export function ChipRow({ firms = [], teams = [], advisors = [] } = {}) {
  * @param root0.empty - Empty-state copy when no rows exist.
  * @returns Rendered DOM node.
  */
-export function EntityList({ rows, empty } = {}) {
+export function EntityList({
+  rows,
+  empty,
+}: EntityListOptions = {}): HTMLElement | null {
   if (!rows || !rows.length) {
     return empty != null ? EmptyText({ children: empty }) : null;
   }
@@ -195,7 +202,7 @@ export function ProfileHead({
   title,
   subtitle,
   tags = [],
-} = {}) {
+}: ProfileHeadOptions = {}): HTMLElement {
   return Card({
     children: [
       el("div", { class: "profile-cover" }),
@@ -213,14 +220,14 @@ export function ProfileHead({
         el(
           "div",
           { class: "profile-title" },
-          Heading({ level: 1, children: title || "" }),
+          Heading({ level: 1, children: title ?? "" }),
           subtitle ? el("div", { class: "subtitle" }, subtitle) : null,
           tags.length
             ? el(
                 "div",
                 { class: "profile-meta" },
                 ...tags.map(t =>
-                  Tag({ kind: t.kind || "default", children: t.label })
+                  Tag({ kind: t.kind ?? "default", children: t.label })
                 )
               )
             : null
@@ -235,7 +242,7 @@ export function ProfileHead({
  * Renders the shared footer with source attribution.
  * @returns Rendered DOM node.
  */
-export function SiteFooter() {
+export function SiteFooter(): HTMLElement {
   return el(
     "footer",
     { class: "site-footer" },
@@ -261,7 +268,7 @@ export function SiteFooter() {
  * @param table - Harper table name.
  * @returns Rendered DOM node.
  */
-export function ScrollableTable(table) {
+export function ScrollableTable(table: DomChild): HTMLElement {
   return el("div", { class: "snap-table-scroll" }, table);
 }
 
@@ -271,7 +278,7 @@ export function ScrollableTable(table) {
  * Renders a feed-loading skeleton using fixed shimmer rows.
  * @returns Rendered DOM node.
  */
-export function SkeletonCard() {
+export function SkeletonCard(): HTMLElement {
   return Card({
     children: el(
       "div",
@@ -291,7 +298,7 @@ export function SkeletonCard() {
  * @param root0.items - Navigation row configs.
  * @returns Rendered DOM node.
  */
-export function BrowseCard({ items } = {}) {
+export function BrowseCard({ items }: BrowseCardOptions): HTMLElement {
   return SectionCard({
     body: [
       Heading({
@@ -316,7 +323,11 @@ export function BrowseCard({ items } = {}) {
  * @param root0.renderRow - Adapter that converts a record into row display config.
  * @returns Rendered DOM node.
  */
-export function RollupCard({ title, rows, renderRow }) {
+export function RollupCard<Row>({
+  title,
+  rows,
+  renderRow,
+}: RollupCardOptions<Row>): HTMLElement {
   if (!rows || !rows.length) return el("div");
   return SectionCard({
     body: [
@@ -329,7 +340,7 @@ export function RollupCard({ title, rows, renderRow }) {
         rows: rows.map(r => {
           const cfg = renderRow(r);
           return EntityRow({
-            avatar: cfg.avatar || el("div", { class: "avatar" }, "→"),
+            avatar: cfg.avatar ?? el("div", { class: "avatar" }, "→"),
             name: cfg.name,
             sub: cfg.sub,
             tail: cfg.tail,
@@ -350,7 +361,7 @@ export function RollupCard({ title, rows, renderRow }) {
  * @param root0.pairs - Label/value pairs for the details list.
  * @returns Rendered DOM node.
  */
-export function DetailsCard({ title, pairs }) {
+export function DetailsCard({ title, pairs }: DetailsCardOptions): HTMLElement {
   return SectionCard({
     body: [
       Heading({
@@ -361,14 +372,4 @@ export function DetailsCard({ title, pairs }) {
       KvList(pairs),
     ],
   });
-}
-
-/**
- * Normalizes optional child content into an array for `el`.
- * @param x - Possible DOM node.
- * @returns Rendered DOM node.
- */
-function arrify(x) {
-  if (x == null) return [];
-  return Array.isArray(x) ? x : [x];
 }

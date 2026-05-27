@@ -1,12 +1,60 @@
-// @ts-nocheck
 import { createHash } from "node:crypto";
 
 import { canonicalFirmName } from "./firm-identity.js";
 import type { HarperREST } from "./brokercheck-rest.js";
 
+/**
+ * Opaque row shape produced by the BrokerCheck parser and consumed by Harper
+ * writers. Field-level typing is intentionally `unknown` so callers narrow at
+ * the point of use; this mirrors the parser's runtime contract where keys vary
+ * by record kind.
+ */
+export interface BrokerRow {
+  readonly [key: string]: unknown;
+}
+
+/**
+ * Per-individual collection of rows ready to be persisted across Harper tables.
+ */
+export interface IndividualRows {
+  readonly firmRows: ReadonlyArray<BrokerRow>;
+  readonly advisorRow: BrokerRow;
+  readonly employmentRows: ReadonlyArray<BrokerRow>;
+  readonly disclosureRows: ReadonlyArray<BrokerRow>;
+  readonly sanctionRows: ReadonlyArray<BrokerRow>;
+  readonly licenseRows: ReadonlyArray<BrokerRow>;
+  readonly snapshotRow: BrokerRow;
+}
+
+/** Per-employment build result that carries the Harper row plus loader context. */
+export interface EmploymentBuildResult {
+  readonly firmId: string;
+  readonly sourceEmployment: BrokerRow;
+  readonly employmentRow: BrokerRow;
+}
+
+/** Per-disclosure-block build result containing flattened disclosure and sanction rows. */
+export interface DisclosureBuildResult {
+  readonly disclosureRows: ReadonlyArray<BrokerRow>;
+  readonly sanctionRows: ReadonlyArray<BrokerRow>;
+}
+
+/**
+ * Minimum shape required from a BrokerCheck `Resolver` to mint license ids.
+ * Declared structurally so callers can supply the full Resolver from
+ * `brokercheck-load.ts` without a circular import.
+ */
+interface LicenseResolver {
+  license(
+    advisorUuid: string,
+    licenseType: string,
+    grantedDate: string
+  ): string;
+}
+
 export const writeIndividualRows = async (
   rest: HarperREST,
-  rows: BrokerRow
+  rows: IndividualRows
 ): Promise<Record<string, number>> => ({
   Firm: await putMany(rest, "Firm", rows.firmRows),
   Advisor: Number(await rest.put("Advisor", rows.advisorRow)),
@@ -24,7 +72,7 @@ export const writeIndividualRows = async (
 });
 
 export const individualDryRunCounts = (
-  rows: BrokerRow
+  rows: IndividualRows
 ): Record<string, number> => ({
   Firm: rows.firmRows.length,
   Advisor: 1,
@@ -37,7 +85,7 @@ export const individualDryRunCounts = (
 
 export const licenseRow = (
   license: BrokerRow,
-  resolver: Resolver,
+  resolver: LicenseResolver,
   advisorUuid: string
 ): BrokerRow => ({
   id: resolver.license(
@@ -116,14 +164,18 @@ export const baseSnapshotRow = (
   rawJson: JSON.stringify(rawContent),
 });
 
+const isPlainRecord = (
+  value: unknown
+): value is Readonly<Record<string, unknown>> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const sortForHash = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sortForHash);
-  if (value && typeof value === "object") {
-    const record = value as Readonly<Record<string, unknown>>;
+  if (isPlainRecord(value)) {
     return Object.fromEntries(
-      Object.keys(record)
+      Object.keys(value)
         .sort((left, right) => left.localeCompare(right))
-        .map(key => [key, sortForHash(record[key])])
+        .map(key => [key, sortForHash(value[key])])
     );
   }
   return value;

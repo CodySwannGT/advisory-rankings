@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /** Options for connecting the loader to Harper REST endpoints. */
 interface HarperRestOptions {
   readonly baseUrl?: string;
@@ -17,8 +15,23 @@ export class HarperREST {
   readonly auth: string;
   readonly timeoutMs: number;
   readonly verbose: boolean;
-  readonly writeCount = 0;
-  readonly readCount = 0;
+  readonly state = { writeCount: 0, readCount: 0 };
+
+  /**
+   * Number of REST write operations attempted by this client.
+   * @returns Write count.
+   */
+  get writeCount(): number {
+    return this.state.writeCount;
+  }
+
+  /**
+   * Number of REST read operations attempted by this client.
+   * @returns Read count.
+   */
+  get readCount(): number {
+    return this.state.readCount;
+  }
 
   /**
    * Handles constructor for this workflow.
@@ -57,7 +70,7 @@ export class HarperREST {
     path: string,
     params?: Readonly<Record<string, unknown>>
   ): Promise<unknown> {
-    this.readCount++;
+    Object.assign(this.state, { readCount: this.state.readCount + 1 });
     const url = new URL(`${this.base}${path}`);
     for (const [key, value] of Object.entries(params ?? {})) {
       url.searchParams.set(key, String(value));
@@ -92,7 +105,7 @@ export class HarperREST {
   async put(table: string, record: Record<string, unknown>): Promise<boolean> {
     const id = record.id;
     if (!id) throw new Error(`PUT requires id; got ${JSON.stringify(record)}`);
-    this.writeCount++;
+    Object.assign(this.state, { writeCount: this.state.writeCount + 1 });
     const res = await fetch(
       `${this.base}/${table}/${encodeURIComponent(String(id))}`,
       {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export * from "./organisms-core.js";
 export * from "./organisms-pagination.js";
 export * from "./organisms-search.js";

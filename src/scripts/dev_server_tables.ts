@@ -36,4 +36,8 @@ export const DEV_SERVER_TABLES = [
   "FieldAssertion",
   "AdvisorResearchCheck",
   "BrokerCheckSnapshot",
+  "User",
+  "UserRating",
+  "UserList",
+  "UserListEntry",
 ] as const;

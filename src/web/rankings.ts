@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Public Interactive Rankings Explorer page.
 
 import { api, refreshMe, logout, search, getQueryParam } from "./app.js";
@@ -18,8 +17,16 @@ import {
   topFirmsCard,
 } from "./rankings-sections.js";
 import { coverageWorkbenchCard } from "./rankings-coverage.js";
+import type {
+  RankingExplorerEntry,
+  RankingExplorerFilters,
+  RankingsCoverage,
+  RankingsFacets,
+  RankingsSummary,
+  TopFirmRow,
+} from "../harper/resource-rankings-explorer-types.js";
 
-const FILTER_FIELDS = [
+const FILTER_FIELDS: readonly string[] = [
   "category",
   "year",
   "firm",
@@ -30,13 +37,46 @@ const FILTER_FIELDS = [
 ];
 const DEFAULT_LIMIT = 50;
 
+/** Public-facing filter shape exposed by the rankings-explorer route. */
+interface PublicRankingFilters {
+  readonly category: RankingExplorerFilters["category"];
+  readonly year: RankingExplorerFilters["year"];
+  readonly firmQuery: RankingExplorerFilters["firmQuery"];
+  readonly state: RankingExplorerFilters["state"];
+  readonly city: RankingExplorerFilters["city"];
+  readonly resolved: RankingExplorerFilters["resolved"];
+  readonly sort: RankingExplorerFilters["sort"];
+}
+
+/** Successful rankings-explorer payload shape rendered by this page. */
+interface RankingsExplorerPayload {
+  readonly generatedAt: string;
+  readonly filters: PublicRankingFilters;
+  readonly facets: RankingsFacets;
+  readonly summary: RankingsSummary;
+  readonly coverage: RankingsCoverage;
+  readonly topFirms: readonly TopFirmRow[];
+  readonly items: readonly RankingExplorerEntry[];
+  readonly provenance: RankingsProvenance;
+  readonly emptyState: string | null;
+}
+
+/** Provenance metadata bundled with the rankings-explorer payload. */
+interface RankingsProvenance {
+  readonly sourceTables: readonly string[];
+  readonly sourceIds: readonly string[];
+}
+
+/** Tuple form used to seed a `<select>` option list. */
+type SelectOption = readonly [value: string, label: string];
+
 mountThreeColumnPage({
   active: "rankings",
   refreshMe,
   logout,
   search,
   pageTitle: "Interactive Rankings Explorer",
-  build({ center, right }) {
+  build({ center, right }: Readonly<Record<"center" | "right", HTMLElement>>) {
     center.append(SkeletonCard(), SkeletonCard());
     loadRankings(center, right);
   },
@@ -47,29 +87,40 @@ mountThreeColumnPage({
  * @param center - Main content column.
  * @param right - Right rail column.
  */
-function loadRankings(center, right) {
+function loadRankings(center: HTMLElement, right: HTMLElement): void {
   api(`/RankingsExplorer${resourceQuery()}`)
-    .then(data => {
+    .then((data: RankingsExplorerPayload) => {
       clear(center);
       clear(right);
       renderRankings(data, center, right);
     })
-    .catch(error => {
+    .catch((error: unknown) => {
       clear(center);
       center.appendChild(
         EmptyCard({
           title: "Could not load rankings",
-          body: String(error.message || error),
+          body: errorMessage(error),
         })
       );
     });
 }
 
 /**
+ * Extracts a human-readable message from an unknown error value.
+ * @param error - Caught error value.
+ * @returns Best-effort string representation.
+ */
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return String(error);
+}
+
+/**
  * Builds a normalized resource query from supported URL filters.
  * @returns Query string for /RankingsExplorer.
  */
-function resourceQuery() {
+function resourceQuery(): string {
   const params = new URLSearchParams();
   for (const field of FILTER_FIELDS) {
     const value = getQueryParam(field);
@@ -85,7 +136,11 @@ function resourceQuery() {
  * @param center - Main content column.
  * @param right - Right rail column.
  */
-function renderRankings(data, center, right) {
+function renderRankings(
+  data: RankingsExplorerPayload,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
   center.appendChild(coverageWorkbenchCard(data.coverage));
@@ -109,7 +164,7 @@ function renderRankings(data, center, right) {
  * @param data - RankingsExplorer response.
  * @returns Header card.
  */
-function headerCard(data) {
+function headerCard(data: RankingsExplorerPayload): HTMLElement {
   return SectionCard({
     title: "Interactive Rankings Explorer",
     attrs: { class: "rankings-header" },
@@ -134,7 +189,7 @@ function headerCard(data) {
  * @param data - RankingsExplorer response.
  * @returns Filter form card.
  */
-function filterCard(data) {
+function filterCard(data: RankingsExplorerPayload): HTMLElement {
   return SectionCard({
     title: "Filters",
     body: el(
@@ -142,12 +197,19 @@ function filterCard(data) {
       { class: "rankings-filters", method: "get", action: "/rankings" },
       selectField("Category", "category", data.filters.category, [
         ["", "All categories"],
-        ...data.facets.categories.map(value => [value, value]),
+        ...data.facets.categories.map((value): SelectOption => [value, value]),
       ]),
-      selectField("Year", "year", data.filters.year, [
-        ["", "All years"],
-        ...data.facets.years.map(value => [String(value), String(value)]),
-      ]),
+      selectField(
+        "Year",
+        "year",
+        data.filters.year === null ? null : String(data.filters.year),
+        [
+          ["", "All years"],
+          ...data.facets.years.map(
+            (value): SelectOption => [String(value), String(value)]
+          ),
+        ]
+      ),
       labelInput("Firm", "firm", data.filters.firmQuery || ""),
       labelInput("State", "state", data.filters.state || "", {
         placeholder: "NY",
@@ -181,7 +243,12 @@ function filterCard(data) {
  * @param attrs - Additional input attributes.
  * @returns Field wrapper.
  */
-function labelInput(label, name, value, attrs = {}) {
+function labelInput(
+  label: string,
+  name: string,
+  value: string,
+  attrs: Readonly<Record<string, string | number>> = {}
+): HTMLElement {
   return el(
     "label",
     { class: "filter-field" },
@@ -198,7 +265,12 @@ function labelInput(label, name, value, attrs = {}) {
  * @param options - Value/label options.
  * @returns Field wrapper.
  */
-function selectField(label, name, current, options) {
+function selectField(
+  label: string,
+  name: string,
+  current: string | null,
+  options: readonly SelectOption[]
+): HTMLElement {
   return el(
     "label",
     { class: "filter-field" },
@@ -222,7 +294,7 @@ function selectField(label, name, current, options) {
  * @param pairs - Label/value pairs.
  * @returns Stat grid node.
  */
-function statGrid(pairs) {
+function statGrid(pairs: readonly (readonly [string, string])[]): HTMLElement {
   return el(
     "div",
     { class: "rankings-stat-grid" },

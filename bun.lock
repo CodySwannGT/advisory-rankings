@@ -6,6 +6,7 @@
       "name": "advisory-rankings",
       "dependencies": {
         "cheerio": "^1.1.2",
+        "domhandler": "^5.0.3",
         "harperdb": "^4.7.29",
       },
       "devDependencies": {

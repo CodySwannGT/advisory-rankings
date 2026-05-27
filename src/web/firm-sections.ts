@@ -1,27 +1,52 @@
-// @ts-nocheck
 // Firm profile auxiliary sections.
 
 import { api, fmtDate, humanize, initials, entityPath } from "./app.js";
+import { Avatar, Tag } from "./design-system/index.js";
 import {
-  el,
-  Avatar,
-  SectionCard,
-  EntityList,
-  EntityRow,
-  DetailsCard,
-  Tag,
-  Heading,
-  Paginated,
-  SourceAttribution,
-} from "./design-system/index.js";
+  EntityRowC,
+  EntityListC,
+  SectionCardC,
+  DetailsCardC,
+  HeadingC,
+  SourceAttributionC,
+  PaginatedC,
+  elC,
+} from "./design-system-adapters.js";
+import type { FirmRow, BranchRow } from "../types/harper-schema.js";
+import type {
+  FirmAdvisorPublicRow,
+  FirmAdvisorsResponse,
+} from "../harper/resource-profile-endpoints-types.js";
+
+/** BrokerCheck snapshot slice consumed by `regulatoryCard`. */
+interface FirmBrokerCheckSnapshot {
+  readonly subjectCrd: string;
+  readonly bcScope?: string | null;
+  readonly iaScope?: string | null;
+  readonly disclosureCount?: number | null;
+  readonly registeredStateCount?: number | null;
+  readonly fetchedAt: string | number | Date;
+}
+
+/** Tag descriptor accepted by `ProfileHead.tags`. */
+interface ProfileTag {
+  readonly kind?: string;
+  readonly label: string;
+}
+
+/** Options accepted by `advisorRow` and `advisorTail`. */
+interface AdvisorRowOptions {
+  readonly showStart?: boolean;
+  readonly showEnd?: boolean;
+}
 
 /**
  * Builds the firm details right-rail card.
  * @param f - Firm profile record.
  * @returns Details card node.
  */
-export function firmDetailsCard(f) {
-  return DetailsCard({
+export function firmDetailsCard(f: FirmRow): HTMLElement {
+  return DetailsCardC({
     title: "Firm details",
     pairs: [
       ["Channel", humanize(f.channel)],
@@ -44,7 +69,7 @@ export function firmDetailsCard(f) {
       [
         "Website",
         f.website
-          ? el(
+          ? elC(
               "a",
               { href: f.website, target: "_blank", rel: "noreferrer" },
               f.website
@@ -60,16 +85,18 @@ export function firmDetailsCard(f) {
  * @param snapshot - BrokerCheck snapshot row.
  * @returns Regulatory card or null.
  */
-export function regulatoryCard(snapshot) {
+export function regulatoryCard(
+  snapshot: FirmBrokerCheckSnapshot | null | undefined
+): HTMLElement | null {
   return snapshot
-    ? SectionCard({
+    ? SectionCardC({
         body: [
-          Heading({
+          HeadingC({
             level: 3,
             attrs: { class: "card-subtitle" },
             children: "Regulatory record",
           }),
-          el(
+          elC(
             "div",
             { class: "kv-list" },
             _kvRow("FINRA scope (BD)", snapshot.bcScope),
@@ -77,7 +104,7 @@ export function regulatoryCard(snapshot) {
             _kvRow("Disclosures", snapshot.disclosureCount ?? "—"),
             _kvRow("State registrations", snapshot.registeredStateCount ?? "—")
           ),
-          SourceAttribution({
+          SourceAttributionC({
             source: "FINRA BrokerCheck",
             url: `https://brokercheck.finra.org/firm/summary/${encodeURIComponent(snapshot.subjectCrd)}`,
             termsUrl: "https://brokercheck.finra.org/terms",
@@ -93,18 +120,20 @@ export function regulatoryCard(snapshot) {
  * @param branches - Branch rows for the firm.
  * @returns Branches card or null.
  */
-export function branchesCard(branches) {
+export function branchesCard(
+  branches: readonly BranchRow[]
+): HTMLElement | null {
   return branches.length
-    ? SectionCard({
+    ? SectionCardC({
         body: [
-          Heading({
+          HeadingC({
             level: 3,
             attrs: { class: "card-subtitle" },
             children: `Branches (${branches.length.toLocaleString()})`,
           }),
-          EntityList({
+          EntityListC({
             rows: branches.map(b =>
-              EntityRow({
+              EntityRowC({
                 avatar: branchAvatar(b),
                 name: b.name || b.buildingName || "(unnamed)",
                 sub: [b.level, [b.city, b.state].filter(Boolean).join(", ")]
@@ -123,43 +152,46 @@ export function branchesCard(branches) {
  * @param branch - Branch row.
  * @returns Avatar text.
  */
-function branchAvatar(branch) {
+function branchAvatar(branch: BranchRow): string {
   if (branch.level === "market") return "M";
   if (branch.level === "complex") return "C";
   return "B";
 }
 
 /**
- * Handles kv row for this workflow.
- * @param k - k used by this operation.
- * @param v - v used by this operation.
- * @returns The computed value.
+ * Renders a single key/value row, returning an empty span when the value is blank.
+ * @param k - Key label shown on the left.
+ * @param v - Value displayed on the right; falsy values render an empty span.
+ * @returns Key/value row node.
  */
-function _kvRow(k, v) {
-  if (v === null || v === undefined || v === "") return el("span");
-  return el(
+function _kvRow(k: string, v: string | number | null | undefined): HTMLElement {
+  if (v === null || v === undefined || v === "") return elC("span");
+  return elC(
     "div",
     { class: "kv-row" },
-    el("span", { class: "kv-key" }, k),
-    el("span", { class: "kv-val" }, String(v))
+    elC("span", { class: "kv-key" }, k),
+    elC("span", { class: "kv-val" }, String(v))
   );
 }
 
 /**
- * Handles advisor row for this workflow.
- * @param r - r used by this operation.
- * @param root0 - value used by this operation.
- * @param root0.showStart - show start used by this operation.
- * @param root0.showEnd - show end used by this operation.
- * @returns The computed value.
+ * Builds an advisor row for the firm roster.
+ * @param r - Firm advisor row.
+ * @param options - Date display options.
+ * @param options.showStart - Whether to show a since label.
+ * @param options.showEnd - Whether to show a start/end range.
+ * @returns Entity row node for the advisor.
  */
-export function advisorRow(r, { showStart = false, showEnd = false } = {}) {
+export function advisorRow(
+  r: FirmAdvisorPublicRow,
+  { showStart = false, showEnd = false }: AdvisorRowOptions = {}
+): HTMLElement {
   const a = r.advisor;
   const sub = [r.roleTitle, humanize(r.roleCategory)]
     .filter(Boolean)
     .join(" · ");
   const tail = advisorTail(r, { showStart, showEnd });
-  return EntityRow({
+  return EntityRowC({
     avatar: Avatar({
       initials: initials(a.name),
       imageUrl: a.headshotUrl,
@@ -187,15 +219,18 @@ export function advisorRow(r, { showStart = false, showEnd = false } = {}) {
  * @param f - Firm profile record.
  * @returns Tags for ProfileHead.
  */
-export function firmTags(f) {
-  return [
-    humanize(f.channel) ? { label: humanize(f.channel) } : null,
-    humanize(f.subChannel) ? { label: humanize(f.subChannel) } : null,
+export function firmTags(f: FirmRow): readonly ProfileTag[] {
+  const channelLabel = humanize(f.channel);
+  const subChannelLabel = humanize(f.subChannel);
+  const candidates: readonly (ProfileTag | null)[] = [
+    channelLabel ? { label: channelLabel } : null,
+    subChannelLabel ? { label: subChannelLabel } : null,
     f.dissolvedYear
       ? { kind: "danger", label: `dissolved ${f.dissolvedYear}` }
       : null,
     f.parentFirmId ? { kind: "warn", label: "subsidiary" } : null,
-  ].filter(Boolean);
+  ];
+  return candidates.filter((tag): tag is ProfileTag => tag !== null);
 }
 
 /**
@@ -203,7 +238,7 @@ export function firmTags(f) {
  * @param f - Firm profile record.
  * @returns Subtitle text for ProfileHead.
  */
-export function firmSubtitle(f) {
+export function firmSubtitle(f: FirmRow): string {
   return [
     f.hqCity || f.hqState
       ? [f.hqCity, f.hqState].filter(Boolean).join(", ")
@@ -218,12 +253,15 @@ export function firmSubtitle(f) {
 /**
  * Builds the date label for a firm advisor row.
  * @param row - Firm advisor row.
- * @param root0 - Date display options.
- * @param root0.showStart - Whether to show a since label.
- * @param root0.showEnd - Whether to show a start/end range.
+ * @param options - Date display options.
+ * @param options.showStart - Whether to show a since label.
+ * @param options.showEnd - Whether to show a start/end range.
  * @returns Tail text for the advisor row.
  */
-export function advisorTail(row, { showStart = false, showEnd = false } = {}) {
+export function advisorTail(
+  row: FirmAdvisorPublicRow,
+  { showStart = false, showEnd = false }: AdvisorRowOptions = {}
+): string {
   if (showStart && row.startDate)
     return `since ${fmtDate(row.startDate, { mode: "short" })}`;
   if (showEnd && row.endDate)
@@ -235,16 +273,23 @@ export function advisorTail(row, { showStart = false, showEnd = false } = {}) {
 /**
  * Builds the paginated advisor list for current or past firm rosters.
  * @param firmId - Firm identifier.
- * @param status - status used by this operation.
- * @param opts - Options controlling the operation.
+ * @param status - Roster filter: "current" or "past".
+ * @param opts - Date display options passed through to each row.
  * @returns Paginated advisor list node.
  */
-export function paginatedAdvisors(firmId, status, opts) {
-  return Paginated({
+export function paginatedAdvisors(
+  firmId: string,
+  status: "current" | "past",
+  opts?: AdvisorRowOptions
+): HTMLElement {
+  return PaginatedC<FirmAdvisorPublicRow>({
     fetchPage: async cursor => {
       const qs = new URLSearchParams({ status, limit: "50" });
       if (cursor) qs.set("cursor", cursor);
-      return api(`/FirmAdvisors/${encodeURIComponent(firmId)}?${qs}`);
+      const response: FirmAdvisorsResponse = await api(
+        `/FirmAdvisors/${encodeURIComponent(firmId)}?${qs}`
+      );
+      return response;
     },
     empty:
       status === "past"

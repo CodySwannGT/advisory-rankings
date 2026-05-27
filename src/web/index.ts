@@ -1,10 +1,16 @@
-// @ts-nocheck
 // Home feed page — list of FeedPostCards plus left/right rail rollups.
 //
 // All UI components come from the design system. Page-level glue:
 // fetch /Feed → render the three rails. See docs/design-system.md
 // before adding any new visual element here.
 
+import type {
+  FeedItem,
+  FeedEventCard,
+  TransitionEventCard,
+  DisclosureEventCard,
+  TransitionSubject,
+} from "../harper/resource-feed-types.js";
 import {
   api,
   refreshMe,
@@ -16,22 +22,7 @@ import {
   initials,
   entityPath,
 } from "./app.js";
-import {
-  mountThreeColumnPage,
-  clear,
-  SkeletonCard,
-  EmptyCard,
-  FeedPostCard,
-  BrowseCard,
-  RollupCard,
-  SectionCard,
-  EntityList,
-  EntityRow,
-  Heading,
-  Button,
-  el,
-  Avatar,
-} from "./design-system/index.js";
+import { clear, el } from "./design-system/index.js";
 import {
   feedCategories,
   feedFilterCard,
@@ -40,29 +31,54 @@ import {
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
+import {
+  AvatarC,
+  BrowseCardC,
+  ButtonC,
+  EmptyCardC,
+  EntityListC,
+  EntityRowC,
+  FeedPostCardC,
+  HeadingC,
+  MountThreeColumnPage,
+  RollupCardC,
+  SectionCardC,
+  SkeletonCardC,
+} from "./index-types.js";
+import type {
+  FeedFilterValues,
+  FeedRenderState,
+  ThreeColumnLayout,
+  TrendingFirmRow,
+} from "./index-types.js";
 
 const FEED_PAGE_SIZE = 20;
 
-mountThreeColumnPage({
+/** Feed payload returned by the `/Feed` resource. */
+interface FeedPayload {
+  readonly items?: readonly FeedItem[];
+}
+
+MountThreeColumnPage({
   active: "home",
   refreshMe,
   logout,
   search,
   pageTitle: "AdvisorBook feed",
-  build({ left, center, right }) {
+  build({ left, center, right }: ThreeColumnLayout): void {
     // Skeleton until /Feed resolves.
-    center.append(SkeletonCard(), SkeletonCard());
+    center.append(SkeletonCardC(), SkeletonCardC());
 
-    api("/Feed")
-      .then(({ items }) => {
-        renderFeed({ left, center, right }, items || []);
+    (api as unknown as (path: string) => Promise<FeedPayload>)("/Feed")
+      .then((payload: FeedPayload) => {
+        renderFeed({ left, center, right }, payload.items ?? []);
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         clear(center);
         center.appendChild(
-          EmptyCard({
+          EmptyCardC({
             title: "Could not load feed",
-            body: String(err.message || err),
+            body: errorMessage(err),
           })
         );
       });
@@ -74,9 +90,12 @@ mountThreeColumnPage({
  * @param layout - Page columns used by the feed.
  * @param items - Full feed payload.
  */
-function renderFeed(layout, items) {
+function renderFeed(
+  layout: ThreeColumnLayout,
+  items: readonly FeedItem[]
+): void {
   const categories = feedCategories(items);
-  const renderCurrentState = (visibleLimit = FEED_PAGE_SIZE) => {
+  const renderCurrentState = (visibleLimit: number = FEED_PAGE_SIZE): void => {
     const filters = readFeedFilters(categories);
     const filteredItems = filterFeedItems(items, filters);
     const visibleItems = filteredItems.slice(0, visibleLimit);
@@ -87,7 +106,7 @@ function renderFeed(layout, items) {
       filters,
       hasMore: visibleItems.length < filteredItems.length,
       total: filteredItems.length,
-      onChange: nextFilters => {
+      onChange: (nextFilters: FeedFilterValues) => {
         writeFeedFilters(nextFilters);
         renderCurrentState(FEED_PAGE_SIZE);
       },
@@ -109,7 +128,11 @@ function renderFeed(layout, items) {
  * @param items - Items to render.
  * @param state - Current filter state and callbacks.
  */
-function renderCenter(root, items, state) {
+function renderCenter(
+  root: HTMLElement,
+  items: readonly FeedItem[],
+  state: FeedRenderState
+): void {
   clear(root);
   root.appendChild(feedFilterCard(state));
   if (!items.length) {
@@ -120,17 +143,17 @@ function renderCenter(root, items, state) {
           body: "Once the ingest crawler runs, articles appear here.",
         };
     root.appendChild(
-      EmptyCard({
+      EmptyCardC({
         title: empty.title,
         body: empty.body,
       })
     );
     return;
   }
-  for (const item of items) root.appendChild(FeedPostCard(item, fmts));
+  for (const item of items) root.appendChild(FeedPostCardC(item, fmts));
   if (state.hasMore) {
     root.appendChild(
-      Button({
+      ButtonC({
         variant: "neutral",
         onClick: state.onLoadMore,
         children: "Load more posts",
@@ -145,8 +168,8 @@ function renderCenter(root, items, state) {
  * @param root - DOM root node.
  * @param items - Items to render.
  */
-function renderLeft(root, items) {
-  const browseCard = BrowseCard({
+function renderLeft(root: HTMLElement, items: readonly FeedItem[]): void {
+  const browseCard = BrowseCardC({
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
@@ -158,12 +181,12 @@ function renderLeft(root, items) {
     ],
   });
   const recentTransitions = items
-    .flatMap(i => (i.eventCards || []).filter(c => c.kind === "transition"))
+    .flatMap(i => i.eventCards.filter(isTransitionCard))
     .slice(0, 4);
-  const transitionsCard = RollupCard({
+  const transitionsCard = RollupCardC({
     title: "Recent transitions",
     rows: recentTransitions,
-    renderRow: t => ({
+    renderRow: (t: TransitionEventCard) => ({
       name: transitionSubjectName(t.subject),
       sub: el(
         "div",
@@ -186,9 +209,8 @@ function renderLeft(root, items) {
  * @param subject - Transition subject from the feed resource.
  * @returns Subject display name, falling back to a generic move label.
  */
-function transitionSubjectName(subject) {
+function transitionSubjectName(subject: TransitionSubject | null): string {
   if (!subject) return "Move";
-  if (typeof subject === "string") return subject;
   return subject.name || subject.id || "Move";
 }
 
@@ -197,20 +219,20 @@ function transitionSubjectName(subject) {
  * @param root - DOM root node.
  * @param items - Items to render.
  */
-function renderRight(root, items) {
+function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
   // Trending firms = firms most often mentioned across the feed.
   const topFirms = trendingFirms(items);
-  const firmCard = SectionCard({
+  const firmCard = SectionCardC({
     body: [
-      Heading({
+      HeadingC({
         level: 3,
         attrs: { class: "card-subtitle" },
         children: "Trending firms",
       }),
-      EntityList({
+      EntityListC({
         rows: topFirms.map(({ firm, count }) =>
-          EntityRow({
-            avatar: Avatar({
+          EntityRowC({
+            avatar: AvatarC({
               initials: initials(firm.name),
               imageUrl: firm.logoUrl,
               alt: firm.name,
@@ -226,19 +248,19 @@ function renderRight(root, items) {
   });
   // Recent disclosures — flagged in red.
   const recentDisc = items
-    .flatMap(i => (i.eventCards || []).filter(c => c.kind === "disclosure"))
+    .flatMap(i => i.eventCards.filter(isDisclosureCard))
     .slice(0, 4);
   const complianceCard = recentDisc.length
-    ? SectionCard({
+    ? SectionCardC({
         body: [
-          Heading({
+          HeadingC({
             level: 3,
             attrs: { class: "card-subtitle" },
             children: "Recent compliance events",
           }),
-          EntityList({
+          EntityListC({
             rows: recentDisc.map(d =>
-              EntityRow({
+              EntityRowC({
                 avatar: "⚠",
                 name: d.advisor?.name || "Disclosure",
                 sub: [humanize(d.regulator), humanize(d.disclosureType)]
@@ -262,10 +284,10 @@ function renderRight(root, items) {
  * @param items - Feed items with firm mention arrays.
  * @returns Top firm/count pairs for the right rail.
  */
-function trendingFirms(items) {
+function trendingFirms(items: readonly FeedItem[]): readonly TrendingFirmRow[] {
   return items
     .flatMap(item => item.firms)
-    .reduce((hits, firm) => {
+    .reduce<readonly TrendingFirmRow[]>((hits, firm) => {
       const existing = hits.find(hit => hit.firm.id === firm.id);
       if (existing) {
         return hits.map(hit =>
@@ -276,6 +298,35 @@ function trendingFirms(items) {
       }
       return [...hits, { firm, count: 1 }];
     }, [])
+    .slice()
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
+}
+
+/**
+ * Narrows a feed event card to the transition variant.
+ * @param card - Either kind of feed event card.
+ * @returns Whether the card is a transition card.
+ */
+function isTransitionCard(card: FeedEventCard): card is TransitionEventCard {
+  return card.kind === "transition";
+}
+
+/**
+ * Narrows a feed event card to the disclosure variant.
+ * @param card - Either kind of feed event card.
+ * @returns Whether the card is a disclosure card.
+ */
+function isDisclosureCard(card: FeedEventCard): card is DisclosureEventCard {
+  return card.kind === "disclosure";
+}
+
+/**
+ * Coerces an unknown rejection value into a user-facing error string.
+ * @param err - Rejection value from the `/Feed` request.
+ * @returns Display string for the empty card.
+ */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
 }

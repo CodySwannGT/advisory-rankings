@@ -10,10 +10,5 @@ export interface YextAddress {
   readonly [key: string]: unknown;
 }
 
-/** Flexible image block embedded in Morgan Stanley Yext rows. */
-export interface YextImage {
-  readonly [key: string]: unknown;
-}
-
 /** Harper rows produced from Morgan Stanley locator data, grouped by table. */
 export class MorganStanleyRows extends FirmSourceRows {}

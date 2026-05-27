@@ -15,9 +15,13 @@
     "**/node_modules/**",
     "harper-app/resources.js",
     "harper-app/resource-*.js",
-    "harper-app/web/**/*.js",
-    "src/types/**/*.ts"
+    "harper-app/web/**/*.js"
   ],
+  "ignoreIssues": {
+    "src/types/advisor-profile.ts": ["types"],
+    "src/types/harper-resource.ts": ["types"],
+    "src/types/harper-schema.ts": ["types"]
+  },
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],
   "ignoreBinaries": ["audit", "harperdb", "knip", "playwright", "tsx"],
   "rules": {

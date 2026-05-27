@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Section renderers for the public Interactive Rankings Explorer.
 
 import { fmtDate } from "./app.js";
@@ -12,15 +11,40 @@ import {
   ScrollableTable,
   Tag,
 } from "./design-system/index.js";
+import type { DomChild } from "./design-system/dom.js";
+import type {
+  PublicRankingEntry,
+  RankingsSummary,
+  TopFirmRow,
+} from "../harper/resource-rankings-explorer-types.js";
 
 const STACKED_CELL_CLASS = "stacked-cell";
+
+/**
+ * Top-level fields of the `/RankingsExplorer` payload consumed by the
+ * section renderers in this module. The rankings.ts page is still
+ * `@ts-nocheck`'d, so callers pass `unknown` until that file is typed;
+ * this interface restates the contract these functions actually depend on.
+ */
+export interface RankingsExplorerData {
+  readonly generatedAt: string;
+  readonly summary: RankingsSummary;
+  readonly provenance: RankingsProvenance;
+}
+
+/** Provenance block embedded in the rankings-explorer payload. */
+export interface RankingsProvenance {
+  readonly sourceTables: readonly string[];
+}
 
 /**
  * Builds the ranking rows table.
  * @param rows - Ranking explorer item rows.
  * @returns Ranking table card.
  */
-export function rankingsTableCard(rows) {
+export function rankingsTableCard(
+  rows: readonly PublicRankingEntry[]
+): HTMLElement {
   if (!rows.length) {
     return EmptyCard({
       title: "Ranking rows",
@@ -61,8 +85,8 @@ export function rankingsTableCard(rows) {
  * @param rows - Top firm aggregate rows.
  * @returns Rail rollup card.
  */
-export function topFirmsCard(rows) {
-  return RollupCard({
+export function topFirmsCard(rows: readonly TopFirmRow[]): HTMLElement {
+  return RollupCard<TopFirmRow>({
     title: "Top firms",
     rows: rows.slice(0, 6),
     renderRow: row => ({
@@ -78,7 +102,7 @@ export function topFirmsCard(rows) {
  * @param data - RankingsExplorer response.
  * @returns Source card.
  */
-export function sourceCard(data) {
+export function sourceCard(data: RankingsExplorerData): HTMLElement {
   return SectionCard({
     title: "Source transparency",
     body: [
@@ -100,7 +124,7 @@ export function sourceCard(data) {
  * @param data - RankingsExplorer response.
  * @returns Summary details card.
  */
-export function summaryCard(data) {
+export function summaryCard(data: RankingsExplorerData): HTMLElement {
   return DetailsCard({
     title: "Ranking summary",
     pairs: [
@@ -119,7 +143,7 @@ export function summaryCard(data) {
  * @param value - Numeric value.
  * @returns Formatted number.
  */
-export function fmtNumber(value) {
+export function fmtNumber(value: number | string | null | undefined): string {
   return Number(value || 0).toLocaleString();
 }
 
@@ -129,7 +153,10 @@ export function fmtNumber(value) {
  * @param rows - Body rows.
  * @returns Table node.
  */
-function table(headings, rows) {
+function table(
+  headings: readonly string[],
+  rows: readonly (readonly DomChild[])[]
+): HTMLElement {
   return el(
     "table",
     { class: "snap-table rankings-table" },
@@ -147,7 +174,7 @@ function table(headings, rows) {
  * @param row - Ranking row.
  * @returns Subject cell.
  */
-function subjectCell(row) {
+function subjectCell(row: PublicRankingEntry): HTMLElement {
   const name = row.subject?.displayName || "Unresolved ranking row";
   const label = row.subject?.url
     ? el("a", { href: row.subject.url }, name)
@@ -170,7 +197,7 @@ function subjectCell(row) {
  * @param row - Ranking row.
  * @returns Ranking cell.
  */
-function rankingCell(row) {
+function rankingCell(row: PublicRankingEntry): HTMLElement {
   return el(
     "div",
     { class: STACKED_CELL_CLASS },
@@ -188,7 +215,7 @@ function rankingCell(row) {
  * @param row - Ranking row.
  * @returns Firm cell.
  */
-function firmCell(row) {
+function firmCell(row: PublicRankingEntry): DomChild {
   if (row.firm?.url) return el("a", { href: row.firm.url }, row.firm.name);
   return row.firmText || statusTag("unresolved-firm");
 }
@@ -198,7 +225,7 @@ function firmCell(row) {
  * @param row - Ranking row.
  * @returns Source cell.
  */
-function sourceCell(row) {
+function sourceCell(row: PublicRankingEntry): HTMLElement {
   const source = row.source?.url
     ? el(
         "a",
@@ -225,7 +252,9 @@ function sourceCell(row) {
  * @param score - Score state payload.
  * @returns Score cell.
  */
-function scoreCell(score) {
+function scoreCell(
+  score: PublicRankingEntry["scores"][keyof PublicRankingEntry["scores"]]
+): HTMLElement {
   if (!score || score.status !== "loaded") return statusTag("unavailable");
   return el("span", { class: "num" }, score.label);
 }
@@ -235,7 +264,7 @@ function scoreCell(score) {
  * @param value - Rank number.
  * @returns Rank text.
  */
-function numberCell(value) {
+function numberCell(value: number | null | undefined): DomChild {
   return value == null ? statusTag("unavailable") : String(value);
 }
 
@@ -244,7 +273,7 @@ function numberCell(value) {
  * @param status - Source status string.
  * @returns Tag node.
  */
-function statusTag(status) {
+function statusTag(status: string | null | undefined): HTMLElement {
   const kind =
     status === "resolved" || status === "source-backed"
       ? "ok"

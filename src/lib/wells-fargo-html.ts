@@ -1,5 +1,5 @@
-// @ts-nocheck
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import type {
   WellsFargoAdvisorSource,
@@ -27,7 +27,7 @@ export function parseWellsFargoLocatorBranches(
   const $ = cheerio.load(html);
   return $("tr")
     .toArray()
-    .map(row => parseSearchRow($, row, sourceUrl))
+    .map(row => parseSearchRow($(row), sourceUrl))
     .filter((branch): branch is WellsFargoBranchSource => Boolean(branch));
 }
 
@@ -60,11 +60,10 @@ export function parseWellsFargoBranchAdvisors(
 }
 
 const parseSearchRow = (
-  $: cheerio.CheerioAPI,
-  row: unknown,
+  row: cheerio.Cheerio<AnyNode>,
   sourceUrl: string
 ): WellsFargoBranchSource | null => {
-  const cells = $(row).find("td.tableData");
+  const cells = row.find("td.tableData");
   if (cells.length < 3) return null;
   const addressCell = cells.eq(0);
   const contactCell = cells.eq(2);
