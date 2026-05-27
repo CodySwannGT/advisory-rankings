@@ -56,8 +56,14 @@ export type FmtDate = (
   options?: FmtDateOptions
 ) => string;
 
-/** Humanizer signature used to convert enum-ish values to display copy. */
-export type Humanize = (value: string | null | undefined) => string;
+/**
+ * Humanizer signature used to convert enum-ish values to display copy.
+ * Returns null/undefined when the input is null/undefined or a recognized
+ * placeholder; callers are expected to treat those as missing.
+ */
+export type Humanize = (
+  value: string | null | undefined
+) => string | null | undefined;
 
 /** Shared bag of formatter callbacks supplied by the page. */
 export interface EventFormatters {

@@ -88,8 +88,8 @@ mountThreeColumnPage({
  * @param right - Right rail column.
  */
 function loadRankings(center: HTMLElement, right: HTMLElement): void {
-  api(`/RankingsExplorer${resourceQuery()}`)
-    .then((data: RankingsExplorerPayload) => {
+  api<RankingsExplorerPayload>(`/RankingsExplorer${resourceQuery()}`)
+    .then(data => {
       clear(center);
       clear(right);
       renderRankings(data, center, right);

@@ -189,7 +189,7 @@ function sanctionBits(
   fmtMoney: FmtMoney | undefined
 ): Readonly<Record<string, unknown>> {
   const fmt = fmtMoney ?? defaultFmtMoney;
-  const bits: ReadonlyArray<string | null> = [
+  const bits: ReadonlyArray<string | null | undefined> = [
     humanize(sanction.sanctionType),
     sanction.amount != null && fmtMoney ? fmt(sanction.amount) : null,
     sanction.durationMonths != null ? `${sanction.durationMonths}mo` : null,

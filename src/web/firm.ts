@@ -185,8 +185,8 @@ mountThreeColumnPage({
       clear(center);
       clear(right);
       renderDetailLoading({ center, right, label: "firm profile" });
-      api(`/FirmProfile/${encodeURIComponent(id)}`)
-        .then((d: FirmProfilePayloadOrError) => {
+      api<FirmProfilePayloadOrError>(`/FirmProfile/${encodeURIComponent(id)}`)
+        .then(d => {
           clear(center);
           clear(right);
           render(d, center, right);

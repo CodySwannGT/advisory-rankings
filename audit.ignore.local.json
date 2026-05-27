@@ -33,7 +33,7 @@
     {
       "id": "GHSA-ph9p-34f9-6g65",
       "package": "tmp",
-      "reason": "Transitive through HarperDB's local CLI prompt stack via inquirer/external-editor. Project code does not pass untrusted prefix/postfix values to tmp, and the deployed Fabric app is built from generated resources rather than this local CLI dependency path."
+      "reason": "Transitive through the HarperDB local CLI (harperdb > inquirer > external-editor > tmp). Project code does not invoke inquirer / external-editor at build or runtime, and the deployed Fabric app bundle does not include this dependency tree."
     }
   ]
 }
