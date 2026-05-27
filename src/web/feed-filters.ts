@@ -117,7 +117,10 @@ export function writeFeedFilters(filters: FeedFilters): void {
     nextFilters
   );
   const query = params.size ? `?${params.toString()}` : "";
-  history.pushState(null, "", `${location.pathname}${query}${location.hash}`);
+  const nextUrl = `${location.pathname}${query}${location.hash}`;
+  const currentUrl = `${location.pathname}${location.search}${location.hash}`;
+  if (nextUrl === currentUrl) return;
+  history.pushState(null, "", nextUrl);
 }
 
 /**

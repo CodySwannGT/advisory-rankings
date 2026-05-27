@@ -8,6 +8,9 @@ export type FeedMode = "all" | "event" | "moves" | "compliance";
 /** Value/label option pair used by the mode and category selects. */
 export type FeedFilterOption = readonly [value: string, label: string];
 
+/** Value/label option pair specialized for {@link FeedMode} options. */
+export type FeedModeOption = readonly [value: FeedMode, label: string];
+
 /** Mutable filter state written back to the URL. */
 export interface FeedFilters {
   readonly mode: FeedMode;
@@ -44,11 +47,11 @@ export const FEED_MODE_PARAM = "mode";
 export const FEED_CATEGORY_PARAM = "category";
 export const DEFAULT_FEED_MODE: FeedMode = "all";
 
-export const FEED_MODE_ALIASES: ReadonlyMap<string, string> = new Map([
+export const FEED_MODE_ALIASES: ReadonlyMap<string, FeedMode> = new Map([
   ["event-backed", "event"],
 ]);
 
-export const FEED_MODES: readonly FeedFilterOption[] = [
+export const FEED_MODES: readonly FeedModeOption[] = [
   ["all", "All posts"],
   ["event", "Event-backed"],
   ["moves", "Recruiting moves"],
@@ -122,10 +125,9 @@ export function modeLabelFor(mode: FeedMode): string {
  * @returns Visible category label.
  */
 export function categoryLabel(value: string): string {
-  return (
-    humanizeFn(value) ??
-    String(value || "uncategorized")
-      .replace(/_+/g, " ")
-      .replace(/\b\w/g, char => char.toUpperCase())
-  );
+  const humanized = humanizeFn(value);
+  if (humanized) return humanized;
+  return String(value || "uncategorized")
+    .replace(/_+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
 }
