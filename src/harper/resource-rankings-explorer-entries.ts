@@ -1,0 +1,321 @@
+/* eslint-disable jsdoc/require-jsdoc -- Private aggregation helpers build compact response objects in local maps. */
+import type { ResourceIndex } from "./resource-data.js";
+import {
+  advisorDisplayName,
+  resolveFirm,
+  type ResolvableAdvisor,
+  type ResolvableFirm,
+  type ResolvableTeam,
+} from "./resource-routing.js";
+import { normalizeState } from "./resource-rankings-explorer-utils.js";
+import type {
+  EmploymentHistoryRow,
+  RankingEntryRow,
+  RankingRow,
+} from "../types/harper-schema.js";
+
+/** Compact firm card embedded in a ranking entry's `firm` slot. */
+export interface RankingFirmCard {
+  readonly id: string;
+  readonly name: string;
+  readonly short: string;
+  readonly url: string;
+}
+
+/** Ranking metadata bundled onto each ranking entry. */
+export interface RankingPayload {
+  readonly id: string | null;
+  readonly publisher: string;
+  readonly name: string;
+  readonly year: number | null;
+  readonly subjectType: string;
+  readonly methodologyUrl: string | null;
+}
+
+/** Subject (advisor, team, firm, or unresolved) attached to a ranking entry. */
+export interface RankingSubject {
+  readonly kind: string;
+  readonly id: string | null;
+  readonly displayName: string;
+  readonly url: string | null;
+}
+
+/** Location pair attached to a ranking entry. */
+export interface RankingLocation {
+  readonly city: string | null;
+  readonly state: string | null;
+  readonly label: string;
+}
+
+/** One score slot in `scorePayload`. */
+export interface ScoreSlot {
+  readonly value: number | string | null;
+  readonly status: "loaded" | "unavailable";
+  readonly label: string;
+}
+
+/** Score quadruple bundled onto each ranking entry. */
+export interface ScorePayload {
+  readonly total: ScoreSlot;
+  readonly scale: ScoreSlot;
+  readonly growth: ScoreSlot;
+  readonly professionalism: ScoreSlot;
+}
+
+/** Numeric metrics bundled onto each ranking entry. */
+export interface RankingMetrics {
+  readonly aum: number | null;
+  readonly productionT12: number | null;
+  readonly householdCount: number | null;
+  readonly teamSize: number | null;
+}
+
+/** Source attribution bundled onto each ranking entry. */
+export interface RankingSource {
+  readonly url: string | null;
+  readonly label: string;
+  readonly loadedAt: RankingEntryRow["loadedAt"] | null;
+}
+
+/** Provenance bundled onto each ranking entry. */
+export interface RankingProvenance {
+  readonly sourceTable: "RankingEntry";
+  readonly sourceIds: readonly string[];
+  readonly rankingId: string;
+}
+
+/** Private sort fields stripped before public emission. */
+export interface RankingSortFields {
+  readonly category: string;
+  readonly firm: string;
+  readonly location: string;
+  readonly name: string;
+  readonly rank: number;
+  readonly scale: number;
+  readonly growth: number;
+  readonly year: number;
+}
+
+/**
+ * Internal ranking entry view consumed by the rankings explorer pipeline.
+ * The `_sort` block is private and stripped by `publicEntry` before clients
+ * see the payload.
+ */
+export interface RankingExplorerEntry {
+  readonly id: string;
+  readonly ranking: RankingPayload;
+  readonly rank: number | null;
+  readonly subject: RankingSubject;
+  readonly firm: RankingFirmCard | null;
+  readonly firmText: string | null;
+  readonly location: RankingLocation;
+  readonly scores: ScorePayload;
+  readonly metrics: RankingMetrics;
+  readonly source: RankingSource;
+  readonly resolutionStatus: string;
+  readonly sourceStatus: readonly string[];
+  readonly provenance: RankingProvenance;
+  readonly _sort: RankingSortFields;
+}
+
+export function rankingEntries(
+  db: ResourceIndex
+): readonly RankingExplorerEntry[] {
+  return (db.rankingEntries || []).map(row => {
+    const ranking = db.byRanking.get(row.rankingId) || null;
+    const subject = entrySubject(db, row, ranking);
+    const firm = entryFirm(db, row);
+    const location: RankingLocation = {
+      city: row.city || null,
+      state: normalizeState(row.state),
+      label: [row.city, normalizeState(row.state)].filter(Boolean).join(", "),
+    };
+    return {
+      id: row.id,
+      ranking: rankingPayload(ranking, row),
+      rank: row.rank ?? null,
+      subject,
+      firm,
+      firmText: row.firmText || firm?.name || null,
+      location,
+      scores: scorePayload(row),
+      metrics: {
+        aum: row.aum ?? null,
+        productionT12: row.productionT12 ?? null,
+        householdCount: row.householdCount ?? null,
+        teamSize: row.teamSize ?? null,
+      },
+      source: {
+        url: row.sourceUrl || ranking?.methodologyUrl || null,
+        label: row.sourceLabel || ranking?.name || "Ranking source",
+        loadedAt: row.loadedAt || null,
+      },
+      resolutionStatus: resolutionStatus(row, subject),
+      sourceStatus: sourceStatus(row, subject, firm, location),
+      provenance: {
+        sourceTable: "RankingEntry",
+        sourceIds: [row.id],
+        rankingId: row.rankingId,
+      },
+      _sort: {
+        category: ranking?.name || "",
+        firm: row.firmText || firm?.name || "",
+        location: location.label || "",
+        name: subject.displayName || row.rawDisplayName || "",
+        rank: numericSort(row.rank),
+        scale: numericSort(row.scoreScale),
+        growth: numericSort(row.scoreGrowth),
+        year: ranking?.year || 0,
+      },
+    };
+  });
+}
+
+function rankingPayload(
+  ranking: RankingRow | null,
+  row: RankingEntryRow
+): RankingPayload {
+  return {
+    id: ranking?.id || row.rankingId || null,
+    publisher: ranking?.publisher || "AdvisorHub",
+    name: ranking?.name || "Unknown ranking",
+    year: ranking?.year ?? null,
+    subjectType: ranking?.subjectType || inferredSubjectType(row),
+    methodologyUrl: ranking?.methodologyUrl || null,
+  };
+}
+
+function entrySubject(
+  db: ResourceIndex,
+  row: RankingEntryRow,
+  ranking: RankingRow | null
+): RankingSubject {
+  const advisor: ResolvableAdvisor | undefined = row.subjectAdvisorId
+    ? db.byAdvisor.get(row.subjectAdvisorId)
+    : undefined;
+  if (advisor)
+    return {
+      kind: "advisor",
+      id: advisor.id,
+      displayName: advisorDisplayName(advisor),
+      url: `/advisor.html?id=${encodeURIComponent(advisor.slug || advisor.id)}`,
+    };
+  const team: ResolvableTeam | undefined = row.subjectTeamId
+    ? db.byTeam.get(row.subjectTeamId)
+    : undefined;
+  if (team)
+    return {
+      kind: "team",
+      id: team.id,
+      displayName: team.name,
+      url: `/team.html?id=${encodeURIComponent(team.slug || team.id)}`,
+    };
+  const firm: ResolvableFirm | undefined = row.subjectFirmId
+    ? db.byFirm.get(row.subjectFirmId)
+    : undefined;
+  if (firm)
+    return {
+      kind: "firm",
+      id: firm.id,
+      displayName: firm.name,
+      url: `/firm.html?id=${encodeURIComponent(firm.slug || firm.id)}`,
+    };
+  return {
+    kind: ranking?.subjectType || inferredSubjectType(row),
+    id: null,
+    displayName: row.rawDisplayName || "Unresolved ranking row",
+    url: null,
+  };
+}
+
+function entryFirm(
+  db: ResourceIndex,
+  row: RankingEntryRow
+): RankingFirmCard | null {
+  if (row.subjectFirmId) return firmPayload(db.byFirm.get(row.subjectFirmId));
+  if (row.firmId) return firmPayload(db.byFirm.get(row.firmId));
+  if (row.firmText) return firmPayload(resolveFirm(db, row.firmText));
+  const advisorEmployment: EmploymentHistoryRow | undefined =
+    row.subjectAdvisorId
+      ? db.employments
+          .filter(employment => employment.advisorId === row.subjectAdvisorId)
+          .slice()
+          .sort(dateDesc("startDate"))[0]
+      : undefined;
+  return firmPayload(
+    advisorEmployment ? db.byFirm.get(advisorEmployment.firmId) : null
+  );
+}
+
+function firmPayload(
+  firm: ResolvableFirm | null | undefined
+): RankingFirmCard | null {
+  return firm
+    ? {
+        id: firm.id,
+        name: firm.name,
+        short: firm.short || firm.name,
+        url: `/firm.html?id=${encodeURIComponent(firm.slug || firm.id)}`,
+      }
+    : null;
+}
+
+function scorePayload(row: RankingEntryRow): ScorePayload {
+  return {
+    total: valueState(row.scoreTotal),
+    scale: valueState(row.scoreScale),
+    growth: valueState(row.scoreGrowth),
+    professionalism: valueState(row.scoreProfessionalism),
+  };
+}
+
+function valueState(value: number | string | null | undefined): ScoreSlot {
+  return value == null || value === ""
+    ? { value: null, status: "unavailable", label: "Unavailable" }
+    : { value, status: "loaded", label: String(value) };
+}
+
+function resolutionStatus(
+  row: RankingEntryRow,
+  subject: RankingSubject | null
+): string {
+  if (subject?.id) return "resolved";
+  return row.resolutionStatus || "unresolved";
+}
+
+function sourceStatus(
+  row: RankingEntryRow,
+  subject: RankingSubject | null,
+  firm: RankingFirmCard | null,
+  location: RankingLocation
+): readonly string[] {
+  return [
+    row.sourceUrl ? "source-backed" : "missing-source",
+    subject?.id ? null : "unresolved-entity",
+    firm ? null : "unresolved-firm",
+    location.state ? null : "missing-state",
+    row.scoreScale == null ? "missing-scale" : null,
+    row.scoreGrowth == null ? "missing-growth" : null,
+  ].filter((status): status is string => Boolean(status));
+}
+
+function inferredSubjectType(row: RankingEntryRow): string {
+  if (row.subjectFirmId) return "firm";
+  if (row.subjectTeamId) return "team";
+  return "advisor";
+}
+
+function numericSort(value: number | string | null | undefined): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
+}
+
+function dateDesc<
+  TField extends string,
+  TRow extends { readonly [K in TField]?: unknown },
+>(field: TField): (left: TRow, right: TRow) => number {
+  return (left, right) =>
+    String(right?.[field] || "").localeCompare(String(left?.[field] || ""));
+}
+
+/* eslint-enable jsdoc/require-jsdoc -- End local helper exception. */
