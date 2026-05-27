@@ -1,31 +1,48 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
   emptyMerrillRows,
   MERRILL_SOURCE_ADAPTER,
-  type FirmSourceRunOptions,
   type FirmSourceTable,
   type MerrillRows,
   type MerrillYextAdvisor,
 } from "../lib/merrill.js";
-import { describeTarget, upsert } from "../lib/harper.js";
-import { loadCreds, StudioSession } from "./_auth.js";
+import { describeTarget } from "../lib/harper.js";
+import { targetUrl, writeRows } from "./_merrill_fabric.js";
+
+/** Yext result envelope item containing one advisor record. */
+interface YextResult {
+  readonly data?: MerrillYextAdvisor;
+}
+
+/** Inner Yext response payload from Merrill's public locator API. */
+interface YextResponsePayload {
+  readonly resultsCount?: number;
+  readonly results?: ReadonlyArray<YextResult>;
+}
 
 /** Yext response envelope returned by Merrill's public locator API. */
 interface YextResponse {
-  readonly [key: string]: unknown;
+  readonly response?: YextResponsePayload;
 }
 
-/** Fabric operation response returned by the Studio cluster API. */
-type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
-
 /** One fetched Yext page plus its total result count. */
-type AdvisorPage = Readonly<Record<"total" | "results", unknown>>;
+interface AdvisorPage {
+  readonly total: number;
+  readonly results: ReadonlyArray<YextResult>;
+}
 
 /** Pagination accumulator used while walking the Yext result window. */
-type AdvisorPageState = Readonly<Record<string, unknown>>;
+interface AdvisorPageState {
+  readonly input: string;
+  readonly maxAdvisors: number;
+  readonly pageSize: number;
+  readonly offset: number;
+  readonly total: number;
+  readonly advisors: ReadonlyArray<MerrillYextAdvisor>;
+  readonly seenKeys: ReadonlyArray<string>;
+}
 
 const TABLE_ORDER = [
   "Firm",
@@ -39,12 +56,6 @@ const TABLE_ORDER = [
   "AdvisorResearchCheck",
 ] as const satisfies ReadonlyArray<FirmSourceTable & keyof MerrillRows>;
 const MAX_YEXT_OFFSET_LIMIT = 10_000;
-const FABRIC_UPSERT_BATCH_SIZE = 100;
-const FABRIC_UPSERT_RETRIES = 3;
-
-const studioPromise = {
-  current: undefined as Promise<StudioSession> | undefined,
-};
 
 /**
  * Reads the option value after a CLI flag.
@@ -130,7 +141,7 @@ async function main(): Promise<void> {
   }
 }
 
-const runOptions = (): FirmSourceRunOptions => ({
+const runOptions = () => ({
   write: has("--write"),
   json: has("--json"),
   maxAdvisors: numberArg("--max-advisors", DEFAULT_FIRM_SOURCE_MAX_ADVISORS),
@@ -253,93 +264,31 @@ const advisorKey = (advisor: MerrillYextAdvisor): string => {
   return String(advisor.id ?? advisor.uid ?? "");
 };
 
-const mergeRows = (left: MerrillRows, right: MerrillRows): MerrillRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as MerrillRows;
+const mergeTable = (
+  left: ReadonlyArray<Record<string, unknown>>,
+  right: ReadonlyArray<Record<string, unknown>>
+): ReadonlyArray<Record<string, unknown>> => {
+  return [
+    ...new Map([...left, ...right].map(row => [String(row.id), row])).values(),
+  ];
 };
 
-const targetUrl = (): string | undefined => {
-  const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;
-  const value = env.HDB_TARGET_URL ?? loadCreds().clusterUrl;
-  return value ? stripTrailingSlashes(value) : undefined;
-};
-
-const studio = async (): Promise<StudioSession> => {
-  studioPromise.current ??= new StudioSession(loadCreds()).login();
-  return studioPromise.current;
-};
-
-const fabricUpsert = async (
-  table: string,
-  records: ReadonlyArray<Record<string, unknown>>
-): Promise<number> => {
-  if (records.length === 0) return 0;
-  const creds = loadCreds();
-  const session = await studio();
-  return await batches(records, FABRIC_UPSERT_BATCH_SIZE).reduce<
-    Promise<number>
-  >(async (previous, batch) => {
-    const response = await retryFabricUpsert(() =>
-      session.clusterOp(creds.clusterId, "upsert", {
-        database: "data",
-        table,
-        records: batch,
-      })
-    );
-    const body = response.body as Partial<
-      Record<"upserted_hashes", ReadonlyArray<unknown>>
-    >;
-    return (
-      (await previous) +
-      (Array.isArray(body.upserted_hashes)
-        ? body.upserted_hashes.length
-        : batch.length)
-    );
-  }, Promise.resolve(0));
-};
-
-const retryFabricUpsert = async (
-  operation: () => Promise<FabricResponse>,
-  attempt = 1
-): Promise<FabricResponse> => {
-  const result = await operation();
-  if (result.status === 200) return result;
-  if (attempt >= FABRIC_UPSERT_RETRIES) {
-    throw new Error(
-      `Fabric upsert failed: ${result.status} ${JSON.stringify(result.body).slice(0, 300)}`
-    );
-  }
-  await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-  return retryFabricUpsert(operation, attempt + 1);
-};
-
-const writeRows = async (
-  table: string,
-  records: ReadonlyArray<Record<string, unknown>>
-): Promise<number> => {
-  if (targetUrl()) return fabricUpsert(table, records);
-  return upsert(table, [...records]);
-};
-
-const batches = (
-  records: ReadonlyArray<Record<string, unknown>>,
-  size: number
-): ReadonlyArray<ReadonlyArray<Record<string, unknown>>> => {
-  return records.length
-    ? [records.slice(0, size), ...batches(records.slice(size), size)]
-    : [];
-};
-
-const stripTrailingSlashes = (value: string): string => {
-  return value.endsWith("/") ? stripTrailingSlashes(value.slice(0, -1)) : value;
-};
+const mergeRows = (left: MerrillRows, right: MerrillRows): MerrillRows => ({
+  Firm: mergeTable(left.Firm, right.Firm),
+  FirmAlias: mergeTable(left.FirmAlias, right.FirmAlias),
+  Branch: mergeTable(left.Branch, right.Branch),
+  Advisor: mergeTable(left.Advisor, right.Advisor),
+  EmploymentHistory: mergeTable(
+    left.EmploymentHistory,
+    right.EmploymentHistory
+  ),
+  Designation: mergeTable(left.Designation, right.Designation),
+  Team: mergeTable(left.Team, right.Team),
+  TeamMembership: mergeTable(left.TeamMembership, right.TeamMembership),
+  AdvisorResearchCheck: mergeTable(
+    left.AdvisorResearchCheck,
+    right.AdvisorResearchCheck
+  ),
+});
 
 await main();
