@@ -218,11 +218,21 @@ export async function newContext(
   viewport: Readonly<{ height: number; width: number }>,
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<BrowserContext> {
-  return await browser.newContext({
+  const context = await browser.newContext({
     viewport,
     ignoreHTTPSErrors: true,
     extraHTTPHeaders,
   });
+  // Raise the default for every implicit wait (waitForResponse/Function/URL,
+  // action actionability) from Playwright's 30s to the smoke's deployed-data
+  // budget. The dev cluster serializes work under the smoke's concurrent
+  // page-load, so individually-fast endpoints can queue past 30s; relying on
+  // per-call timeouts left several waits (e.g. the kind=firm waitForResponse)
+  // on the 30s default. Real regressions still fail (a full-table scan is 16s+
+  // under load; a 500/empty fails instantly). Bounded-query follow-up: #721.
+  context.setDefaultTimeout(DEPLOYED_DATA_TIMEOUT);
+  context.setDefaultNavigationTimeout(DEPLOYED_DATA_TIMEOUT);
+  return context;
 }
 
 /**
