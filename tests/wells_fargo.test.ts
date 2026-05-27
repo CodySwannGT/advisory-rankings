@@ -11,6 +11,7 @@ import {
 
 const CHECKED_AT = "2026-05-23";
 const FIXTURE_DIR = "tests/fixtures/firm-sources/wells-fargo";
+const SCRAPER_PATH = "src/scripts/scrape_wells_fargo.ts";
 const searchHtml = readFileSync(`${FIXTURE_DIR}/search-response.html`, "utf8");
 const branchHtml = readFileSync(`${FIXTURE_DIR}/branch-response.html`, "utf8");
 
@@ -43,6 +44,13 @@ describe("Wells Fargo Advisors scraper mapping", () => {
     expect(discovery.limitation).toContain("not a structured API");
     expect(cityUrl.searchParams.get("city")).toBe("New York");
     expect(cityUrl.searchParams.get("start")).toBe("26");
+  });
+
+  it("keeps the scraper file under TypeScript and lint checking", () => {
+    const scraperSource = readFileSync(SCRAPER_PATH, "utf8");
+
+    expect(scraperSource).not.toContain("@ts-nocheck");
+    expect(scraperSource).not.toContain("eslint-disable");
   });
 
   it("parses locator branches and branch advisor lists", () => {

@@ -15,7 +15,7 @@
  * re-exported, not redeclared.
  */
 
-export type { Context, Query, RequestTargetOrId, Session } from "harperdb";
+export type { Context, RequestTargetOrId } from "harperdb";
 
 import type { RequestTargetOrId } from "harperdb";
 
