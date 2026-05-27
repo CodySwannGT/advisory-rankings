@@ -20,9 +20,14 @@ class Resource {
 const tableRows = new Map<string, any[]>();
 
 const table = (name: string) => ({
-  search: () =>
+  // Honor equality `conditions` like real Harper does (default-ignoring them
+  // masked query-shape bugs); an empty/absent condition list yields all rows.
+  search: (query?: any) =>
     (async function* () {
-      for (const row of tableRows.get(name) ?? []) yield row;
+      const conditions = query?.conditions ?? [];
+      for (const row of tableRows.get(name) ?? [])
+        if (conditions.every((c: any) => (row as any)[c.attribute] === c.value))
+          yield row;
     })(),
 });
 
