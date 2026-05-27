@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { UbsAdvisorEntity, UbsSearchResponse } from "./ubs-types.js";
 
 /**
