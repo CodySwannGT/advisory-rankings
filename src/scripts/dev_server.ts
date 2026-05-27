@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 /**
  * Local dev server for the web/ UI.
  *
@@ -34,283 +33,51 @@
  * Usage:
  *   bun run dev:server                             # listens on :9926
  *   PORT=8080 bun run dev:server                   # listens on :8080
- * @returns The computed value.
  */
 
-import { createServer, request as httpRequest } from "node:http";
-import { readFile, stat } from "node:fs/promises";
-import { extname, resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { createServer } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
+
 import { handleAuthRoute } from "./dev_server_auth.js";
-import { DEV_SERVER_TABLES } from "./dev_server_tables.js";
-
-const PORT = Number(process.env.PORT || 9926);
-const HOST = process.env.HOST || "127.0.0.1";
-const ROOT = resolve("harper-app/web");
-const SOCKET =
-  process.env.HDB_OPS_SOCKET ||
-  `${process.env.HOME}/.harperdb/operations-server`;
-const USER = process.env.HDB_ADMIN_USERNAME || "admin";
-const PASS = process.env.HDB_ADMIN_PASSWORD || "admin-local";
-const AUTH = `Basic ${Buffer.from(`${USER}:${PASS}`).toString("base64")}`;
-const DEV_URL_BASE = ["http", "://x"].join("");
-
-const TABLES = [...DEV_SERVER_TABLES];
-
-// ── ops API helpers ─────────────────────────────────────────────
+import {
+  DEV_SERVER_HOST,
+  DEV_SERVER_PORT,
+  DEV_SERVER_SOCKET,
+  DEV_URL_BASE,
+} from "./dev_server_constants.js";
+import { sendJson } from "./dev_server_json.js";
+import { clearResourcesCache } from "./dev_server_resources.js";
+import {
+  handleMcpRoute,
+  handleResourceRoute,
+  handleTableRoute,
+} from "./dev_server_routes.js";
+import { DEV_SERVER_WEB_ROOT, serveStatic } from "./dev_server_static.js";
 
 /**
- * Handles ops call for this workflow.
- * @param body - body used by this operation.
- * @returns The computed value.
+ * Extracts a printable error message without depending on `err` being typed
+ * as `Error` — handlers can throw anything, so we narrow defensively.
+ *
+ * @param err - Thrown value of unknown shape.
+ * @returns Best-effort message string.
  */
-function opsCall(body) {
-  return new Promise((resolveP, reject) => {
-    const req = httpRequest(
-      {
-        socketPath: SOCKET,
-        method: "POST",
-        path: "/",
-        headers: { "Content-Type": "application/json", Authorization: AUTH },
-      },
-      async res => {
-        res.setEncoding("utf8");
-        const buf = await new Response(res).text();
-        try {
-          resolveP(JSON.parse(buf));
-        } catch (_error) {
-          reject(new Error(`bad json from ops API: ${buf.slice(0, 200)}`));
-        }
-      }
-    );
-    req.on("error", reject);
-    req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
-/**
- * Loads table from the configured source.
- * @param name - Display name or option name.
- * @returns The loaded result.
- */
-async function loadTable(name) {
-  const res = await opsCall({
-    operation: "sql",
-    sql: `SELECT * FROM data.${name}`,
-  });
-  if (Array.isArray(res)) return res;
-  if (Array.isArray(res?.data)) return res.data;
-  return [];
-}
-
-// ── load resources.js with a tables shim ────────────────────────
-
-const resourceState = { resources: null };
-/**
- * Loads all Harper tables into the Resource shim's search API.
- * @returns Table shim keyed by table name.
- */
-async function loadTableShim() {
-  const entries = await Promise.all(
-    TABLES.map(async t => [t, await loadTable(t)])
-  );
-  return Object.fromEntries(
-    entries.map(([t, rows]) => [
-      t,
-      {
-        search: () =>
-          (async function* () {
-            for (const r of rows) yield r;
-          })(),
-      },
-    ])
-  );
-}
-
-/**
- * Loads generated resources.js with a Harper-like global Resource context.
- * @param opts - Whether route handling needs table-backed resources.
- * @returns Imported resources module.
- */
-async function loadResources(opts = { loadTables: true }) {
-  const tables = opts.loadTables ? await loadTableShim() : {};
-  /**
-   * Handles resource for this workflow.
-   */
-  class Resource {
-    /**
-     * Handles constructor for this workflow.
-     */
-    constructor() {}
-  }
-  globalThis.tables = tables;
-  globalThis.Resource = Resource;
-  if (!resourceState.resources) {
-    Object.assign(resourceState, {
-      resources: await import(
-        pathToFileURL(resolve("harper-app/resources.js")).href
-      ),
-    });
-  }
-  return resourceState.resources;
-}
-
-// ── static + routing ────────────────────────────────────────────
-
-const MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".ico": "image/x-icon",
-};
-
-const STATIC_EXACT_PATHS = new Map([
-  ["/", "/index.html"],
-  ["/firms", "/firms.html"],
-  ["/recruiting", "/recruiting.html"],
-  ["/rankings", "/rankings.html"],
-  ["/regulatory", "/regulatory.html"],
-  ["/advisors", "/advisors.html"],
-  ["/teams", "/teams.html"],
-]);
-
-const STATIC_PREFIX_PATHS = [
-  ["/firms/", "/firm.html"],
-  ["/advisors/", "/advisor.html"],
-  ["/teams/", "/team.html"],
-  ["/articles/", "/article.html"],
-];
-
-/**
- * Handles serve static for this workflow.
- * @param req - req used by this operation.
- * @param res - res used by this operation.
- */
-async function serveStatic(req, res) {
-  const p = staticPath(
-    decodeURIComponent(new URL(req.url, DEV_URL_BASE).pathname)
-  );
-  const file = join(ROOT, p);
-  if (!file.startsWith(ROOT)) {
-    res.writeHead(403).end("forbidden");
-    return;
-  }
-  try {
-    const s = await stat(file);
-    if (!s.isFile()) throw new Error("not a file");
-    const body = await readFile(file);
-    const extension = extname(file);
-    res.writeHead(200, {
-      "Content-Type": MIME[extension] || "application/octet-stream",
-      "Cache-Control": staticCacheControl(extension),
-    });
-    res.end(body);
-  } catch {
-    res.writeHead(404).end("not found");
-  }
-}
-
-/**
- * Chooses cache headers for static assets served by the local dev server.
- * @param extension - Requested file extension.
- * @returns Cache-Control header value.
- */
-function staticCacheControl(extension: string): string {
-  return [".ico", ".svg", ".png", ".css", ".js"].includes(extension)
-    ? "public, max-age=3600"
-    : "no-store";
-}
-
-/**
- * Maps pretty routes to their generated static HTML files.
- * @param path - Request pathname.
- * @returns Static file path under harper-app/web.
- */
-function staticPath(path) {
-  return (
-    STATIC_EXACT_PATHS.get(path) ||
-    STATIC_PREFIX_PATHS.find(([prefix]) => path.startsWith(prefix))?.[1] ||
-    path
-  );
-}
-
-/**
- * Handles send json for this workflow.
- * @param res - res used by this operation.
- * @param code - code used by this operation.
- * @param body - body used by this operation.
- * @returns The computed value.
- */
-function sendJson(res, code, body) {
-  const buf = Buffer.from(JSON.stringify(body));
-  res.writeHead(code, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": buf.length,
-    "Cache-Control": "no-store",
-  });
-  res.end(buf);
-}
-
-/**
- * Sends JSON and returns true for route-handler control flow.
- * @param res - HTTP response.
- * @param code - HTTP status code.
- * @param body - JSON response body.
- * @returns Always true after the response is written.
- */
-function sendJsonHandled(res, code, body) {
-  sendJson(res, code, body);
-  return true;
-}
-
-// Mimic Harper's RequestTarget (extends URLSearchParams with `.id`,
-// `.pathname`, parsed `.limit`) so resources.js can read the same shape
-// in dev that production hands them. Just enough for our endpoints —
-// not a full reimplementation of Harper's parser.
-/**
- * Handles make target for this workflow.
- * @param id - Entity identifier.
- * @param searchParams - search params used by this operation.
- * @returns The computed value.
- */
-function makeTarget(id, searchParams) {
-  const t = new URLSearchParams(searchParams || "");
-  const lim = parseInt(t.get("limit"), 10);
-  return Object.assign(t, {
-    id,
-    limit: Number.isFinite(lim) ? lim : undefined,
-    toString: () => (id == null ? "" : String(id)),
-  });
-}
-
-/**
- * Routes one HTTP request through auth, resource, table, or static handlers.
- * @param req - Incoming HTTP request.
- * @param res - HTTP response.
- * @returns Promise that resolves after the response is written.
- */
-async function handle(req, res) {
-  const url = new URL(req.url, DEV_URL_BASE);
-  const p = url.pathname;
-  try {
-    await routeRequest(req, res, url);
-  } catch (err) {
-    console.error("500", p, err.stack || err.message || err);
-    sendJson(res, 500, { error: String(err.message || err) });
-  }
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.stack || err.message;
+  return String(err);
 }
 
 /**
  * Dispatches to the first matching dev-server route.
+ *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  * @param url - Parsed request URL.
  */
-async function routeRequest(req, res, url) {
+async function routeRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL
+): Promise<void> {
   if (await handleAuthRoute(req, res, url.pathname)) return;
   if (await handleMcpRoute(req, res, url.pathname)) return;
   if (await handleResourceRoute(res, url)) return;
@@ -319,118 +86,48 @@ async function routeRequest(req, res, url) {
 }
 
 /**
- * Handles the local MCP POST bridge.
+ * Routes one HTTP request through auth, resource, table, or static handlers.
+ *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
- * @param path - Request pathname.
- * @returns Whether the route was handled.
  */
-async function handleMcpRoute(req, res, path) {
-  if (path !== "/mcp") return false;
-  if (req.method !== "POST")
-    return sendJsonHandled(res, 405, { error: "method not allowed" });
-  const r = await loadResources({ loadTables: true });
-  if (!r?.mcp) return sendJsonHandled(res, 500, { error: "mcp unavailable" });
-  const instance = Reflect.construct(r.mcp, []);
-  return sendJsonHandled(
-    res,
-    200,
-    await instance.post(await readJsonBody(req))
-  );
-}
-
-/**
- * Reads a JSON request body, returning undefined for parse errors.
- * @param req - Incoming HTTP request.
- * @returns Parsed JSON body or undefined when malformed.
- */
-async function readJsonBody(req) {
-  const chunks = await Array.fromAsync(req, chunk => Buffer.from(chunk));
-  const text = Buffer.concat(chunks).toString("utf8");
-  if (!text.trim()) return undefined;
+async function handle(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
+  const url = new URL(req.url ?? "/", DEV_URL_BASE);
   try {
-    return JSON.parse(text);
-  } catch (_error) {
-    return undefined;
+    await routeRequest(req, res, url);
+  } catch (err) {
+    console.error("500", url.pathname, errorMessage(err));
+    sendJson(res, 500, {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
 /**
- * Handles generated Harper resource routes.
- * @param res - HTTP response.
- * @param url - Parsed request URL.
- * @returns Whether the route was handled.
- */
-async function handleResourceRoute(res, url) {
-  const noArgMatch =
-    /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer)$/.exec(
-      url.pathname
-    );
-  const profileMatch =
-    /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/.exec(
-      url.pathname
-    );
-  if (noArgMatch)
-    return await sendResource(res, noArgMatch[1], undefined, url.searchParams);
-  if (profileMatch)
-    return await sendResource(
-      res,
-      profileMatch[1],
-      decodeURIComponent(profileMatch[2]),
-      url.searchParams
-    );
-  return false;
-}
-
-/**
- * Executes one generated resource class and writes the JSON result.
- * @param res - HTTP response.
- * @param kind - Resource class name.
- * @param id - Optional resource ID.
- * @param searchParams - Request query parameters.
- * @returns True after writing the response.
- */
-async function sendResource(res, kind, id, searchParams) {
-  const r = await loadResources();
-  const ResourceClass = r?.[kind];
-  const instance = Reflect.construct(ResourceClass, []);
-  return sendJsonHandled(
-    res,
-    200,
-    await instance.get(makeTarget(id, searchParams))
-  );
-}
-
-/**
- * Handles auto-export table list routes.
- * @param res - HTTP response.
- * @param path - Request pathname.
- * @returns Whether the route was handled.
- */
-async function handleTableRoute(res, path) {
-  const tableMatch = /^\/([A-Z][A-Za-z]+)\/?$/.exec(path);
-  if (!tableMatch || !TABLES.includes(tableMatch[1])) return false;
-  return sendJsonHandled(res, 200, await loadTable(tableMatch[1]));
-}
-
-// Hot-reload resources.js by clearing cache between requests in dev.
-// (Cheap; the dataset load dominates anyway.)
-/**
- * Clears the resources import cache before routing in hot mode.
+ * Clears the resources import cache before each request when `HOT=1`.
+ *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  */
-function devMode(req, res) {
-  Object.assign(resourceState, { resources: null });
-  handle(req, res);
+function devMode(req: IncomingMessage, res: ServerResponse): void {
+  clearResourcesCache();
+  void handle(req, res);
 }
 
-createServer(process.env.HOT === "1" ? devMode : handle).listen(
-  PORT,
-  HOST,
-  () => {
-    console.log(`dev server listening on http://${HOST}:${PORT}`);
-    console.log(`  static: ${ROOT}`);
-    console.log(`  ops socket: ${SOCKET}`);
-  }
-);
+const requestHandler =
+  process.env.HOT === "1"
+    ? devMode
+    : (req: IncomingMessage, res: ServerResponse) => {
+        void handle(req, res);
+      };
+
+createServer(requestHandler).listen(DEV_SERVER_PORT, DEV_SERVER_HOST, () => {
+  console.log(
+    `dev server listening on http://${DEV_SERVER_HOST}:${DEV_SERVER_PORT}`
+  );
+  console.log(`  static: ${DEV_SERVER_WEB_ROOT}`);
+  console.log(`  ops socket: ${DEV_SERVER_SOCKET}`);
+});
