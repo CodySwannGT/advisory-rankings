@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { YextAddress } from "./morgan-stanley-types.js";
 
 const CERTIFICATION_CODE_RE = /[A-Z]{2,6}/u;
