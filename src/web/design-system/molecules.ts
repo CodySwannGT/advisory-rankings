@@ -13,8 +13,8 @@
 import { el } from "./dom.js";
 import type { DomAttrs, DomAttrValue, DomChild } from "./dom.js";
 import { Avatar, Tag, Icon, TextInput, FormLabel } from "./atoms.js";
-import { entityPath } from "./../urls.js";
-import type { EntityLike } from "./../urls.js";
+import { entityPath } from "../urls.js";
+import type { EntityLike } from "../urls.js";
 
 /** Entity kinds the chip / arrow helpers route through {@link entityPath}. */
 type EntityChipKind = "firm" | "team" | "advisor";
