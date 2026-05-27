@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import { readdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -7,6 +6,12 @@ import * as cheerio from "cheerio";
 import { articleId, firmId, uid } from "../lib/ids.js";
 import { canonicalFirmName } from "../lib/firm-identity.js";
 import { describeTarget, upsert } from "../lib/harper.js";
+import type {
+  ArticleFirmMentionRow,
+  ArticleRow,
+  FieldAssertionRow,
+  FirmRow,
+} from "../types/harper-schema.js";
 
 const WELLS_FARGO_ADVISORS = "Wells Fargo Advisors";
 const MERRILL_LYNCH = "Merrill Lynch";
@@ -31,6 +36,40 @@ const FIRM_ALIASES: ReadonlyArray<readonly [string, string]> = [
   ["Chelsea Financial", "Chelsea Financial Services"],
 ];
 
+/** WordPress `{ rendered: "<html>" }` HTML envelope. */
+interface RenderedHtml {
+  readonly rendered?: string;
+}
+
+/** Raw WordPress post shape persisted by the crawler. */
+interface RawWpPost {
+  readonly id?: number | string;
+  readonly link?: string;
+  readonly url?: string;
+  readonly slug?: string;
+  readonly type?: string;
+  readonly date?: string;
+  readonly modified?: string;
+  readonly title?: string | RenderedHtml;
+  readonly content?: RenderedHtml;
+}
+
+/** Rows produced by ingesting a single WordPress post. */
+interface PostIngestRows {
+  readonly article: ArticleRow;
+  readonly firms: ReadonlyArray<FirmRow>;
+  readonly firmMentions: ReadonlyArray<ArticleFirmMentionRow>;
+  readonly fieldAssertions: ReadonlyArray<FieldAssertionRow>;
+}
+
+/** Aggregated rows across every ingested post, deduplicated by table. */
+interface AggregatedRows {
+  readonly Article: ReadonlyArray<ArticleRow>;
+  readonly Firm: ReadonlyArray<FirmRow>;
+  readonly ArticleFirmMention: ReadonlyArray<ArticleFirmMentionRow>;
+  readonly FieldAssertion: ReadonlyArray<FieldAssertionRow>;
+}
+
 /**
  * Handles opt for this workflow.
  * @param name - Display name or option name.
@@ -39,7 +78,7 @@ const FIRM_ALIASES: ReadonlyArray<readonly [string, string]> = [
  */
 function opt(name: string, fallback: string): string {
   const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : fallback;
+  return i >= 0 ? (process.argv[i + 1] ?? fallback) : fallback;
 }
 
 /**
@@ -67,61 +106,119 @@ async function* postFiles(root: string): AsyncGenerator<string> {
   }
 }
 
-console.error(`[ingest] target: ${describeTarget()}`);
-const root = opt("--wpjson-dir", "research/wpjson");
-const limit = Number(opt("--limit", "0"));
-const rows: Record<string, readonly Record<string, unknown>[]> = {
-  Article: [],
-  Firm: [],
-  ArticleFirmMention: [],
-  FieldAssertion: [],
-};
+/**
+ * Extracts the headline string from a WordPress title field.
+ * @param title - Raw WP title (string or `{ rendered }` object).
+ * @returns Plain-text headline.
+ */
+function headlineFromTitle(title: RawWpPost["title"]): string {
+  if (typeof title === "string") return textFromHtml(title);
+  return textFromHtml(title?.rendered ?? "");
+}
 
-const seen = { count: 0 };
-for await (const file of postFiles(root)) {
-  if (limit && seen.count >= limit) break;
-  Object.assign(seen, { count: seen.count + 1 });
-  const post = JSON.parse(await readFile(file, "utf8"));
-  const url = post.link ?? post.url ?? String(post.id);
+/**
+ * Converts a single parsed WordPress post into the rows it contributes.
+ * @param post - Parsed WordPress post JSON.
+ * @returns Per-post ingest rows.
+ */
+function rowsForPost(post: RawWpPost): PostIngestRows {
+  const url = post.link ?? post.url ?? String(post.id ?? "");
   const aid = articleId(url);
-  const headline = textFromHtml(post.title?.rendered ?? post.title ?? "");
+  const headline = headlineFromTitle(post.title);
   const body = textFromHtml(post.content?.rendered ?? "");
-  rows.Article.push({
+  const article: ArticleRow = {
     id: aid,
-    wpId: post.id,
+    ...(typeof post.id === "number" ? { wpId: post.id } : {}),
     wpPostType: post.type ?? "post",
     url,
-    slug: post.slug,
+    ...(post.slug !== undefined ? { slug: post.slug } : {}),
     headline,
     publishedDate: String(post.date ?? "").slice(0, 10),
     modifiedDate: String(post.modified ?? "").slice(0, 10),
     category: "unknown",
-  });
-  for (const [alias, canonical] of FIRM_ALIASES) {
-    if (!body.includes(alias) && !headline.includes(alias)) continue;
-    const fid = firmId(canonical);
-    if (!rows.Firm.some(row => row.id === fid)) {
-      rows.Firm.push({ id: fid, name: canonical, channel: "unknown" });
+  };
+  const aliasMatches = FIRM_ALIASES.filter(
+    ([alias]) => body.includes(alias) || headline.includes(alias)
+  );
+  const firms: ReadonlyArray<FirmRow> = aliasMatches.map(([, canonical]) => ({
+    id: firmId(canonical),
+    name: canonical,
+    channel: "unknown",
+  }));
+  const firmMentions: ReadonlyArray<ArticleFirmMentionRow> = aliasMatches.map(
+    ([, canonical]) => {
+      const fid = firmId(canonical);
+      return { id: uid(`afm:${aid}:${fid}`), articleId: aid, firmId: fid };
     }
-    rows.ArticleFirmMention.push({
-      id: uid(`afm:${aid}:${fid}`),
-      articleId: aid,
-      firmId: fid,
-    });
-  }
-  for (const match of body.matchAll(/\$([\d,.]+)\s*(billion|million)?/gi)) {
-    rows.FieldAssertion.push({
-      id: uid(`fa:${aid}:money:${match.index}`),
-      articleId: aid,
-      targetTable: "Article",
-      targetId: aid,
-      fieldName: "moneyMention",
-      assertedValue: match[0],
-      quotePhrase: match[0],
-      confidence: "candidate",
-    });
-  }
+  );
+  const fieldAssertions: ReadonlyArray<FieldAssertionRow> = Array.from(
+    body.matchAll(/\$([\d,.]+)\s*(billion|million)?/gi)
+  ).map(match => ({
+    id: uid(`fa:${aid}:money:${match.index}`),
+    articleId: aid,
+    targetTable: "Article",
+    targetId: aid,
+    fieldName: "moneyMention",
+    assertedValue: match[0],
+    quotePhrase: match[0],
+    confidence: "candidate",
+  }));
+  return { article, firms, firmMentions, fieldAssertions };
 }
+
+/**
+ * Deduplicates firm rows by id while preserving first-seen order.
+ * @param firms - Firm rows from every post.
+ * @returns Deduplicated firm rows.
+ */
+function dedupeFirms(firms: ReadonlyArray<FirmRow>): ReadonlyArray<FirmRow> {
+  return Array.from(new Map(firms.map(firm => [firm.id, firm])).values());
+}
+
+/**
+ * Reads every post file under `root` and folds the per-post rows into a
+ * single aggregated bundle ready for upsert.
+ * @param root - Root crawl output directory.
+ * @param limit - Maximum number of posts to ingest (0 = no cap).
+ * @returns Aggregated rows keyed by Harper table name.
+ */
+async function collectRows(
+  root: string,
+  limit: number
+): Promise<AggregatedRows> {
+  const files: ReadonlyArray<string> = await collectFiles(root, limit);
+  const perPost: ReadonlyArray<PostIngestRows> = await Promise.all(
+    files.map(async file => {
+      const raw = await readFile(file, "utf8");
+      return rowsForPost(JSON.parse(raw) as RawWpPost);
+    })
+  );
+  return {
+    Article: perPost.map(p => p.article),
+    Firm: dedupeFirms(perPost.flatMap(p => p.firms)),
+    ArticleFirmMention: perPost.flatMap(p => p.firmMentions),
+    FieldAssertion: perPost.flatMap(p => p.fieldAssertions),
+  };
+}
+
+/**
+ * Materializes the async post-file iterator into an array, honoring `limit`.
+ * @param root - Root crawl output directory.
+ * @param limit - Maximum number of files to collect (0 = no cap).
+ * @returns Ordered list of post file paths.
+ */
+async function collectFiles(
+  root: string,
+  limit: number
+): Promise<ReadonlyArray<string>> {
+  const all: ReadonlyArray<string> = await Array.fromAsync(postFiles(root));
+  return limit > 0 ? all.slice(0, limit) : all;
+}
+
+console.error(`[ingest] target: ${describeTarget()}`);
+const root = opt("--wpjson-dir", "research/wpjson");
+const limit = Number(opt("--limit", "0"));
+const rows = await collectRows(root, limit);
 
 for (const [table, tableRows] of Object.entries(rows)) {
   console.log(
