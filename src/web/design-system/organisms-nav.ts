@@ -1,6 +1,6 @@
 import { el, clear } from "./dom.js";
 import { Button } from "./atoms.js";
-import { GlobalSearch } from "./organisms-search.js";
+import { GlobalSearch, type SearchAdapter } from "./organisms-search.js";
 
 /** Session payload returned by the public `/Me` helper. */
 interface NavbarSession {
@@ -15,7 +15,7 @@ interface NavbarOptions {
   readonly active?: string;
   readonly refreshMe?: () => Promise<NavbarSession>;
   readonly logout?: () => void;
-  readonly search?: unknown;
+  readonly search?: SearchAdapter;
 }
 
 /** Render context for auth controls in the navigation drawer. */
