@@ -256,9 +256,13 @@ export interface SearchItem {
  * Short-circuits when the query is fewer than two characters so the
  * navbar doesn't issue chatty single-character requests.
  * @param q - Raw user-entered search string.
+ * @param kind - Optional entity kind filter ("advisor" | "firm" | "team").
  * @returns Matching firms, advisors, and teams.
  */
-export async function search(q: string): Promise<SearchEnvelope> {
+export async function search(
+  q: string,
+  kind: string = "all"
+): Promise<SearchEnvelope> {
   const norm = String(q || "").trim();
   if (norm.length < 2)
     return {
@@ -266,7 +270,12 @@ export async function search(q: string): Promise<SearchEnvelope> {
       items: [],
       counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
     };
-  return (await api(`/Search?q=${encodeURIComponent(norm)}`)) as SearchEnvelope;
+  const kindParam = ["advisor", "firm", "team"].includes(kind)
+    ? `&kind=${encodeURIComponent(kind)}`
+    : "";
+  return (await api(
+    `/Search?q=${encodeURIComponent(norm)}${kindParam}`
+  )) as SearchEnvelope;
 }
 
 /**

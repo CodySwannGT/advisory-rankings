@@ -220,7 +220,44 @@
    in app.css still set the rounded background and width). The
    dropdown is positioned absolutely below the input and floats
    above the navbar via --ab-z-popover. */
-.gs-wrap { position: relative; }
+.gs-wrap {
+	position: relative;
+	display: grid;
+	gap: var(--ab-space-2);
+}
+
+.gs-kind-controls {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 4px;
+}
+
+.gs-kind-toggle {
+	border: 1px solid transparent;
+	border-radius: var(--ab-radius-sm);
+	background: transparent;
+	color: var(--ab-color-text-muted);
+	cursor: pointer;
+	font-size: var(--ab-font-size-xs);
+	font-weight: var(--ab-font-weight-semi);
+	line-height: 1;
+	min-width: 0;
+	padding: 4px 6px;
+	text-align: center;
+}
+
+.gs-kind-toggle:hover,
+.gs-kind-toggle:focus-visible {
+	background: var(--ab-color-surface);
+	border-color: var(--ab-color-border);
+	color: var(--ab-color-text);
+}
+
+.gs-kind-toggle-active {
+	background: var(--ab-color-surface);
+	border-color: var(--ab-color-border);
+	color: var(--ab-color-text);
+}
 
 .gs-dropdown {
 	position: absolute;
@@ -302,6 +339,7 @@
 	.gs-dropdown { width: calc(100vw - 24px); }
 	.gs-item { grid-template-columns: 56px 1fr; }
 	.gs-sub { display: none; }
+	.gs-kind-toggle { padding-inline: 4px; }
 }
 
 /* Source attribution footer — used under any section whose data

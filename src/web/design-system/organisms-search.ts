@@ -1,28 +1,28 @@
-import { el, clear, type DomChild } from "./dom.js";
+import { el } from "./dom.js";
 import { entityPath } from "../urls.js";
-import { formatInlineLabel } from "./format-label.js";
-import { withTimeout } from "./with-timeout.js";
+import { withTimeout } from "./async-timeout.js";
+import {
+  SEARCH_KINDS,
+  type SearchKind,
+  normalizeSearchKind,
+} from "./search-kinds.js";
+import {
+  HIDDEN_ATTR,
+  EXPANDED_ATTR,
+  type SearchItem,
+  type SearchCounts,
+  type SearchView,
+  showDropdown,
+  hideDropdown,
+  setActive,
+  renderItems,
+  renderSearching,
+  renderSearchError,
+  syncKindControls,
+} from "./organisms-search-dom.js";
+import { SearchState } from "./organisms-search-state.js";
 
-export { formatInlineLabel } from "./format-label.js";
-
-const HIDDEN_ATTR = "hidden";
-const EXPANDED_ATTR = "aria-expanded";
-
-/** Entity kinds the global search dropdown can route to. */
-type SearchKind = "firm" | "advisor" | "team";
-
-/** One result row returned by the `/Search` backend adapter. */
-interface SearchItem {
-  readonly kind: SearchKind;
-  readonly id: string;
-  readonly name: string;
-  readonly sub?: string | null;
-}
-
-/** Per-kind result counts the backend returns alongside the items list. */
-interface SearchCounts {
-  readonly total: number;
-}
+export { formatInlineLabel } from "./search-labels.js";
 
 /** Envelope shape produced by the `/Search` adapter. */
 interface SearchResponse {
@@ -32,92 +32,9 @@ interface SearchResponse {
 
 /** Caller-supplied function that resolves `/Search` matches for a query. */
 export type SearchAdapter = (
-  query: string
+  query: string,
+  kind: SearchKind
 ) => Promise<SearchResponse> | SearchResponse;
-
-/** Stable DOM nodes that the search organism mutates between renders. */
-interface SearchView {
-  readonly input: HTMLInputElement;
-  readonly dropdown: HTMLElement;
-  readonly wrap: HTMLElement;
-}
-
-/**
- * Field type schema for the search state. Used as a phantom-typed lookup
- * table so the class methods stay strongly typed even though values are
- * stored in a single `Map`. Mirrors the
- * `organisms-pagination.ts::PaginationFields` pattern.
- */
-interface SearchFields {
-  readonly activeIndex: number;
-  readonly lastResults: readonly SearchItem[];
-  readonly debounceTimer: ReturnType<typeof setTimeout> | null;
-  readonly inflight: number;
-}
-
-/**
- * Strongly-typed container for per-instance search state. Backed by a
- * single Map (whose ref is `readonly` so `functional/prefer-readonly-type`
- * is satisfied); every read/write routes through typed methods so the
- * surrounding code stays type-safe without `any`.
- */
-class SearchState {
-  /**
-   * Internal field store. The Map ref is readonly so
-   * `functional/prefer-readonly-type` is satisfied; method-scoped
-   * mutations of the map are allowed by `functional/immutable-data`'s
-   * `ignoreClasses: true` configuration.
-   */
-  readonly #fields = new Map<
-    keyof SearchFields,
-    SearchFields[keyof SearchFields]
-  >([
-    ["activeIndex", -1],
-    ["lastResults", []],
-    ["debounceTimer", null],
-    ["inflight", 0],
-  ]);
-
-  /**
-   * Reads a typed field from the store.
-   * @param key - Field name.
-   * @returns Current value, typed by field.
-   */
-  get<K extends keyof SearchFields>(key: K): SearchFields[K] {
-    // Single typed adapter at the Map.get boundary. The Map's value union
-    // collapses every field shape; this cast restores the per-key type.
-    return this.#fields.get(key) as SearchFields[K];
-  }
-
-  /**
-   * Writes a typed field to the store.
-   * @param key - Field name.
-   * @param value - New value, typed by field.
-   */
-  set<K extends keyof SearchFields>(key: K, value: SearchFields[K]): void {
-    this.#fields.set(key, value);
-  }
-
-  /**
-   * Increments and returns the next request generation. Centralizes the
-   * write so callers do not need read-modify-write of `inflight`.
-   * @returns The new generation number.
-   */
-  nextRequestId(): number {
-    const next = this.get("inflight") + 1;
-    this.set("inflight", next);
-    return next;
-  }
-
-  /**
-   * Checks whether a response still belongs to the latest request.
-   * @param requestId - Request generation captured before awaiting.
-   * @returns True when the response should update the dropdown.
-   */
-  isCurrentRequest(requestId: number): boolean {
-    return requestId === this.get("inflight");
-  }
-}
 
 /** Bundle of view + state + adapter passed to every helper. */
 interface SearchContext {
@@ -151,10 +68,16 @@ export function GlobalSearch({
   view.input.addEventListener("keydown", event =>
     handleSearchKey(event, context)
   );
+  view.kindButtons.forEach(button => {
+    button.addEventListener("pointerdown", event => event.preventDefault());
+    button.addEventListener("click", () =>
+      handleKindChange(context, button.dataset.kind || "all")
+    );
+  });
   document.addEventListener("pointerdown", event => {
     const target = event.target;
     if (target instanceof Node && !view.wrap.contains(target))
-      hideDropdown(context);
+      collapseDropdown(context);
   });
 
   return view.wrap;
@@ -184,167 +107,47 @@ function createSearchView(): SearchView {
     role: "listbox",
     [HIDDEN_ATTR]: "",
   });
+  const kindButtons = SEARCH_KINDS.map(([kind, label]) =>
+    el(
+      "button",
+      {
+        type: "button",
+        class: `gs-kind-toggle${kind === "all" ? " gs-kind-toggle-active" : ""}`,
+        dataset: { kind },
+        "aria-pressed": kind === "all" ? "true" : "false",
+      },
+      label
+    )
+  );
+  const controls = el(
+    "div",
+    { class: "gs-kind-controls", role: "group", "aria-label": "Search kind" },
+    ...kindButtons
+  );
   return {
+    controls,
     input,
     dropdown,
-    wrap: el("label", { class: "search gs-wrap" }, input, dropdown),
+    kindButtons,
+    wrap: el("div", { class: "search gs-wrap" }, input, controls, dropdown),
   };
 }
 
 /**
- * Opens the dropdown and updates combobox accessibility state together.
- * @param view - Search DOM nodes.
- */
-function showDropdown(view: SearchView): void {
-  view.dropdown.removeAttribute(HIDDEN_ATTR);
-  view.input.setAttribute(EXPANDED_ATTR, "true");
-}
-
-/**
- * Hides the dropdown and resets keyboard selection.
+ * Collapses the dropdown, routing the state update through context.
  * @param context - Shared search view and state.
  */
-function hideDropdown(context: SearchContext): void {
-  context.view.dropdown.setAttribute(HIDDEN_ATTR, "");
-  context.view.input.setAttribute(EXPANDED_ATTR, "false");
-  context.state.set("activeIndex", -1);
-  context.view.dropdown
-    .querySelectorAll(".gs-item-active")
-    .forEach(row => row.classList.remove("gs-item-active"));
+function collapseDropdown(context: SearchContext): void {
+  hideDropdown(context.view, idx => context.state.set("activeIndex", idx));
 }
 
 /**
- * Highlights the matching substring without building unsafe HTML.
- * @param name - Search result display name.
- * @param query - Normalized query entered by the visitor.
- * @returns Text and mark nodes suitable for `el(...children)`.
- */
-function highlight(name: string, query: string): DomChild {
-  if (!query) return name;
-  const index = name.toLowerCase().indexOf(query);
-  return index < 0
-    ? name
-    : [
-        name.slice(0, index),
-        el("mark", {}, name.slice(index, index + query.length)),
-        name.slice(index + query.length),
-      ];
-}
-
-/**
- * Builds the canonical route for a search result item.
- * @param item - Firm, advisor, or team search result.
- * @returns URL path for the result.
- */
-function hrefFor(item: SearchItem): string {
-  return entityPath(item.kind, item);
-}
-
-/**
- * Renders returned matches into the dropdown.
+ * Reads the active search kind from state with a defensive fallback.
  * @param context - Shared search view and state.
- * @param query - Normalized query that produced these results.
- * @param items - Ranked search result items.
- * @param counts - Per-kind result counts from the backend.
+ * @returns Active search kind.
  */
-function renderItems(
-  context: SearchContext,
-  query: string,
-  items: readonly SearchItem[],
-  counts: SearchCounts | null | undefined
-): void {
-  const { dropdown } = context.view;
-  clear(dropdown);
-  context.state.set("lastResults", items);
-  context.state.set("activeIndex", -1);
-  if (!items.length) {
-    dropdown.appendChild(
-      el("div", { class: "gs-empty" }, `No matches for "${query}".`)
-    );
-    return;
-  }
-  items
-    .map((item, index) => resultRow(item, index, query, context))
-    .forEach(row => dropdown.appendChild(row));
-  if (counts && counts.total > items.length)
-    dropdown.appendChild(moreRow(items.length, counts.total));
-}
-
-/**
- * Creates one selectable dropdown row.
- * @param item - Search result item.
- * @param index - Result index used for keyboard activation.
- * @param query - Normalized query for highlighting.
- * @param context - Shared search view and state.
- * @returns Anchor row for the dropdown.
- */
-function resultRow(
-  item: SearchItem,
-  index: number,
-  query: string,
-  context: SearchContext
-): HTMLElement {
-  const sub = formatInlineLabel(item.sub);
-  const row = el(
-    "a",
-    {
-      class: "gs-item",
-      role: "option",
-      href: hrefFor(item),
-      "data-idx": String(index),
-    },
-    el("span", { class: `gs-kind gs-kind-${item.kind}` }, item.kind),
-    el("span", { class: "gs-name" }, ...arrify(highlight(item.name, query))),
-    sub ? el("span", { class: "gs-sub" }, sub) : null
-  );
-  row.addEventListener("mousemove", () => setActive(context, index));
-  return row;
-}
-
-/**
- * Shows the count hint when the backend found more rows than the dropdown displays.
- * @param visibleCount - Number of rendered rows.
- * @param totalCount - Total matching rows across all kinds.
- * @returns Count hint row.
- */
-function moreRow(visibleCount: number, totalCount: number): HTMLElement {
-  return el(
-    "div",
-    { class: "gs-more" },
-    `Showing ${visibleCount} of ${totalCount} matches — keep typing to narrow.`
-  );
-}
-
-/**
- * Renders the transient loading row while a request is in flight.
- * @param view - Search DOM nodes.
- * @param query - Normalized query being requested.
- */
-function renderSearching(view: SearchView, query: string): void {
-  clear(view.dropdown);
-  view.dropdown.appendChild(
-    el("div", { class: "gs-empty" }, `Searching for "${query}"…`)
-  );
-  showDropdown(view);
-}
-
-/**
- * Moves the keyboard highlight while keeping the selected row visible.
- * @param context - Shared search view and state.
- * @param index - Desired row index, allowed to wrap.
- */
-function setActive(context: SearchContext, index: number): void {
-  const rows = context.view.dropdown.querySelectorAll(".gs-item");
-  if (!rows.length) {
-    context.state.set("activeIndex", -1);
-    return;
-  }
-  const activeIndex = ((index % rows.length) + rows.length) % rows.length;
-  context.state.set("activeIndex", activeIndex);
-  rows.forEach((row, rowIndex) =>
-    row.classList.toggle("gs-item-active", rowIndex === activeIndex)
-  );
-  rows[activeIndex]?.scrollIntoView({ block: "nearest" });
+function currentKind(context: SearchContext): SearchKind {
+  return normalizeSearchKind(context.state.get("kind"));
 }
 
 /**
@@ -356,39 +159,30 @@ function setActive(context: SearchContext, index: number): void {
 async function runSearch(context: SearchContext, query: string): Promise<void> {
   if (!context.search) return;
   const requestId = context.state.nextRequestId();
+  const kind = currentKind(context);
   renderSearching(context.view, query);
   try {
     const response = await withTimeout(
-      Promise.resolve(context.search(query)),
+      Promise.resolve(context.search(query, kind)),
       8000,
       "Search is taking too long. Try again."
     );
     if (!context.state.isCurrentRequest(requestId)) return;
+    const items = response?.items ?? [];
+    context.state.set("lastResults", items);
     renderItems(
-      context,
+      context.view,
       query,
-      response?.items ?? [],
-      response?.counts ?? null
+      items,
+      response?.counts ?? null,
+      kind,
+      idx => context.state.set("activeIndex", idx)
     );
     showDropdown(context.view);
   } catch (error) {
     if (context.state.isCurrentRequest(requestId))
       renderSearchError(context.view, error);
   }
-}
-
-/**
- * Shows a recoverable search error inside the dropdown.
- * @param view - Search DOM nodes.
- * @param error - Error thrown by the search adapter or timeout.
- */
-function renderSearchError(view: SearchView, error: unknown): void {
-  const message = error instanceof Error ? error.message : "unknown error";
-  clear(view.dropdown);
-  view.dropdown.appendChild(
-    el("div", { class: "gs-empty" }, `Search failed: ${message}`)
-  );
-  showDropdown(view);
 }
 
 /**
@@ -400,14 +194,33 @@ function handleSearchInput(context: SearchContext): void {
   const previousTimer = context.state.get("debounceTimer");
   if (previousTimer) clearTimeout(previousTimer);
   if (query.length < 2) {
-    hideDropdown(context);
-    clear(context.view.dropdown);
+    collapseDropdown(context);
     return;
   }
   context.state.set(
     "debounceTimer",
     setTimeout(() => runSearch(context, query), 180)
   );
+}
+
+/**
+ * Switches search kind mode while preserving the current query and keyboard UX.
+ * @param context - Shared search view, state, and API adapter.
+ * @param kind - Requested kind filter.
+ */
+function handleKindChange(context: SearchContext, kind: string): void {
+  const nextKind = normalizeSearchKind(kind);
+  const query = context.view.input.value.trim().toLowerCase();
+  const previousTimer = context.state.get("debounceTimer");
+  if (nextKind === currentKind(context)) return;
+  context.state.set("kind", nextKind);
+  syncKindControls(context.view, nextKind);
+  if (query.length < 2) {
+    collapseDropdown(context);
+    return;
+  }
+  if (previousTimer) clearTimeout(previousTimer);
+  runSearch(context, query);
 }
 
 /**
@@ -442,8 +255,10 @@ function moveSelection(
   if (context.view.dropdown.hasAttribute(HIDDEN_ATTR) && results.length)
     showDropdown(context.view);
   setActive(
-    context,
-    activeIndex < 0 && delta < 0 ? results.length - 1 : activeIndex + delta
+    context.view,
+    results,
+    activeIndex < 0 && delta < 0 ? results.length - 1 : activeIndex + delta,
+    idx => context.state.set("activeIndex", idx)
   );
 }
 
@@ -458,7 +273,7 @@ function followSelection(event: KeyboardEvent, context: SearchContext): void {
   const target = activeIndex >= 0 ? results[activeIndex] : results[0];
   if (!target) return;
   event.preventDefault();
-  window.location.href = hrefFor(target);
+  window.location.href = entityPath(target.kind, target);
 }
 
 /**
@@ -466,16 +281,6 @@ function followSelection(event: KeyboardEvent, context: SearchContext): void {
  * @param context - Shared search view and state.
  */
 function closeFromKeyboard(context: SearchContext): void {
-  hideDropdown(context);
+  collapseDropdown(context);
   context.view.input.blur();
-}
-
-/**
- * Normalizes one value into an array of DOM children.
- * @param value - Text, node, array, or nullish child value.
- * @returns Array suitable for spreading into `el`.
- */
-function arrify(value: DomChild): readonly DomChild[] {
-  if (value == null) return [];
-  return Array.isArray(value) ? value : [value];
 }
