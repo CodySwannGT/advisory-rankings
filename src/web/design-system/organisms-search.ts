@@ -1,9 +1,135 @@
-// @ts-nocheck
-import { el, clear } from "./dom.js";
+import { el, clear, type DomChild } from "./dom.js";
 import { entityPath } from "../urls.js";
+import { formatInlineLabel } from "./format-label.js";
+import { withTimeout } from "./with-timeout.js";
+
+export { formatInlineLabel } from "./format-label.js";
 
 const HIDDEN_ATTR = "hidden";
 const EXPANDED_ATTR = "aria-expanded";
+
+/** Entity kinds the global search dropdown can route to. */
+type SearchKind = "firm" | "advisor" | "team";
+
+/** One result row returned by the `/Search` backend adapter. */
+interface SearchItem {
+  readonly kind: SearchKind;
+  readonly id: string;
+  readonly name: string;
+  readonly sub?: string | null;
+}
+
+/** Per-kind result counts the backend returns alongside the items list. */
+interface SearchCounts {
+  readonly total: number;
+}
+
+/** Envelope shape produced by the `/Search` adapter. */
+interface SearchResponse {
+  readonly items?: readonly SearchItem[];
+  readonly counts?: SearchCounts | null;
+}
+
+/** Caller-supplied function that resolves `/Search` matches for a query. */
+type SearchAdapter = (
+  query: string
+) => Promise<SearchResponse> | SearchResponse;
+
+/** Stable DOM nodes that the search organism mutates between renders. */
+interface SearchView {
+  readonly input: HTMLInputElement;
+  readonly dropdown: HTMLElement;
+  readonly wrap: HTMLElement;
+}
+
+/**
+ * Field type schema for the search state. Used as a phantom-typed lookup
+ * table so the class methods stay strongly typed even though values are
+ * stored in a single `Map`. Mirrors the
+ * `organisms-pagination.ts::PaginationFields` pattern.
+ */
+interface SearchFields {
+  readonly activeIndex: number;
+  readonly lastResults: readonly SearchItem[];
+  readonly debounceTimer: ReturnType<typeof setTimeout> | null;
+  readonly inflight: number;
+}
+
+/**
+ * Strongly-typed container for per-instance search state. Backed by a
+ * single Map (whose ref is `readonly` so `functional/prefer-readonly-type`
+ * is satisfied); every read/write routes through typed methods so the
+ * surrounding code stays type-safe without `any`.
+ */
+class SearchState {
+  /**
+   * Internal field store. The Map ref is readonly so
+   * `functional/prefer-readonly-type` is satisfied; method-scoped
+   * mutations of the map are allowed by `functional/immutable-data`'s
+   * `ignoreClasses: true` configuration.
+   */
+  readonly #fields = new Map<
+    keyof SearchFields,
+    SearchFields[keyof SearchFields]
+  >([
+    ["activeIndex", -1],
+    ["lastResults", []],
+    ["debounceTimer", null],
+    ["inflight", 0],
+  ]);
+
+  /**
+   * Reads a typed field from the store.
+   * @param key - Field name.
+   * @returns Current value, typed by field.
+   */
+  get<K extends keyof SearchFields>(key: K): SearchFields[K] {
+    // Single typed adapter at the Map.get boundary. The Map's value union
+    // collapses every field shape; this cast restores the per-key type.
+    return this.#fields.get(key) as SearchFields[K];
+  }
+
+  /**
+   * Writes a typed field to the store.
+   * @param key - Field name.
+   * @param value - New value, typed by field.
+   */
+  set<K extends keyof SearchFields>(key: K, value: SearchFields[K]): void {
+    this.#fields.set(key, value);
+  }
+
+  /**
+   * Increments and returns the next request generation. Centralizes the
+   * write so callers do not need read-modify-write of `inflight`.
+   * @returns The new generation number.
+   */
+  nextRequestId(): number {
+    const next = this.get("inflight") + 1;
+    this.set("inflight", next);
+    return next;
+  }
+
+  /**
+   * Checks whether a response still belongs to the latest request.
+   * @param requestId - Request generation captured before awaiting.
+   * @returns True when the response should update the dropdown.
+   */
+  isCurrentRequest(requestId: number): boolean {
+    return requestId === this.get("inflight");
+  }
+}
+
+/** Bundle of view + state + adapter passed to every helper. */
+interface SearchContext {
+  readonly view: SearchView;
+  readonly state: SearchState;
+  readonly search?: SearchAdapter;
+}
+
+/** Options accepted by {@link GlobalSearch}. */
+export interface GlobalSearchOptions {
+  readonly search?: SearchAdapter;
+}
 
 /**
  * Header search box with debounced live suggestions and keyboard navigation.
@@ -11,15 +137,12 @@ const EXPANDED_ATTR = "aria-expanded";
  * @param root0.search - Function that resolves `/Search`-style matches.
  * @returns Label-wrapped combobox and dropdown nodes.
  */
-export function GlobalSearch({ search } = {}) {
+export function GlobalSearch({
+  search,
+}: GlobalSearchOptions = {}): HTMLElement {
   const view = createSearchView();
-  const state = new Map([
-    ["activeIndex", -1],
-    ["lastResults", []],
-    ["debounceTimer", null],
-    ["inflight", 0],
-  ]);
-  const context = { view, state, search };
+  const state = new SearchState();
+  const context: SearchContext = { view, state, search };
 
   view.input.addEventListener("input", () => handleSearchInput(context));
   view.input.addEventListener("focus", () => {
@@ -29,7 +152,9 @@ export function GlobalSearch({ search } = {}) {
     handleSearchKey(event, context)
   );
   document.addEventListener("pointerdown", event => {
-    if (!view.wrap.contains(event.target)) hideDropdown(context);
+    const target = event.target;
+    if (target instanceof Node && !view.wrap.contains(target))
+      hideDropdown(context);
   });
 
   return view.wrap;
@@ -39,7 +164,7 @@ export function GlobalSearch({ search } = {}) {
  * Creates the combobox DOM once so only result rows change during typing.
  * @returns Named DOM nodes for the search organism.
  */
-function createSearchView() {
+function createSearchView(): SearchView {
   const input = el("input", {
     type: "search",
     placeholder: "Search advisors, firms, teams",
@@ -51,6 +176,8 @@ function createSearchView() {
     [EXPANDED_ATTR]: "false",
     "aria-controls": "global-search-results",
   });
+  if (!(input instanceof HTMLInputElement))
+    throw new TypeError("Expected HTMLInputElement for global search combobox");
   const dropdown = el("div", {
     class: "gs-dropdown",
     id: "global-search-results",
@@ -68,7 +195,7 @@ function createSearchView() {
  * Opens the dropdown and updates combobox accessibility state together.
  * @param view - Search DOM nodes.
  */
-function showDropdown(view) {
+function showDropdown(view: SearchView): void {
   view.dropdown.removeAttribute(HIDDEN_ATTR);
   view.input.setAttribute(EXPANDED_ATTR, "true");
 }
@@ -77,7 +204,7 @@ function showDropdown(view) {
  * Hides the dropdown and resets keyboard selection.
  * @param context - Shared search view and state.
  */
-function hideDropdown(context) {
+function hideDropdown(context: SearchContext): void {
   context.view.dropdown.setAttribute(HIDDEN_ATTR, "");
   context.view.input.setAttribute(EXPANDED_ATTR, "false");
   context.state.set("activeIndex", -1);
@@ -92,10 +219,9 @@ function hideDropdown(context) {
  * @param query - Normalized query entered by the visitor.
  * @returns Text and mark nodes suitable for `el(...children)`.
  */
-function highlight(name, query) {
+function highlight(name: string, query: string): DomChild {
   if (!query) return name;
-  const lower = String(name).toLowerCase();
-  const index = lower.indexOf(query);
+  const index = name.toLowerCase().indexOf(query);
   return index < 0
     ? name
     : [
@@ -110,7 +236,7 @@ function highlight(name, query) {
  * @param item - Firm, advisor, or team search result.
  * @returns URL path for the result.
  */
-function hrefFor(item) {
+function hrefFor(item: SearchItem): string {
   return entityPath(item.kind, item);
 }
 
@@ -121,7 +247,12 @@ function hrefFor(item) {
  * @param items - Ranked search result items.
  * @param counts - Per-kind result counts from the backend.
  */
-function renderItems(context, query, items, counts) {
+function renderItems(
+  context: SearchContext,
+  query: string,
+  items: readonly SearchItem[],
+  counts: SearchCounts | null | undefined
+): void {
   const { dropdown } = context.view;
   clear(dropdown);
   context.state.set("lastResults", items);
@@ -147,7 +278,12 @@ function renderItems(context, query, items, counts) {
  * @param context - Shared search view and state.
  * @returns Anchor row for the dropdown.
  */
-function resultRow(item, index, query, context) {
+function resultRow(
+  item: SearchItem,
+  index: number,
+  query: string,
+  context: SearchContext
+): HTMLElement {
   const sub = formatInlineLabel(item.sub);
   const row = el(
     "a",
@@ -171,7 +307,7 @@ function resultRow(item, index, query, context) {
  * @param totalCount - Total matching rows across all kinds.
  * @returns Count hint row.
  */
-function moreRow(visibleCount, totalCount) {
+function moreRow(visibleCount: number, totalCount: number): HTMLElement {
   return el(
     "div",
     { class: "gs-more" },
@@ -184,7 +320,7 @@ function moreRow(visibleCount, totalCount) {
  * @param view - Search DOM nodes.
  * @param query - Normalized query being requested.
  */
-function renderSearching(view, query) {
+function renderSearching(view: SearchView, query: string): void {
   clear(view.dropdown);
   view.dropdown.appendChild(
     el("div", { class: "gs-empty" }, `Searching for "${query}"…`)
@@ -197,7 +333,7 @@ function renderSearching(view, query) {
  * @param context - Shared search view and state.
  * @param index - Desired row index, allowed to wrap.
  */
-function setActive(context, index) {
+function setActive(context: SearchContext, index: number): void {
   const rows = context.view.dropdown.querySelectorAll(".gs-item");
   if (!rows.length) {
     context.state.set("activeIndex", -1);
@@ -217,49 +353,28 @@ function setActive(context, index) {
  * @param query - Normalized query entered by the visitor.
  * @returns Resolves after current results or an error row render.
  */
-async function runSearch(context, query) {
+async function runSearch(context: SearchContext, query: string): Promise<void> {
   if (!context.search) return;
-  const requestId = nextRequestId(context.state);
+  const requestId = context.state.nextRequestId();
   renderSearching(context.view, query);
   try {
     const response = await withTimeout(
-      context.search(query),
+      Promise.resolve(context.search(query)),
       8000,
       "Search is taking too long. Try again."
     );
-    if (!isCurrentRequest(context.state, requestId)) return;
+    if (!context.state.isCurrentRequest(requestId)) return;
     renderItems(
       context,
       query,
-      (response && response.items) || [],
-      response && response.counts
+      response?.items ?? [],
+      response?.counts ?? null
     );
     showDropdown(context.view);
   } catch (error) {
-    if (isCurrentRequest(context.state, requestId))
+    if (context.state.isCurrentRequest(requestId))
       renderSearchError(context.view, error);
   }
-}
-
-/**
- * Increments the request generation used to ignore stale responses.
- * @param state - Shared search state map.
- * @returns Current request generation.
- */
-function nextRequestId(state) {
-  const requestId = state.get("inflight") + 1;
-  state.set("inflight", requestId);
-  return requestId;
-}
-
-/**
- * Checks whether a response still belongs to the latest request.
- * @param state - Shared search state map.
- * @param requestId - Request generation captured before awaiting.
- * @returns True when the response should update the dropdown.
- */
-function isCurrentRequest(state, requestId) {
-  return requestId === state.get("inflight");
 }
 
 /**
@@ -267,14 +382,11 @@ function isCurrentRequest(state, requestId) {
  * @param view - Search DOM nodes.
  * @param error - Error thrown by the search adapter or timeout.
  */
-function renderSearchError(view, error) {
+function renderSearchError(view: SearchView, error: unknown): void {
+  const message = error instanceof Error ? error.message : "unknown error";
   clear(view.dropdown);
   view.dropdown.appendChild(
-    el(
-      "div",
-      { class: "gs-empty" },
-      `Search failed: ${error && error.message ? error.message : "unknown error"}`
-    )
+    el("div", { class: "gs-empty" }, `Search failed: ${message}`)
   );
   showDropdown(view);
 }
@@ -283,7 +395,7 @@ function renderSearchError(view, error) {
  * Debounces typed input before running the backend search.
  * @param context - Shared search view, state, and API adapter.
  */
-function handleSearchInput(context) {
+function handleSearchInput(context: SearchContext): void {
   const query = context.view.input.value.trim().toLowerCase();
   const previousTimer = context.state.get("debounceTimer");
   if (previousTimer) clearTimeout(previousTimer);
@@ -303,8 +415,8 @@ function handleSearchInput(context) {
  * @param event - Keyboard event from the combobox input.
  * @param context - Shared search view, state, and API adapter.
  */
-function handleSearchKey(event, context) {
-  const actions = {
+function handleSearchKey(event: KeyboardEvent, context: SearchContext): void {
+  const actions: Readonly<Record<string, () => void>> = {
     ArrowDown: () => moveSelection(event, context, 1),
     ArrowUp: () => moveSelection(event, context, -1),
     Enter: () => followSelection(event, context),
@@ -319,7 +431,11 @@ function handleSearchKey(event, context) {
  * @param context - Shared search view and state.
  * @param delta - Direction of movement, positive or negative.
  */
-function moveSelection(event, context, delta) {
+function moveSelection(
+  event: KeyboardEvent,
+  context: SearchContext,
+  delta: number
+): void {
   const results = context.state.get("lastResults");
   const activeIndex = context.state.get("activeIndex");
   event.preventDefault();
@@ -336,7 +452,7 @@ function moveSelection(event, context, delta) {
  * @param event - Keyboard event that requested navigation.
  * @param context - Shared search view and state.
  */
-function followSelection(event, context) {
+function followSelection(event: KeyboardEvent, context: SearchContext): void {
   const results = context.state.get("lastResults");
   const activeIndex = context.state.get("activeIndex");
   const target = activeIndex >= 0 ? results[activeIndex] : results[0];
@@ -349,7 +465,7 @@ function followSelection(event, context) {
  * Closes the dropdown and removes focus after Escape.
  * @param context - Shared search view and state.
  */
-function closeFromKeyboard(context) {
+function closeFromKeyboard(context: SearchContext): void {
   hideDropdown(context);
   context.view.input.blur();
 }
@@ -359,65 +475,7 @@ function closeFromKeyboard(context) {
  * @param value - Text, node, array, or nullish child value.
  * @returns Array suitable for spreading into `el`.
  */
-function arrify(value) {
+function arrify(value: DomChild): readonly DomChild[] {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
-}
-
-/**
- * Converts machine labels into compact human-readable labels for search rows.
- * @param value - Raw value from a search result or article category.
- * @returns Display label, or null for empty placeholder values.
- */
-export function formatInlineLabel(value) {
-  if (value == null || value === "") return null;
-  const text = String(value).trim();
-  if (
-    !text ||
-    ["unknown", "n/a", "na", "none", "null", "undefined"].includes(
-      text.toLowerCase()
-    )
-  )
-    return null;
-  return text
-    .replace(/_+/g, " ")
-    .toLowerCase()
-    .split(" ")
-    .map(formatWord)
-    .join(" ");
-}
-
-/**
- * Preserves finance acronyms while title-casing ordinary words.
- * @param word - Lowercase token from a machine label.
- * @returns Display token.
- */
-function formatWord(word) {
-  return (
-    { uhnw: "UHNW", ria: "RIA", bd: "BD", finra: "FINRA", sec: "SEC" }[word] ??
-    word.charAt(0).toUpperCase() + word.slice(1)
-  );
-}
-
-/**
- * Rejects slow UI data requests with caller-provided copy.
- * @param promise - In-flight async operation.
- * @param ms - Timeout in milliseconds.
- * @param message - Error message used when the timeout wins.
- * @returns The original promise value when it resolves in time.
- */
-function withTimeout(promise, ms, message) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    Promise.resolve(promise).then(
-      value => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      error => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
 }
