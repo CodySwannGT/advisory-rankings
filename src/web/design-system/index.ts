@@ -1,4 +1,3 @@
-// @ts-nocheck
 // AdvisorBook · Design System — barrel export
 //
 // Pages should import everything they need from here:
