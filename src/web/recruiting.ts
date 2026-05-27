@@ -1,37 +1,32 @@
-// @ts-nocheck
 // Public Recruiting Market Map page.
 // Consumes the source-backed /RecruitingMarket resource and renders filters,
 // firm momentum, market activity, recent moves, and transparent empty states.
 
+import { refreshMe, logout, search } from "./app.js";
 import {
-  api,
-  refreshMe,
-  logout,
-  search,
-  fmtMoney,
-  getQueryParam,
-} from "./app.js";
-import {
-  mountThreeColumnPage,
-  clear,
-  el,
-  EmptyCard,
-  SectionCard,
-  SkeletonCard,
-} from "./design-system/index.js";
-import {
-  fmtNumber,
-  marketCard,
-  momentumCard,
-  recentMovesCard,
-  sourceCard,
-  summaryCard,
-  topMarketsCard,
-  watchlistCard,
-} from "./recruiting-sections.js";
+  apiC,
+  clearC,
+  elC,
+  EmptyCardC,
+  fmtMoneyC,
+  fmtNumberC,
+  getQueryParamC,
+  marketCardC,
+  momentumCardC,
+  MountThreeColumnPage,
+  recentMovesCardC,
+  SectionCardC,
+  SkeletonCardC,
+  sourceCardC,
+  summaryCardC,
+  topMarketsCardC,
+  watchlistCardC,
+  type RecruitingMarketResponse,
+  type ThreeColumnLayout,
+} from "./recruiting-types.js";
 
-const FIRM_FILTER_FIELDS = ["firm", "firmId"];
-const SINGLE_VALUE_FILTER_FIELDS = ["state", "year", "direction"];
+const FIRM_FILTER_FIELDS = ["firm", "firmId"] as const;
+const SINGLE_VALUE_FILTER_FIELDS = ["state", "year", "direction"] as const;
 const DEFAULT_LIMIT = 30;
 const FIRM_INPUT_SELECTOR = 'input[name="firm"]';
 const WATCHLIST_ADD_BUTTON_SELECTOR = ".watchlist-add-button";
@@ -39,14 +34,17 @@ const WATCHLIST_FIRMS_SELECTOR = "[data-watchlist-firms]";
 const WATCHLIST_REMOVE_BUTTON_SELECTOR = ".watchlist-remove-button";
 const WATCHLIST_ROW_SELECTOR = ".watchlist-firm-row";
 
-mountThreeColumnPage({
+/** Input attribute bag accepted by `labelInput`. */
+type InputAttrs = Readonly<Record<string, string | number | boolean>>;
+
+MountThreeColumnPage({
   active: "recruiting",
   refreshMe,
   logout,
   search,
   pageTitle: "Recruiting Market Map",
-  build({ center, right }) {
-    center.append(SkeletonCard(), SkeletonCard());
+  build({ center, right }: ThreeColumnLayout): void {
+    center.append(SkeletonCardC(), SkeletonCardC());
     loadRecruiting(center, right);
   },
 });
@@ -56,29 +54,39 @@ mountThreeColumnPage({
  * @param center - Main content column.
  * @param right - Right rail column.
  */
-function loadRecruiting(center, right) {
-  api(`/RecruitingMarket${resourceQuery()}`)
-    .then(data => {
-      clear(center);
-      clear(right);
-      renderRecruiting(data, center, right);
+function loadRecruiting(center: HTMLElement, right: HTMLElement): void {
+  apiC(`/RecruitingMarket${resourceQuery()}`)
+    .then((data: unknown) => {
+      clearC(center);
+      clearC(right);
+      renderRecruiting(data as RecruitingMarketResponse, center, right);
     })
-    .catch(error => {
-      clear(center);
+    .catch((error: unknown) => {
+      clearC(center);
       center.appendChild(
-        EmptyCard({
+        EmptyCardC({
           title: "Could not load recruiting market",
-          body: String(error.message || error),
+          body: errorMessage(error),
         })
       );
     });
 }
 
 /**
+ * Extracts a printable message from an unknown error value.
+ * @param error - Caught error from the resource fetch.
+ * @returns Human-readable error string.
+ */
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+/**
  * Builds a normalized resource query from supported URL filters.
  * @returns Query string for /RecruitingMarket.
  */
-function resourceQuery() {
+function resourceQuery(): string {
   const params = new URLSearchParams();
   const current = new URLSearchParams(location.search);
   for (const field of FIRM_FILTER_FIELDS) {
@@ -87,7 +95,7 @@ function resourceQuery() {
     }
   }
   for (const field of SINGLE_VALUE_FILTER_FIELDS) {
-    const value = getQueryParam(field);
+    const value = getQueryParamC(field);
     if (value) params.set(field, value);
   }
   params.set("limit", String(DEFAULT_LIMIT));
@@ -100,27 +108,32 @@ function resourceQuery() {
  * @param center - Main content column.
  * @param right - Right rail column.
  */
-function renderRecruiting(data, center, right) {
+function renderRecruiting(
+  data: RecruitingMarketResponse,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
   if (data.watchlist) {
-    center.appendChild(watchlistCard(data.watchlist));
+    const watchlist = watchlistCardC(data.watchlist);
+    if (watchlist) center.appendChild(watchlist);
   }
   if (data.emptyState) {
     center.appendChild(
-      EmptyCard({
+      EmptyCardC({
         title: "No matching recruiting moves",
         body: data.emptyState,
       })
     );
   } else {
-    center.appendChild(momentumCard(data.firmMomentum));
-    center.appendChild(marketCard(data.marketActivity));
-    center.appendChild(recentMovesCard(data.recentMoves));
+    center.appendChild(momentumCardC(data.firmMomentum));
+    center.appendChild(marketCardC(data.marketActivity));
+    center.appendChild(recentMovesCardC(data.recentMoves));
   }
-  right.appendChild(summaryCard(data));
-  right.appendChild(topMarketsCard(data.marketActivity));
-  right.appendChild(sourceCard(data));
+  right.appendChild(summaryCardC(data));
+  right.appendChild(topMarketsCardC(data.marketActivity));
+  right.appendChild(sourceCardC(data));
 }
 
 /**
@@ -128,21 +141,21 @@ function renderRecruiting(data, center, right) {
  * @param data - RecruitingMarket response.
  * @returns Header card.
  */
-function headerCard(data) {
-  return SectionCard({
+function headerCard(data: RecruitingMarketResponse): HTMLElement {
+  return SectionCardC({
     title: "Recruiting Market Map",
     attrs: { class: "recruiting-header" },
     body: [
-      el(
+      elC(
         "p",
         { class: "recruiting-lede" },
         "Public advisor-team move activity grouped by firm, market, source status, and known AUM."
       ),
       statGrid([
-        ["Moves", fmtNumber(data.summary.count)],
-        ["Known AUM", fmtMoney(data.summary.knownAum)],
-        ["Unknown AUM", fmtNumber(data.summary.unknownAumCount)],
-        ["Missing T12", fmtNumber(data.summary.missingT12Count)],
+        ["Moves", fmtNumberC(data.summary.count)],
+        ["Known AUM", fmtMoneyC(data.summary.knownAum)],
+        ["Unknown AUM", fmtNumberC(data.summary.unknownAumCount)],
+        ["Missing T12", fmtNumberC(data.summary.missingT12Count)],
       ]),
     ],
   });
@@ -153,8 +166,8 @@ function headerCard(data) {
  * @param data - RecruitingMarket response.
  * @returns Filter form card.
  */
-function filterCard(data) {
-  const form = el(
+function filterCard(data: RecruitingMarketResponse): HTMLElement {
+  const form = elC(
     "form",
     {
       class: "recruiting-filters recruiting-watchlist-form",
@@ -172,10 +185,10 @@ function filterCard(data) {
       pattern: "\\d{4}",
     }),
     directionSelect(data.filters.direction),
-    el("button", { class: "filter-button", type: "submit" }, "Apply")
+    elC("button", { class: "filter-button", type: "submit" }, "Apply")
   );
   wireWatchlistControls(form);
-  return SectionCard({
+  return SectionCardC({
     title: "Filters",
     body: form,
   });
@@ -186,7 +199,9 @@ function filterCard(data) {
  * @param data - RecruitingMarket response.
  * @returns Selected firm query values.
  */
-function watchlistFirmQueries(data) {
+function watchlistFirmQueries(
+  data: RecruitingMarketResponse
+): readonly string[] {
   const queries = data.filters.watchlistFirmQueries || [];
   if (queries.length) return queries;
   return data.filters.firmQuery ? [data.filters.firmQuery] : [""];
@@ -197,12 +212,12 @@ function watchlistFirmQueries(data) {
  * @param queries - Current selected firm query values.
  * @returns Watchlist controls.
  */
-function watchlistFirmControls(queries) {
-  return el(
+function watchlistFirmControls(queries: readonly string[]): HTMLElement {
+  return elC(
     "div",
     { class: "watchlist-firms", "data-watchlist-firms": "" },
     ...queries.map((value, index) => firmInputRow(value, index)),
-    el(
+    elC(
       "button",
       {
         "aria-label": "Add firm",
@@ -221,14 +236,14 @@ function watchlistFirmControls(queries) {
  * @param index - Zero-based row index.
  * @returns Firm input row.
  */
-function firmInputRow(value, index) {
-  return el(
+function firmInputRow(value: string, index: number): HTMLElement {
+  return elC(
     "div",
     { class: "watchlist-firm-row" },
     labelInput(`Firm ${index + 1}`, "firm", value, {
       autocomplete: "organization",
     }),
-    el(
+    elC(
       "button",
       {
         "aria-label": `Remove firm ${index + 1}`,
@@ -245,16 +260,19 @@ function firmInputRow(value, index) {
  * Enables add/remove controls for repeated firm inputs.
  * @param form - Recruiting filter form.
  */
-function wireWatchlistControls(form) {
+function wireWatchlistControls(form: HTMLElement): void {
   form.addEventListener("click", event => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    const group = form.querySelector(WATCHLIST_FIRMS_SELECTOR);
+    const group = form.querySelector<HTMLElement>(WATCHLIST_FIRMS_SELECTOR);
     if (!group) return;
     if (target.closest(WATCHLIST_ADD_BUTTON_SELECTOR)) {
+      const addButton = group.querySelector<HTMLElement>(
+        WATCHLIST_ADD_BUTTON_SELECTOR
+      );
       group.insertBefore(
         firmInputRow("", group.querySelectorAll(FIRM_INPUT_SELECTOR).length),
-        group.querySelector(WATCHLIST_ADD_BUTTON_SELECTOR)
+        addButton
       );
     }
     if (target.closest(WATCHLIST_REMOVE_BUTTON_SELECTOR)) {
@@ -268,12 +286,17 @@ function wireWatchlistControls(form) {
  * Rebuilds repeated firm rows so labels stay stable after removal.
  * @param group - Firm control group.
  */
-function resetFirmRows(group) {
-  const values = [...group.querySelectorAll(FIRM_INPUT_SELECTOR)].map(
-    input => input.value
+function resetFirmRows(group: HTMLElement): void {
+  const inputs = [
+    ...group.querySelectorAll<HTMLInputElement>(FIRM_INPUT_SELECTOR),
+  ];
+  const values = inputs.map(input => input.value);
+  const addButton = group.querySelector<HTMLElement>(
+    WATCHLIST_ADD_BUTTON_SELECTOR
   );
-  const addButton = group.querySelector(WATCHLIST_ADD_BUTTON_SELECTOR);
-  const rows = (values.length ? values : [""]).map(firmInputRow);
+  const rows = (values.length ? values : [""]).map((value, index) =>
+    firmInputRow(value, index)
+  );
   group.replaceChildren(...rows, ...(addButton ? [addButton] : []));
 }
 
@@ -285,12 +308,17 @@ function resetFirmRows(group) {
  * @param attrs - Additional input attributes.
  * @returns Field wrapper.
  */
-function labelInput(label, name, value, attrs = {}) {
-  return el(
+function labelInput(
+  label: string,
+  name: string,
+  value: string,
+  attrs: InputAttrs = {}
+): HTMLElement {
+  return elC(
     "label",
     { class: "filter-field" },
-    el("span", {}, label),
-    el("input", { name, value, ...attrs })
+    elC("span", {}, label),
+    elC("input", { name, value, ...attrs })
   );
 }
 
@@ -299,21 +327,21 @@ function labelInput(label, name, value, attrs = {}) {
  * @param current - Current selected value.
  * @returns Select wrapper.
  */
-function directionSelect(current) {
-  const options = [
+function directionSelect(current: string): HTMLElement {
+  const options: readonly (readonly [string, string])[] = [
     ["net", "Net"],
     ["inbound", "Inbound"],
     ["outbound", "Outbound"],
   ];
-  return el(
+  return elC(
     "label",
     { class: "filter-field" },
-    el("span", {}, "Direction"),
-    el(
+    elC("span", {}, "Direction"),
+    elC(
       "select",
       { name: "direction" },
       ...options.map(([value, label]) =>
-        el("option", { value, selected: value === current }, label)
+        elC("option", { value, selected: value === current }, label)
       )
     )
   );
@@ -324,16 +352,16 @@ function directionSelect(current) {
  * @param pairs - Label/value pairs.
  * @returns Stat grid node.
  */
-function statGrid(pairs) {
-  return el(
+function statGrid(pairs: readonly (readonly [string, string])[]): HTMLElement {
+  return elC(
     "div",
     { class: "recruiting-stat-grid" },
     ...pairs.map(([label, value]) =>
-      el(
+      elC(
         "div",
         { class: "recruiting-stat" },
-        el("span", { class: "recruiting-stat-label" }, label),
-        el("strong", {}, value)
+        elC("span", { class: "recruiting-stat-label" }, label),
+        elC("strong", {}, value)
       )
     )
   );
