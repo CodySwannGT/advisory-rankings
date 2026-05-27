@@ -42,7 +42,7 @@ export interface MorganStanleyBuilderConfig {
  * @param location - Typed view of the Yext location.
  * @returns Cleaned advisor display name.
  */
-export const displayName = (location: MorganStanleyLocationView): string => {
+const displayName = (location: MorganStanleyLocationView): string => {
   const name = location.c_pagesName ?? location.name ?? "";
   return cleanText(
     name.endsWith(ADVISOR_PROFILE_SUFFIX)
@@ -67,7 +67,7 @@ export const isAdvisorLocation = (
  * @param fallback - Firm-wide advisor URL used when no row-level URL exists.
  * @returns Normalized URL suitable for storage in source-of-truth columns.
  */
-export const sourceUrl = (
+const sourceUrl = (
   location: MorganStanleyLocationView,
   fallback: string
 ): string =>
@@ -79,7 +79,7 @@ export const sourceUrl = (
  * @param image - Optional image entry with primary URL and thumbnails.
  * @returns First normalizable URL or undefined when none are populated.
  */
-export const imageUrl = (image?: MorganStanleyImageView): string | undefined =>
+const imageUrl = (image?: MorganStanleyImageView): string | undefined =>
   [image?.url, ...(image?.thumbnails ?? []).map(thumbnail => thumbnail.url)]
     .map(normalizeUrl)
     .find((url): url is string => Boolean(url));
