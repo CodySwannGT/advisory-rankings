@@ -21,7 +21,7 @@ import {
   shot,
   smokeGoto,
   smokeWaitForSelector,
-  warmDeployedEndpoints,
+  awaitDeployedClusterStable,
   type Check,
 } from "./web_smoke_support.js";
 import {
@@ -348,9 +348,9 @@ async function main(): Promise<void> {
       BASE,
       extraHTTPHeaders ? "(JWT bearer)" : "(anonymous, as a real visitor)"
     );
-    // Pay the post-restart cold-start (index load) once before scenarios so the
-    // gate measures warm behavior, not the deploy's first-request penalty.
-    await warmDeployedEndpoints(page);
+    // Wait out the unstable post-restart window (HTTP/2 stalls, cold-start)
+    // before scenarios run, so the gate measures a settled cluster.
+    await awaitDeployedClusterStable(page);
     printResults(await runScenarios(browser, page, extraHTTPHeaders));
     await context.close();
   } finally {
