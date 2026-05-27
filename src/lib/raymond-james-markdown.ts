@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* eslint-disable sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- branch roster markdown parsing is bounded to one public page at a time. */
 import { cleanText } from "./morgan-stanley-row-utils.js";
 import type {
