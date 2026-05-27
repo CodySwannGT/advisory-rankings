@@ -29,6 +29,11 @@
       "id": "GHSA-9c88-49p5-5ggf",
       "package": "systeminformation",
       "reason": "Transitive through the HarperDB local CLI/runtime. Project code does not call wifi helpers with untrusted interface parameters, and the deployed Fabric runtime is managed separately."
+    },
+    {
+      "id": "GHSA-ph9p-34f9-6g65",
+      "package": "tmp",
+      "reason": "Transitive through HarperDB's local CLI prompt stack via inquirer/external-editor. Project code does not pass untrusted prefix/postfix values to tmp, and the deployed Fabric app is built from generated resources rather than this local CLI dependency path."
     }
   ]
 }
