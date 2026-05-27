@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   buildUbsSearchBody,
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
@@ -19,6 +18,20 @@ import { loadCreds, StudioSession } from "./_auth.js";
 
 /** Fabric operation response returned by the Studio cluster API. */
 type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
+/** Harper row records grouped by UBS table merge helpers. */
+type FirmSourceRecords = ReadonlyArray<Record<string, unknown>>;
+/** Runtime CLI options after flags and defaults are parsed. */
+interface ResolvedFirmSourceRunOptions extends Omit<
+  FirmSourceRunOptions,
+  "checkedAt" | "json" | "maxAdvisors" | "pageSize" | "queries" | "write"
+> {
+  readonly checkedAt: string;
+  readonly json: boolean;
+  readonly maxAdvisors: number;
+  readonly pageSize: number;
+  readonly queries: ReadonlyArray<string>;
+  readonly write: boolean;
+}
 
 /** Harper tables written by the UBS scraper. */
 const TABLE_ORDER = [
@@ -122,7 +135,7 @@ async function main(): Promise<void> {
   }
 }
 
-const runOptions = (): FirmSourceRunOptions => ({
+const runOptions = (): ResolvedFirmSourceRunOptions => ({
   write: has("--write"),
   json: has("--json"),
   maxAdvisors: numberArg("--max-advisors", DEFAULT_FIRM_SOURCE_MAX_ADVISORS),
@@ -182,16 +195,29 @@ const postSearch = async (body: Record<string, unknown>): Promise<unknown> => {
 };
 
 const mergeRows = (left: UbsRows, right: UbsRows): UbsRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as UbsRows;
+  return {
+    Firm: mergeTableRows(left, right, "Firm"),
+    FirmAlias: mergeTableRows(left, right, "FirmAlias"),
+    Branch: mergeTableRows(left, right, "Branch"),
+    Advisor: mergeTableRows(left, right, "Advisor"),
+    EmploymentHistory: mergeTableRows(left, right, "EmploymentHistory"),
+    Designation: mergeTableRows(left, right, "Designation"),
+    Team: mergeTableRows(left, right, "Team"),
+    TeamMembership: mergeTableRows(left, right, "TeamMembership"),
+    AdvisorResearchCheck: mergeTableRows(left, right, "AdvisorResearchCheck"),
+  };
+};
+
+const mergeTableRows = (
+  left: UbsRows,
+  right: UbsRows,
+  table: (typeof TABLE_ORDER)[number]
+): FirmSourceRecords => {
+  return [
+    ...new Map(
+      [...left[table], ...right[table]].map(row => [String(row.id), row])
+    ).values(),
+  ];
 };
 
 const targetUrl = (): string | undefined => {
