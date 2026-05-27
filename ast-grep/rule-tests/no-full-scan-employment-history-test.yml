@@ -1,0 +1,15 @@
+id: no-full-scan-employment-history
+valid:
+  # Scoped, indexed lookups — the approved way to read EmploymentHistory.
+  - 'const rows = await rowsByAttribute(tables.EmploymentHistory, "advisorId", id);'
+  - 'const rows = await rowsByAttribute<EmploymentHistoryRow>(tables.EmploymentHistory, "firmId", firmId);'
+  - 'const cur = tables.EmploymentHistory.search({ conditions: [{ attribute: "advisorId", value: id }] });'
+  # Other (bounded) tables are unaffected.
+  - 'const firms = await allRows(tables.Firm);'
+  - 'const advisors = await allRows<AdvisorRow>(tables.Advisor);'
+invalid:
+  - 'const e = await allRows(tables.EmploymentHistory);'
+  - 'const e = await allRows<EmploymentHistoryRow>(tables.EmploymentHistory);'
+  - 'const e = await optionalAll(tables.EmploymentHistory);'
+  - 'const e = await optionalAll<EmploymentHistoryRow>(tables.EmploymentHistory);'
+  - 'const e = tables.EmploymentHistory.search({});'
