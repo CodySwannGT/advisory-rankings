@@ -1,11 +1,11 @@
 /* eslint-disable jsdoc/require-jsdoc -- Private resource helpers are covered through the public endpoint. */
 import type { ResourceIndex } from "./resource-data.js";
+import type { RankingSortFields } from "./resource-rankings-explorer-entries.js";
 import type {
   FilterTarget,
   PublicRankingEntry,
   RankingExplorerEntry,
   RankingExplorerFilters,
-  RankingEntrySort,
   RankingsFacets,
   RankingsSummary,
   TopFirmRow,
@@ -37,7 +37,10 @@ function readTarget(
   target: FilterTarget | null | undefined,
   name: string
 ): string | null {
-  const raw = target?.get?.(name);
+  if (target == null || typeof target !== "object") return null;
+  const get = Reflect.get(target, "get");
+  if (typeof get !== "function") return null;
+  const raw: unknown = get.call(target, name);
   if (raw == null) return null;
   const text = String(raw);
   return text || null;
@@ -78,9 +81,9 @@ const SORT_KEYS = [
   "name",
   "category",
   "year",
-] as const satisfies readonly (keyof RankingEntrySort)[];
+] as const satisfies readonly (keyof RankingSortFields)[];
 
-function parseSortKey(sort: string): keyof RankingEntrySort {
+function parseSortKey(sort: string): keyof RankingSortFields {
   const stripped = sort.replace(/^-/, "");
   const match = SORT_KEYS.find(candidate => candidate === stripped);
   return match ?? "rank";

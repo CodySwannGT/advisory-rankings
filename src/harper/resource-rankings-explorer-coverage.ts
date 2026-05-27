@@ -1,4 +1,5 @@
 /* eslint-disable jsdoc/require-jsdoc -- Private resource helpers are covered through the public endpoint. */
+import type { HarperDate } from "../types/harper-schema.js";
 import type {
   CoverageBucket,
   CoverageSampleRow,
@@ -162,12 +163,16 @@ function hasMissingScore(entry: RankingExplorerEntry): boolean {
 }
 
 function latestDate(
-  left: string | null,
-  right: string | null | undefined
-): string | null {
-  if (!right) return left;
-  if (!left) return right;
-  return String(right).localeCompare(String(left)) > 0 ? right : left;
+  left: HarperDate | null,
+  right: HarperDate | null | undefined
+): HarperDate | null {
+  const candidates: readonly HarperDate[] = [left, right ?? null].filter(
+    (value): value is HarperDate => value != null
+  );
+  if (candidates.length === 0) return null;
+  return candidates.reduce((latest, current) =>
+    String(current).localeCompare(String(latest)) > 0 ? current : latest
+  );
 }
 
 function compareCoverageBuckets(
