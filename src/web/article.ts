@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Article detail page.
 // All UI comes from the design system — see docs/design-system.md.
 
@@ -14,20 +13,19 @@ import {
   articleSource,
   canonicalizeArticleRoute,
 } from "./app.js";
+import { clear } from "./design-system/index.js";
 import {
-  mountThreeColumnPage,
-  el,
-  EmptyCard,
-  SectionCard,
-  Card,
-  PostHeader,
-  ChipRow,
-  DetailsCard,
-  TransitionEventCard,
-  DisclosureEventCard,
-  ScrollableTable,
-  clear,
-} from "./design-system/index.js";
+  CardC,
+  ChipRowC,
+  DetailsCardC,
+  DisclosureEventCardC,
+  EmptyCardC,
+  PostHeaderC,
+  SectionCardC,
+  TransitionEventCardC,
+  elC,
+  mountThreeColumnPageC,
+} from "./design-system-adapters.js";
 import {
   DetailErrorCard,
   DetailNotFoundCard,
@@ -35,8 +33,25 @@ import {
   renderDetailLoading,
   resourceRows,
 } from "./detail-state.js";
+import { compactProvenance, evidenceSection } from "./article-evidence.js";
+import type {
+  ArticleBody,
+  ArticleDetail,
+  RouteError,
+} from "../harper/resource-profile-endpoints-types.js";
+import type {
+  ArticlePayload,
+  FeedEventCard,
+} from "../harper/resource-feed-types.js";
 
-mountThreeColumnPage({
+/** Source attribution slice returned by `articleSource`. */
+interface ArticleSourceInfo {
+  readonly source: string;
+  readonly initials: string;
+  readonly ctaLabel: string;
+}
+
+mountThreeColumnPageC({
   active: "home",
   refreshMe,
   logout,
@@ -45,7 +60,7 @@ mountThreeColumnPage({
     const id = getArticleIdParam();
     if (!id) {
       center.appendChild(
-        EmptyCard({
+        EmptyCardC({
           title: "No article selected",
           body: "Pick an article from the feed.",
         })
@@ -54,12 +69,12 @@ mountThreeColumnPage({
     }
     renderDetailLoading({ center, right, label: "article" });
     api(`/ArticleView/${encodeURIComponent(id)}`)
-      .then(d => {
+      .then((d: ArticleDetail | RouteError) => {
         clear(center);
         clear(right);
         render(d, center, right);
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         clear(center);
         clear(right);
         center.appendChild(DetailErrorCard("Could not load article", err));
@@ -68,14 +83,17 @@ mountThreeColumnPage({
 });
 
 /**
- * Renders render into the page.
- * @param d - d used by this operation.
+ * Renders the loaded article payload into the page columns.
+ * @param d - ArticleView response payload (success or route error).
  * @param center - Main content column.
  * @param right - Right sidebar column.
- * @returns The rendered DOM node or section.
  */
-function render(d, center, right) {
-  if (d.error) {
+function render(
+  d: ArticleDetail | RouteError,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  if ("error" in d) {
     center.appendChild(
       DetailNotFoundCard({
         title: "Article not found",
@@ -108,23 +126,23 @@ function render(d, center, right) {
  * @param article - Article metadata row.
  * @returns Header card for the article detail page.
  */
-function articleHead(d, article) {
-  const src = articleSource(article);
+function articleHead(d: ArticleDetail, article: ArticlePayload): HTMLElement {
+  const src = sourceInfo(article);
   const eventCardRows = resourceRows(d.eventCards);
-  return Card({
+  return CardC({
     tag: "article",
     children: [
-      PostHeader({
+      PostHeaderC({
         initials: src.initials,
         source: src.source,
         authors: article.authors,
         when: fmtDate(article.publishedDate),
         category: article.category,
       }),
-      el("h2", { class: "post-headline" }, article.headline || "(untitled)"),
-      article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
+      elC("h2", { class: "post-headline" }, article.headline || "(untitled)"),
+      article.dek ? elC("div", { class: "post-dek" }, article.dek) : null,
       ...eventCards(eventCardRows),
-      ChipRow({
+      ChipRowC({
         firms: resourceRows(d.firms),
         teams: resourceRows(d.teams),
         advisors: resourceRows(d.advisors),
@@ -139,16 +157,33 @@ function articleHead(d, article) {
  * @param cards - Transition and disclosure card payloads.
  * @returns Rendered event card nodes.
  */
-function eventCards(cards) {
+function eventCards(cards: readonly unknown[]): readonly HTMLElement[] {
   return cards
-    .map(card =>
-      card.kind === "transition"
-        ? TransitionEventCard(card, fmts)
-        : card.kind === "disclosure"
-          ? DisclosureEventCard(card, fmts)
-          : null
-    )
-    .filter(Boolean);
+    .map(card => renderEventCard(card))
+    .filter((node): node is HTMLElement => node !== null);
+}
+
+/**
+ * Dispatches a single event-card payload to its design-system renderer.
+ * @param card - One transition or disclosure event card.
+ * @returns Rendered card node or null when the kind is unrecognized.
+ */
+function renderEventCard(card: unknown): HTMLElement | null {
+  const kind = eventCardKind(card);
+  if (kind === "transition") return TransitionEventCardC(card, fmts);
+  if (kind === "disclosure") return DisclosureEventCardC(card, fmts);
+  return null;
+}
+
+/**
+ * Reads the discriminant of an event-card payload safely.
+ * @param card - Event-card row of unknown shape.
+ * @returns The card's `kind` when it is a recognized FeedEventCard kind.
+ */
+function eventCardKind(card: unknown): FeedEventCard["kind"] | undefined {
+  if (typeof card !== "object" || card === null) return undefined;
+  const kind = (card as Readonly<Record<string, unknown>>).kind;
+  return kind === "transition" || kind === "disclosure" ? kind : undefined;
 }
 
 /**
@@ -157,12 +192,15 @@ function eventCards(cards) {
  * @param source - Source attribution metadata.
  * @returns Footer node with the original article link.
  */
-function articleFooter(article, source) {
-  return el(
+function articleFooter(
+  article: ArticlePayload,
+  source: ArticleSourceInfo
+): HTMLElement {
+  return elC(
     "div",
     { class: "post-footer" },
     article.url
-      ? el(
+      ? elC(
           "a",
           {
             href: article.url,
@@ -181,47 +219,13 @@ function articleFooter(article, source) {
  * @param body - Article body payload from ArticleView.
  * @returns Body card or null when no text is available.
  */
-function articleBodyCard(body) {
+function articleBodyCard(body: ArticleBody): HTMLElement | null {
   return body?.text
-    ? SectionCard({
+    ? SectionCardC({
         title: "Article body",
-        body: el("div", {}, ...paragraphs(body.text)),
+        body: elC("div", {}, ...paragraphs(body.text)),
       })
     : null;
-}
-
-/**
- * Builds the extracted-facts evidence section.
- * @param rows - Deduplicated provenance rows.
- * @returns Evidence card or null when no extracted facts exist.
- */
-function evidenceSection(rows) {
-  return rows.length
-    ? SectionCard({
-        title: `Extracted facts (${rows.length})`,
-        body: ScrollableTable(evidenceTable(rows)),
-      })
-    : null;
-}
-
-/**
- * Renders extracted facts in a compact table.
- * @param rows - Deduplicated provenance rows.
- * @returns Table node wrapped by the evidence section.
- */
-function evidenceTable(rows) {
-  return el(
-    "table",
-    { class: "snap-table" },
-    el("thead", {}, el("tr", {}, el("th", {}, "Field"), el("th", {}, "Value"))),
-    el(
-      "tbody",
-      {},
-      ...rows.map(row =>
-        el("tr", {}, el("td", {}, row.field), el("td", {}, row.value))
-      )
-    )
-  );
 }
 
 /**
@@ -229,9 +233,9 @@ function evidenceTable(rows) {
  * @param article - Article metadata row.
  * @returns Details card for the right rail.
  */
-function metadataSection(article) {
-  const src = articleSource(article);
-  return DetailsCard({
+function metadataSection(article: ArticlePayload): HTMLElement {
+  const src = sourceInfo(article);
+  return DetailsCardC({
     title: "Article metadata",
     pairs: [
       ["Slug", article.slug],
@@ -242,7 +246,7 @@ function metadataSection(article) {
       [
         "Source",
         article.url
-          ? el(
+          ? elC(
               "a",
               { href: article.url, target: "_blank", rel: "noreferrer" },
               `${src.source} →`
@@ -254,11 +258,28 @@ function metadataSection(article) {
 }
 
 /**
+ * Narrows the still-untyped `articleSource()` helper to a typed slice.
+ * @param article - Article metadata row.
+ * @returns Source label, initials, and outbound CTA label.
+ */
+function sourceInfo(article: ArticlePayload): ArticleSourceInfo {
+  const raw = articleSource(article) as unknown as Readonly<
+    Record<string, unknown>
+  >;
+  return {
+    source: typeof raw.source === "string" ? raw.source : "External",
+    initials: typeof raw.initials === "string" ? raw.initials : "?",
+    ctaLabel:
+      typeof raw.ctaLabel === "string" ? raw.ctaLabel : "Read original →",
+  };
+}
+
+/**
  * Appends a node only when the section exists.
  * @param parent - Parent column node.
  * @param child - Optional section node.
  */
-function appendIfPresent(parent, child) {
+function appendIfPresent(parent: HTMLElement, child: HTMLElement | null): void {
   if (child) parent.appendChild(child);
 }
 
@@ -267,28 +288,6 @@ function appendIfPresent(parent, child) {
  * @param text - Source text to parse.
  * @returns Paragraph nodes.
  */
-function paragraphs(text) {
-  return text.split(/\n{2,}/).map(p => el("p", {}, p));
-}
-
-/**
- * Deduplicates extracted article facts by normalized field/value pairs.
- * @param rows - Provenance rows returned by ArticleView.
- * @returns Compact provenance rows for display.
- */
-function compactProvenance(rows) {
-  return rows.reduce(
-    (acc, row) => {
-      const field = humanize(row.fieldName);
-      const value = String(row.assertedValue || row.quotePhrase || "").trim();
-      if (!field || !value) return acc;
-      const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
-      if (acc.keys.includes(key)) return acc;
-      return {
-        keys: [...acc.keys, key],
-        rows: [...acc.rows, { field, value }],
-      };
-    },
-    { keys: [], rows: [] }
-  ).rows;
+function paragraphs(text: string): readonly HTMLElement[] {
+  return text.split(/\n{2,}/).map(p => elC("p", {}, p));
 }

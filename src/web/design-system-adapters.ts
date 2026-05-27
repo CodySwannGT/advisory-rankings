@@ -15,7 +15,14 @@ import {
   Heading,
   CareerTimeline,
   DisclosureEventCard,
+  TransitionEventCard,
   SourceAttribution,
+  Card,
+  EmptyCard,
+  PostHeader,
+  ChipRow,
+  ScrollableTable,
+  mountThreeColumnPage,
 } from "./design-system/index.js";
 
 /** Narrow callable type for design-system helpers that still opt out of TS. */
@@ -36,6 +43,40 @@ export type DisclosureEventCardAdapter = (
   fmts?: unknown
 ) => HTMLElement;
 
+/** Typed `TransitionEventCard` adapter — takes a raw row plus formatter bag. */
+export type TransitionEventCardAdapter = (
+  d: unknown,
+  fmts?: unknown
+) => HTMLElement;
+
+/** Typed `ScrollableTable` adapter — wraps a table node in a scroll container. */
+export type ScrollableTableAdapter = (table: HTMLElement) => HTMLElement;
+
+/** Columns surfaced to the page `build` callback. */
+export interface MountThreeColumnPageBuildColumns {
+  readonly center: HTMLElement;
+  readonly right: HTMLElement;
+}
+
+/** Build callback invoked by `mountThreeColumnPage` with rendered columns. */
+export type MountThreeColumnPageBuild = (
+  columns: MountThreeColumnPageBuildColumns
+) => void;
+
+/** Option bag accepted by the `mountThreeColumnPage` adapter. */
+export interface MountThreeColumnPageOptions {
+  readonly active: string;
+  readonly refreshMe: () => Promise<unknown>;
+  readonly logout: () => Promise<unknown>;
+  readonly search: (...args: readonly unknown[]) => unknown;
+  readonly build: MountThreeColumnPageBuild;
+}
+
+/** Typed `mountThreeColumnPage` adapter — accepts the page mount option bag. */
+export type MountThreeColumnPageAdapter = (
+  options: MountThreeColumnPageOptions
+) => void;
+
 export const EmptyTextC = EmptyText as unknown as DesignSystemComponent;
 export const SectionCardC = SectionCard as unknown as DesignSystemComponent;
 export const EntityListC = EntityList as unknown as DesignSystemComponent;
@@ -48,4 +89,14 @@ export const SourceAttributionC =
   SourceAttribution as unknown as DesignSystemComponent;
 export const DisclosureEventCardC =
   DisclosureEventCard as unknown as DisclosureEventCardAdapter;
+export const TransitionEventCardC =
+  TransitionEventCard as unknown as TransitionEventCardAdapter;
+export const CardC = Card as unknown as DesignSystemComponent;
+export const EmptyCardC = EmptyCard as unknown as DesignSystemComponent;
+export const PostHeaderC = PostHeader as unknown as DesignSystemComponent;
+export const ChipRowC = ChipRow as unknown as DesignSystemComponent;
+export const ScrollableTableC =
+  ScrollableTable as unknown as ScrollableTableAdapter;
+export const mountThreeColumnPageC =
+  mountThreeColumnPage as unknown as MountThreeColumnPageAdapter;
 export const elC = el as unknown as ElAdapter;
