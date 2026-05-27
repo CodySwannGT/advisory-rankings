@@ -1,36 +1,70 @@
 /* eslint-disable jsdoc/require-jsdoc -- Private resource helpers are covered through the public endpoint. */
-// @ts-nocheck
+import type { ResourceIndex } from "./resource-data.js";
+import type { RankingSortFields } from "./resource-rankings-explorer-entries.js";
+import type {
+  FilterTarget,
+  PublicRankingEntry,
+  RankingExplorerEntry,
+  RankingExplorerFilters,
+  RankingsFacets,
+  RankingsSummary,
+  TopFirmRow,
+} from "./resource-rankings-explorer-types.js";
 import { resolveFirm } from "./resource-routing.js";
 
-export function parseFilters(target, db) {
-  const firmQuery = target?.get?.("firm") || null;
+export { rankingsCoverage } from "./resource-rankings-explorer-coverage.js";
+
+export function parseFilters(
+  target: FilterTarget | null | undefined,
+  db: ResourceIndex
+): RankingExplorerFilters {
+  const firmQuery = readTarget(target, "firm");
   const firm = firmQuery ? resolveFirm(db, firmQuery) : null;
   return {
-    category: clean(target?.get?.("category")),
-    city: clean(target?.get?.("city"))?.toLowerCase() || null,
+    category: clean(readTarget(target, "category")),
+    city: clean(readTarget(target, "city"))?.toLowerCase() ?? null,
     firmId: firm?.id ?? null,
     firmQuery,
-    limit: boundedNumber(target?.get?.("limit"), 50, 1, 200),
-    resolved: resolvedFilter(target?.get?.("resolved")),
-    sort: sortFilter(target?.get?.("sort")),
-    state: normalizeState(target?.get?.("state")),
-    year: normalizeYear(target?.get?.("year")),
+    limit: boundedNumber(readTarget(target, "limit"), 50, 1, 200),
+    resolved: resolvedFilter(readTarget(target, "resolved")),
+    sort: sortFilter(readTarget(target, "sort")),
+    state: normalizeState(readTarget(target, "state")),
+    year: normalizeYear(readTarget(target, "year")),
   };
 }
 
-export function filteredEntries(entries, filters) {
+function readTarget(
+  target: FilterTarget | null | undefined,
+  name: string
+): string | null {
+  if (target == null || typeof target !== "object") return null;
+  const get = Reflect.get(target, "get");
+  if (typeof get !== "function") return null;
+  const raw: unknown = get.call(target, name);
+  if (raw == null) return null;
+  const text = String(raw);
+  return text || null;
+}
+
+export function filteredEntries(
+  entries: readonly RankingExplorerEntry[],
+  filters: RankingExplorerFilters
+): readonly RankingExplorerEntry[] {
   return entries.filter(entry =>
     filterPredicates(entry, filters).every(Boolean)
   );
 }
 
-function filterPredicates(entry, filters) {
+function filterPredicates(
+  entry: RankingExplorerEntry,
+  filters: RankingExplorerFilters
+): readonly boolean[] {
   return [
     !filters.category || entry.ranking.name === filters.category,
     !filters.year || entry.ranking.year === filters.year,
     !filters.state || entry.location.state === filters.state,
     !filters.city ||
-      String(entry.location.city || "")
+      String(entry.location.city ?? "")
         .toLowerCase()
         .includes(filters.city),
     !filters.firmId || entry.firm?.id === filters.firmId,
@@ -38,21 +72,45 @@ function filterPredicates(entry, filters) {
   ];
 }
 
-export function sortEntries(entries, sort) {
+const SORT_KEYS = [
+  "rank",
+  "scale",
+  "growth",
+  "firm",
+  "location",
+  "name",
+  "category",
+  "year",
+] as const satisfies readonly (keyof RankingSortFields)[];
+
+function parseSortKey(sort: string): keyof RankingSortFields {
+  const stripped = sort.replace(/^-/, "");
+  const match = SORT_KEYS.find(candidate => candidate === stripped);
+  return match ?? "rank";
+}
+
+export function sortEntries(
+  entries: readonly RankingExplorerEntry[],
+  sort: string
+): readonly RankingExplorerEntry[] {
   const direction = sort.startsWith("-") ? -1 : 1;
-  const key = sort.replace(/^-/, "");
+  const key = parseSortKey(sort);
   return [...entries].sort((left, right) => {
     const leftValue = left._sort[key] ?? "";
     const rightValue = right._sort[key] ?? "";
-    if (["rank", "scale", "growth"].includes(key))
-      return compareNumeric(leftValue, rightValue, direction);
+    if (key === "rank" || key === "scale" || key === "growth")
+      return compareNumeric(Number(leftValue), Number(rightValue), direction);
     if (typeof leftValue === "number" && typeof rightValue === "number")
       return (leftValue - rightValue) * direction;
     return String(leftValue).localeCompare(String(rightValue)) * direction;
   });
 }
 
-function compareNumeric(left, right, direction) {
+function compareNumeric(
+  left: number,
+  right: number,
+  direction: number
+): number {
   const leftMissing = !Number.isFinite(left);
   const rightMissing = !Number.isFinite(right);
   if (leftMissing && rightMissing) return 0;
@@ -61,10 +119,16 @@ function compareNumeric(left, right, direction) {
   return (left - right) * direction;
 }
 
-export function summarize(entries) {
-  const firms = new Set(entries.map(entry => entry.firm?.id).filter(Boolean));
+export function summarize(
+  entries: readonly RankingExplorerEntry[]
+): RankingsSummary {
+  const firms = new Set(
+    entries.map(entry => entry.firm?.id).filter((id): id is string => !!id)
+  );
   const states = new Set(
-    entries.map(entry => entry.location.state).filter(Boolean)
+    entries
+      .map(entry => entry.location.state)
+      .filter((state): state is string => !!state)
   );
   return {
     totalEntries: entries.length,
@@ -78,167 +142,31 @@ export function summarize(entries) {
   };
 }
 
-export function rankingsCoverage(entries) {
-  const grouped = Map.groupBy(entries, coverageKey);
-  const buckets = Array.from(grouped, ([key, items]) =>
-    items.reduce(mergeCoverageEntry, emptyCoverageBucket(key, items[0]))
-  );
-  return {
-    totalEntries: entries.length,
-    buckets: buckets.toSorted(compareCoverageBuckets),
-    gapBuckets: sourceStatusBuckets(entries),
-    emptyState:
-      entries.length === 0
-        ? "No ranking rows are loaded for this coverage slice."
-        : null,
-  };
-}
-
-function emptyCoverageBucket(key, entry) {
-  return {
-    key,
-    category: entry.ranking.name,
-    year: entry.ranking.year,
-    query: coverageQuery(entry),
-    total: 0,
-    resolved: 0,
-    unresolved: 0,
-    missingFirm: 0,
-    missingMarket: 0,
-    missingScore: 0,
-    latestLoadedAt: null,
-    sourceLabels: [],
-    sampleRows: [],
-  };
-}
-
-function mergeCoverageEntry(bucket, entry) {
-  return {
-    ...bucket,
-    total: bucket.total + 1,
-    resolved: bucket.resolved + (entry.resolutionStatus === "resolved" ? 1 : 0),
-    unresolved:
-      bucket.unresolved + (entry.resolutionStatus === "resolved" ? 0 : 1),
-    missingFirm: bucket.missingFirm + (entry.firm ? 0 : 1),
-    missingMarket: bucket.missingMarket + (entry.location.state ? 0 : 1),
-    missingScore: bucket.missingScore + (hasMissingScore(entry) ? 1 : 0),
-    latestLoadedAt: latestDate(bucket.latestLoadedAt, entry.source.loadedAt),
-    sourceLabels: withUnique(bucket.sourceLabels, entry.source.label),
-    sampleRows: withSample(bucket.sampleRows, entry),
-  };
-}
-
-function sourceStatusBuckets(entries) {
-  const pairs = entries.flatMap(entry =>
-    entry.sourceStatus.map(status => ({ status, entry }))
-  );
-  const grouped = Map.groupBy(pairs, pair => pair.status);
-  const buckets = Array.from(grouped, ([status, items]) =>
-    items.reduce(mergeStatusBucket, {
-      status,
-      count: 0,
-      query: sourceStatusQuery(status),
-      sourceLabels: [],
-      sampleRows: [],
-    })
-  );
-  return buckets.toSorted(
-    (left, right) =>
-      right.count - left.count || left.status.localeCompare(right.status)
-  );
-}
-
-function mergeStatusBucket(bucket, pair) {
-  return {
-    ...bucket,
-    count: bucket.count + 1,
-    sourceLabels: withUnique(bucket.sourceLabels, pair.entry.source.label),
-    sampleRows: withSample(bucket.sampleRows, pair.entry),
-  };
-}
-
-function withSample(samples, entry) {
-  if (samples.length >= 3) return samples;
-  return [
-    ...samples,
-    {
-      id: entry.id,
-      label: entry.subject.displayName,
-      firmText: entry.firmText,
-      sourceLabel: entry.source.label,
-      sourceStatus: entry.sourceStatus,
-    },
-  ];
-}
-
-function withUnique(values, value) {
-  if (!value || values.includes(value)) return values;
-  return [...values, value];
-}
-
-function coverageKey(entry) {
-  return `${entry.ranking.name || "Unknown ranking"}:${entry.ranking.year || "unknown"}`;
-}
-
-function coverageQuery(entry) {
-  return queryString({
-    category: entry.ranking.name,
-    year: entry.ranking.year,
-  });
-}
-
-function sourceStatusQuery(status) {
-  if (status === "unresolved-entity" || status === "unresolved-firm")
-    return queryString({ resolved: "unresolved" });
-  return queryString({});
-}
-
-function queryString(params) {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value != null && value !== "") search.set(key, String(value));
-  }
-  const text = search.toString();
-  return text ? `/rankings?${text}` : "/rankings";
-}
-
-function hasMissingScore(entry) {
-  return Object.values(entry.scores).some(score => score.status !== "loaded");
-}
-
-function latestDate(left, right) {
-  if (!right) return left;
-  if (!left) return right;
-  return String(right).localeCompare(String(left)) > 0 ? right : left;
-}
-
-function compareCoverageBuckets(left, right) {
-  return (
-    String(left.category).localeCompare(String(right.category)) ||
-    Number(right.year || 0) - Number(left.year || 0)
-  );
-}
-
-export function topFirms(entries) {
+export function topFirms(
+  entries: readonly RankingExplorerEntry[]
+): readonly TopFirmRow[] {
   const grouped = Map.groupBy(
     entries,
     entry => entry.firm?.id || entry.firmText || "Unknown firm"
   );
   const rows = Array.from(grouped, ([, items]) =>
-    items.reduce(mergeFirmEntry, {
-      firm: items[0].firm,
-      firmText: items[0].firmText || items[0].firm?.name || "Unknown firm",
+    items.reduce<TopFirmRow>(mergeFirmEntry, {
+      firm: items[0]!.firm,
+      firmText: items[0]!.firmText || items[0]!.firm?.name || "Unknown firm",
       count: 0,
       sourceIds: [],
     })
   );
-  return rows.toSorted(
+  return [...rows].sort(
     (left, right) =>
       right.count - left.count || left.firmText.localeCompare(right.firmText)
   );
 }
 
-function mergeFirmEntry(row, entry) {
+function mergeFirmEntry(
+  row: TopFirmRow,
+  entry: RankingExplorerEntry
+): TopFirmRow {
   return {
     ...row,
     count: row.count + 1,
@@ -246,25 +174,38 @@ function mergeFirmEntry(row, entry) {
   };
 }
 
-export function facets(entries) {
+export function facets(
+  entries: readonly RankingExplorerEntry[]
+): RankingsFacets {
+  const years = uniqueSorted(
+    entries
+      .map(entry => entry.ranking.year)
+      .filter((year): year is number => year != null)
+  );
   return {
     categories: uniqueSorted(entries.map(entry => entry.ranking.name)),
-    years: uniqueSorted(entries.map(entry => entry.ranking.year)).toSorted(
-      (left, right) => right - left
+    years: [...years].sort((left, right) => right - left),
+    firms: uniqueSorted(
+      entries
+        .map(entry => entry.firmText)
+        .filter((text): text is string => !!text)
     ),
-    firms: uniqueSorted(entries.map(entry => entry.firmText).filter(Boolean)),
     states: uniqueSorted(
-      entries.map(entry => entry.location.state).filter(Boolean)
+      entries
+        .map(entry => entry.location.state)
+        .filter((state): state is string => !!state)
     ),
   };
 }
 
-export function publicEntry(entry) {
-  const { _sort, ...publicRow } = entry;
+export function publicEntry(entry: RankingExplorerEntry): PublicRankingEntry {
+  const { _sort: _omitSort, ...publicRow } = entry;
   return publicRow;
 }
 
-export function publicFilters(filters) {
+export function publicFilters(
+  filters: RankingExplorerFilters
+): RankingExplorerFilters {
   return {
     category: filters.category,
     city: filters.city,
@@ -278,34 +219,40 @@ export function publicFilters(filters) {
   };
 }
 
-export function normalizeState(value) {
+export function normalizeState(value: unknown): string | null {
   const text = clean(value);
   return text ? text.toUpperCase() : null;
 }
 
-function clean(value) {
-  const text = String(value || "").trim();
+function clean(value: unknown): string | null {
+  const text = String(value ?? "").trim();
   return text || null;
 }
 
-function normalizeYear(value) {
+function normalizeYear(value: unknown): number | null {
   const year = Number(value);
   return Number.isInteger(year) && year > 1900 ? year : null;
 }
 
-function boundedNumber(value, fallback, min, max) {
+function boundedNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number
+): number {
   if (value == null || value === "") return fallback;
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(number)));
 }
 
-function resolvedFilter(value) {
-  return ["resolved", "unresolved"].includes(value) ? value : null;
+function resolvedFilter(value: unknown): "resolved" | "unresolved" | null {
+  if (value === "resolved" || value === "unresolved") return value;
+  return null;
 }
 
-function sortFilter(value) {
-  return [
+function sortFilter(value: unknown): string {
+  const allowed = [
     "rank",
     "-rank",
     "scale",
@@ -315,12 +262,11 @@ function sortFilter(value) {
     "firm",
     "location",
     "name",
-  ].includes(value)
-    ? value
-    : "rank";
+  ];
+  return typeof value === "string" && allowed.includes(value) ? value : "rank";
 }
 
-function uniqueSorted(values) {
+function uniqueSorted<T>(values: readonly T[]): readonly T[] {
   return [...new Set(values.filter(value => value != null))].sort(
     (left, right) => String(left).localeCompare(String(right))
   );
