@@ -362,6 +362,19 @@ describe("detail async states", () => {
       expect(await page.getByText("Source: TransitionEvent").isVisible()).toBe(
         true
       );
+      await page.getByLabel("Source-backed explanation").first().click();
+      expect(
+        await page.getByText("public rows or records that support").isVisible()
+      ).toBe(true);
+      await page.getByLabel("Needs data explanation").first().press("Enter");
+      expect(
+        await page
+          .getByText("not yet have enough public source rows")
+          .isVisible()
+      ).toBe(true);
+      expect(await page.getByText("Source-backed").first().isVisible()).toBe(
+        true
+      );
 
       await page.getByRole("button", { name: "Needs data" }).click();
       expect(
@@ -465,7 +478,15 @@ describe("detail async states", () => {
       expect(
         await desktopEvidence
           .locator(".tag")
-          .filter({ hasText: /^Loaded$/ })
+          .filter({ hasText: /^Current$/ })
+          .isVisible()
+      ).toBe(true);
+      await desktopEvidence
+        .getByLabel("Evidence freshness explanation")
+        .click();
+      expect(
+        await desktopEvidence
+          .getByText("public-source checks last ran")
           .isVisible()
       ).toBe(true);
       expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
@@ -480,8 +501,16 @@ describe("detail async states", () => {
         .first();
       await confidence.waitFor({ timeout: QUICK_TIMEOUT });
       expect(await confidence.getByText("4 total").isVisible()).toBe(true);
-      expect(await confidence.getByText("Asserted").isVisible()).toBe(true);
-      expect(await confidence.getByText("Derived").isVisible()).toBe(true);
+      await confidence.getByLabel("Fact confidence explanation").click();
+      expect(
+        await confidence
+          .getByText("supported by public source rows")
+          .isVisible()
+      ).toBe(true);
+      expect(await confidence.getByText("Direct source").isVisible()).toBe(
+        true
+      );
+      expect(await confidence.getByText("Calculated").isVisible()).toBe(true);
       expect(
         await confidence
           .locator(".advisor-confidence-bar")
@@ -538,8 +567,18 @@ describe("detail async states", () => {
           nodes.map(node => node.textContent?.trim()).filter(Boolean)
         );
       expect(mobileLabels).toEqual(
-        expect.arrayContaining(["Last checked", "Next check", "Asserted"])
+        expect.arrayContaining(["Last checked", "Next check", "Direct source"])
       );
+      await mobileEvidence
+        .getByLabel("Evidence freshness explanation")
+        .first()
+        .press("Enter");
+      expect(
+        await mobileEvidence
+          .getByText("public-source checks last ran")
+          .first()
+          .isVisible()
+      ).toBe(true);
       expect(
         await mobilePage.evaluate(
           () =>

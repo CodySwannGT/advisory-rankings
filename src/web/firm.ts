@@ -435,7 +435,10 @@ function dueDiligenceSection(
     dataConfidenceBlock(diligence.dataConfidence) ?? document.createComment("")
   );
   return SectionCardComponent({
-    title: "Firm due diligence",
+    title: sectionTitleWithHelp(
+      "Firm due diligence",
+      "Firm due diligence shows which public source rows support each trust check and where more data is needed."
+    ),
     attrs: { class: "firm-dd-card" },
     body,
   });
@@ -529,7 +532,19 @@ function dueDiligenceFilters(
   return el(
     "div",
     { class: "firm-dd-filters", "aria-label": "Due diligence module filter" },
-    ...buttons
+    el("div", { class: "firm-dd-filter-buttons" }, ...buttons),
+    el(
+      "div",
+      { class: "firm-dd-filter-help" },
+      helpText(
+        "Source-backed",
+        "Source-backed means a due-diligence module has public rows or records that support the summary shown here."
+      ),
+      helpText(
+        "Needs data",
+        "Needs data means the module is intentionally visible, but AdvisorBook does not yet have enough public source rows to support it."
+      )
+    )
   );
 }
 
@@ -878,7 +893,7 @@ function moduleMeta(
       ? TagComponent({
           children: `${fmtNumber(sourceIds.length)} source row(s)`,
         })
-      : TagComponent({ children: "No source rows loaded" }),
+      : TagComponent({ children: "No source rows yet" }),
     freshness?.asOf
       ? TagComponent({
           kind: "ok",
@@ -946,7 +961,7 @@ function dataConfidenceBlock(
       el("strong", {}, "Data confidence"),
       helpText(
         "Data confidence",
-        "Data confidence summarizes whether each due-diligence module is source-backed, missing data, or needs review."
+        "Data confidence summarizes whether each due-diligence module is supported by public source rows, needs more data, or needs review."
       ),
       statusTag(confidence.status)
     ),
@@ -958,7 +973,7 @@ function dataConfidenceBlock(
         el(
           "span",
           { class: "firm-dd-confidence-chip" },
-          `${humanize(module.name)}: ${humanize(module.status)}`
+          `${humanize(module.name)}: ${statusCopy(module.status)}`
         )
       )
     )
@@ -977,6 +992,21 @@ function helpText(label: string, explanation: string): HTMLElement {
     { class: "firm-dd-help" },
     el("summary", { "aria-label": `${label} explanation` }, "?"),
     el("p", {}, explanation)
+  );
+}
+
+/**
+ * Builds a title row with inline help content.
+ * @param label - Section title.
+ * @param explanation - Plain-language explanation.
+ * @returns Heading content.
+ */
+function sectionTitleWithHelp(label: string, explanation: string): HTMLElement {
+  return el(
+    "span",
+    { class: "firm-dd-title" },
+    el("span", {}, label),
+    helpText(label, explanation)
   );
 }
 
@@ -1011,8 +1041,30 @@ function statusTag(status: string | null | undefined): HTMLElement {
     status === "loaded" ? "ok" : status === "partial" ? "warn" : "default";
   return TagComponent({
     kind: group,
-    children: humanize(status || "unavailable"),
+    children: statusCopy(status),
   });
+}
+
+/**
+ * Converts internal status terms into reader-facing copy.
+ * @param status - Raw module status.
+ * @returns Public status label.
+ */
+function statusCopy(status: string | null | undefined): string {
+  switch (status) {
+    case "loaded":
+      return "Source-backed";
+    case "partial":
+      return "Needs review";
+    case "not_found":
+    case "unavailable":
+    case undefined:
+    case null:
+    case "":
+      return "Needs data";
+    default:
+      return humanize(status) || status;
+  }
 }
 
 /**
