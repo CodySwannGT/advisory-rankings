@@ -41,13 +41,40 @@ interface RatingEnvelope {
   readonly rating?: PrivateRating | null;
 }
 
-const RATING_FIELD_NAMES: readonly RatingFieldName[] = [
-  "ratingInt",
-  "responsiveness",
-  "transparency",
-  "performance",
-  "planningDepth",
-];
+/**
+ * Runtime narrowing helper for the `<input>` elements produced by
+ * `TextInput()`. The design-system factory declares its return type as
+ * `HTMLElement` so callers can use it polymorphically; this card needs
+ * the concrete `HTMLInputElement` shape to read `.value` and `.name`
+ * inside the submit handler. `instanceof` is a runtime check, not a
+ * cast — the type narrows because TypeScript sees the guard.
+ *
+ * @param node - Element produced by `TextInput()`.
+ * @returns The same node, statically typed as `HTMLInputElement`.
+ * @throws If `TextInput()` ever returns a non-input element.
+ */
+function asHtmlInputElement(node: HTMLElement): HTMLInputElement {
+  if (!(node instanceof HTMLInputElement)) {
+    throw new Error("Expected HTMLInputElement from TextInput factory");
+  }
+  return node;
+}
+
+/**
+ * Runtime narrowing helper for the `<textarea>` element produced by
+ * `el("textarea", ...)`. Same pattern as {@link asHtmlInputElement} —
+ * `instanceof` is a runtime guard, not a cast.
+ *
+ * @param node - Element produced by `el("textarea", ...)`.
+ * @returns The same node, statically typed as `HTMLTextAreaElement`.
+ * @throws If the factory ever returns a non-textarea element.
+ */
+function asHtmlTextAreaElement(node: HTMLElement): HTMLTextAreaElement {
+  if (!(node instanceof HTMLTextAreaElement)) {
+    throw new Error('Expected HTMLTextAreaElement from el("textarea", ...)');
+  }
+  return node;
+}
 
 /**
  * Builds the private-rating card and kicks off the async load.
@@ -147,11 +174,13 @@ function renderRatingForm(
 ): void {
   const status = el("p", { class: "private-rating-status" });
   const numberControls = ratingControls(rating);
-  const review = el(
-    "textarea",
-    { name: "reviewText", maxlength: "1000", rows: "4" },
-    rating.reviewText ?? ""
-  ) as HTMLTextAreaElement;
+  const review = asHtmlTextAreaElement(
+    el(
+      "textarea",
+      { name: "reviewText", maxlength: "1000", rows: "4" },
+      rating.reviewText ?? ""
+    )
+  );
   const controls: RatingControls = { ...numberControls, reviewText: review };
   const form = el(
     "form",
@@ -190,9 +219,8 @@ function renderRatingForm(
  * @returns Object keyed by rating field with the matching input element.
  */
 function ratingControls(rating: PrivateRating): RatingNumberControls {
-  const entries = RATING_FIELD_NAMES.map(
-    (name): readonly [RatingFieldName, HTMLInputElement] => [
-      name,
+  const makeInput = (name: RatingFieldName): HTMLInputElement =>
+    asHtmlInputElement(
       TextInput({
         name,
         type: "number",
@@ -200,10 +228,15 @@ function ratingControls(rating: PrivateRating): RatingNumberControls {
         max: "5",
         inputmode: "numeric",
         value: ratingValueAttr(rating[name]),
-      }) as HTMLInputElement,
-    ]
-  );
-  return Object.fromEntries(entries) as RatingNumberControls;
+      })
+    );
+  return {
+    ratingInt: makeInput("ratingInt"),
+    responsiveness: makeInput("responsiveness"),
+    transparency: makeInput("transparency"),
+    performance: makeInput("performance"),
+    planningDepth: makeInput("planningDepth"),
+  };
 }
 
 /**
