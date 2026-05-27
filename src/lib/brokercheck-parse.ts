@@ -1,23 +1,35 @@
-// @ts-nocheck
-import {
-  DISCLOSURE_TYPE_MAP,
-  SANCTION_MAP,
-  STATE_NAME_TO_ABBR,
-  WORD_NUMBERS,
-} from "./brokercheck-parse-constants.js";
 import {
   dedupeEmployments,
   parseEmployment,
 } from "./brokercheck-employment.js";
-import { title, toIsoDate } from "./brokercheck-parse-shared.js";
+import {
+  normalizeDisclosureType,
+  normalizeRegulator,
+  normalizeSanctionType,
+  normalizeResolution,
+  parseDurationMonths,
+  parseMoney,
+} from "./brokercheck-parse-normalize.js";
+import {
+  asCount,
+  asString,
+  recordArrayField,
+  recordField,
+  title,
+  toIsoDate,
+  type BrokerRecord,
+} from "./brokercheck-parse-shared.js";
 
 export { dedupeEmployments } from "./brokercheck-employment.js";
 export { toIsoDate } from "./brokercheck-parse-shared.js";
-
-/**
- * BrokerCheck payload objects are sparse and vary by endpoint.
- */
-export type BrokerRecord = Readonly<Record<string, unknown>>;
+export type { BrokerRecord } from "./brokercheck-parse-shared.js";
+export {
+  normalizeRegulator,
+  normalizeResolution,
+  normalizeSanctionType,
+  parseDurationMonths,
+  parseMoney,
+} from "./brokercheck-parse-normalize.js";
 
 /**
  * Parsed advisor fields that callers inspect after individual parsing.
@@ -34,56 +46,6 @@ interface ParsedIndividual extends BrokerRecord {
 }
 
 /**
- * Parses money from source data.
- * @param value - Raw value to normalize or parse.
- * @returns The parsed value.
- */
-export function parseMoney(value: unknown): number | null {
-  if (value == null || value === "") return null;
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const cleaned = value.replace(/[^\d.-]/g, "");
-    if (!cleaned) return null;
-    const parsed = Number(cleaned);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-/**
- * Parses duration months from source data.
- * @param text - Source text to parse.
- * @returns The parsed value.
- */
-export function parseDurationMonths(text?: string | null): number | null {
-  if (!text) return null;
-  const t = text.trim().toLowerCase();
-  const leading = t.split(/\s+/)[0];
-  const wordNumber = WORD_NUMBERS.get(leading);
-  const months = /^(\d+)\s*month/.exec(t);
-  const years = /^(\d+)\s*year/.exec(t);
-  const days = /^(\d+)\s*day/.exec(t);
-
-  if (wordNumber != null) return durationByUnit(wordNumber, t);
-  if (months) return Number(months[1]);
-  if (years) return Number(years[1]) * 12;
-  if (days) return Number(days[1]) / 30;
-  return null;
-}
-
-/**
- * Applies the time unit embedded in BrokerCheck sanction duration text.
- * @param value - Parsed numeric duration.
- * @param text - Lowercase duration text containing the time unit.
- * @returns Duration in months, including fractional months for day values.
- */
-function durationByUnit(value: number, text: string): number {
-  if (text.includes("year")) return value * 12;
-  if (text.includes("day")) return value / 30;
-  return value;
-}
-
-/**
  * Handles industry start from days for this workflow.
  * @param days - days used by this operation.
  * @param calcDate - calc date used by this operation.
@@ -91,7 +53,7 @@ function durationByUnit(value: number, text: string): number {
  */
 function industryStartFromDays(
   days: unknown,
-  calcDate?: string
+  calcDate?: string | null
 ): string | null {
   const n = Number(days);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -105,72 +67,16 @@ function industryStartFromDays(
 }
 
 /**
- * Normalizes disclosure type for consistent comparisons.
- * @param raw - Raw source payload.
- * @returns The normalized value.
- */
-function normalizeDisclosureType(raw = ""): string {
-  return (
-    DISCLOSURE_TYPE_MAP[raw.trim().toLowerCase()] ??
-    raw.trim().toLowerCase().replaceAll(" ", "_")
-  );
-}
-
-/**
- * Normalizes regulator for consistent comparisons.
- * @param raw - Raw source payload.
- * @returns The normalized value.
- */
-export function normalizeRegulator(raw = ""): readonly [string, string | null] {
-  const r = raw.trim();
-  if (!r) return ["", null];
-  if (r === "FINRA" || r === "SEC") return [r, null];
-  const abbr = STATE_NAME_TO_ABBR[r.toLowerCase()];
-  if (abbr) return ["state_securities", abbr];
-  return [r, null];
-}
-
-/**
- * Normalizes resolution for consistent comparisons.
- * @param raw - Raw source payload.
- * @returns The normalized value.
- */
-export function normalizeResolution(
-  raw?: string | null
-): readonly [string | null, string | null] {
-  if (!raw) return [null, null];
-  const r = raw.trim();
-  const rl = r.toLowerCase();
-  if (rl.includes("acceptance, waiver") || rl.includes("awc"))
-    return ["final", "neither"];
-  if (["settled", "pending", "denied", "withdrawn"].includes(rl))
-    return [rl, null];
-  if (rl === "order") return ["final", null];
-  if (rl === "consent") return ["final", "neither"];
-  return [rl.replaceAll(" ", "_") || null, null];
-}
-
-/**
- * Normalizes sanction type for consistent comparisons.
- * @param raw - Raw source payload.
- * @returns The normalized value.
- */
-export function normalizeSanctionType(raw = ""): string {
-  return (
-    SANCTION_MAP[raw.trim().toLowerCase()] ??
-    raw.trim().toLowerCase().replaceAll(" ", "_")
-  );
-}
-
-/**
  * Builds the display legal name from BrokerCheck basic-name fields.
  * @param bi - Basic information payload.
  * @returns Title-cased legal name.
  */
 function legalNameFromBasic(bi: BrokerRecord): string {
   return [bi.firstName, bi.middleName, bi.lastName]
-    .filter(Boolean)
+    .map(asString)
+    .filter((value): value is string => Boolean(value))
     .map(title)
+    .filter((value): value is string => Boolean(value))
     .join(" ")
     .trim();
 }
@@ -183,13 +89,13 @@ function legalNameFromBasic(bi: BrokerRecord): string {
  * @returns Local career status value.
  */
 function careerStatusFromScopes(
-  bcScope?: string,
-  iaScope?: string,
+  bcScope?: unknown,
+  iaScope?: unknown,
   disclosures: readonly BrokerRecord[] = []
 ): string {
   if (
-    (bcScope ?? "").toUpperCase() === "ACTIVE" ||
-    (iaScope ?? "").toUpperCase() === "ACTIVE"
+    String(bcScope ?? "").toUpperCase() === "ACTIVE" ||
+    String(iaScope ?? "").toUpperCase() === "ACTIVE"
   )
     return "active";
   const sanctions = disclosures.flatMap(disclosureSanctions);
@@ -213,7 +119,8 @@ function careerStatusFromScopes(
 function disclosureSanctions(
   disclosure: BrokerRecord
 ): readonly BrokerRecord[] {
-  return disclosure.disclosureDetail?.SanctionDetails ?? [];
+  const detail = recordField(disclosure, "disclosureDetail");
+  return recordArrayField(detail, "SanctionDetails");
 }
 
 /**
@@ -225,8 +132,8 @@ function hasOpenSuspension(sanction: BrokerRecord): boolean {
   const kind = String(sanction.Sanctions ?? "").toLowerCase();
   return (
     kind.includes("suspension") &&
-    (sanction.SanctionDetails ?? []).some(inner => {
-      const end = toIsoDate(inner["End Date"]);
+    recordArrayField(sanction, "SanctionDetails").some(inner => {
+      const end = toIsoDate(asString(inner["End Date"]));
       return !end || end > new Date().toISOString().slice(0, 10);
     })
   );
@@ -239,11 +146,27 @@ function hasOpenSuspension(sanction: BrokerRecord): boolean {
  */
 function docketNumber(detail: BrokerRecord): string | null {
   return (
-    detail.DocketNumberFDA ??
-    detail.DocketNumberAAO ??
-    detail.DocketNumber ??
+    asString(detail.DocketNumberFDA) ??
+    asString(detail.DocketNumberAAO) ??
+    asString(detail.DocketNumber) ??
     null
   );
+}
+
+/**
+ * Builds the termination subset of a parsed disclosure row.
+ * @param detail - Disclosure detail payload.
+ * @returns Termination fields when the disclosure includes one, otherwise empty.
+ */
+function terminationFields(detail: BrokerRecord): BrokerRecord {
+  const terminationType = detail["Termination Type"];
+  if (!terminationType) return {};
+  return {
+    _terminationType: String(terminationType)
+      .toLowerCase()
+      .replaceAll(" ", "_"),
+    _firmName: detail["Firm Name"],
+  };
 }
 
 /**
@@ -252,32 +175,25 @@ function docketNumber(detail: BrokerRecord): string | null {
  * @returns The parsed value.
  */
 function parseDisclosure(d: BrokerRecord): BrokerRecord {
-  const detail = d.disclosureDetail ?? {};
+  const detail = recordField(d, "disclosureDetail");
   const [regulator, regulatorState] = normalizeRegulator(
-    detail["Initiated By"] ?? ""
+    asString(detail["Initiated By"]) ?? ""
   );
-  const [status, admitDeny] = normalizeResolution(detail.Resolution);
-  const termination = detail["Termination Type"]
-    ? {
-        _terminationType: String(detail["Termination Type"])
-          .toLowerCase()
-          .replaceAll(" ", "_"),
-        _firmName: detail["Firm Name"],
-      }
-    : {};
+  const [status, admitDeny] = normalizeResolution(asString(detail.Resolution));
+  const allegations = asString(detail.Allegations) ?? "";
   const disclosure = {
-    disclosureType: normalizeDisclosureType(d.disclosureType ?? ""),
+    disclosureType: normalizeDisclosureType(asString(d.disclosureType) ?? ""),
     regulator,
     regulatorState,
-    allegationText: (detail.Allegations ?? "").slice(0, 8000) || null,
-    dateInitiated: toIsoDate(d.eventDate),
+    allegationText: allegations.slice(0, 8000) || null,
+    dateInitiated: toIsoDate(asString(d.eventDate)),
     status,
     admitDeny,
     damagesRequested: parseMoney(detail["Damage Amount Requested"]),
     settlementAmount: parseMoney(detail["Settlement Amount"]),
     awardAmount: parseMoney(detail["Award Amount"]),
     docketNumber: docketNumber(detail),
-    ...termination,
+    ...terminationFields(detail),
   };
   return { disclosure, sanctions: parseSanctions(detail) };
 }
@@ -288,14 +204,16 @@ function parseDisclosure(d: BrokerRecord): BrokerRecord {
  * @returns Flat sanction rows linked to the disclosure.
  */
 function parseSanctions(detail: BrokerRecord): readonly BrokerRecord[] {
-  return (detail.SanctionDetails ?? []).flatMap(group => {
-    const sanctionType = normalizeSanctionType(group.Sanctions ?? "");
-    return (group.SanctionDetails ?? [{}]).map(inner => ({
+  return recordArrayField(detail, "SanctionDetails").flatMap(group => {
+    const sanctionType = normalizeSanctionType(asString(group.Sanctions) ?? "");
+    const inners = recordArrayField(group, "SanctionDetails");
+    const rows: readonly BrokerRecord[] = inners.length > 0 ? inners : [{}];
+    return rows.map(inner => ({
       sanctionType,
       amount: parseMoney(inner.Amount),
-      durationMonths: parseDurationMonths(inner.Duration),
-      effectiveDate: toIsoDate(inner["Start Date"]),
-      endDate: toIsoDate(inner["End Date"]),
+      durationMonths: parseDurationMonths(asString(inner.Duration)),
+      effectiveDate: toIsoDate(asString(inner["Start Date"])),
+      endDate: toIsoDate(asString(inner["End Date"])),
       jurisdiction: inner["Registration Capacities Affected"],
     }));
   });
@@ -308,12 +226,93 @@ function parseSanctions(detail: BrokerRecord): readonly BrokerRecord[] {
  * @returns The parsed value.
  */
 function parseExam(ex: BrokerRecord, scope: string): BrokerRecord {
-  const code = ex.examCategory ?? "";
+  const code = asString(ex.examCategory) ?? "";
   return {
     licenseType: code ? code.replaceAll(" ", "_") : "",
     _examName: ex.examName,
-    grantedDate: toIsoDate(ex.examTakenDate),
+    grantedDate: toIsoDate(asString(ex.examTakenDate)),
     _scope: scope,
+  };
+}
+
+/**
+ * Builds the parsed advisor subset from BrokerCheck basic information.
+ * @param bi - BrokerCheck basicInformation payload.
+ * @param disclosures - Disclosure payloads used to infer career status.
+ * @returns Advisor row used downstream by the loader.
+ */
+function buildAdvisor(
+  bi: BrokerRecord,
+  disclosures: readonly BrokerRecord[]
+): ParsedAdvisor {
+  return {
+    finraCrd: String(bi.individualId ?? ""),
+    firstName: title(asString(bi.firstName)),
+    middleName: title(asString(bi.middleName)),
+    lastName: title(asString(bi.lastName)),
+    legalName: legalNameFromBasic(bi),
+    industryStartDate: industryStartFromDays(
+      bi.daysInIndustry,
+      asString(bi.daysInIndustryCalculatedDate)
+    ),
+    careerStatus: careerStatusFromScopes(bi.bcScope, bi.iaScope, disclosures),
+  };
+}
+
+/**
+ * Flattens BrokerCheck's split current/previous BD/IA employment arrays.
+ * @param content - BrokerCheck individual payload.
+ * @returns Concatenated employment source rows in input order.
+ */
+function employmentSources(content: BrokerRecord): readonly BrokerRecord[] {
+  return [
+    ...recordArrayField(content, "currentEmployments"),
+    ...recordArrayField(content, "previousEmployments"),
+    ...recordArrayField(content, "currentIAEmployments"),
+    ...recordArrayField(content, "previousIAEmployments"),
+  ];
+}
+
+/**
+ * Builds the parsed license rows across state, principal, and product exams.
+ * @param content - BrokerCheck individual payload.
+ * @returns License rows tagged with their exam scope.
+ */
+function buildLicenses(content: BrokerRecord): readonly BrokerRecord[] {
+  return [
+    ...recordArrayField(content, "stateExamCategory").map(x =>
+      parseExam(x, "state")
+    ),
+    ...recordArrayField(content, "principalExamCategory").map(x =>
+      parseExam(x, "principal")
+    ),
+    ...recordArrayField(content, "productExamCategory").map(x =>
+      parseExam(x, "product")
+    ),
+  ];
+}
+
+/**
+ * Builds the parsed individual summary block surfaced by `parseIndividual`.
+ * @param content - BrokerCheck individual payload.
+ * @param bi - BrokerCheck basicInformation payload.
+ * @returns Summary counts and scope fields.
+ */
+function buildSummary(content: BrokerRecord, bi: BrokerRecord): BrokerRecord {
+  const exams = recordField(content, "examsCount");
+  const disclosures = recordArrayField(content, "disclosures");
+  return {
+    bcScope: asString(bi.bcScope) ?? "",
+    iaScope: asString(bi.iaScope) ?? "",
+    disclosureCount: disclosures.length,
+    employmentCount:
+      recordArrayField(content, "currentEmployments").length +
+      recordArrayField(content, "previousEmployments").length,
+    examCount:
+      asCount(exams.stateExamCount) +
+      asCount(exams.principalExamCount) +
+      asCount(exams.productExamCount),
+    registeredStateCount: recordArrayField(content, "registeredStates").length,
   };
 }
 
@@ -331,62 +330,20 @@ export function parseIndividual(content: BrokerRecord): ParsedIndividual {
       licenses: [],
       summary: {},
     };
-  const bi = content.basicInformation ?? {};
-  const crd = String(bi.individualId ?? "");
-  const advisor = {
-    finraCrd: crd,
-    firstName: title(bi.firstName),
-    middleName: title(bi.middleName),
-    lastName: title(bi.lastName),
-    legalName: legalNameFromBasic(bi),
-    industryStartDate: industryStartFromDays(
-      bi.daysInIndustry,
-      bi.daysInIndustryCalculatedDate
-    ),
-    careerStatus: careerStatusFromScopes(
-      bi.bcScope,
-      bi.iaScope,
-      content.disclosures ?? []
-    ),
-  };
-  const employmentSources = [
-    ...(content.currentEmployments ?? []),
-    ...(content.previousEmployments ?? []),
-    ...(content.currentIAEmployments ?? []),
-    ...(content.previousIAEmployments ?? []),
-  ];
-  const employments = dedupeEmployments(employmentSources.map(parseEmployment));
-  const disclosures = (content.disclosures ?? []).map(parseDisclosure);
-  const licenses = [
-    ...(content.stateExamCategory ?? []).map((x: BrokerRecord) =>
-      parseExam(x, "state")
-    ),
-    ...(content.principalExamCategory ?? []).map((x: BrokerRecord) =>
-      parseExam(x, "principal")
-    ),
-    ...(content.productExamCategory ?? []).map((x: BrokerRecord) =>
-      parseExam(x, "product")
-    ),
-  ];
-  const exams = content.examsCount ?? {};
+  const bi = recordField(content, "basicInformation");
+  const disclosureSource = recordArrayField(content, "disclosures");
+  const advisor = buildAdvisor(bi, disclosureSource);
+  const employments = dedupeEmployments(
+    employmentSources(content).map(parseEmployment)
+  );
+  const disclosures = disclosureSource.map(parseDisclosure);
+  const licenses = buildLicenses(content);
   return {
     advisor,
     employments,
     disclosures,
     licenses,
-    summary: {
-      bcScope: bi.bcScope ?? "",
-      iaScope: bi.iaScope ?? "",
-      disclosureCount: (content.disclosures ?? []).length,
-      employmentCount:
-        (content.currentEmployments ?? []).length +
-        (content.previousEmployments ?? []).length,
-      examCount:
-        (exams.stateExamCount ?? 0) +
-        (exams.principalExamCount ?? 0) +
-        (exams.productExamCount ?? 0),
-      registeredStateCount: (content.registeredStates ?? []).length,
-    },
+    summary: buildSummary(content, bi),
   };
 }
 
