@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
@@ -213,21 +212,33 @@ const requestHeaders = (input: string): Record<string, string> => ({
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) advisory-rankings Edward Jones scraper",
 });
 
+const dedupeRows = (
+  left: ReadonlyArray<Record<string, unknown>>,
+  right: ReadonlyArray<Record<string, unknown>>
+): ReadonlyArray<Record<string, unknown>> => [
+  ...new Map([...left, ...right].map(row => [String(row["id"]), row])).values(),
+];
+
 const mergeRows = (
   left: EdwardJonesRows,
   right: EdwardJonesRows
-): EdwardJonesRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as EdwardJonesRows;
-};
+): EdwardJonesRows => ({
+  Firm: dedupeRows(left.Firm, right.Firm),
+  FirmAlias: dedupeRows(left.FirmAlias, right.FirmAlias),
+  Branch: dedupeRows(left.Branch, right.Branch),
+  Advisor: dedupeRows(left.Advisor, right.Advisor),
+  EmploymentHistory: dedupeRows(
+    left.EmploymentHistory,
+    right.EmploymentHistory
+  ),
+  Designation: dedupeRows(left.Designation, right.Designation),
+  Team: dedupeRows(left.Team, right.Team),
+  TeamMembership: dedupeRows(left.TeamMembership, right.TeamMembership),
+  AdvisorResearchCheck: dedupeRows(
+    left.AdvisorResearchCheck,
+    right.AdvisorResearchCheck
+  ),
+});
 
 const targetUrl = (): string | undefined => {
   const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;
