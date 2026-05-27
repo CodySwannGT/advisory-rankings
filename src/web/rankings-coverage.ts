@@ -1,6 +1,12 @@
-// @ts-nocheck
 // Rankings coverage workbench renderers.
 
+import type { HarperDate } from "../types/harper-schema.js";
+import type {
+  CoverageBucket,
+  CoverageSampleRow,
+  RankingsCoverage,
+  SourceStatusBucket,
+} from "../harper/resource-rankings-explorer-types.js";
 import { el, EmptyText, SectionCard, Tag } from "./design-system/index.js";
 import { fmtNumber } from "./rankings-sections.js";
 
@@ -12,7 +18,9 @@ const GAP_BUCKET_LIMIT = 6;
  * @param coverage - Rankings coverage payload.
  * @returns Coverage workbench card.
  */
-export function coverageWorkbenchCard(coverage) {
+export function coverageWorkbenchCard(
+  coverage: RankingsCoverage | null | undefined
+): HTMLElement {
   if (!coverage || coverage.emptyState) {
     return SectionCard({
       title: "Coverage workbench",
@@ -45,7 +53,7 @@ export function coverageWorkbenchCard(coverage) {
  * @param coverage - Rankings coverage payload.
  * @returns KPI row.
  */
-function coverageSummary(coverage) {
+function coverageSummary(coverage: RankingsCoverage): HTMLElement {
   const latestLoadedAt = latestCoverageDate(coverage.buckets);
   return el(
     "div",
@@ -63,7 +71,7 @@ function coverageSummary(coverage) {
  * @param value - KPI value.
  * @returns KPI node.
  */
-function coverageMetric(label, value) {
+function coverageMetric(label: string, value: string): HTMLElement {
   return el(
     "div",
     { class: "rankings-coverage-metric" },
@@ -77,7 +85,9 @@ function coverageMetric(label, value) {
  * @param buckets - Coverage buckets.
  * @returns Bucket panel.
  */
-function coverageBucketPanel(buckets = []) {
+function coverageBucketPanel(
+  buckets: readonly CoverageBucket[] = []
+): HTMLElement {
   if (!buckets.length) {
     return coveragePanel(
       "Category coverage",
@@ -99,7 +109,7 @@ function coverageBucketPanel(buckets = []) {
  * @param bucket - Coverage bucket.
  * @returns Bucket card node.
  */
-function coverageBucketCard(bucket) {
+function coverageBucketCard(bucket: CoverageBucket): HTMLElement {
   return el(
     "a",
     { class: "rankings-coverage-bucket", href: bucket.query },
@@ -137,7 +147,9 @@ function coverageBucketCard(bucket) {
  * @param buckets - Gap buckets.
  * @returns Gap panel.
  */
-function gapBucketPanel(buckets = []) {
+function gapBucketPanel(
+  buckets: readonly SourceStatusBucket[] = []
+): HTMLElement {
   if (!buckets.length) {
     return coveragePanel(
       "Source-status gaps",
@@ -159,7 +171,7 @@ function gapBucketPanel(buckets = []) {
  * @param bucket - Gap bucket.
  * @returns Gap row node.
  */
-function gapBucketCard(bucket) {
+function gapBucketCard(bucket: SourceStatusBucket): HTMLElement {
   return el(
     "a",
     { class: "rankings-gap-bucket", href: bucket.query },
@@ -180,7 +192,7 @@ function gapBucketCard(bucket) {
  * @param body - Panel body.
  * @returns Panel node.
  */
-function coveragePanel(title, body) {
+function coveragePanel(title: string, body: HTMLElement): HTMLElement {
   return el(
     "section",
     { class: "rankings-coverage-panel" },
@@ -194,7 +206,9 @@ function coveragePanel(title, body) {
  * @param pairs - Stat label/value pairs.
  * @returns Grid node.
  */
-function bucketStatGrid(pairs) {
+function bucketStatGrid(
+  pairs: readonly (readonly [string, number])[]
+): HTMLElement {
   return el(
     "div",
     { class: "rankings-bucket-stats" },
@@ -209,7 +223,7 @@ function bucketStatGrid(pairs) {
  * @param labels - Source labels.
  * @returns Source labels node.
  */
-function sourceLabels(labels = []) {
+function sourceLabels(labels: readonly string[] = []): HTMLElement {
   if (!labels.length) return el("span", { class: "muted" }, "No source label");
   return el(
     "span",
@@ -223,7 +237,7 @@ function sourceLabels(labels = []) {
  * @param rows - Sample rows.
  * @returns Sample row list.
  */
-function sampleRows(rows = []) {
+function sampleRows(rows: readonly CoverageSampleRow[] = []): HTMLElement {
   if (!rows.length) return EmptyText({ children: "No sample rows available." });
   return el(
     "ul",
@@ -248,7 +262,7 @@ function sampleRows(rows = []) {
  * @param status - Source status string.
  * @returns Tag node.
  */
-function statusTag(status) {
+function statusTag(status: string): HTMLElement {
   const kind =
     status === "resolved" || status === "source-backed"
       ? "ok"
@@ -268,11 +282,14 @@ function statusTag(status) {
  * @param buckets - Coverage buckets.
  * @returns Latest date string.
  */
-function latestCoverageDate(buckets = []) {
-  return buckets
+function latestCoverageDate(
+  buckets: readonly CoverageBucket[] = []
+): HarperDate | null {
+  const dates = buckets
     .map(bucket => bucket.latestLoadedAt)
-    .filter(Boolean)
-    .sort((left, right) => String(right).localeCompare(String(left)))[0];
+    .filter((value): value is HarperDate => Boolean(value))
+    .sort((left, right) => String(right).localeCompare(String(left)));
+  return dates[0] ?? null;
 }
 
 /**
@@ -280,7 +297,7 @@ function latestCoverageDate(buckets = []) {
  * @param value - Loaded date value.
  * @returns Display date.
  */
-function displayDate(value) {
+function displayDate(value: HarperDate | null | undefined): string {
   if (!value) return "Unavailable";
   return String(value).slice(0, 10);
 }
