@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 // Generate an Ed25519 keypair for Harper Fabric pull-deploy from a
 // private GitHub repo. See docs/fabric-runbook.md §4.
 //
@@ -43,7 +42,7 @@ if (rawPub.length !== 32) throw new Error("unexpected pub length");
  * @param parts - Text or binary fields in SSH wire order.
  * @returns Concatenated SSH wire-format buffer.
  */
-function ssh(parts) {
+function ssh(parts: ReadonlyArray<string | Buffer>): Buffer {
   const bufs = parts.flatMap(p => {
     const b = Buffer.isBuffer(p) ? p : Buffer.from(p, "utf8");
     const len = Buffer.alloc(4);
@@ -85,10 +84,9 @@ const blob = Buffer.concat([
   ssh([Buffer.concat([innerPlaintext, padding])]),
 ]);
 
-const b64 = blob
-  .toString("base64")
-  .match(/.{1,70}/g)
-  .join("\n");
+const b64Chunks = blob.toString("base64").match(/.{1,70}/g);
+if (!b64Chunks) throw new Error("failed to chunk base64 output");
+const b64 = b64Chunks.join("\n");
 const pem = `-----BEGIN OPENSSH PRIVATE KEY-----\n${b64}\n-----END OPENSSH PRIVATE KEY-----\n`;
 
 const privPath = path.join(OUT_DIR, "fabric-deploy-key");
