@@ -6,10 +6,7 @@ export {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
 } from "./firm-source-adapter.js";
-export type {
-  FirmSourceRunOptions,
-  FirmSourceTable,
-} from "./firm-source-adapter.js";
+export type { FirmSourceTable } from "./firm-source-adapter.js";
 import { mapRaymondJamesAdvisors } from "./raymond-james-rows.js";
 export {
   emptyRaymondJamesRows,
