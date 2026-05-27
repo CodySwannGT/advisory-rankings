@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import {
   DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
   DEFAULT_FIRM_SOURCE_PAGE_SIZE,
@@ -7,7 +6,6 @@ import {
   parseRaymondJamesBranchMarkdown,
   RAYMOND_JAMES_MANHATTAN_BRANCH_URL,
   RAYMOND_JAMES_SOURCE_ADAPTER,
-  type FirmSourceRunOptions,
   type FirmSourceTable,
   type RaymondJamesAdvisorSource,
   type RaymondJamesRows,
@@ -17,6 +15,16 @@ import { loadCreds, StudioSession } from "./_auth.js";
 
 /** Fabric operation response returned by the Studio cluster API. */
 type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
+
+/** CLI options resolved for one Raymond James scraper run. */
+interface RaymondJamesRunOptions {
+  readonly checkedAt: string;
+  readonly json: boolean;
+  readonly maxAdvisors: number;
+  readonly pageSize: number;
+  readonly queries: readonly string[];
+  readonly write: boolean;
+}
 
 /** Harper tables written by the Raymond James scraper. */
 const TABLE_ORDER = [
@@ -120,7 +128,7 @@ async function main(): Promise<void> {
   }
 }
 
-const runOptions = (): FirmSourceRunOptions => ({
+const runOptions = (): RaymondJamesRunOptions => ({
   write: has("--write"),
   json: has("--json"),
   maxAdvisors: numberArg("--max-advisors", DEFAULT_FIRM_SOURCE_MAX_ADVISORS),
@@ -218,18 +226,30 @@ const requestHeaders = (): Record<string, string> => ({
 const mergeRows = (
   left: RaymondJamesRows,
   right: RaymondJamesRows
-): RaymondJamesRows => {
-  return Object.fromEntries(
-    TABLE_ORDER.map(table => [
-      table,
-      [
-        ...new Map(
-          [...left[table], ...right[table]].map(row => [String(row.id), row])
-        ).values(),
-      ],
-    ])
-  ) as RaymondJamesRows;
-};
+): RaymondJamesRows => ({
+  Firm: mergeTableRows(left.Firm, right.Firm),
+  FirmAlias: mergeTableRows(left.FirmAlias, right.FirmAlias),
+  Branch: mergeTableRows(left.Branch, right.Branch),
+  Advisor: mergeTableRows(left.Advisor, right.Advisor),
+  EmploymentHistory: mergeTableRows(
+    left.EmploymentHistory,
+    right.EmploymentHistory
+  ),
+  Designation: mergeTableRows(left.Designation, right.Designation),
+  Team: mergeTableRows(left.Team, right.Team),
+  TeamMembership: mergeTableRows(left.TeamMembership, right.TeamMembership),
+  AdvisorResearchCheck: mergeTableRows(
+    left.AdvisorResearchCheck,
+    right.AdvisorResearchCheck
+  ),
+});
+
+const mergeTableRows = (
+  left: ReadonlyArray<Record<string, unknown>>,
+  right: ReadonlyArray<Record<string, unknown>>
+): ReadonlyArray<Record<string, unknown>> => [
+  ...new Map([...left, ...right].map(row => [String(row.id), row])).values(),
+];
 
 const targetUrl = (): string | undefined => {
   const env = Reflect.get(process, "env") as NodeJS.ProcessEnv;
