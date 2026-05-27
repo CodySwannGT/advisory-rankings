@@ -32,8 +32,11 @@ import {
   teamMatchesFilters,
   queryValue,
 } from "./resource-directory-filters.js";
-import { allRows, optionalAll } from "./resource-directory-tables.js";
-import { requiredTable, rowsFor } from "./resource-user-watchlists-store.js";
+import {
+  allRows,
+  optionalAll,
+  rowsByAttribute,
+} from "./resource-directory-tables.js";
 import {
   advisorDirectoryKey,
   compareAdvisorDirectoryRows,
@@ -299,10 +302,14 @@ async function resolveDisplayedAdvisorFirms(
   byFirm: ReadonlyMap<string, FirmRow>
 ): Promise<ReadonlyMap<string, string>> {
   if (!advisorIds.length) return new Map<string, string>();
-  const employmentTable =
-    requiredTable<EmploymentHistoryRow>("EmploymentHistory");
   const fetched = await Promise.all(
-    advisorIds.map(id => rowsFor(employmentTable, "advisorId", id))
+    advisorIds.map(id =>
+      rowsByAttribute<EmploymentHistoryRow>(
+        tables.EmploymentHistory,
+        "advisorId",
+        id
+      )
+    )
   );
   const employments = fetched.flat();
   // Canonicalize the small employment set so firm-ID alias rewrites match
