@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { cmpAsc, cmpDesc, dateMs } from "./resource-pagination.js";
 import { advisorDisplayName } from "./resource-routing.js";
+import type { ResolvableAdvisor } from "./resource-routing.js";
 import {
   articleStub,
   disclosureRow,
@@ -8,10 +8,83 @@ import {
   teamChip,
   transitionRow,
 } from "./resource-feed.js";
+import {
+  advisorCredentials,
+  type CredentialSource,
+} from "./resource-advisor-credentials.js";
+import {
+  countMap,
+  earliestDate,
+  latestDate,
+} from "./resource-summary-helpers.js";
+import type {
+  AdvisorCareerRow,
+  AdvisorProfilePayload,
+  AdvisorRegistrationApplicationRow,
+  AdvisorTeamRow,
+  BrokerCheckSnapshotSlice,
+  ConfidenceSummary,
+  EvidenceFreshness,
+  ResearchSourceTypeKey,
+  ResearchStatusKey,
+} from "../types/advisor-profile.js";
+import type {
+  AdvisorMetricSnapshotRow,
+  AdvisorResearchCheckRow,
+  ArticleAdvisorMentionRow,
+  ArticleRow,
+  BranchRow,
+  BrokerCheckSnapshotRow,
+  DisclosureRow,
+  EmploymentHistoryRow,
+  FieldAssertionRow,
+  FirmRow,
+  OutsideBusinessActivityRow,
+  RegistrationApplicationRow,
+  TeamMembershipRow,
+  TeamRow,
+  TransitionEventRow,
+} from "../types/harper-schema.js";
 
-const RESEARCH_STATUSES = ["success", "no_new_data", "ambiguous", "failed"];
-const RESEARCH_SOURCE_TYPES = ["web_research", "firm_bio", "rankings", "press"];
-const CONFIDENCE_LEVELS = ["asserted", "inferred", "derived"];
+const RESEARCH_STATUSES: readonly ResearchStatusKey[] = [
+  "success",
+  "no_new_data",
+  "ambiguous",
+  "failed",
+];
+const RESEARCH_SOURCE_TYPES: readonly ResearchSourceTypeKey[] = [
+  "web_research",
+  "firm_bio",
+  "rankings",
+  "press",
+];
+const CONFIDENCE_LEVELS = ["asserted", "inferred", "derived"] as const;
+
+/**
+ * Subset of the resource index this module reads. Mirrors the shape
+ * `buildDb` in `resource-data.ts` produces, narrowed to the tables and
+ * lookup maps the advisor profile builder touches. Credential tables
+ * (`licenses`, `designations`, `education`) are optional because those
+ * Harper tables roll out separately and the loader passes them through
+ * only when present.
+ */
+export interface AdvisorProfileDb extends CredentialSource {
+  readonly employments: readonly EmploymentHistoryRow[];
+  readonly memberships: readonly TeamMembershipRow[];
+  readonly disclosures: readonly DisclosureRow[];
+  readonly obas: readonly OutsideBusinessActivityRow[];
+  readonly regApps: readonly RegistrationApplicationRow[];
+  readonly transitions: readonly TransitionEventRow[];
+  readonly mAdv: readonly ArticleAdvisorMentionRow[];
+  readonly fieldAssertions: readonly FieldAssertionRow[];
+  readonly researchChecks?: readonly AdvisorResearchCheckRow[];
+  readonly advisorSnaps?: readonly AdvisorMetricSnapshotRow[];
+  readonly byFirm: ReadonlyMap<string, FirmRow>;
+  readonly byTeam: ReadonlyMap<string, TeamRow>;
+  readonly byBranch: ReadonlyMap<string, BranchRow>;
+  readonly byArticle: ReadonlyMap<string, ArticleRow>;
+  readonly bcSnapByAdvisor: ReadonlyMap<string, BrokerCheckSnapshotRow>;
+}
 
 /**
  * Builds the advisor profile response from the loaded table snapshot.
@@ -19,7 +92,10 @@ const CONFIDENCE_LEVELS = ["asserted", "inferred", "derived"];
  * @param advisor - Advisor row resolved from the route id.
  * @returns Advisor profile payload consumed by the web UI.
  */
-export function advisorProfilePayload(db, advisor) {
+export function advisorProfilePayload(
+  db: AdvisorProfileDb,
+  advisor: ResolvableAdvisor
+): AdvisorProfilePayload {
   const advisorId = advisor.id;
   return {
     advisor,
@@ -46,36 +122,53 @@ export function advisorProfilePayload(db, advisor) {
  * @param advisorId - Advisor ID to match against employment history.
  * @returns Career rows enriched with firm and branch display data.
  */
-function advisorCareer(db, advisorId) {
+function advisorCareer(
+  db: AdvisorProfileDb,
+  advisorId: string
+): readonly AdvisorCareerRow[] {
   return db.employments
     .filter(employment => employment.advisorId === advisorId)
+    .slice()
     .sort(cmpAsc("startDate"))
-    .map(employment => {
-      const firm = db.byFirm.get(employment.firmId);
-      const branch = employment.branchId
-        ? db.byBranch.get(employment.branchId)
-        : null;
-      return {
-        firm: firmChip(firm),
-        branch: branch && {
+    .map(employment => careerRow(employment, db));
+}
+
+/**
+ * Builds a single career row enriched with firm and branch chips.
+ * @param employment - Employment history row to expose.
+ * @param db - Loaded resource index bundle.
+ * @returns Career row shape returned by `advisorCareer`.
+ */
+function careerRow(
+  employment: EmploymentHistoryRow,
+  db: AdvisorProfileDb
+): AdvisorCareerRow {
+  const firm = db.byFirm.get(employment.firmId);
+  const branch = employment.branchId
+    ? db.byBranch.get(employment.branchId)
+    : null;
+  return {
+    firm: firmChip(firm),
+    branch: branch
+      ? {
           id: branch.id,
           name: branch.name,
           level: branch.level,
           city: branch.city,
           state: branch.state,
-        },
-        roleTitle: employment.roleTitle,
-        roleCategory: employment.roleCategory,
-        startDate: employment.startDate,
-        endDate: employment.endDate,
-        reasonForLeaving: employment.reasonForLeaving,
-        aumAtDeparture: employment.aumAtDeparture,
-        productionT12AtDeparture: employment.productionT12AtDeparture,
-        signingBonusPromissoryNote: employment.signingBonusPromissoryNote,
-        u5Filed: employment.u5Filed,
-        u5FilingDate: employment.u5FilingDate,
-      };
-    });
+        }
+      : null,
+    roleTitle: employment.roleTitle,
+    roleCategory: employment.roleCategory,
+    startDate: employment.startDate,
+    endDate: employment.endDate,
+    reasonForLeaving: employment.reasonForLeaving,
+    aumAtDeparture: employment.aumAtDeparture,
+    productionT12AtDeparture: employment.productionT12AtDeparture,
+    signingBonusPromissoryNote: employment.signingBonusPromissoryNote,
+    u5Filed: employment.u5Filed,
+    u5FilingDate: employment.u5FilingDate,
+  };
 }
 
 /**
@@ -84,7 +177,10 @@ function advisorCareer(db, advisorId) {
  * @param advisorId - Advisor ID to match against team memberships.
  * @returns Team memberships enriched with team chips.
  */
-function advisorTeams(db, advisorId) {
+function advisorTeams(
+  db: AdvisorProfileDb,
+  advisorId: string
+): readonly AdvisorTeamRow[] {
   return db.memberships
     .filter(membership => membership.advisorId === advisorId)
     .map(membership => ({
@@ -101,9 +197,13 @@ function advisorTeams(db, advisorId) {
  * @param advisorId - Advisor ID to match against disclosures.
  * @returns Disclosure rows enriched with sanctions and clusters.
  */
-function advisorDisclosures(db, advisorId) {
+function advisorDisclosures(
+  db: AdvisorProfileDb,
+  advisorId: string
+): readonly unknown[] {
   return db.disclosures
     .filter(disclosure => disclosure.advisorId === advisorId)
+    .slice()
     .sort(
       (x, y) =>
         dateMs(x.dateInitiated ?? x.dateResolved) -
@@ -118,7 +218,10 @@ function advisorDisclosures(db, advisorId) {
  * @param advisorId - Advisor ID to match against registration applications.
  * @returns Registration applications for the advisor profile.
  */
-function advisorRegistrationApplications(db, advisorId) {
+function advisorRegistrationApplications(
+  db: AdvisorProfileDb,
+  advisorId: string
+): readonly AdvisorRegistrationApplicationRow[] {
   return db.regApps
     .filter(row => row.advisorId === advisorId)
     .map(row => ({
@@ -133,7 +236,10 @@ function advisorRegistrationApplications(db, advisorId) {
  * @param advisorId - Advisor ID to match against article mentions.
  * @returns Compact article summaries in reverse publication order.
  */
-function advisorArticles(db, advisorId) {
+function advisorArticles(
+  db: AdvisorProfileDb,
+  advisorId: string
+): readonly unknown[] {
   const articleIds = new Set(
     db.mAdv
       .filter(mention => mention.advisorId === advisorId)
@@ -141,32 +247,10 @@ function advisorArticles(db, advisorId) {
   );
   return [...articleIds]
     .map(articleId => db.byArticle.get(articleId))
-    .filter(Boolean)
+    .filter((article): article is ArticleRow => Boolean(article))
+    .slice()
     .sort(cmpDesc("publishedDate"))
     .map(articleStub);
-}
-
-/**
- * Builds license, designation, and education sections for an advisor.
- * @param db - Loaded resource index bundle.
- * @param advisorId - Advisor ID to match against credential rows.
- * @returns Credential row groups for the advisor profile.
- */
-function advisorCredentials(db, advisorId) {
-  return {
-    licenses: (db.licenses || [])
-      .filter(row => row.advisorId === advisorId)
-      .sort(cmpAsc("grantedDate"))
-      .map(licenseStub),
-    designations: (db.designations || [])
-      .filter(row => row.advisorId === advisorId)
-      .sort(cmpAsc("earnedDate"))
-      .map(designationStub),
-    education: (db.education || [])
-      .filter(row => row.advisorId === advisorId)
-      .sort((x, y) => (x.graduationYear || 0) - (y.graduationYear || 0))
-      .map(educationStub),
-  };
 }
 
 /**
@@ -175,19 +259,21 @@ function advisorCredentials(db, advisorId) {
  * @param advisorId - Advisor ID used by BrokerCheck snapshot rows.
  * @returns Snapshot summary or null when no snapshot is loaded.
  */
-function advisorBrokerCheckSnapshot(db, advisorId) {
-  const snapshot = db.bcSnapByAdvisor.get(advisorId) || null;
-  return (
-    snapshot && {
-      fetchedAt: snapshot.fetchedAt,
-      subjectCrd: snapshot.subjectCrd,
-      bcScope: snapshot.bcScope,
-      iaScope: snapshot.iaScope,
-      disclosureCount: snapshot.disclosureCount,
-      employmentCount: snapshot.employmentCount,
-      examCount: snapshot.examCount,
-    }
-  );
+function advisorBrokerCheckSnapshot(
+  db: AdvisorProfileDb,
+  advisorId: string
+): BrokerCheckSnapshotSlice | null {
+  const snapshot = db.bcSnapByAdvisor.get(advisorId) ?? null;
+  if (!snapshot) return null;
+  return {
+    fetchedAt: snapshot.fetchedAt,
+    subjectCrd: snapshot.subjectCrd,
+    bcScope: snapshot.bcScope,
+    iaScope: snapshot.iaScope,
+    disclosureCount: snapshot.disclosureCount,
+    employmentCount: snapshot.employmentCount,
+    examCount: snapshot.examCount,
+  };
 }
 
 /**
@@ -196,8 +282,11 @@ function advisorBrokerCheckSnapshot(db, advisorId) {
  * @param advisorId - Advisor ID to match against research checks.
  * @returns Deterministic freshness summary, including explicit no-data state.
  */
-function advisorEvidenceFreshness(db, advisorId) {
-  const checks = (db.researchChecks || []).filter(
+function advisorEvidenceFreshness(
+  db: AdvisorProfileDb,
+  advisorId: string
+): EvidenceFreshness {
+  const checks = (db.researchChecks ?? []).filter(
     check => check.advisorId === advisorId
   );
 
@@ -224,10 +313,13 @@ function advisorEvidenceFreshness(db, advisorId) {
  * @param advisorId - Advisor ID to match against field assertions.
  * @returns Confidence mix with explicit no-data state.
  */
-function advisorConfidenceSummary(db, advisorId) {
+function advisorConfidenceSummary(
+  db: AdvisorProfileDb,
+  advisorId: string
+): ConfidenceSummary {
   const assertions = db.fieldAssertions.filter(
     field =>
-      String(field.targetTable || "").toLowerCase() === "advisor" &&
+      String(field.targetTable ?? "").toLowerCase() === "advisor" &&
       field.targetId === advisorId
   );
   const counts = countMap(
@@ -241,107 +333,5 @@ function advisorConfidenceSummary(db, advisorId) {
     inferred: counts.inferred,
     derived: counts.derived,
     total: assertions.length,
-  };
-}
-
-/**
- * Builds a stable tally object with every public key present.
- * @param keys - Keys that should always be present.
- * @param values - Source values to tally.
- * @returns Count object with every requested key represented.
- */
-function countMap(keys, values = []) {
-  return Object.fromEntries(
-    keys.map(key => [
-      key,
-      values.filter(value => String(value || "").toLowerCase() === key).length,
-    ])
-  );
-}
-
-/**
- * Returns the latest date-like value, preserving the original string.
- * @param values - Candidate dates.
- * @returns Latest date-like value or null.
- */
-function latestDate(values) {
-  return values.reduce(laterDate, null);
-}
-
-/**
- * Returns the earliest date-like value, preserving the original string.
- * @param values - Candidate dates.
- * @returns Earliest date-like value or null.
- */
-function earliestDate(values) {
-  return values.reduce(earlierDate, null);
-}
-
-/**
- * Returns the later of two date-like values, preserving the original string.
- * @param current - Current winning date.
- * @param candidate - Candidate date.
- * @returns Later date-like value or null.
- */
-function laterDate(current, candidate) {
-  if (!candidate) return current;
-  return !current || dateMs(candidate) > dateMs(current) ? candidate : current;
-}
-
-/**
- * Returns the earlier of two date-like values, preserving the original string.
- * @param current - Current winning date.
- * @param candidate - Candidate date.
- * @returns Earlier date-like value or null.
- */
-function earlierDate(current, candidate) {
-  if (!candidate) return current;
-  return !current || dateMs(candidate) < dateMs(current) ? candidate : current;
-}
-
-/**
- * Trims a license row to the fields shown on advisor profiles.
- * @param row - License row from Harper.
- * @returns Public license summary.
- */
-function licenseStub(row) {
-  return {
-    id: row.id,
-    licenseType: row.licenseType,
-    state: row.state,
-    grantedDate: row.grantedDate,
-    expiresDate: row.expiresDate,
-    status: row.status,
-  };
-}
-
-/**
- * Trims a designation row to the fields shown on advisor profiles.
- * @param row - Designation row from Harper.
- * @returns Public designation summary.
- */
-function designationStub(row) {
-  return {
-    id: row.id,
-    code: row.code,
-    grantingBody: row.grantingBody,
-    earnedDate: row.earnedDate,
-    expiresDate: row.expiresDate,
-    status: row.status,
-  };
-}
-
-/**
- * Trims an education row to the fields shown on advisor profiles.
- * @param row - Education row from Harper.
- * @returns Public education summary.
- */
-function educationStub(row) {
-  return {
-    id: row.id,
-    institution: row.institution,
-    degree: row.degree,
-    field: row.field,
-    graduationYear: row.graduationYear,
   };
 }
