@@ -1,4 +1,3 @@
-// @ts-nocheck
 // AdvisorBook · Atomic Design — TEMPLATES
 //
 // Page-level layout shells. Templates own the global chrome
@@ -13,6 +12,55 @@
 import { el } from "./dom.js";
 import { Heading } from "./atoms.js";
 import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
+
+/** Auth-session loader passed through to the navbar. */
+type RefreshMeFn = () => Promise<unknown>;
+/** Logout action invoked from the navbar sign-out control. */
+type LogoutFn = () => unknown;
+/** Global search adapter forwarded to the navbar search affordance. */
+type SearchFn = (query: string) => unknown;
+
+/** Heading text or nodes accepted by the route-level page title. */
+type PageTitle = string | number | Node | null | undefined;
+
+/** Layout slots exposed by {@link mountThreeColumnPage} to the caller. */
+interface ThreeColumnSlots {
+  readonly left: HTMLElement;
+  readonly center: HTMLElement;
+  readonly right: HTMLElement;
+  readonly layout: HTMLElement;
+}
+
+/** Layout slots exposed by single-column templates to the caller. */
+interface SingleColumnSlots {
+  readonly center: HTMLElement;
+  readonly layout: HTMLElement;
+}
+
+/** Shared chrome options threaded into every template. */
+interface ChromeOptions {
+  readonly active?: string;
+  readonly refreshMe?: RefreshMeFn;
+  readonly logout?: LogoutFn;
+  readonly search?: SearchFn;
+  readonly pageTitle?: PageTitle;
+}
+
+/** Options accepted by {@link mountThreeColumnPage}. */
+interface MountThreeColumnOptions extends ChromeOptions {
+  readonly build?: (slots: ThreeColumnSlots) => void;
+}
+
+/** Options accepted by {@link mountFullWidthPage}. */
+interface MountFullWidthOptions extends ChromeOptions {
+  readonly build?: (slots: SingleColumnSlots) => void;
+}
+
+/** Options accepted by {@link mountCenteredNarrowPage}. */
+interface MountCenteredNarrowOptions extends ChromeOptions {
+  readonly build?: (slots: SingleColumnSlots) => void;
+  readonly maxWidth?: number;
+}
 
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
@@ -33,7 +81,6 @@ import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
  * @param root0.search - search used by this operation.
  * @param root0.pageTitle - page title exposed as the route-level h1.
  * @param root0.build - build used by this operation.
- * @returns The computed value.
  */
 export function mountThreeColumnPage({
   active,
@@ -42,7 +89,7 @@ export function mountThreeColumnPage({
   search,
   pageTitle,
   build,
-} = {}) {
+}: MountThreeColumnOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const left = el("aside", { class: "left rail" });
   const center = el("section", { class: "center" });
@@ -54,14 +101,14 @@ export function mountThreeColumnPage({
   left.appendChild(primaryBrowseCard());
   layout.append(left, center, right);
 
-  build({ left, center, right, layout });
+  if (build) build({ left, center, right, layout });
 }
 
 /**
  * Builds the left-rail browse navigation shared by public pages.
  * @returns Browse card with the primary site sections.
  */
-function primaryBrowseCard() {
+function primaryBrowseCard(): HTMLElement {
   return BrowseCard({
     items: [
       { label: "Home", icon: "🏠", href: "/" },
@@ -96,7 +143,7 @@ export function mountFullWidthPage({
   search,
   pageTitle,
   build,
-} = {}) {
+}: MountFullWidthOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const center = el("section", {
     class: "center",
@@ -108,7 +155,7 @@ export function mountFullWidthPage({
   appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
-  build({ center, layout });
+  if (build) build({ center, layout });
 }
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
@@ -132,7 +179,7 @@ export function mountCenteredNarrowPage({
   pageTitle,
   build,
   maxWidth = 420,
-} = {}) {
+}: MountCenteredNarrowOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const center = el("section", {
     class: "center",
@@ -144,7 +191,7 @@ export function mountCenteredNarrowPage({
   appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
-  build({ center, layout });
+  if (build) build({ center, layout });
 }
 
 /**
@@ -153,7 +200,7 @@ export function mountCenteredNarrowPage({
  * @param root - Layout root that should contain the heading.
  * @param pageTitle - Route purpose label.
  */
-function appendPageTitle(root, pageTitle) {
+function appendPageTitle(root: HTMLElement, pageTitle: PageTitle): void {
   if (!pageTitle) return;
   root.appendChild(
     Heading({
