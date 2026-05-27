@@ -333,7 +333,17 @@ async function runScenarios(
  */
 async function main(): Promise<void> {
   const extraHTTPHeaders = await authHeaders();
-  const browser = await chromium.launch({ headless: true });
+  // Force HTTP/1.1: the deployed Fabric edge intermittently throws
+  // net::ERR_HTTP2_PROTOCOL_ERROR under the smoke's concurrent multiplexed
+  // streams, which leaves an in-flight fetch (e.g. the kind=firm search) with
+  // no response — hanging waitForResponse past any budget. The stability gate
+  // probes via a separate request context and can't observe the browser's
+  // HTTP/2 connection, so disabling HTTP/2 here removes the failure class at
+  // the source. (Separate connections per request; no multiplex protocol errors.)
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--disable-http2"],
+  });
   try {
     const context = await newContext(
       browser,
