@@ -13,6 +13,7 @@ import {
 const ARTICLE_CARD = "article.card";
 const EVENT_CARD = ".event-card";
 const FEED_LOAD_MORE = ".feed-load-more";
+const FEED_APPLY_BUTTON = 'form.feed-filters button[type="submit"]';
 const FEED_MODE_SELECT = 'form.feed-filters select[name="mode"]';
 const FEED_CATEGORY_SELECT = 'form.feed-filters select[name="category"]';
 const FEED_FILTER_SUMMARY = ".feed-filter-summary";
@@ -40,6 +41,7 @@ interface EventFilterResult {
   readonly afterLoadCount: number;
   readonly afterLoadUrl: string;
   readonly allHaveCards: boolean;
+  readonly applyButtonCount: number;
   readonly cardCount: number;
   readonly noDuplicateLinks: boolean;
   readonly url: string;
@@ -79,6 +81,11 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
       eventFilter.url.includes("mode=event"),
       "/ feed filters: event-backed mode persists in URL",
       eventFilter.url
+    ),
+    check(
+      eventFilter.applyButtonCount === 0,
+      "/ feed filters: auto-applied controls omit redundant Apply button",
+      String(eventFilter.applyButtonCount)
     ),
     check(
       eventFilter.cardCount >= 1,
@@ -196,6 +203,7 @@ async function selectEventBackedMode(page: Page): Promise<EventFilterResult> {
   return {
     afterLoadCount: await page.locator(ARTICLE_CARD).count(),
     afterLoadUrl: page.url(),
+    applyButtonCount: await page.locator(FEED_APPLY_BUTTON).count(),
     cardCount,
     allHaveCards: await allCardsHaveEvents(page),
     noDuplicateLinks: appendedLinks.every(link => !beforeLinkSet.has(link)),
