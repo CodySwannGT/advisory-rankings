@@ -1,10 +1,10 @@
 import { createServer, type Server } from "node:http";
 /* eslint-disable max-lines -- Browser fixture coverage for async page states stays self-contained. */
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, resolve, sep } from "node:path";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
@@ -15,9 +15,16 @@ const FEED_ROUTE = "**/Feed";
 const NO_ARTICLES_TEXT = "No articles yet";
 const FEED_ERROR_TITLE = "Could not load feed";
 const TEMPORARY_OUTAGE = "temporary outage";
+const RETRY_RECOVERY_ARTICLE = "Retry recovery article";
+const ADVISOR_RECOVERY_NAME = "Avery Stone";
+const ROUTE_RETRY_LOG = join(SHOTS, "issue-279-route-retry-requests.json");
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
   { name: "mobile", width: 320, height: 740 },
+] as const;
+const RETRY_MOBILE_VIEWPORTS = [
+  { name: "mobile-390", width: 390, height: 740 },
+  { name: "mobile-320", width: 320, height: 740 },
 ] as const;
 const browserDescribe =
   process.env.RUN_WEB_ASYNC_STATES === "1" &&
@@ -161,7 +168,7 @@ browserDescribe("web async states", () => {
     });
 
     await page.getByRole("button", { name: "Retry" }).click();
-    await page.getByRole("link", { name: "Retry recovery article" }).waitFor({
+    await page.getByRole("link", { name: RETRY_RECOVERY_ARTICLE }).waitFor({
       timeout: QUICK_TIMEOUT,
     });
 
@@ -171,6 +178,138 @@ browserDescribe("web async states", () => {
     expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(0);
     await page.close();
   });
+
+  it("captures route retry request and recovery evidence", async () => {
+    const requestLog = {
+      feed: await captureFeedRetryEvidence(browser, baseUrl),
+      advisorProfile: await captureAdvisorRetryEvidence(browser, baseUrl),
+      firmDirectory: await captureFirmDirectoryRetryEvidence(browser, baseUrl),
+    } as const;
+
+    await writeFile(
+      ROUTE_RETRY_LOG,
+      `${JSON.stringify(requestLog, null, 2)}\n`
+    );
+
+    expect(requestLog.feed).toEqual(["/Feed", "/Feed"]);
+    expect(requestLog.advisorProfile).toEqual([
+      "/AdvisorProfile/advisor-loaded",
+      "/AdvisorProfile/advisor-loaded",
+    ]);
+    expect(requestLog.firmDirectory).toEqual(["/PublicFirms", "/PublicFirms"]);
+    expect(existsSync(ROUTE_RETRY_LOG)).toBe(true);
+    expect(
+      [
+        "issue-279-feed-error-before-retry",
+        "issue-279-feed-recovered",
+        "issue-279-advisor-error-before-retry",
+        "issue-279-advisor-recovered",
+        "issue-279-firm-directory-error-before-retry",
+        "issue-279-firm-directory-recovered",
+      ].every(name => existsSync(evidencePath("desktop", name)))
+    ).toBe(true);
+  }, 30_000);
+
+  it("guards not-found routes from introducing Retry actions", async () => {
+    const cases = [
+      {
+        path: "/advisor.html?id=missing-advisor",
+        resource: "**/AdvisorProfile/missing-advisor",
+        title: "Advisor not found",
+        action: "Back to Advisors",
+        payload: missingDetail("missing-advisor"),
+      },
+      {
+        path: "/team.html?id=missing-team",
+        resource: "**/TeamProfile/missing-team",
+        title: "Team not found",
+        action: "Back to Teams",
+        payload: missingDetail("missing-team"),
+      },
+      {
+        path: "/article.html?id=missing-article",
+        resource: "**/ArticleView/missing-article",
+        title: "Article not found",
+        action: "Back to Articles",
+        payload: missingDetail("missing-article"),
+      },
+    ] as const;
+
+    for (const routeCase of cases) {
+      const page = await browser.newPage();
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(routeCase.resource, async route => {
+          await route.fulfill({ json: routeCase.payload });
+        });
+
+        await page.goto(`${baseUrl}${routeCase.path}`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        await page.getByText(routeCase.title).waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+        expect(
+          await page.getByRole("button", { name: routeCase.action }).isVisible()
+        ).toBe(true);
+        expect(await page.getByRole("button", { name: "Retry" }).count()).toBe(
+          0
+        );
+        await page.screenshot({
+          path: evidencePath(
+            "desktop",
+            `issue-279-not-found-${routeCase.title}`
+          ),
+          fullPage: true,
+        });
+      } finally {
+        await page.close();
+      }
+    }
+  }, 30_000);
+
+  it("keeps mobile Retry actions visible, tappable, and within the viewport", async () => {
+    for (const viewport of RETRY_MOBILE_VIEWPORTS) {
+      const page = await browser.newPage({ viewport });
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(FEED_ROUTE, async route => {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+          });
+        });
+
+        await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+        await page.getByText(FEED_ERROR_TITLE).waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+
+        const retry = page.getByRole("button", { name: "Retry" });
+        const box = await retry.boundingBox();
+        const hasHorizontalOverflow = await page.evaluate(
+          () => document.documentElement.scrollWidth > window.innerWidth
+        );
+
+        expect(await retry.isVisible()).toBe(true);
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(36);
+        expect(hasHorizontalOverflow).toBe(false);
+        await page.screenshot({
+          path: evidencePath(viewport.name, "issue-279-mobile-retry"),
+          fullPage: true,
+        });
+      } finally {
+        await page.close();
+      }
+    }
+  }, 30_000);
 
   it("shows session recovery guidance while preserving public content", async () => {
     const page = await browser.newPage();
@@ -296,6 +435,182 @@ async function captureFeedErrorEvidence(
 }
 
 /**
+ * Captures request and screenshot evidence for feed retry recovery.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @returns Requested Feed paths in call order.
+ */
+async function captureFeedRetryEvidence(
+  browser: Browser,
+  baseUrl: string
+): Promise<readonly string[]> {
+  const page = await browser.newPage();
+  const requests: string[] = [];
+
+  try {
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      requests.push(new URL(route.request().url()).pathname);
+      if (requests.length === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+        return;
+      }
+      await route.fulfill({ json: feedWithArticle() });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+    await page.getByText(FEED_ERROR_TITLE).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.screenshot({
+      path: evidencePath("desktop", "issue-279-feed-error-before-retry"),
+      fullPage: true,
+    });
+    await clickRetryAndCapture(
+      page,
+      RETRY_RECOVERY_ARTICLE,
+      "issue-279-feed-recovered"
+    );
+    return requests;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Captures request and screenshot evidence for advisor profile retry recovery.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @returns Requested AdvisorProfile paths in call order.
+ */
+async function captureAdvisorRetryEvidence(
+  browser: Browser,
+  baseUrl: string
+): Promise<readonly string[]> {
+  const page = await browser.newPage();
+  const requests: string[] = [];
+
+  try {
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route("**/AdvisorProfile/advisor-loaded", async route => {
+      requests.push(new URL(route.request().url()).pathname);
+      if (requests.length === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+        return;
+      }
+      await route.fulfill({ json: advisorEvidenceProfile("advisor-loaded") });
+    });
+
+    await page.goto(`${baseUrl}/advisor.html?id=advisor-loaded`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.getByText("Could not load advisor").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.screenshot({
+      path: evidencePath("desktop", "issue-279-advisor-error-before-retry"),
+      fullPage: true,
+    });
+    await clickRetryAndCapture(
+      page,
+      ADVISOR_RECOVERY_NAME,
+      "issue-279-advisor-recovered"
+    );
+    return requests;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Captures request and screenshot evidence for firm directory retry recovery.
+ * @param browser - Browser used to create an isolated page.
+ * @param baseUrl - Local static server URL.
+ * @returns Requested PublicFirms paths in call order.
+ */
+async function captureFirmDirectoryRetryEvidence(
+  browser: Browser,
+  baseUrl: string
+): Promise<readonly string[]> {
+  const page = await browser.newPage();
+  const requests: string[] = [];
+
+  try {
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route("**/PublicFirms**", async route => {
+      requests.push(new URL(route.request().url()).pathname);
+      if (requests.length === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+        return;
+      }
+      await route.fulfill({ json: firmDirectoryPayload() });
+    });
+
+    await page.goto(`${baseUrl}/firms`, { waitUntil: "domcontentloaded" });
+    await page.getByText("Couldn't load more").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.screenshot({
+      path: evidencePath(
+        "desktop",
+        "issue-279-firm-directory-error-before-retry"
+      ),
+      fullPage: true,
+    });
+    await clickRetryAndCapture(
+      page,
+      "Acme Advisory",
+      "issue-279-firm-directory-recovered",
+      "Load more"
+    );
+    return requests;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Clicks a retry-style action and captures the recovered state.
+ * @param page - Browser page under test.
+ * @param successText - Text expected after recovery.
+ * @param screenshotName - Evidence screenshot suffix.
+ * @param actionName - Button name to click.
+ */
+async function clickRetryAndCapture(
+  page: Page,
+  successText: string,
+  screenshotName: string,
+  actionName: string = "Retry"
+): Promise<void> {
+  await page.getByRole("button", { name: actionName }).click();
+  await page.getByText(successText).first().waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await page.screenshot({
+    path: evidencePath("desktop", screenshotName),
+    fullPage: true,
+  });
+}
+
+/**
  * Builds a deterministic screenshot evidence path.
  * @param viewportName - Evidence viewport name.
  * @param stateName - Async state being captured.
@@ -341,7 +656,7 @@ function feedWithArticle(): FeedWithArticle {
       {
         article: {
           id: "article-retry",
-          headline: "Retry recovery article",
+          headline: RETRY_RECOVERY_ARTICLE,
           dek: "Loaded after a manual retry.",
           category: "transitions",
           publishedDate: "2026-05-27T00:00:00.000Z",
@@ -355,6 +670,103 @@ function feedWithArticle(): FeedWithArticle {
         advisors: [],
       },
     ],
+  };
+}
+
+/** Minimal not-found envelope used by detail route regression checks. */
+type MissingDetailResponse = {
+  readonly error: "not found";
+  readonly id: string;
+};
+
+/**
+ * Builds a deterministic missing-detail resource payload.
+ * @param id - Missing entity id.
+ * @returns Not-found response envelope.
+ */
+function missingDetail(id: string): MissingDetailResponse {
+  return { error: "not found", id };
+}
+
+/**
+ * Builds a minimal advisor profile payload that exercises retry recovery.
+ * @param id - Advisor id requested by the route.
+ * @returns AdvisorProfile resource payload.
+ */
+function advisorEvidenceProfile(id: string): unknown {
+  return {
+    advisor: {
+      id,
+      legalName: ADVISOR_RECOVERY_NAME,
+      preferredName: ADVISOR_RECOVERY_NAME,
+      headshotUrl: null,
+      careerStatus: "active",
+      yearsExperience: 12,
+      finraCrd: "12345",
+      secIard: null,
+      industryStartDate: "2014-01-01",
+      birthYear: null,
+      gender: "undisclosed",
+    },
+    displayName: ADVISOR_RECOVERY_NAME,
+    career: [
+      {
+        roleTitle: "Advisor",
+        firm: { id: "firm-a", name: "Example Wealth", short: "Example WM" },
+        branch: { id: "branch-a", name: "Atlanta", city: "Atlanta" },
+        startDate: "2020-01-01",
+        endDate: null,
+      },
+    ],
+    teams: [],
+    disclosures: [],
+    outsideBusinessActivities: [],
+    registrationApplications: [],
+    transitions: [],
+    articles: [],
+    licenses: [],
+    designations: [],
+    education: [],
+    brokerCheckSnapshot: null,
+    evidenceFreshness: {
+      hasData: true,
+      lastCheckedAt: "2026-05-25T12:00:00Z",
+      nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+      statusCounts: { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 },
+      sourceTypeCoverage: {
+        web_research: 1,
+        firm_bio: 1,
+        rankings: 0,
+        press: 1,
+      },
+    },
+    confidenceSummary: {
+      hasData: true,
+      asserted: 2,
+      inferred: 1,
+      derived: 1,
+      total: 4,
+    },
+  };
+}
+
+/**
+ * Builds a minimal firm directory payload for retry recovery.
+ * @returns PublicFirms resource payload.
+ */
+function firmDirectoryPayload(): unknown {
+  return {
+    items: [
+      {
+        id: "firm-1",
+        name: "Acme Advisory",
+        channel: "ria",
+        hqCity: "Austin",
+        hqState: "TX",
+      },
+    ],
+    nextCursor: null,
+    total: 1,
   };
 }
 
@@ -401,7 +813,9 @@ function resolveStaticPath(urlPath: string): string {
   const relativePath =
     cleanPath === sep || cleanPath === "." || cleanPath === "/"
       ? "index.html"
-      : cleanPath.replace(/^[/\\]+/, "");
+      : ["/firms", "/teams", "/regulatory"].includes(cleanPath)
+        ? `${cleanPath.slice(1)}.html`
+        : cleanPath.replace(/^[/\\]+/, "");
   const candidate = resolve(WEB_ROOT, relativePath);
   if (!candidate.startsWith(`${WEB_ROOT}${sep}`) && candidate !== WEB_ROOT) {
     return join(WEB_ROOT, "404.html");
