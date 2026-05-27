@@ -31,6 +31,7 @@ import type {
 import type {
   AdvisorMetricSnapshotRow,
   AdvisorResearchCheckRow,
+  AdvisorRow,
   ArticleAdvisorMentionRow,
   ArticleRow,
   BranchRow,
@@ -40,8 +41,11 @@ import type {
   FieldAssertionRow,
   FirmRow,
   OutsideBusinessActivityRow,
+  RecruitingDealQuoteRow,
   RegistrationApplicationRow,
+  SanctionRow,
   TeamMembershipRow,
+  TeamMetricSnapshotRow,
   TeamRow,
   TransitionEventRow,
 } from "../types/harper-schema.js";
@@ -72,17 +76,21 @@ export interface AdvisorProfileDb extends CredentialSource {
   readonly employments: readonly EmploymentHistoryRow[];
   readonly memberships: readonly TeamMembershipRow[];
   readonly disclosures: readonly DisclosureRow[];
+  readonly sanctions: readonly SanctionRow[];
   readonly obas: readonly OutsideBusinessActivityRow[];
   readonly regApps: readonly RegistrationApplicationRow[];
   readonly transitions: readonly TransitionEventRow[];
+  readonly teamSnaps: readonly TeamMetricSnapshotRow[];
   readonly mAdv: readonly ArticleAdvisorMentionRow[];
   readonly fieldAssertions: readonly FieldAssertionRow[];
   readonly researchChecks?: readonly AdvisorResearchCheckRow[];
   readonly advisorSnaps?: readonly AdvisorMetricSnapshotRow[];
+  readonly byAdvisor: ReadonlyMap<string, AdvisorRow>;
   readonly byFirm: ReadonlyMap<string, FirmRow>;
   readonly byTeam: ReadonlyMap<string, TeamRow>;
   readonly byBranch: ReadonlyMap<string, BranchRow>;
   readonly byArticle: ReadonlyMap<string, ArticleRow>;
+  readonly byDeal: ReadonlyMap<string, RecruitingDealQuoteRow>;
   readonly bcSnapByAdvisor: ReadonlyMap<string, BrokerCheckSnapshotRow>;
 }
 
