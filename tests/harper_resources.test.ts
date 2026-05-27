@@ -2818,5 +2818,35 @@ describe("Harper directory and search resources", () => {
       (globalThis as any).tables.EmploymentHistory = original;
     }
   });
+
+  it("does not scan the Advisor table for a firm-kind search", async () => {
+    baseRows();
+    const advisorSearchCalls: unknown[] = [];
+    const original = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = {
+      search: (query: unknown) => {
+        advisorSearchCalls.push(query);
+        return (async function* () {})();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).Search().get(
+        routeTarget("", { kind: "firm", q: "example", limit: "5" })
+      );
+
+      // kind=firm must resolve from the (small) Firm table only — never touch
+      // the large Advisor table. Scanning it needlessly for kind-scoped
+      // searches was the flaky-timeout regression.
+      expect(advisorSearchCalls).toHaveLength(0);
+      expect(result.kind).toBe("firm");
+      expect(result.items.every((item: any) => item.kind === "firm")).toBe(
+        true
+      );
+      expect(result.counts.advisors).toBe(0);
+    } finally {
+      (globalThis as any).tables.Advisor = original;
+    }
+  });
 });
 /* eslint-enable max-lines, sonarjs/no-duplicate-string -- Re-enable fixture-only suppressions. */
