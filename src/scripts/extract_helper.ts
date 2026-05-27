@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -9,6 +8,51 @@ const WPJSON_DIR = "research/wpjson";
 const SAMPLES_DIR = "research/articles";
 const EXTRACT_DIR = "research/extractions";
 const LOADED_DIR = join(EXTRACT_DIR, ".loaded");
+
+/** One responsive size entry inside a WordPress media payload. */
+interface WpMediaSize {
+  readonly source_url?: string;
+}
+
+/** Nested media_details payload describing responsive sizes. */
+interface WpMediaDetails {
+  readonly sizes?: Readonly<Record<string, WpMediaSize>>;
+}
+
+/** WordPress media object as returned under `_embedded["wp:featuredmedia"]`. */
+interface WpMedia {
+  readonly source_url?: string;
+  readonly media_details?: WpMediaDetails;
+}
+
+/** WordPress rendered HTML wrapper used for fields like title and content. */
+interface WpRendered {
+  readonly rendered?: string;
+}
+
+/** Nested `_embedded` payload of a WordPress post we read from. */
+interface WpEmbedded {
+  readonly "wp:featuredmedia"?: ReadonlyArray<WpMedia>;
+}
+
+/** Minimal WordPress post shape this extractor reads from saved JSON. */
+interface WpPost {
+  readonly id?: number;
+  readonly title?: WpRendered;
+  readonly content?: WpRendered;
+  readonly _embedded?: WpEmbedded;
+}
+
+/**
+ * Parses an untrusted JSON string as a WordPress post payload.
+ * @param input - JSON text from a research file.
+ * @returns The parsed post object typed by our schema.
+ */
+function parseWpPost(input: string): WpPost {
+  const parsed: unknown = JSON.parse(input);
+  if (parsed === null || typeof parsed !== "object") return {};
+  return parsed as WpPost;
+}
 
 /**
  * Handles wpjson records for this workflow.
@@ -63,7 +107,7 @@ async function* recordForWpJsonFile(
   entryName: string
 ): AsyncGenerator<readonly [number, string]> {
   const path = join(root, entryName);
-  const raw = JSON.parse(await readFile(path, "utf8"));
+  const raw = parseWpPost(await readFile(path, "utf8"));
   if (raw.id) yield [Number(raw.id), path];
 }
 
@@ -81,21 +125,21 @@ function extractedPath(wpId: number): string {
  * @param raw - Raw source payload.
  * @returns Candidate image URLs from featured media and article markup.
  */
-function imageUrls(raw: Record<string, unknown>): readonly string[] {
-  const embedded = raw?._embedded?.["wp:featuredmedia"] ?? [];
+function imageUrls(raw: WpPost): readonly string[] {
+  const embedded = raw._embedded?.["wp:featuredmedia"] ?? [];
   const mediaUrls = embedded
     .flatMap(media => [
-      media?.source_url,
-      ...Object.values(media?.media_details?.sizes ?? {}).map(
-        size => (size as Record<string, unknown>)?.source_url
+      media.source_url,
+      ...Object.values(media.media_details?.sizes ?? {}).map(
+        size => size.source_url
       ),
     ])
-    .filter(Boolean);
-  const $ = cheerio.load(raw?.content?.rendered ?? "");
+    .filter((url): url is string => Boolean(url));
+  const $ = cheerio.load(raw.content?.rendered ?? "");
   const markupUrls = $("img")
     .toArray()
     .map(element => $(element).attr("src") ?? $(element).attr("data-src"))
-    .filter(Boolean);
+    .filter((url): url is string => Boolean(url));
   return [...new Set([...mediaUrls, ...markupUrls])];
 }
 
@@ -123,7 +167,7 @@ async function findPending(): Promise<void> {
 async function show(wpId: string): Promise<void> {
   for await (const [id, source] of wpjsonRecords()) {
     if (String(id) !== wpId) continue;
-    const raw = JSON.parse(await readFile(source, "utf8"));
+    const raw = parseWpPost(await readFile(source, "utf8"));
     const title = cheerio.load(raw.title?.rendered ?? "").text();
     const body = cheerio.load(raw.content?.rendered ?? "").text();
     const images = imageUrls(raw);
