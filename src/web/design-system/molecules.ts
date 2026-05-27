@@ -224,7 +224,9 @@ function isUsefulMeta(value: unknown): boolean {
  * @returns Human-readable metadata text.
  */
 function readableMeta(value: OptionalScalar): string {
-  return String(value ?? "")
+  const text = String(value ?? "").trim();
+  if (text.includes(" ")) return text;
+  return text
     .replace(/_+/g, " ")
     .replace(/\b\w/g, char => char.toUpperCase())
     .trim();

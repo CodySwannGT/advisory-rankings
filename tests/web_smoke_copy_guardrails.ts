@@ -19,6 +19,8 @@ const EXPECTED_BROWSE_LABELS = [
   "Compliance",
 ];
 const RAW_IDENTIFIER_PATTERN = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
+const PUBLIC_WEB_RESEARCH_OPTION_MISSING =
+  "public_web_research option not present";
 
 /**
  * Checks feed copy and browse labels on the public home route.
@@ -31,6 +33,7 @@ export async function feedCopyGuardrailChecks(
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const metadata = await visibleFeedMetadata(page);
+  const categoryCopy = await visibleFeedCategoryCopy(page);
   return [
     check(
       metadata.length > 0,
@@ -40,6 +43,24 @@ export async function feedCopyGuardrailChecks(
       metadata.every(text => !RAW_IDENTIFIER_PATTERN.test(text)),
       "/ feed copy: card metadata avoids raw underscore identifiers",
       metadata.filter(text => RAW_IDENTIFIER_PATTERN.test(text)).join(" | ")
+    ),
+    check(
+      categoryCopy.optionLabel === null ||
+        categoryCopy.optionLabel === "Advisor research",
+      "/ feed copy: web research category option is reader-facing",
+      categoryCopy.optionLabel || PUBLIC_WEB_RESEARCH_OPTION_MISSING
+    ),
+    check(
+      categoryCopy.summary === null ||
+        categoryCopy.summary.includes("Advisor research"),
+      "/ feed copy: filter summary uses reader-facing category copy",
+      categoryCopy.summary || PUBLIC_WEB_RESEARCH_OPTION_MISSING
+    ),
+    check(
+      categoryCopy.urlCategory === null ||
+        categoryCopy.urlCategory === "public_web_research",
+      "/ feed copy: category filter keeps machine URL value",
+      categoryCopy.urlCategory || PUBLIC_WEB_RESEARCH_OPTION_MISSING
     ),
     ...(await browseLabelChecks(page, "/ feed")),
     copyGuardFixtureCheck(),
@@ -200,4 +221,27 @@ async function visibleFeedMetadata(page: Page): Promise<readonly string[]> {
     .evaluateAll(nodes =>
       nodes.map(node => node.textContent?.trim() || "").filter(Boolean)
     );
+}
+
+/**
+ * Reads web-research category label and URL state when the option exists.
+ * @param page - Browser page rendering the feed.
+ * @returns Category option label, summary, and URL category param.
+ */
+async function visibleFeedCategoryCopy(page: Page): Promise<{
+  readonly optionLabel: string | null;
+  readonly summary: string | null;
+  readonly urlCategory: string | null;
+}> {
+  const option = page.locator(
+    'form.feed-filters select[name="category"] option[value="public_web_research"]'
+  );
+  if ((await option.count()) === 0) {
+    return { optionLabel: null, summary: null, urlCategory: null };
+  }
+  return {
+    optionLabel: (await option.textContent())?.trim() || "",
+    summary: await page.locator(".feed-filter-summary").textContent(),
+    urlCategory: new URL(page.url()).searchParams.get("category"),
+  };
 }
