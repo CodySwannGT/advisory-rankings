@@ -339,6 +339,7 @@ export async function verifyCrdBadgeRenders(page: Page): Promise<Check> {
   const href = await firstRow.evaluate(
     row =>
       row.getAttribute("href") ||
+      row.closest("a")?.getAttribute("href") ||
       row.querySelector("a")?.getAttribute("href") ||
       ""
   );
