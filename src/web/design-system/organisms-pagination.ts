@@ -1,30 +1,130 @@
-// @ts-nocheck
 import { el } from "./dom.js";
 import { EmptyText, Button } from "./atoms.js";
 
 /**
- * Cursor-paginated list with automatic viewport loading and a button fallback.
- * @param root0 - Pagination callbacks and empty-state copy.
- * @param root0.fetchPage - Function that returns `{ items, nextCursor, total? }`.
- * @param root0.renderRow - Renderer for each returned item.
- * @param root0.empty - Text shown when the first page is empty.
- * @param root0.onTotal - Optional callback for first-page total counts.
- * @returns A single DOM node ready to place inside a section body.
+ * Shape returned by {@link PaginatedOptions.fetchPage}. `items` holds the
+ * rows the caller wants rendered on this page, `nextCursor` is the cursor
+ * used to request the next page (null when paging is complete), and
+ * `total` is an optional row count reported for the first page only.
  */
-export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
-  const view = createPaginationView();
-  const state = new Map([
+export interface PaginatedPage<TItem> {
+  readonly items: readonly TItem[];
+  readonly nextCursor?: string | null;
+  readonly total?: number;
+}
+
+/**
+ * Options accepted by {@link Paginated}.
+ */
+export interface PaginatedOptions<TItem> {
+  readonly fetchPage: (
+    cursor: string | null
+  ) => Promise<PaginatedPage<TItem>> | PaginatedPage<TItem>;
+  readonly renderRow: (item: TItem) => Node;
+  readonly empty?: string | null;
+  readonly onTotal?: (total: number) => void;
+}
+
+/**
+ * Mutable DOM nodes owned by a single pagination instance.
+ */
+interface PaginationView {
+  readonly list: HTMLElement;
+  readonly status: HTMLElement;
+  readonly loadMoreBtn: HTMLElement;
+  readonly sentinel: HTMLElement;
+  readonly wrap: HTMLElement;
+}
+
+/**
+ * Mutable pagination state. The fields evolve between page requests so
+ * the values are kept in a small class — `functional/immutable-data`
+ * permits field mutation inside class methods, which preserves the
+ * project's immutability discipline at every other call site while
+ * giving each field a strict static type (the previous `@ts-nocheck`
+ * version used an untyped `Map<string, unknown>`).
+ */
+/**
+ * Field type schema for the pagination state. Used as a phantom-typed
+ * lookup table so the class methods stay strongly typed even though
+ * values are stored in a single `Map`.
+ */
+interface PaginationFields {
+  readonly cursor: string | null;
+  readonly loading: boolean;
+  readonly done: boolean;
+  readonly firstPage: boolean;
+}
+
+/**
+ * Strongly-typed container for the per-instance pagination state. The
+ * predecessor `@ts-nocheck` implementation used a `Map<string, unknown>`
+ * destructured ad-hoc at each call site; this class keeps the same
+ * Map-backed storage (so `functional/immutable-data` / `prefer-readonly`
+ * are satisfied) but routes every read and write through typed methods.
+ */
+class PaginationState {
+  /**
+   * Internal field store. The Map ref is readonly so
+   * `functional/prefer-readonly-type` is satisfied; method-scoped
+   * mutations of the map are allowed by `functional/immutable-data`'s
+   * `ignoreClasses: true` configuration.
+   */
+  readonly #fields = new Map<
+    keyof PaginationFields,
+    PaginationFields[keyof PaginationFields]
+  >([
     ["cursor", null],
     ["loading", false],
     ["done", false],
     ["firstPage", true],
   ]);
-  const loadNext = () =>
+
+  /**
+   * Reads a typed field from the store.
+   * @param key - Field name.
+   * @returns Current value, typed by field.
+   */
+  get<K extends keyof PaginationFields>(key: K): PaginationFields[K] {
+    return this.#fields.get(key) as PaginationFields[K];
+  }
+
+  /**
+   * Writes a typed field to the store.
+   * @param key - Field name.
+   * @param value - New value, typed by field.
+   */
+  set<K extends keyof PaginationFields>(
+    key: K,
+    value: PaginationFields[K]
+  ): void {
+    this.#fields.set(key, value);
+  }
+}
+
+/**
+ * Cursor-paginated list with automatic viewport loading and a button fallback.
+ * @param options - Pagination callbacks and empty-state copy.
+ * @param options.fetchPage - Function that returns `{ items, nextCursor, total? }`.
+ * @param options.renderRow - Renderer for each returned item.
+ * @param options.empty - Text shown when the first page is empty.
+ * @param options.onTotal - Optional callback for first-page total counts.
+ * @returns A single DOM node ready to place inside a section body.
+ */
+export function Paginated<TItem>(
+  options: PaginatedOptions<TItem>
+): HTMLElement {
+  const { fetchPage, renderRow, empty, onTotal } = options;
+  const view = createPaginationView();
+  const state = new PaginationState();
+  const loadNext = (): Promise<void> =>
     loadNextPage({ view, state, fetchPage, renderRow, empty, onTotal });
 
-  view.loadMoreBtn.addEventListener("click", loadNext);
+  view.loadMoreBtn.addEventListener("click", () => {
+    void loadNext();
+  });
   observeSentinel(view.sentinel, loadNext);
-  loadNext();
+  void loadNext();
   return view.wrap;
 }
 
@@ -32,7 +132,7 @@ export function Paginated({ fetchPage, renderRow, empty, onTotal } = {}) {
  * Creates stable DOM nodes so pagination can update content without rebuilding.
  * @returns Named pagination nodes.
  */
-function createPaginationView() {
+function createPaginationView(): PaginationView {
   const list = el("div", { class: "entity-list" });
   const status = el("div", {
     class: "paginated-status",
@@ -64,39 +164,39 @@ function createPaginationView() {
 }
 
 /**
+ * Runtime dependencies for {@link loadNextPage}.
+ */
+interface LoadNextPageArgs<TItem> {
+  readonly view: PaginationView;
+  readonly state: PaginationState;
+  readonly fetchPage: PaginatedOptions<TItem>["fetchPage"];
+  readonly renderRow: PaginatedOptions<TItem>["renderRow"];
+  readonly empty: PaginatedOptions<TItem>["empty"];
+  readonly onTotal: PaginatedOptions<TItem>["onTotal"];
+}
+
+/**
  * Loads the next cursor page and updates the shared view state.
- * @param root0 - Runtime dependencies for this page request.
- * @param root0.view - DOM nodes owned by the paginated organism.
- * @param root0.state - Mutable map storing cursor and loading flags.
- * @param root0.fetchPage - Page loader supplied by the caller.
- * @param root0.renderRow - Row renderer supplied by the caller.
- * @param root0.empty - First-page empty-state copy.
- * @param root0.onTotal - Optional callback for first-page total counts.
+ * @param args - Runtime dependencies for this page request.
  * @returns A promise that settles after the page has rendered.
  */
-async function loadNextPage({
-  view,
-  state,
-  fetchPage,
-  renderRow,
-  empty,
-  onTotal,
-}) {
+async function loadNextPage<TItem>(
+  args: LoadNextPageArgs<TItem>
+): Promise<void> {
+  const { view, state, fetchPage, renderRow, empty, onTotal } = args;
   if (state.get("loading") || state.get("done")) return;
   state.set("loading", true);
   setLoading(view, state.get("firstPage"));
   try {
     const response = await requestPage(fetchPage, state.get("cursor"));
-    const items = (response && response.items) || [];
+    const items = response.items ?? [];
     if (state.get("firstPage"))
       handleFirstPage({ view, state, items, empty, onTotal, response });
     if (state.get("done")) return;
     items.forEach(item => view.list.appendChild(renderRow(item)));
-    finishPage(view, state, response?.nextCursor || null);
+    finishPage(view, state, response.nextCursor ?? null);
   } catch (error) {
-    view.status.replaceChildren(
-      `Couldn't load more: ${error.message || error}`
-    );
+    view.status.replaceChildren(`Couldn't load more: ${describeError(error)}`);
   } finally {
     state.set("loading", false);
     if (!state.get("done")) setReady(view);
@@ -109,27 +209,37 @@ async function loadNextPage({
  * @param cursor - Cursor for the next page, or null for the first page.
  * @returns Page response from the caller.
  */
-function requestPage(fetchPage, cursor) {
+function requestPage<TItem>(
+  fetchPage: PaginatedOptions<TItem>["fetchPage"],
+  cursor: string | null
+): Promise<PaginatedPage<TItem>> {
   return withTimeout(
-    fetchPage(cursor),
+    Promise.resolve(fetchPage(cursor)),
     12000,
     "This section is taking too long to load. Try again."
   );
 }
 
 /**
- * Handles first-page total reporting and empty-state rendering.
- * @param root0 - First-page context.
- * @param root0.view - Pagination DOM nodes.
- * @param root0.state - Pagination state map.
- * @param root0.items - Items returned by the first request.
- * @param root0.empty - Empty-state copy supplied by the caller.
- * @param root0.onTotal - Optional total-count callback.
- * @param root0.response - Raw page response from the caller.
+ * Arguments for {@link handleFirstPage}.
  */
-function handleFirstPage({ view, state, items, empty, onTotal, response }) {
+interface HandleFirstPageArgs<TItem> {
+  readonly view: PaginationView;
+  readonly state: PaginationState;
+  readonly items: readonly TItem[];
+  readonly empty: PaginatedOptions<TItem>["empty"];
+  readonly onTotal: PaginatedOptions<TItem>["onTotal"];
+  readonly response: PaginatedPage<TItem>;
+}
+
+/**
+ * Handles first-page total reporting and empty-state rendering.
+ * @param args - First-page context.
+ */
+function handleFirstPage<TItem>(args: HandleFirstPageArgs<TItem>): void {
+  const { view, state, items, empty, onTotal, response } = args;
   state.set("firstPage", false);
-  if (typeof onTotal === "function" && typeof response?.total === "number") {
+  if (typeof onTotal === "function" && typeof response.total === "number") {
     onTotal(response.total);
   }
   if (!items.length) {
@@ -143,20 +253,31 @@ function handleFirstPage({ view, state, items, empty, onTotal, response }) {
 /**
  * Stores the next cursor and removes controls when pagination is complete.
  * @param view - Pagination DOM nodes.
- * @param state - Pagination state map.
+ * @param state - Pagination state.
  * @param nextCursor - Cursor returned by the backend, or null at the end.
  */
-function finishPage(view, state, nextCursor) {
+function finishPage(
+  view: PaginationView,
+  state: PaginationState,
+  nextCursor: string | null
+): void {
   state.set("cursor", nextCursor);
-  nextCursor ? view.status.replaceChildren() : completePagination(view, state);
+  if (nextCursor) {
+    view.status.replaceChildren();
+  } else {
+    completePagination(view, state);
+  }
 }
 
 /**
  * Removes load controls once there are no more pages.
  * @param view - Pagination DOM nodes.
- * @param state - Pagination state map.
+ * @param state - Pagination state.
  */
-function completePagination(view, state) {
+function completePagination(
+  view: PaginationView,
+  state: PaginationState
+): void {
   state.set("done", true);
   view.sentinel.remove();
   view.loadMoreBtn.remove();
@@ -168,7 +289,7 @@ function completePagination(view, state) {
  * @param view - Pagination DOM nodes.
  * @param firstPage - Whether this is the initial request.
  */
-function setLoading(view, firstPage) {
+function setLoading(view: PaginationView, firstPage: boolean): void {
   view.loadMoreBtn.toggleAttribute("disabled", true);
   view.loadMoreBtn.replaceChildren(firstPage ? "Loading…" : "Loading more…");
   view.status.replaceChildren("Loading…");
@@ -178,7 +299,7 @@ function setLoading(view, firstPage) {
  * Restores the manual load button after a recoverable request.
  * @param view - Pagination DOM nodes.
  */
-function setReady(view) {
+function setReady(view: PaginationView): void {
   view.loadMoreBtn.toggleAttribute("disabled", false);
   view.loadMoreBtn.replaceChildren("Load more");
 }
@@ -188,11 +309,18 @@ function setReady(view) {
  * @param sentinel - Element placed after the list.
  * @param loadNext - Function that requests the next page.
  */
-function observeSentinel(sentinel, loadNext) {
+function observeSentinel(
+  sentinel: HTMLElement,
+  loadNext: () => Promise<void>
+): void {
   if (!("IntersectionObserver" in window)) return;
   const observer = new IntersectionObserver(
     entries => {
-      entries.filter(entry => entry.isIntersecting).forEach(loadNext);
+      entries
+        .filter(entry => entry.isIntersecting)
+        .forEach(() => {
+          void loadNext();
+        });
     },
     { rootMargin: "600px" }
   );
@@ -206,18 +334,41 @@ function observeSentinel(sentinel, loadNext) {
  * @param message - Error message used when the timeout wins.
  * @returns The original promise value when it resolves in time.
  */
-function withTimeout(promise, ms, message) {
-  return new Promise((resolve, reject) => {
+function withTimeout<TValue>(
+  promise: Promise<TValue>,
+  ms: number,
+  message: string
+): Promise<TValue> {
+  return new Promise<TValue>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(message)), ms);
-    Promise.resolve(promise).then(
+    promise.then(
       value => {
         clearTimeout(timer);
         resolve(value);
       },
-      error => {
+      (error: unknown) => {
         clearTimeout(timer);
-        reject(error);
+        reject(
+          error instanceof Error ? error : new Error(describeError(error))
+        );
       }
     );
   });
+}
+
+/**
+ * Produces a human-readable description of an unknown caught value so the
+ * inline status row never renders `[object Object]`.
+ * @param error - Value caught from a rejected promise.
+ * @returns Best-effort message string.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error == null) return "Unknown error";
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }

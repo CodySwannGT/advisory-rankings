@@ -15,7 +15,7 @@ const GENERIC_IMAGE_PATTERNS = [
 /**
  * A candidate image discovered on a public page.
  */
-interface MediaCandidate {
+export interface MediaCandidate {
   readonly url: string;
   readonly sourceUrl: string;
   readonly score: number;
