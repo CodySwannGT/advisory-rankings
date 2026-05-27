@@ -238,15 +238,15 @@ export interface SearchCounts {
 }
 
 /**
- * Search hit shape. `kind` is one of the three public entity kinds plus
- * `article` for cross-content matches; keep extra fields permissive so
+ * Search hit shape. `kind` is one of the three public entity kinds the
+ * `/Search` backend currently returns; keep extra fields permissive so
  * future score/snippet additions don't break callers.
  */
 export interface SearchItem {
-  readonly kind: "firm" | "advisor" | "team" | "article" | string;
+  readonly kind: "firm" | "advisor" | "team";
   readonly id: string;
-  readonly name?: string;
-  readonly sub?: string;
+  readonly name: string;
+  readonly sub?: string | null;
   readonly score?: number;
   readonly [key: string]: unknown;
 }

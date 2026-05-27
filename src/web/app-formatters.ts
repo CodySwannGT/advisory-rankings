@@ -235,11 +235,10 @@ const PUBLISHER_BY_HOST: Readonly<Record<string, PublisherAttribution>> = {
 
 /**
  * Article shape consumed by {@link articleSource}. Only the `url` field
- * is required; the helper tolerates anything else.
+ * is read; the helper tolerates additional fields on the input object.
  */
 export interface ArticleSourceInput {
   readonly url?: string | null;
-  readonly [key: string]: unknown;
 }
 
 /** Display attribution for an article in the feed. */
