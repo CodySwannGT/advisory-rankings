@@ -15,6 +15,7 @@ import {
   shot,
   smokeGoto,
   smokeWaitForSelector,
+  verifyCrdBadgeRenders,
   type Check,
 } from "./web_smoke_support.js";
 import { firmDueDiligenceChecks } from "./web_smoke_firm_due_diligence.js";
@@ -209,7 +210,7 @@ export async function smokeAdvisor(
   await navigateToCairnesAdvisor(page, pastBlock);
   await shot(page, "03-advisor-cairnes");
 
-  return [
+  const cairnesChecks = [
     check(
       cleanProfilePath("advisors", page.url()),
       "advisor URL: clean /advisors/... path",
@@ -245,14 +246,6 @@ export async function smokeAdvisor(
       "advisor.html: career status flagged"
     ),
     check(
-      isLocalDev ||
-        (await page
-          .locator(".profile-head .tag")
-          .filter({ hasText: /CRD/i })
-          .count()) >= 1,
-      "advisor.html: FINRA CRD badge present"
-    ),
-    check(
       isLocalDev || (await page.locator(".ab-source-attr").count()) >= 1,
       "advisor.html: BrokerCheck attribution footer present"
     ),
@@ -277,6 +270,10 @@ export async function smokeAdvisor(
     ...(await advisorEvidenceChecks(page)),
     ...(await advisorCopyGuardrailChecks(page)),
   ];
+  // CRD badge: verify on an advisor that actually has one (derived from live
+  // data). Cairnes's deployed record has no finraCrd, so asserting it on
+  // Cairnes specifically was brittle; the badge rendering is what we prove.
+  return [...cairnesChecks, await verifyCrdBadgeRenders(page)];
 }
 
 /**

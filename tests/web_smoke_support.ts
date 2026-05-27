@@ -236,6 +236,38 @@ export async function newContext(
 }
 
 /**
+ * Asserts a FINRA CRD badge renders for an advisor that actually has one,
+ * picked from the live directory (`hasCrd=true`) rather than a fixed fixture
+ * whose deployed record may lack a finraCrd.
+ * @param page - Browser page used for the scenario.
+ * @returns A single CRD-badge presence check.
+ */
+export async function verifyCrdBadgeRenders(page: Page): Promise<Check> {
+  const label = "advisor.html: FINRA CRD badge present";
+  if (isLocalDev) return pass(label);
+  await smokeGoto(page, `${BASE}/advisors?hasCrd=true`);
+  const firstRow = page.locator(".center .entity-list .row").first();
+  await firstRow.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const href = await firstRow.evaluate(
+    row =>
+      row.getAttribute("href") ||
+      row.querySelector("a")?.getAttribute("href") ||
+      ""
+  );
+  if (!href) return check(false, label, "no CRD advisor row found");
+  await smokeGoto(page, `${BASE}${href}`);
+  await page
+    .locator(PROFILE_HEADING_SELECTOR)
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const crdBadges = await page
+    .locator(".profile-head .tag")
+    .filter({ hasText: /CRD/i })
+    .count();
+  return check(crdBadges >= 1, label, `derived advisor ${href}`);
+}
+
+/**
  * Closes a temporary context after its checks have been calculated.
  * @param context - Browser context to close.
  * @param checks - Scenario assertions to return to the caller.
