@@ -1,4 +1,10 @@
-// @ts-nocheck
+import type {
+  AdvisorRow,
+  EmploymentHistoryRow,
+  FirmRow,
+  TeamRow,
+} from "../types/harper-schema.js";
+import type { SearchCounts, SearchMatch } from "./resource-directory-types.js";
 import { cmpDesc } from "./resource-pagination.js";
 import { advisorDisplayName } from "./resource-routing.js";
 
@@ -8,7 +14,7 @@ import { advisorDisplayName } from "./resource-routing.js";
  * @param query - Lowercased user search query.
  * @returns Match strength used for sorting search results.
  */
-function scoreName(name, query) {
+function scoreName(name: string | null | undefined, query: string): number {
   if (!name) return 0;
   const normalized = String(name).toLowerCase();
   if (normalized === query) return 3;
@@ -24,14 +30,16 @@ function scoreName(name, query) {
  * @param employments - Employment rows loaded from Harper.
  * @returns Map keyed by advisor ID.
  */
-export function currentEmploymentByAdvisor(employments) {
+export function currentEmploymentByAdvisor(
+  employments: ReadonlyArray<EmploymentHistoryRow>
+): ReadonlyMap<string, EmploymentHistoryRow> {
   return employments.reduce((current, employment) => {
     if (employment.endDate) return current;
     const existing = current.get(employment.advisorId);
     if (existing && cmpDesc("startDate")(employment, existing) >= 0)
       return current;
     return new Map(current).set(employment.advisorId, employment);
-  }, new Map());
+  }, new Map<string, EmploymentHistoryRow>());
 }
 
 /**
@@ -40,7 +48,10 @@ export function currentEmploymentByAdvisor(employments) {
  * @param query - Lowercased user search query.
  * @returns Firm matches with search metadata.
  */
-export function firmSearchMatches(firms, query) {
+export function firmSearchMatches(
+  firms: ReadonlyArray<FirmRow>,
+  query: string
+): ReadonlyArray<SearchMatch> {
   return firms
     .map(firm => ({
       firm,
@@ -72,11 +83,11 @@ export function firmSearchMatches(firms, query) {
  * @returns Advisor matches with search metadata.
  */
 export function advisorSearchMatches(
-  advisors,
-  byFirm,
-  currentFirmByAdvisor,
-  query
-) {
+  advisors: ReadonlyArray<AdvisorRow>,
+  byFirm: ReadonlyMap<string, FirmRow>,
+  currentFirmByAdvisor: ReadonlyMap<string, EmploymentHistoryRow>,
+  query: string
+): ReadonlyArray<SearchMatch> {
   return advisors
     .map(advisor => ({
       advisor,
@@ -115,7 +126,11 @@ export function advisorSearchMatches(
  * @param query - Lowercased user search query.
  * @returns Team matches with search metadata.
  */
-export function teamSearchMatches(teams, byFirm, query) {
+export function teamSearchMatches(
+  teams: ReadonlyArray<TeamRow>,
+  byFirm: ReadonlyMap<string, FirmRow>,
+  query: string
+): ReadonlyArray<SearchMatch> {
   return teams
     .map(team => ({ team, score: scoreName(team.name, query) }))
     .filter(({ score }) => score)
@@ -137,7 +152,9 @@ export function teamSearchMatches(teams, byFirm, query) {
  * @param matches - Combined ranked search matches.
  * @returns Count object consumed by the navbar dropdown.
  */
-export function searchCounts(matches) {
+export function searchCounts(
+  matches: ReadonlyArray<SearchMatch>
+): SearchCounts {
   return {
     firms: matches.filter(match => match.kind === "firm").length,
     advisors: matches.filter(match => match.kind === "advisor").length,
