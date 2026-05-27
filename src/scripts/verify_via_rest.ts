@@ -74,6 +74,7 @@ const tables = [
   "ArticleTransitionEventMention",
   "ArticleDisclosureMention",
   "FieldAssertion",
+  "AdvisorResearchCheck",
   "User",
   "UserRating",
   "UserList",

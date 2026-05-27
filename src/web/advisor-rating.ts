@@ -1,5 +1,6 @@
-// @ts-nocheck
-/* eslint-disable jsdoc/require-jsdoc -- This module owns form DOM wiring for the advisor rating card. */
+// Advisor private rating card.
+// All UI comes from the design system — see docs/design-system.md.
+
 import { api, postJson, refreshMe, isAuthFailure } from "./app.js";
 import {
   el,
@@ -9,7 +10,78 @@ import {
   TextInput,
 } from "./design-system/index.js";
 
-export function privateRatingCard(advisorId) {
+/** Numeric private-rating field names backing the form. */
+type RatingFieldName =
+  | "ratingInt"
+  | "responsiveness"
+  | "transparency"
+  | "performance"
+  | "planningDepth";
+
+/** Numeric form inputs keyed by rating field name. */
+type RatingNumberControls = Readonly<Record<RatingFieldName, HTMLInputElement>>;
+
+/** Full set of controls passed to the submit handler. */
+type RatingControls = RatingNumberControls &
+  Readonly<Record<"reviewText", HTMLTextAreaElement>>;
+
+/** Sanitized rating row returned by `/AdvisorRating/<id>`. */
+interface PrivateRating {
+  readonly ratingInt?: number | null;
+  readonly responsiveness?: number | null;
+  readonly transparency?: number | null;
+  readonly performance?: number | null;
+  readonly planningDepth?: number | null;
+  readonly reviewText?: string | null;
+}
+
+/** Auth-aware private rating envelope returned by `/AdvisorRating/<id>`. */
+interface RatingEnvelope {
+  readonly authenticated?: boolean;
+  readonly rating?: PrivateRating | null;
+}
+
+/**
+ * Runtime narrowing helper for the `<input>` elements produced by
+ * `TextInput()`. The design-system factory declares its return type as
+ * `HTMLElement` so callers can use it polymorphically; this card needs
+ * the concrete `HTMLInputElement` shape to read `.value` and `.name`
+ * inside the submit handler. `instanceof` is a runtime check, not a
+ * cast — the type narrows because TypeScript sees the guard.
+ *
+ * @param node - Element produced by `TextInput()`.
+ * @returns The same node, statically typed as `HTMLInputElement`.
+ * @throws If `TextInput()` ever returns a non-input element.
+ */
+function asHtmlInputElement(node: HTMLElement): HTMLInputElement {
+  if (!(node instanceof HTMLInputElement)) {
+    throw new Error("Expected HTMLInputElement from TextInput factory");
+  }
+  return node;
+}
+
+/**
+ * Runtime narrowing helper for the `<textarea>` element produced by
+ * `el("textarea", ...)`. Same pattern as {@link asHtmlInputElement} —
+ * `instanceof` is a runtime guard, not a cast.
+ *
+ * @param node - Element produced by `el("textarea", ...)`.
+ * @returns The same node, statically typed as `HTMLTextAreaElement`.
+ * @throws If the factory ever returns a non-textarea element.
+ */
+function asHtmlTextAreaElement(node: HTMLElement): HTMLTextAreaElement {
+  if (!(node instanceof HTMLTextAreaElement)) {
+    throw new Error('Expected HTMLTextAreaElement from el("textarea", ...)');
+  }
+  return node;
+}
+
+/**
+ * Builds the private-rating card and kicks off the async load.
+ * @param advisorId - Advisor whose private rating is being managed.
+ * @returns Section card element ready to mount on the advisor page.
+ */
+export function privateRatingCard(advisorId: string): HTMLElement {
   const body = el(
     "div",
     { class: "private-rating", "aria-live": "polite" },
@@ -20,25 +92,39 @@ export function privateRatingCard(advisorId) {
     attrs: { class: "private-rating-card" },
     body,
   });
-  loadPrivateRating(advisorId, body);
+  void loadPrivateRating(advisorId, body);
   return card;
 }
 
-async function loadPrivateRating(advisorId, body) {
+/**
+ * Loads the current user's private rating and swaps in the right view.
+ * @param advisorId - Advisor whose private rating is being managed.
+ * @param body - Card body element to render into.
+ */
+async function loadPrivateRating(
+  advisorId: string,
+  body: HTMLElement
+): Promise<void> {
   try {
     const me = await refreshMe();
     if (!me?.authenticated) {
       renderSignedOutRating(body);
       return;
     }
-    const state = await api(`/AdvisorRating/${encodeURIComponent(advisorId)}`);
-    renderRatingForm(body, advisorId, state.rating || {});
+    const state = await api<RatingEnvelope>(
+      `/AdvisorRating/${encodeURIComponent(advisorId)}`
+    );
+    renderRatingForm(body, advisorId, state?.rating ?? {});
   } catch (error) {
     renderRatingError(body, error);
   }
 }
 
-function renderSignedOutRating(body) {
+/**
+ * Renders the signed-out call-to-action inside the rating card.
+ * @param body - Card body element to render into.
+ */
+function renderSignedOutRating(body: HTMLElement): void {
   clear(body);
   body.append(
     el(
@@ -57,7 +143,12 @@ function renderSignedOutRating(body) {
   );
 }
 
-function renderRatingError(body, error) {
+/**
+ * Renders an inline error state when the rating request fails.
+ * @param body - Card body element to render into.
+ * @param error - Error thrown by the rating request.
+ */
+function renderRatingError(body: HTMLElement, error: unknown): void {
   clear(body);
   body.appendChild(
     el(
@@ -70,31 +161,40 @@ function renderRatingError(body, error) {
   );
 }
 
-function renderRatingForm(body, advisorId, rating) {
+/**
+ * Renders the editable rating form, wiring submit to {@link saveRating}.
+ * @param body - Card body element to render into.
+ * @param advisorId - Advisor whose private rating is being managed.
+ * @param rating - Existing private rating values to seed the form.
+ */
+function renderRatingForm(
+  body: HTMLElement,
+  advisorId: string,
+  rating: PrivateRating
+): void {
   const status = el("p", { class: "private-rating-status" });
-  const controls = ratingControls(rating);
-  const review = el(
-    "textarea",
-    { name: "reviewText", maxlength: "1000", rows: "4" },
-    rating.reviewText || ""
+  const numberControls = ratingControls(rating);
+  const review = asHtmlTextAreaElement(
+    el(
+      "textarea",
+      { name: "reviewText", maxlength: "1000", rows: "4" },
+      rating.reviewText ?? ""
+    )
   );
+  const controls: RatingControls = { ...numberControls, reviewText: review };
   const form = el(
     "form",
     {
       class: "private-rating-form",
-      onSubmit: event =>
-        saveRating(
-          event,
-          advisorId,
-          { ...controls, reviewText: review },
-          status
-        ),
+      onSubmit: (event: Event): void => {
+        void saveRating(event, advisorId, controls, status);
+      },
     },
-    ratingField("Overall", controls.ratingInt),
-    ratingField("Responsiveness", controls.responsiveness),
-    ratingField("Transparency", controls.transparency),
-    ratingField("Performance", controls.performance),
-    ratingField("Planning depth", controls.planningDepth),
+    ratingField("Overall", numberControls.ratingInt),
+    ratingField("Responsiveness", numberControls.responsiveness),
+    ratingField("Transparency", numberControls.transparency),
+    ratingField("Performance", numberControls.performance),
+    ratingField("Planning depth", numberControls.planningDepth),
     el(
       "label",
       { class: "private-rating-field private-rating-field--wide" },
@@ -113,29 +213,48 @@ function renderRatingForm(body, advisorId, rating) {
   body.appendChild(form);
 }
 
-function ratingControls(rating) {
-  return Object.fromEntries(
-    [
-      "ratingInt",
-      "responsiveness",
-      "transparency",
-      "performance",
-      "planningDepth",
-    ].map(name => [
-      name,
+/**
+ * Creates the five numeric rating inputs seeded from the loaded rating.
+ * @param rating - Existing private rating values to seed the inputs.
+ * @returns Object keyed by rating field with the matching input element.
+ */
+function ratingControls(rating: PrivateRating): RatingNumberControls {
+  const makeInput = (name: RatingFieldName): HTMLInputElement =>
+    asHtmlInputElement(
       TextInput({
         name,
         type: "number",
         min: "1",
         max: "5",
         inputmode: "numeric",
-        value: rating[name] ?? "",
-      }),
-    ])
-  );
+        value: ratingValueAttr(rating[name]),
+      })
+    );
+  return {
+    ratingInt: makeInput("ratingInt"),
+    responsiveness: makeInput("responsiveness"),
+    transparency: makeInput("transparency"),
+    performance: makeInput("performance"),
+    planningDepth: makeInput("planningDepth"),
+  };
 }
 
-function ratingField(label, input) {
+/**
+ * Coerces a stored rating field to the string value expected by the input.
+ * @param value - Stored numeric rating (or null/undefined for unset).
+ * @returns String value safe to assign to a numeric input attribute.
+ */
+function ratingValueAttr(value: number | null | undefined): string {
+  return value == null ? "" : String(value);
+}
+
+/**
+ * Wraps a labeled rating input with the 1-5 helper hint.
+ * @param label - Human-readable field label.
+ * @param input - Numeric input element produced by {@link ratingControls}.
+ * @returns Label element wrapping the input.
+ */
+function ratingField(label: string, input: HTMLInputElement): HTMLElement {
   return el(
     "label",
     { class: "private-rating-field" },
@@ -145,7 +264,19 @@ function ratingField(label, input) {
   );
 }
 
-async function saveRating(event, advisorId, controls, status) {
+/**
+ * Persists the rating form and reflects success or failure in the status node.
+ * @param event - Form submit event from the rating form.
+ * @param advisorId - Advisor whose private rating is being managed.
+ * @param controls - Form controls collected by {@link renderRatingForm}.
+ * @param status - Inline status node updated with the result.
+ */
+async function saveRating(
+  event: Event,
+  advisorId: string,
+  controls: RatingControls,
+  status: HTMLElement
+): Promise<void> {
   event.preventDefault();
   status.replaceChildren("Saving...");
   try {
@@ -166,4 +297,3 @@ async function saveRating(event, advisorId, controls, status) {
     );
   }
 }
-/* eslint-enable jsdoc/require-jsdoc -- This module owns form DOM wiring for the advisor rating card. */

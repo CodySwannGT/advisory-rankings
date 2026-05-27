@@ -8,6 +8,7 @@
 
 import { el } from "./dom.js";
 import { Tag } from "./atoms.js";
+import { feedCategoryLabel } from "../feed-category-labels.js";
 import { articlePath, entityPath } from "../urls.js";
 import type { SanctionRow } from "../../types/harper-schema.js";
 import type {
@@ -189,7 +190,7 @@ function sanctionBits(
   fmtMoney: FmtMoney | undefined
 ): Readonly<Record<string, unknown>> {
   const fmt = fmtMoney ?? defaultFmtMoney;
-  const bits: ReadonlyArray<string | null> = [
+  const bits: ReadonlyArray<string | null | undefined> = [
     humanize(sanction.sanctionType),
     sanction.amount != null && fmtMoney ? fmt(sanction.amount) : null,
     sanction.durationMonths != null ? `${sanction.durationMonths}mo` : null,
@@ -226,7 +227,7 @@ export function FeedPostCard(
       when: fmtDate
         ? fmtDate(a.publishedDate ?? null, { mode: "rel" })
         : (a.publishedDate ?? null),
-      category: a.category,
+      category: feedCategoryLabel(a.category ?? ""),
     }),
     el(
       "h2",

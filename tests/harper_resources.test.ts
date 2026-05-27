@@ -532,6 +532,25 @@ describe("Harper feed and profile builders", () => {
     });
     expect(payload.brokerCheckSnapshot).toMatchObject({ subjectCrd: "12345" });
     expect(payload.articles[0]).toMatchObject({ id: "article-a" });
+    expect(
+      db.fieldAssertions.filter(field => field.targetId === "advisor-a")
+    ).toMatchObject([
+      {
+        id: "field-a",
+        fieldName: "legalName",
+        confidence: "asserted",
+      },
+      {
+        id: "field-b",
+        fieldName: "roleTitle",
+        confidence: "inferred",
+      },
+      {
+        id: "field-c",
+        fieldName: "careerStatus",
+        confidence: "derived",
+      },
+    ]);
     expect(payload.evidenceFreshness).toEqual({
       hasData: true,
       lastCheckedAt: "2026-05-25T12:00:00Z",
@@ -556,6 +575,11 @@ describe("Harper feed and profile builders", () => {
       derived: 1,
       total: 3,
     });
+    expect(
+      payload.confidenceSummary.asserted +
+        payload.confidenceSummary.inferred +
+        payload.confidenceSummary.derived
+    ).toBe(payload.confidenceSummary.total);
 
     const noDataPayload = advisorResource.advisorProfilePayload(
       db,
@@ -585,6 +609,11 @@ describe("Harper feed and profile builders", () => {
       derived: 0,
       total: 0,
     });
+    expect(
+      noDataPayload.confidenceSummary.asserted +
+        noDataPayload.confidenceSummary.inferred +
+        noDataPayload.confidenceSummary.derived
+    ).toBe(noDataPayload.confidenceSummary.total);
   });
 
   it("covers advisor fallback dates and optional credential groups", async () => {
@@ -1532,6 +1561,9 @@ describe("Harper resource endpoints", () => {
     const advisorResult = await callTool("get_advisor_profile", {
       id: "avery-stone",
     });
+    const advisorResourceResult = await new (
+      resources as any
+    ).AdvisorProfile().get(routeTarget("avery-stone"));
     const firmResult = await callTool("get_firm_profile", {
       id: "Example Wealth LLC",
     });
@@ -1574,6 +1606,12 @@ describe("Harper resource endpoints", () => {
       },
       resource: "advisorbook://advisor/advisor-a",
     });
+    expect(advisorResult.evidenceFreshness).toEqual(
+      advisorResourceResult.evidenceFreshness
+    );
+    expect(advisorResult.confidenceSummary).toEqual(
+      advisorResourceResult.confidenceSummary
+    );
     expect(firmResult).toMatchObject({
       firm: { id: "firm-a" },
       resource: "advisorbook://firm/firm-a",

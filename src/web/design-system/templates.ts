@@ -13,6 +13,7 @@ import { el } from "./dom.js";
 import { Heading } from "./atoms.js";
 import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
 import type { BrowseCardOptions } from "./organisms-core-types.js";
+import type { SearchAdapter } from "./organisms-search.js";
 
 /** Typed adapter for the currently untyped navigation organism export. */
 type NavbarAdapter = (options: NavbarOptions) => HTMLElement;
@@ -30,7 +31,7 @@ interface BaseTemplateOptions {
   readonly active?: string;
   readonly refreshMe?: SessionLoader;
   readonly logout?: LogoutHandler;
-  readonly search?: unknown;
+  readonly search?: SearchAdapter;
   readonly pageTitle?: string;
 }
 

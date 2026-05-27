@@ -1,4 +1,3 @@
-// @ts-nocheck
 // AdvisorBook — shared utilities for every page in the web/ UI.
 //
 // This module is the boundary between page scripts and the
@@ -6,10 +5,14 @@
 //
 //   • REST client (api / postJson)
 //   • auth state (refreshMe / logout / getCurrentUser)
-//   • formatting helpers (fmtMoney / fmtPct / fmtDate / initials)
 //   • URL helpers (getQueryParam)
 //   • mountPage()  — convenience that delegates to the
 //     design-system three-column template (kept for back-compat).
+//
+// Display formatters (fmtMoney / fmtPct / fmtDate / humanize / initials /
+// isPlaceholderValue / articleSource / fmts) live in `app-formatters.ts`
+// and are re-exported below so existing imports from `./app.js` keep
+// working unchanged.
 //
 // All UI components live in ./design-system/. New page code should
 // import them from there directly:
@@ -21,10 +24,36 @@
 // default), so all calls are relative.
 
 import { mountThreeColumnPage } from "./design-system/templates.js";
-import { entityPath, articlePath } from "./urls.js";
+import {
+  entityPath,
+  articlePath,
+  type ArticleLike,
+  type EntityLike,
+} from "./urls.js";
+import { fmtDate, articleSource, fmts } from "./app-formatters.js";
 
 // ─── tiny DOM helpers (re-exported for back-compat) ───────────
 export { $, el, clear } from "./design-system/dom.js";
+
+// ─── formatter re-exports (kept for back-compat) ──────────────
+export {
+  fmtMoney,
+  fmtPct,
+  fmtDate,
+  humanize,
+  initials,
+  isPlaceholderValue,
+  articleSource,
+  fmts,
+} from "./app-formatters.js";
+export type {
+  FmtMoneyOptions,
+  FmtDateMode,
+  FmtDateOptions,
+  FmtDateInput,
+  ArticleSourceInput,
+  ArticleSource,
+} from "./app-formatters.js";
 
 // ─── REST client ──────────────────────────────────────────────
 // Same-origin fetches send the Harper session cookie automatically
@@ -32,12 +61,41 @@ export { $, el, clear } from "./design-system/dom.js";
 // Anonymous and authenticated paths share the same call sites.
 
 /**
- * Handles api for this workflow.
- * @param path - Request path or filesystem path.
- * @param init - Fetch options.
- * @returns The computed value.
+ * Fetch options accepted by {@link api}. Mirrors the subset of
+ * `RequestInit` that callers actually use, while keeping `headers` as the
+ * common record-of-strings shape so we can merge a default `Accept`
+ * header without fighting `HeadersInit`'s union.
  */
-export async function api(path, init = {}) {
+export type ApiInit = Readonly<Omit<RequestInit, "headers">> &
+  Readonly<Partial<Record<"headers", Readonly<Record<string, string>>>>>;
+
+/**
+ * JSON-shaped body accepted by {@link postJson}. Restricted to plain
+ * objects so call sites cannot accidentally pass `FormData`/`Blob`/etc.
+ * (which would be silently stringified to `"[object Object]"`).
+ */
+export type JsonBody = Readonly<Record<string, unknown>>;
+
+/**
+ * Performs a same-origin JSON fetch and surfaces non-2xx responses as
+ * thrown {@link Error}s carrying the method, path, status, and the first
+ * 200 chars of the response body for diagnostics.
+ *
+ * The generic `T` lets callers annotate the expected response shape at
+ * the call site (e.g. `api<AdvisorProfile>("/AdvisorProfile/…")`); it
+ * defaults to `unknown` so unannotated calls preserve the original
+ * dynamic behavior without `any`. The function itself does not validate
+ * the response shape — callers remain responsible for runtime narrowing.
+ *
+ * @template T - Caller-supplied response shape. Defaults to `unknown`.
+ * @param path - Same-origin request path.
+ * @param init - Fetch options merged with the default `Accept` header.
+ * @returns Parsed JSON body cast to `T`, or `null` for 204 responses.
+ */
+export async function api<T = unknown>(
+  path: string,
+  init: ApiInit = {}
+): Promise<T> {
   const res = await fetch(path, {
     credentials: "same-origin",
     ...init,
@@ -49,16 +107,17 @@ export async function api(path, init = {}) {
       `${init.method || "GET"} ${path} → ${res.status} ${text.slice(0, 200)}`
     );
   }
-  return res.status === 204 ? null : res.json();
+  if (res.status === 204) return null as T;
+  return (await res.json()) as T;
 }
 
 /**
- * Handles post json for this workflow.
- * @param path - Request path or filesystem path.
- * @param body - body used by this operation.
- * @returns The computed value.
+ * Sends a POST with a JSON body via {@link api}.
+ * @param path - Same-origin request path.
+ * @param body - JSON-encodable request body.
+ * @returns Parsed response body.
  */
-export function postJson(path, body) {
+export function postJson(path: string, body?: JsonBody): Promise<unknown> {
   return api(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -68,34 +127,60 @@ export function postJson(path, body) {
 
 // ─── auth state (shared module singleton) ─────────────────────
 
-const meState = { cache: null, promise: null };
 /**
- * Gets current user for downstream processing.
- * @returns The loaded result.
+ * Shape of the `/Me` envelope. Fields are intentionally loose because the
+ * REST layer adds optional flags (`authUnavailable`, `message`) for the
+ * client-only fallback path and may include additional user fields.
  */
-export function getCurrentUser() {
+export interface MeEnvelope {
+  readonly authenticated?: boolean;
+  readonly authUnavailable?: boolean;
+  readonly message?: string;
+  readonly [key: string]: unknown;
+}
+
+// Module-singleton state for the cached `/Me` envelope and the
+// in-flight load. Held inside a single const-bound holder; the two
+// slots are updated via `Object.assign`, which the project's
+// `functional/immutable-data` rule permits (direct field assignment
+// would not). See refreshMe/logout below.
+const meState: Readonly<
+  Record<"cache", MeEnvelope | null> &
+    Record<"promise", Promise<MeEnvelope> | null>
+> = { cache: null, promise: null };
+
+/**
+ * Returns the cached `/Me` envelope without triggering a network call.
+ * @returns Cached session envelope, or null before the first refresh.
+ */
+export function getCurrentUser(): MeEnvelope | null {
   return meState.cache;
 }
+
 /**
- * Handles refresh me for this workflow.
- * @returns The computed value.
+ * Loads `/Me` (de-duplicating concurrent calls), caches the result, and
+ * returns a recoverable envelope when the request fails.
+ * @returns Authenticated user envelope, or an `authUnavailable` fallback.
  */
-export async function refreshMe() {
+export async function refreshMe(): Promise<MeEnvelope> {
   if (!meState.promise) {
     Object.assign(meState, {
       promise: api("/Me")
-        .catch(error => ({
-          authenticated: false,
-          authUnavailable: true,
-          message: sessionFallbackMessage(error),
-        }))
-        .then(m => {
-          Object.assign(meState, { cache: m, promise: null });
-          return m;
+        .catch(
+          (error: unknown): MeEnvelope => ({
+            authenticated: false,
+            authUnavailable: true,
+            message: sessionFallbackMessage(error),
+          })
+        )
+        .then((m: unknown): MeEnvelope => {
+          const envelope = (m ?? { authenticated: false }) as MeEnvelope;
+          Object.assign(meState, { cache: envelope, promise: null });
+          return envelope;
         }),
     });
   }
-  return meState.promise;
+  return meState.promise as Promise<MeEnvelope>;
 }
 
 /**
@@ -103,7 +188,7 @@ export async function refreshMe() {
  * @param error - Failed `/Me` request.
  * @returns Public-facing fallback message.
  */
-function sessionFallbackMessage(error) {
+function sessionFallbackMessage(error: unknown): string {
   return isAuthFailure(error)
     ? "We couldn't confirm your session. Sign in again or continue browsing public pages."
     : "Session status is temporarily unavailable. Public pages remain available.";
@@ -114,32 +199,91 @@ function sessionFallbackMessage(error) {
  * @param error - Error thrown by api().
  * @returns Whether this was an auth or permission failure.
  */
-export function isAuthFailure(error) {
-  return /\b(401|403)\b/.test(String(error?.message || error));
+export function isAuthFailure(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : String(error ?? "");
+  return /\b(401|403)\b/.test(message);
 }
+
 // ─── global search ────────────────────────────────────────────
+// Wraps `/Search?q=…` so the navbar's `GlobalSearch` organism can
+// stay decoupled from the REST layer. Returns the raw envelope:
+//   { q, items: [{ kind, id, name, sub, score }], counts }
+
 /**
- * Searches public entities for the navbar.
- * @param q - Query text.
- * @param kind - Optional entity kind filter.
- * @returns Matching firms, advisors, and teams.
+ * Result envelope returned by {@link search}. The REST layer hands back
+ * the same shape it receives from Harper, so the typing mirrors the
+ * documented envelope without locking down `items` past what the navbar
+ * organism consumes.
  */
-export async function search(q, kind = "all") {
-  const norm = String(q || "").trim();
-  if (norm.length < 2)
-    // prettier-ignore
-    return { q: norm, counts: { firms: 0, advisors: 0, teams: 0, total: 0 }, items: [] };
-  const kindParam = ["advisor", "firm", "team"].includes(kind)
-    ? `&kind=${encodeURIComponent(kind)}`
-    : "";
-  return api(`/Search?q=${encodeURIComponent(norm)}${kindParam}`);
+export interface SearchEnvelope {
+  readonly q: string;
+  readonly items: readonly SearchItem[];
+  readonly counts: SearchCounts;
 }
 
 /**
- * Handles logout for this workflow.
- * @returns The computed value.
+ * Counts grouped by entity kind, plus a `total` rollup the navbar uses
+ * to render the result-count badge.
  */
-export async function logout() {
+export interface SearchCounts {
+  readonly firms: number;
+  readonly advisors: number;
+  readonly teams: number;
+  readonly total: number;
+}
+
+/**
+ * Search hit shape. `kind` is one of the three public entity kinds the
+ * `/Search` backend currently returns; keep extra fields permissive so
+ * future score/snippet additions don't break callers.
+ */
+export interface SearchItem {
+  readonly kind: "firm" | "advisor" | "team";
+  readonly id: string;
+  readonly name: string;
+  readonly sub?: string | null;
+  readonly score?: number;
+  readonly [key: string]: unknown;
+}
+
+/**
+ * Searches firms, advisors, and teams via the `/Search` endpoint.
+ * Short-circuits when the query is fewer than two characters so the
+ * navbar doesn't issue chatty single-character requests.
+ * @param q - Raw user-entered search string.
+ * @param kind - Optional entity kind filter ("advisor" | "firm" | "team").
+ * @returns Matching firms, advisors, and teams.
+ */
+export async function search(
+  q: string,
+  kind: string = "all"
+): Promise<SearchEnvelope> {
+  const norm = String(q || "").trim();
+  if (norm.length < 2)
+    return {
+      q: norm,
+      items: [],
+      counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
+    };
+  const kindParam = ["advisor", "firm", "team"].includes(kind)
+    ? `&kind=${encodeURIComponent(kind)}`
+    : "";
+  return (await api(
+    `/Search?q=${encodeURIComponent(norm)}${kindParam}`
+  )) as SearchEnvelope;
+}
+
+/**
+ * Signs the current user out of Harper and navigates to a freshly
+ * rendered home page. Swallows logout failures so the UI still clears
+ * even if the server session is already gone.
+ */
+export async function logout(): Promise<void> {
   try {
     await postJson("/Logout");
   } catch (_error) {
@@ -155,184 +299,12 @@ export async function logout() {
   }
 }
 
-// ─── formatting ───────────────────────────────────────────────
-
 /**
- * Handles fmt money for this workflow.
- * @param n - n used by this operation.
- * @param root0 - value used by this operation.
- * @param root0.compact - compact used by this operation.
- * @returns The computed value.
- */
-export function fmtMoney(n, { compact = true } = {}) {
-  if (n == null) return "—";
-  if (compact) {
-    if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-    if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-    if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
-  }
-  return `$${Math.round(n).toLocaleString()}`;
-}
-
-/**
- * Handles fmt pct for this workflow.
- * @param p - p used by this operation.
- * @returns The computed value.
- */
-export function fmtPct(p) {
-  if (p == null) return "—";
-  return `${(p * 100).toFixed(0)}%`;
-}
-
-/**
- * Handles fmt date for this workflow.
- * @param d - d used by this operation.
- * @param root0 - value used by this operation.
- * @param root0.mode - mode used by this operation.
- * @returns The computed value.
- */
-export function fmtDate(d, { mode = "long" } = {}) {
-  if (!d) return "—";
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return d;
-  if (mode === "short") return shortDate(dt);
-  if (mode === "rel") return relativeDate(dt);
-  return longDate(dt);
-}
-
-/**
- * Formats a compact UTC month/year label.
- * @param date - Valid Date object.
- * @returns Short date label.
- */
-function shortDate(date) {
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
-
-/**
- * Formats a date as a relative age from today.
- * @param date - Valid Date object.
- * @returns Relative date label.
- */
-function relativeDate(date) {
-  const diffMs = new Date() - date;
-  const day = 86400000;
-  if (diffMs < day) return "today";
-  if (diffMs < 2 * day) return "yesterday";
-  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
-  if (diffMs < 30 * day) return `${Math.floor(diffMs / (7 * day))}w ago`;
-  if (diffMs < 365 * day) return `${Math.floor(diffMs / (30 * day))}mo ago`;
-  return `${Math.floor(diffMs / (365 * day))}y ago`;
-}
-
-/**
- * Formats a full UTC date label.
- * @param date - Valid Date object.
- * @returns Long date label.
- */
-function longDate(date) {
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-const PLACEHOLDER_VALUES = new Set([
-  "unknown",
-  "n/a",
-  "na",
-  "none",
-  "null",
-  "undefined",
-]);
-const ACRONYM_LABELS = new Map([
-  ["ria", "RIA"],
-  ["ia", "IA"],
-  ["bd", "BD"],
-  ["finra", "FINRA"],
-  ["sec", "SEC"],
-  ["iard", "IARD"],
-  ["crd", "CRD"],
-  ["advisorhub", "AdvisorHub"],
-  ["usa", "USA"],
-  ["llc", "LLC"],
-  ["lp", "LP"],
-  ["lpl", "LPL"],
-  ["ubs", "UBS"],
-  ["rbc", "RBC"],
-  ["uhnw", "UHNW"],
-  ["jp", "J.P."],
-  ["jpmorgan", "J.P. Morgan"],
-  ["aum", "AUM"],
-]);
-
-/**
- * Checks whether the value is placeholder value.
- * @param value - Raw value to normalize or parse.
- * @returns True when the condition is met.
- */
-export function isPlaceholderValue(value) {
-  return (
-    value == null || PLACEHOLDER_VALUES.has(String(value).trim().toLowerCase())
-  );
-}
-
-// Convert a snake_case / camelCase / PascalCase identifier into
-// a sentence-cased, space-separated label. All-uppercase tokens
-// (FINRA, SEC, LLC, …) and already-spaced strings pass through
-// unchanged so we don't mangle acronyms.
-/**
- * Handles humanize for this workflow.
- * @param s - s used by this operation.
- * @returns The computed value.
- */
-export function humanize(s) {
-  if (s == null) return s;
-  const str = String(s);
-  if (!str) return str;
-  if (isPlaceholderValue(str)) return null;
-  if (str.includes(" ")) return str;
-  if (/[A-Z]/.test(str) && str === str.toUpperCase()) return str;
-  const spaced = str
-    .replace(/_+/g, " ")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-  return spaced
-    .split(" ")
-    .map(
-      word =>
-        ACRONYM_LABELS.get(word) || word.charAt(0).toUpperCase() + word.slice(1)
-    )
-    .join(" ");
-}
-
-/**
- * Handles initials for this workflow.
- * @param name - Display name or option name.
- * @returns The computed value.
- */
-export function initials(name) {
-  if (!name) return "?";
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-/**
- * Gets query param for downstream processing.
- * @param name - Display name or option name.
+ * Reads a single query-string parameter from the current location.
+ * @param name - Query-string parameter name.
  * @returns The query parameter value, or null when absent.
  */
-export function getQueryParam(name) {
+export function getQueryParam(name: string): string | null {
   return new URLSearchParams(location.search).get(name);
 }
 
@@ -344,109 +316,43 @@ export {
   articleIdFromLocation as getArticleIdParam,
 } from "./urls.js";
 
+/** Entity kinds accepted by {@link canonicalizeEntityRoute}. */
+export type CanonicalEntityKind = "firm" | "advisor" | "team";
+
 /**
- * Handles canonicalize entity route for this workflow.
+ * Rewrites the current URL to the canonical slug for an entity profile.
  * @param kind - Entity kind.
  * @param entity - Entity payload used for URL construction.
  */
-export function canonicalizeEntityRoute(kind, entity) {
+export function canonicalizeEntityRoute(
+  kind: CanonicalEntityKind,
+  entity: EntityLike | null | undefined
+): void {
   const path = entityPath(kind, entity);
   replaceWithCanonicalPath(path);
 }
 
 /**
- * Handles canonicalize article route for this workflow.
+ * Rewrites the current URL to the canonical slug for an article.
  * @param article - Article payload used for URL construction.
  */
-export function canonicalizeArticleRoute(article) {
+export function canonicalizeArticleRoute(
+  article: ArticleLike | null | undefined
+): void {
   const path = articlePath(article);
   replaceWithCanonicalPath(path);
 }
 
 /**
- * Handles replace with canonical path for this workflow.
- * @param path - Request path or filesystem path.
- * @returns The computed value.
+ * Replaces the current history entry with a canonical path when one is
+ * available, preserving query strings the route may rely on.
+ * @param path - Canonical browser path.
  */
-function replaceWithCanonicalPath(path) {
+function replaceWithCanonicalPath(path: string): void {
   if (!path || path === "#" || !globalThis.history?.replaceState) return;
   if (location.pathname === path && !location.search) return;
   history.replaceState(null, "", path);
 }
-
-// Map an article URL hostname to the publisher we want to attribute
-// the post to in the UI. Most articles in this DB are AdvisorHub posts;
-// firm-bio articles (Morgan Stanley, Wells Fargo, Edward Jones, …) are
-// minted by the upsert-advisor skill against the firm's public
-// advisor-locator and need a different label + initials.
-const PUBLISHER_BY_HOST = {
-  "www.advisorhub.com": { source: "AdvisorHub", initials: "AH" },
-  "advisorhub.com": { source: "AdvisorHub", initials: "AH" },
-  "advisor.morganstanley.com": { source: "Morgan Stanley", initials: "MS" },
-  "www.morganstanley.com": { source: "Morgan Stanley", initials: "MS" },
-  "fa.wellsfargoadvisors.com": { source: "Wells Fargo", initials: "WF" },
-  "www.wellsfargoadvisors.com": { source: "Wells Fargo", initials: "WF" },
-  "www.edwardjones.com": { source: "Edward Jones", initials: "EJ" },
-  "www.merrilledge.com": { source: "Merrill", initials: "ML" },
-  "www.ml.com": { source: "Merrill", initials: "ML" },
-  "www.ubs.com": { source: "UBS", initials: "UB" },
-  "www.lpl.com": { source: "LPL", initials: "LP" },
-  "www.raymondjames.com": { source: "Raymond James", initials: "RJ" },
-  "www.barrons.com": { source: "Barron's", initials: "BA" },
-  "www.forbes.com": { source: "Forbes", initials: "FB" },
-};
-
-// Returns { source, initials, ctaLabel } for an article. Falls back to
-// the URL hostname (with the leading "www." stripped) when we don't
-// recognise the host. Pure helper — never throws on bad input.
-/**
- * Handles article source for this workflow.
- * @param article - Article payload used for URL construction.
- * @returns Source label, source initials, and outbound CTA label.
- */
-export function articleSource(article) {
-  const url = article && article.url;
-  if (!url)
-    return { source: "External", initials: "?", ctaLabel: "Read original →" };
-  const host = hostnameForUrl(url);
-  const known = PUBLISHER_BY_HOST[host];
-  const source = known
-    ? known.source
-    : (host.replace(/^www\./, "").split(".")[0] || "External").replace(
-        /^\w/,
-        c => c.toUpperCase()
-      );
-  const initialsText = known ? known.initials : initials(source);
-  return {
-    source,
-    initials: initialsText,
-    ctaLabel: `Read original on ${source} →`,
-  };
-}
-
-/**
- * Safely extracts a lowercase hostname from an article URL.
- * @param url - Article URL.
- * @returns Lowercase hostname or an empty string for invalid URLs.
- */
-function hostnameForUrl(url) {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
-}
-
-// Convenience bag of formatters to thread through to organisms
-// (FeedPostCard, TransitionEventCard, …) without rewiring imports.
-export const fmts = {
-  fmtMoney,
-  fmtPct,
-  fmtDate,
-  humanize,
-  isPlaceholderValue,
-  articleSource,
-};
 
 // ─── mountPage — convenience shim around the template ─────────
 //
@@ -455,22 +361,46 @@ export const fmts = {
 // template now exposes `{ left, center, right, layout }`; we pass
 // `layout` to legacy callers but new code should adopt the
 // destructured form via `mountThreeColumnPage` directly.
+
 /**
- * Handles mount page for this workflow.
- * @param root0 - value used by this operation.
- * @param root0.active - active used by this operation.
- * @param root0.pageTitle - page title exposed as the route-level h1.
- * @param root0.build - build used by this operation.
- * @returns The computed value.
+ * Layout slots handed back by {@link mountThreeColumnPage} that
+ * {@link mountPage} forwards to legacy `build(layout)` callers.
  */
-export function mountPage({ active, pageTitle, build }) {
+export interface MountPageLayout {
+  readonly left: HTMLElement;
+  readonly center: HTMLElement;
+  readonly right: HTMLElement;
+  readonly layout: HTMLElement;
+}
+
+/** Options accepted by {@link mountPage}. */
+export interface MountPageOptions {
+  readonly active?: string;
+  readonly pageTitle?: string;
+  readonly build: (layout: HTMLElement) => void;
+}
+
+/**
+ * Back-compat shim that mounts the three-column template and hands the
+ * legacy `build(layout)` callers the grid root (rather than the new
+ * `{ left, center, right }` destructured form).
+ * @param options - Page mount options.
+ * @param options.active - Active route name for navbar highlighting.
+ * @param options.pageTitle - Route-level h1 announced to assistive tech.
+ * @param options.build - Legacy builder that receives the grid root.
+ */
+export function mountPage({
+  active,
+  pageTitle,
+  build,
+}: MountPageOptions): void {
   mountThreeColumnPage({
     active,
     refreshMe,
     logout,
     search,
     pageTitle,
-    build: ({ layout }) => build(layout),
+    build: ({ layout }: MountPageLayout) => build(layout),
   });
 }
 
@@ -504,35 +434,71 @@ import {
 } from "./design-system/organisms.js";
 
 /**
- * Handles section card for this workflow.
- * @param title - title used by this operation.
- * @param body - body used by this operation.
- * @returns The computed value.
+ * Narrow callable type for design-system organisms that still opt out of
+ * TypeScript checking. Mirrors the adapter pattern in
+ * `src/web/detail-state.ts` so each module needs exactly one `as`
+ * boundary against the untyped design-system surface.
  */
-export function sectionCard(title, body) {
-  return _SectionCard({ title, body });
-}
+type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
+
 /**
- * Handles article list block for this workflow.
- * @param articles - articles used by this operation.
- * @returns The computed value.
+ * Single adapter that retypes the four organism re-exports used by the
+ * legacy lower-case wrappers below. Centralising the cast keeps app.ts
+ * to one `as` boundary against the still-untyped design-system surface
+ * (the same pattern `detail-state.ts` uses).
  */
-export function articleListBlock(articles) {
-  return _ArticleListBlock({ articles, fmtDate, articleSource });
-}
+const legacyOrganisms = {
+  SectionCard: _SectionCard,
+  ArticleListBlock: _ArticleListBlock,
+  TransitionEventCard: _TransitionEventCard,
+  DisclosureEventCard: _DisclosureEventCard,
+} as unknown as Readonly<
+  Record<
+    | "SectionCard"
+    | "ArticleListBlock"
+    | "TransitionEventCard"
+    | "DisclosureEventCard",
+    DesignSystemComponent
+  >
+>;
+
 /**
- * Handles transition row for this workflow.
- * @param t - Team row.
- * @returns The computed value.
+ * Legacy lower-case wrapper around the SectionCard organism.
+ * @param title - Card heading text.
+ * @param body - Card body content (DOM node or string).
+ * @returns Section card element.
  */
-export function transitionRow(t) {
-  return _TransitionEventCard(t, fmts);
+export function sectionCard(title: unknown, body: unknown): HTMLElement {
+  return legacyOrganisms.SectionCard({ title, body });
 }
+
 /**
- * Renders a disclosure event with shared app formatters.
+ * Legacy lower-case wrapper around the ArticleListBlock organism.
+ * @param articles - Article rows.
+ * @returns Article list block element.
+ */
+export function articleListBlock(articles: unknown): HTMLElement {
+  return legacyOrganisms.ArticleListBlock({
+    articles,
+    fmtDate,
+    articleSource,
+  });
+}
+
+/**
+ * Legacy lower-case wrapper around the TransitionEventCard organism.
+ * @param t - Transition event row.
+ * @returns Transition event card element.
+ */
+export function transitionRow(t: unknown): HTMLElement {
+  return legacyOrganisms.TransitionEventCard(t, fmts);
+}
+
+/**
+ * Legacy lower-case wrapper around the DisclosureEventCard organism.
  * @param d - Disclosure event payload.
  * @returns Disclosure event card node.
  */
-export function disclosureRow(d) {
-  return _DisclosureEventCard(d, fmts);
+export function disclosureRow(d: unknown): HTMLElement {
+  return legacyOrganisms.DisclosureEventCard(d, fmts);
 }

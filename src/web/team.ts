@@ -79,8 +79,8 @@ mountThreeColumnPage({
       return;
     }
     renderDetailLoading({ center, right, label: "team profile" });
-    api(`/TeamProfile/${encodeURIComponent(id)}`)
-      .then((d: TeamProfilePayloadOrError) => {
+    api<TeamProfilePayloadOrError>(`/TeamProfile/${encodeURIComponent(id)}`)
+      .then(d => {
         clear(center);
         clear(right);
         render(d, center, right);

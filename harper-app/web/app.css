@@ -651,6 +651,13 @@ body.drawer-open .nav .nav-scrim {
   gap: 12px;
   min-width: 0;
 }
+.advisor-evidence-title,
+.firm-dd-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .advisor-evidence-state {
   display: flex;
   align-items: flex-start;
@@ -730,6 +737,7 @@ body.drawer-open .nav .nav-scrim {
 .advisor-evidence-help,
 .firm-dd-help {
   margin: 0;
+  min-width: 0;
 }
 .advisor-evidence-help summary,
 .firm-dd-help summary {
@@ -754,6 +762,8 @@ body.drawer-open .nav .nav-scrim {
   margin: 8px 0 0;
   color: var(--text-muted);
   font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 /* ── Firm due diligence summary ─────────────────────────────── */
@@ -791,11 +801,24 @@ body.drawer-open .nav .nav-scrim {
 }
 .firm-dd-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
-.firm-dd-filter {
+.firm-dd-filter-buttons,
+.firm-dd-filter-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.firm-dd-filter-help {
+  align-items: flex-start;
+}
+.firm-dd-filter.ab-btn,
+.firm-dd-filter.ab-btn--primary {
   min-height: 34px;
+  max-width: 100%;
   width: auto;
   flex: 0 0 auto;
 }
