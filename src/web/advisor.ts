@@ -108,8 +108,8 @@ mountThreeColumnPage({
       clear(center);
       clear(right);
       renderDetailLoading({ center, right, label: "advisor profile" });
-      api(`/AdvisorProfile/${encodeURIComponent(id)}`)
-        .then((d: AdvisorProfilePayload) => {
+      api<AdvisorProfilePayload>(`/AdvisorProfile/${encodeURIComponent(id)}`)
+        .then(d => {
           clear(center);
           clear(right);
           render(d, center, right);
@@ -212,7 +212,7 @@ function advisorTags(advisor: AdvisorRow): readonly ProfileTag[] {
     advisor.careerStatus
       ? {
           kind: careerStatusKind(advisor.careerStatus),
-          label: humanize(advisor.careerStatus),
+          label: humanize(advisor.careerStatus) ?? advisor.careerStatus,
         }
       : null,
     advisor.yearsExperience

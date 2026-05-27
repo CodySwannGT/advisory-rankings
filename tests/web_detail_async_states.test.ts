@@ -435,6 +435,19 @@ describe("detail async states", () => {
       expect(await page.getByText("Source: TransitionEvent").isVisible()).toBe(
         true
       );
+      await page.getByLabel("Source-backed explanation").first().click();
+      expect(
+        await page.getByText("public rows or records that support").isVisible()
+      ).toBe(true);
+      await page.getByLabel("Needs data explanation").first().press("Enter");
+      expect(
+        await page
+          .getByText("not yet have enough public source rows")
+          .isVisible()
+      ).toBe(true);
+      expect(await page.getByText("Source-backed").first().isVisible()).toBe(
+        true
+      );
 
       await page.getByRole("button", { name: "Needs data" }).click();
       expect(
@@ -448,6 +461,34 @@ describe("detail async states", () => {
       expect(await recruitingHeading.isVisible()).toBe(false);
     } finally {
       await page.close();
+    }
+  });
+
+  it("keeps active firm due-diligence filters chip-sized", async () => {
+    const viewports = [
+      { width: 1180, height: 900 },
+      { width: 390, height: 900 },
+    ];
+
+    for (const viewport of viewports) {
+      const page = await browser.newPage({ viewport });
+
+      try {
+        await page.route("**/Me", async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route("**/FirmProfile/firm-1", async route => {
+          await route.fulfill({ json: firmDueDiligenceProfile() });
+        });
+
+        await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        await expectCompactFirmDueDiligenceFilters(page);
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -538,7 +579,15 @@ describe("detail async states", () => {
       expect(
         await desktopEvidence
           .locator(".tag")
-          .filter({ hasText: /^Loaded$/ })
+          .filter({ hasText: /^Current$/ })
+          .isVisible()
+      ).toBe(true);
+      await desktopEvidence
+        .getByLabel("Evidence freshness explanation")
+        .click();
+      expect(
+        await desktopEvidence
+          .getByText("public-source checks last ran")
           .isVisible()
       ).toBe(true);
       expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
@@ -553,8 +602,16 @@ describe("detail async states", () => {
         .first();
       await confidence.waitFor({ timeout: QUICK_TIMEOUT });
       expect(await confidence.getByText("4 total").isVisible()).toBe(true);
-      expect(await confidence.getByText("Asserted").isVisible()).toBe(true);
-      expect(await confidence.getByText("Derived").isVisible()).toBe(true);
+      await confidence.getByLabel("Fact confidence explanation").click();
+      expect(
+        await confidence
+          .getByText("supported by public source rows")
+          .isVisible()
+      ).toBe(true);
+      expect(await confidence.getByText("Direct source").isVisible()).toBe(
+        true
+      );
+      expect(await confidence.getByText("Calculated").isVisible()).toBe(true);
       expect(
         await confidence
           .locator(".advisor-confidence-bar")
@@ -611,8 +668,18 @@ describe("detail async states", () => {
           nodes.map(node => node.textContent?.trim()).filter(Boolean)
         );
       expect(mobileLabels).toEqual(
-        expect.arrayContaining(["Last checked", "Next check", "Asserted"])
+        expect.arrayContaining(["Last checked", "Next check", "Direct source"])
       );
+      await mobileEvidence
+        .getByLabel("Evidence freshness explanation")
+        .first()
+        .press("Enter");
+      expect(
+        await mobileEvidence
+          .getByText("public-source checks last ran")
+          .first()
+          .isVisible()
+      ).toBe(true);
       expect(
         await mobilePage.evaluate(
           () =>
@@ -1116,6 +1183,38 @@ function emptyConfidenceSummary() {
     derived: 0,
     total: 0,
   };
+}
+
+async function expectCompactFirmDueDiligenceFilters(page: Page): Promise<void> {
+  const section = page.locator(".firm-dd-card").first();
+  await section
+    .getByRole("heading", { name: "Firm due diligence" })
+    .waitFor({ timeout: QUICK_TIMEOUT });
+
+  for (const name of ["All", "Source-backed", "Needs data"]) {
+    await section.getByRole("button", { name }).click();
+    const activeMetric = await section
+      .locator(".firm-dd-filter[aria-pressed='true']")
+      .evaluate(button => {
+        const box = button.getBoundingClientRect();
+        const parentBox = button.parentElement?.getBoundingClientRect();
+
+        return {
+          width: Math.round(box.width),
+          parentWidth: Math.round(parentBox?.width || 0),
+        };
+      });
+
+    expect(activeMetric.width).toBeGreaterThan(0);
+    expect(activeMetric.width).toBeLessThan(activeMetric.parentWidth * 0.7);
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth
+      )
+    ).toBe(true);
+  }
 }
 
 /**

@@ -21,6 +21,11 @@ import {
   Avatar,
   AsyncStateNotice,
 } from "./design-system/index.js";
+import type {
+  FeedFilterCardState,
+  FeedFilterState,
+  FeedFilters,
+} from "./feed-filters-types.js";
 
 /** DOM columns supplied to `mountThreeColumnPage` build callbacks. */
 export interface ThreeColumnLayout {
@@ -56,15 +61,10 @@ export type DesignSystemComponent = (
 ) => HTMLElement;
 
 /** Normalized feed filter values shared with `feed-filters.ts`. */
-export interface FeedFilterValues {
-  readonly mode: string;
-  readonly category: string;
-}
+export type FeedFilterValues = FeedFilters;
 
 /** Filter state returned by `readFeedFilters`, adds the active flag. */
-export interface FeedFilterState extends FeedFilterValues {
-  readonly active: boolean;
-}
+export type { FeedFilterState };
 
 /** Single firm/mention-count pair surfaced in the right rail. */
 export interface TrendingFirmRow {
@@ -72,16 +72,14 @@ export interface TrendingFirmRow {
   readonly count: number;
 }
 
-/** Render state passed to the center column. */
-export interface FeedRenderState {
-  readonly categories: readonly string[];
-  readonly count: number;
-  readonly filters: FeedFilterState;
+/** Extra render-state fields added by the home-feed center column. */
+export interface FeedRenderStateExtras {
   readonly hasMore: boolean;
-  readonly total: number;
-  readonly onChange: (next: FeedFilterValues) => void;
   readonly onLoadMore: () => void;
 }
+
+/** Render state passed to the center column. */
+export type FeedRenderState = FeedFilterCardState & FeedRenderStateExtras;
 
 /** Typed adapter for `mountThreeColumnPage`. */
 export const MountThreeColumnPage =

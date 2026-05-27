@@ -305,11 +305,37 @@ function evidencePath(viewportName: string, stateName: string): string {
   return join(SHOTS, `async-${viewportName}-${stateName}.png`);
 }
 
+/** Article stub used in the minimal feed payload. */
+type FeedArticleStub = {
+  readonly id: string;
+  readonly headline: string;
+  readonly dek: string;
+  readonly category: string;
+  readonly publishedDate: string;
+  readonly modifiedDate: string;
+  readonly authors: readonly string[];
+  readonly url: string;
+};
+
+/** Single feed item used in the minimal feed payload. */
+type FeedItemStub = {
+  readonly article: FeedArticleStub;
+  readonly eventCards: readonly never[];
+  readonly firms: readonly never[];
+  readonly teams: readonly never[];
+  readonly advisors: readonly never[];
+};
+
+/** Return type of `feedWithArticle()`: minimal Feed payload with one article. */
+type FeedWithArticle = {
+  readonly items: readonly FeedItemStub[];
+};
+
 /**
  * Builds a minimal feed payload that exercises the post-card success path.
  * @returns Feed resource payload with one article.
  */
-function feedWithArticle() {
+function feedWithArticle(): FeedWithArticle {
   return {
     items: [
       {
