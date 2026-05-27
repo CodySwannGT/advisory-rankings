@@ -325,7 +325,7 @@
       "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
       "id": "500696fc-861b-545b-9fcf-b768742b4607",
       "level": "branch",
-      "name": "Wells Fargo Advisors – GM Building",
+      "name": "Wells Fargo Advisors \u2013 GM Building",
       "parentBranchId": "acbcd2d4-4328-5092-a7f9-90f5aa8cd0d2",
       "state": "NY"
     }
@@ -591,6 +591,142 @@
       "quotePhrase": "created a limited liability company for the partnership's activities",
       "targetId": "2e79939c-a3f8-5341-8570-899f68af3beb",
       "targetTable": "OutsideBusinessActivity"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "1850000000",
+      "confidence": "inferred",
+      "fieldName": "aum",
+      "id": "6d3dadb1-585c-5427-aa86-66b6a5c31c61",
+      "quotePhrase": "manages roughly $1.85 billion across the practice",
+      "targetId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "targetTable": "Advisor"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "lead-advisor",
+      "confidence": "derived",
+      "fieldName": "teamRole",
+      "id": "52032e60-daf1-555b-8c55-a5a3f655da28",
+      "quotePhrase": "heads the wealth team",
+      "targetId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "targetTable": "Advisor"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "CFP",
+      "confidence": "asserted",
+      "fieldName": "designation",
+      "id": "d970c130-6dea-5495-84c3-909c2232933b",
+      "quotePhrase": "a Certified Financial Planner",
+      "targetId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "targetTable": "Advisor"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "UBS Financial Services",
+      "confidence": "inferred",
+      "fieldName": "currentFirm",
+      "id": "4c3f939b-abb3-53ab-b481-aba6c7889f3e",
+      "quotePhrase": "now at UBS",
+      "targetId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "targetTable": "Advisor"
+    },
+    {
+      "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
+      "assertedValue": "Senior Vice President",
+      "confidence": "derived",
+      "fieldName": "title",
+      "id": "27a827db-3a36-5989-82f8-c523c2998650",
+      "quotePhrase": "a senior leader at the branch",
+      "targetId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "targetTable": "Advisor"
+    }
+  ],
+  "AdvisorResearchCheck": [
+    {
+      "id": "232dd3cb-112d-5fd3-8b38-5fb120afc792",
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "sourceType": "web_research",
+      "checkedAt": "2026-05-20",
+      "status": "success",
+      "sourcesChecked": [
+        "https://www.sec.gov/cgi-bin/browse-edgar"
+      ],
+      "notes": "Refreshed bio and AUM from public filings.",
+      "nextCheckAfter": "2026-08-20"
+    },
+    {
+      "id": "6ef0aae6-aaf3-5bc4-911b-e18b414a5f03",
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "sourceType": "firm_bio",
+      "checkedAt": "2026-05-21",
+      "status": "no_new_data",
+      "sourcesChecked": [
+        "https://www.morganstanley.com/fa/"
+      ],
+      "notes": "Firm bio unchanged since prior check.",
+      "nextCheckAfter": "2026-08-21"
+    },
+    {
+      "id": "7ae2f7bb-181c-5646-82ff-59ab9a949cee",
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "sourceType": "rankings",
+      "checkedAt": "2026-05-22",
+      "status": "success",
+      "sourcesChecked": [
+        "https://www.barrons.com/advisor/rankings"
+      ],
+      "notes": "Confirmed inclusion on the 2026 regional ranking list.",
+      "nextCheckAfter": "2026-08-22"
+    },
+    {
+      "id": "f188c60e-835d-5d60-b09f-c071d437120b",
+      "advisorId": "4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea",
+      "sourceType": "press",
+      "checkedAt": "2026-05-23",
+      "status": "no_new_data",
+      "sourcesChecked": [
+        "https://www.advisorhub.com/?s=taylor"
+      ],
+      "notes": "No new press coverage in the lookback window.",
+      "nextCheckAfter": "2026-08-23"
+    },
+    {
+      "id": "458f32b3-6ecf-52c1-a0b8-dd73f3a21769",
+      "advisorId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "sourceType": "firm_bio",
+      "checkedAt": "2026-05-18",
+      "status": "success",
+      "sourcesChecked": [
+        "https://www.ubs.com/us/en/financial-advisor"
+      ],
+      "notes": "Firm bio confirmed.",
+      "nextCheckAfter": "2026-08-18"
+    },
+    {
+      "id": "3250656b-c649-59bf-976f-8b92ff082f48",
+      "advisorId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "sourceType": "web_research",
+      "checkedAt": "2026-05-24",
+      "status": "ambiguous",
+      "sourcesChecked": [
+        "https://www.google.com/search?q=shane+drumm+advisor"
+      ],
+      "notes": "Multiple individuals share this name; could not disambiguate the AUM figure.",
+      "nextCheckAfter": "2026-06-07"
+    },
+    {
+      "id": "138d4b5d-6c9a-5f0e-b551-8ffb77f34b48",
+      "advisorId": "f574f6e2-56b9-5650-9c43-c3d52f81d94f",
+      "sourceType": "press",
+      "checkedAt": "2026-05-25",
+      "status": "failed",
+      "sourcesChecked": [
+        "https://www.advisorhub.com/?s=drumm"
+      ],
+      "notes": "Source endpoint returned 403; retry scheduled.",
+      "nextCheckAfter": "2026-05-28"
     }
   ],
   "Firm": [

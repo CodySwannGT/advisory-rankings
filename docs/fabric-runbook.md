@@ -739,8 +739,11 @@ How they work:
 
 - `seed_via_rest.ts` — loads `src/data/seed-data.json` and calls
   `PUT /<TableName>/<id>` per record. Idempotent because PUT is
-  upsert-by-id in Harper. Output matches `bun run seed` exactly:
-  99 records across 23 tables.
+  upsert-by-id in Harper. It iterates **every top-level key** in
+  `seed-data.json` and PUTs by table name, so adding a new fixture
+  table (e.g. `AdvisorResearchCheck`) requires no script change — the
+  rows flow automatically. Output matches `bun run seed` exactly:
+  118 records across 28 tables.
 
 - `verify_via_rest.ts` — re-implements the verification without SQL:
   fetches each `@export` table once, builds id→record dicts, and
@@ -761,6 +764,36 @@ How they work:
 When operating from a residential network, prefer the original
 `bun run seed` / `bun run verify` — they're simpler and run server-
 side SQL.
+
+### Advisor evidence fixtures (PRD #256 / issue #683)
+
+`seed-data.json` carries `AdvisorResearchCheck` rows and
+advisor-targeted `FieldAssertion` rows so the advisor-profile
+**Evidence freshness** and **Fact confidence** panels are empirically
+verifiable against real data, not just in unit tests. The fixtures
+intentionally cover three states:
+
+- **Loaded** — advisor `4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea`
+  (C. James Taylor): research checks across all four source types
+  (`web_research`, `firm_bio`, `rankings`, `press`) with a clean latest
+  status, plus advisor-targeted assertions spanning `asserted` /
+  `inferred` / `derived` so `confidenceSummary` totals are non-trivial.
+- **Warning** — advisor `f574f6e2-56b9-5650-9c43-c3d52f81d94f`
+  (Shane Drumm): latest check status is `failed` (with an earlier
+  `ambiguous`), driving the degraded-evidence tone.
+- **No data** — advisor `906ecafe-f925-5704-ade3-bf10e94f0b60`
+  (Michaella Irvine): intentionally left with zero checks and zero
+  advisor-targeted assertions so the explicit "No evidence checks yet"
+  / "No confidence rows yet" empty states render.
+
+**Served public read store.** `GET /AdvisorProfile/<id>` reads the
+deployed component's table store. After editing `seed-data.json`, the
+fixtures only become visible on the dev deployment once they are PUT to
+the **served** store — running `bun run seed:rest` against
+`HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>` (the `:443` app URL, not the
+`:9925` ops API) is what populates the read path. Confirm with
+`curl -s "$HDB_TARGET_URL/AdvisorProfile/4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea" | jq '.evidenceFreshness,.confidenceSummary'`
+returning a payload (not `{"error":"not found"}`).
 
 ### BrokerCheck enrichment
 
