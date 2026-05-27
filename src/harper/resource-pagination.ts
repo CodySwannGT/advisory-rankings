@@ -252,7 +252,7 @@ export async function all<T = Readonly<Record<string, unknown>>>(
  * @param key - Object key used for indexing.
  * @returns Map keyed by the chosen field.
  */
-export function indexBy<T extends Record<string, unknown>, K extends keyof T>(
+export function indexBy<T, K extends keyof T>(
   rows: readonly T[],
   key: K
 ): ReadonlyMap<T[K], T> {
