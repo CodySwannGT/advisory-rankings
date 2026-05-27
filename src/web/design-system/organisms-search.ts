@@ -1,7 +1,14 @@
 // @ts-nocheck
 import { el, clear } from "./dom.js";
 import { entityPath } from "../urls.js";
-
+import { withTimeout } from "./async-timeout.js";
+import {
+  SEARCH_KINDS,
+  normalizeSearchKind,
+  searchCountHint,
+} from "./search-kinds.js";
+import { formatInlineLabel } from "./search-labels.js";
+export { formatInlineLabel } from "./search-labels.js";
 const HIDDEN_ATTR = "hidden";
 const EXPANDED_ATTR = "aria-expanded";
 
@@ -18,6 +25,7 @@ export function GlobalSearch({ search } = {}) {
     ["lastResults", []],
     ["debounceTimer", null],
     ["inflight", 0],
+    ["kind", "all"],
   ]);
   const context = { view, state, search };
 
@@ -28,13 +36,17 @@ export function GlobalSearch({ search } = {}) {
   view.input.addEventListener("keydown", event =>
     handleSearchKey(event, context)
   );
+  view.kindButtons.forEach(button => {
+    button.addEventListener("click", () =>
+      handleKindChange(context, button.dataset.kind || "all")
+    );
+  });
   document.addEventListener("pointerdown", event => {
     if (!view.wrap.contains(event.target)) hideDropdown(context);
   });
 
   return view.wrap;
 }
-
 /**
  * Creates the combobox DOM once so only result rows change during typing.
  * @returns Named DOM nodes for the search organism.
@@ -57,10 +69,29 @@ function createSearchView() {
     role: "listbox",
     [HIDDEN_ATTR]: "",
   });
+  const kindButtons = SEARCH_KINDS.map(([kind, label]) =>
+    el(
+      "button",
+      {
+        type: "button",
+        class: `gs-kind-toggle${kind === "all" ? " gs-kind-toggle-active" : ""}`,
+        dataset: { kind },
+        "aria-pressed": kind === "all" ? "true" : "false",
+      },
+      label
+    )
+  );
+  const controls = el(
+    "div",
+    { class: "gs-kind-controls", role: "group", "aria-label": "Search kind" },
+    ...kindButtons
+  );
   return {
+    controls,
     input,
     dropdown,
-    wrap: el("label", { class: "search gs-wrap" }, input, dropdown),
+    kindButtons,
+    wrap: el("div", { class: "search gs-wrap" }, input, controls, dropdown),
   };
 }
 
@@ -135,8 +166,8 @@ function renderItems(context, query, items, counts) {
   items
     .map((item, index) => resultRow(item, index, query, context))
     .forEach(row => dropdown.appendChild(row));
-  if (counts && counts.total > items.length)
-    dropdown.appendChild(moreRow(items.length, counts.total));
+  if (counts)
+    dropdown.appendChild(moreRow(items.length, counts, currentKind(context)));
 }
 
 /**
@@ -168,14 +199,16 @@ function resultRow(item, index, query, context) {
 /**
  * Shows the count hint when the backend found more rows than the dropdown displays.
  * @param visibleCount - Number of rendered rows.
- * @param totalCount - Total matching rows across all kinds.
+ * @param counts - Per-kind result counts from the backend.
+ * @param kind - Active search kind filter.
  * @returns Count hint row.
  */
-function moreRow(visibleCount, totalCount) {
+function moreRow(visibleCount, counts, kind) {
+  const totalCount = counts.total || 0;
   return el(
     "div",
     { class: "gs-more" },
-    `Showing ${visibleCount} of ${totalCount} matches — keep typing to narrow.`
+    searchCountHint(visibleCount, totalCount, kind)
   );
 }
 
@@ -220,10 +253,11 @@ function setActive(context, index) {
 async function runSearch(context, query) {
   if (!context.search) return;
   const requestId = nextRequestId(context.state);
+  const kind = currentKind(context);
   renderSearching(context.view, query);
   try {
     const response = await withTimeout(
-      context.search(query),
+      context.search(query, kind),
       8000,
       "Search is taking too long. Try again."
     );
@@ -299,6 +333,27 @@ function handleSearchInput(context) {
 }
 
 /**
+ * Switches search kind mode while preserving the current query and keyboard UX.
+ * @param context - Shared search view, state, and API adapter.
+ * @param kind - Requested kind filter.
+ */
+function handleKindChange(context, kind) {
+  const nextKind = normalizeSearchKind(kind);
+  const query = context.view.input.value.trim().toLowerCase();
+  const previousTimer = context.state.get("debounceTimer");
+  if (nextKind === currentKind(context)) return;
+  context.state.set("kind", nextKind);
+  syncKindControls(context.view, nextKind);
+  if (query.length < 2) {
+    hideDropdown(context);
+    clear(context.view.dropdown);
+    return;
+  }
+  if (previousTimer) clearTimeout(previousTimer);
+  runSearch(context, query);
+}
+
+/**
  * Handles keyboard navigation for the open search dropdown.
  * @param event - Keyboard event from the combobox input.
  * @param context - Shared search view, state, and API adapter.
@@ -365,59 +420,23 @@ function arrify(value) {
 }
 
 /**
- * Converts machine labels into compact human-readable labels for search rows.
- * @param value - Raw value from a search result or article category.
- * @returns Display label, or null for empty placeholder values.
+ * Reads the active search kind from state with a defensive fallback.
+ * @param context - Shared search view and state.
+ * @returns Active search kind.
  */
-export function formatInlineLabel(value) {
-  if (value == null || value === "") return null;
-  const text = String(value).trim();
-  if (
-    !text ||
-    ["unknown", "n/a", "na", "none", "null", "undefined"].includes(
-      text.toLowerCase()
-    )
-  )
-    return null;
-  return text
-    .replace(/_+/g, " ")
-    .toLowerCase()
-    .split(" ")
-    .map(formatWord)
-    .join(" ");
+function currentKind(context) {
+  return normalizeSearchKind(context.state.get("kind"));
 }
 
 /**
- * Preserves finance acronyms while title-casing ordinary words.
- * @param word - Lowercase token from a machine label.
- * @returns Display token.
+ * Updates segmented control state for the active search kind.
+ * @param view - Search DOM nodes.
+ * @param kind - Active search kind.
  */
-function formatWord(word) {
-  return (
-    { uhnw: "UHNW", ria: "RIA", bd: "BD", finra: "FINRA", sec: "SEC" }[word] ??
-    word.charAt(0).toUpperCase() + word.slice(1)
-  );
-}
-
-/**
- * Rejects slow UI data requests with caller-provided copy.
- * @param promise - In-flight async operation.
- * @param ms - Timeout in milliseconds.
- * @param message - Error message used when the timeout wins.
- * @returns The original promise value when it resolves in time.
- */
-function withTimeout(promise, ms, message) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    Promise.resolve(promise).then(
-      value => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      error => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
+function syncKindControls(view, kind) {
+  view.kindButtons.forEach(button => {
+    const active = button.dataset.kind === kind;
+    button.classList.toggle("gs-kind-toggle-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
   });
 }

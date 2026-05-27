@@ -15,9 +15,17 @@ import {
 
 /** Search result kinds that map directly to public profile route segments. */
 type SearchKind = "advisor" | "firm" | "team";
+
+/** Browser-observed evidence for global search kind mode behavior. */
+interface SearchKindModeEvidence {
+  readonly countHint: string;
+  readonly firmModePressed: string | null;
+  readonly visibleKinds: readonly (SearchKind | null)[];
+}
 const SEARCH_RESULTS_SELECTOR = "#global-search-results";
 const SEARCH_RESULT_ROWS_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-item`;
 const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
+const SEARCH_COUNT_HINT_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-more`;
 const ACTIVE_SEARCH_RESULT_SELECTOR = ".gs-item-active";
 
 /**
@@ -38,6 +46,7 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   await input.fill("wells");
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "02-global-search");
+  const kindMode = await selectFirmSearchKind(page, results);
 
   const firstResult = results.first();
   const firstKind = normalizeSearchKind(
@@ -49,7 +58,9 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
     element => element.getAttribute("aria-expanded") === "true"
   );
   const resultCount = await results.count();
-  const supportedKinds = await supportedSearchKindCount(results);
+  const supportedKinds = kindMode.visibleKinds.filter(
+    kind => kind !== null
+  ).length;
 
   await input.press("ArrowDown");
   const activeRows = await page.locator(ACTIVE_SEARCH_RESULT_SELECTOR).count();
@@ -76,6 +87,20 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
     check(
       supportedKinds >= 1,
       "global search: advisor, firm, or team result renders"
+    ),
+    check(
+      kindMode.firmModePressed === "true",
+      "global search: kind mode toggle reflects selected mode"
+    ),
+    check(
+      kindMode.visibleKinds.every(kind => kind === "firm"),
+      "global search: firm mode renders firm-only rows",
+      kindMode.visibleKinds.join(",")
+    ),
+    check(
+      /firm matches/i.test(kindMode.countHint),
+      "global search: count hint reflects selected kind",
+      kindMode.countHint
     ),
     check(activeRows === 1, "global search: ArrowDown selects one result"),
     check(
@@ -120,15 +145,48 @@ const normalizeSearchKind = (value: string): SearchKind | null =>
 const pluralSearchKind = (kind: SearchKind): string => `${kind}s`;
 
 /**
- * Counts search suggestions whose row type is one of the supported entities.
- * @param results - Search result rows rendered by the global search dropdown.
- * @returns Number of advisor, firm, or team suggestions.
+ * Switches to firm mode and captures request, row, and count-hint evidence.
+ * @param page - Browser page used for the scenario.
+ * @param results - Search result rows rendered by the dropdown.
+ * @returns Evidence from firm mode selection.
  */
-async function supportedSearchKindCount(results: Locator): Promise<number> {
-  const kinds = await results.locator(".gs-kind").allTextContents();
-  return kinds.filter(kind =>
-    ["advisor", "firm", "team"].includes(kind.trim().toLowerCase())
-  ).length;
+async function selectFirmSearchKind(
+  page: Page,
+  results: Locator
+): Promise<SearchKindModeEvidence> {
+  const firmResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === "/Search" &&
+      url.searchParams.get("q") === "wells" &&
+      url.searchParams.get("kind") === "firm"
+    );
+  });
+  await page.getByRole("button", { name: "Firms" }).click();
+  await firmResponse;
+  await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  return {
+    countHint:
+      (await page.locator(SEARCH_COUNT_HINT_SELECTOR).first().textContent()) ??
+      "",
+    firmModePressed: await page
+      .getByRole("button", { name: "Firms" })
+      .getAttribute("aria-pressed"),
+    visibleKinds: await searchKinds(results),
+  };
+}
+
+/**
+ * Reads normalized entity kind labels from visible global-search rows.
+ * @param results - Search result rows rendered by the global search dropdown.
+ * @returns Normalized kind values for each row.
+ */
+async function searchKinds(
+  results: Locator
+): Promise<readonly (SearchKind | null)[]> {
+  return (await results.locator(".gs-kind").allTextContents()).map(kind =>
+    normalizeSearchKind(kind)
+  );
 }
 
 /**

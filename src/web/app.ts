@@ -118,24 +118,21 @@ export function isAuthFailure(error) {
   return /\b(401|403)\b/.test(String(error?.message || error));
 }
 // ─── global search ────────────────────────────────────────────
-// Wraps `/Search?q=…` so the navbar's `GlobalSearch` organism can
-// stay decoupled from the REST layer. Returns the raw envelope:
-//   { q, items: [{ kind, id, name, sub, score }], counts }
-// Throws when q is empty so the organism can short-circuit.
 /**
- * Searches search using the configured source.
- * @param q - q used by this operation.
+ * Searches public entities for the navbar.
+ * @param q - Query text.
+ * @param kind - Optional entity kind filter.
  * @returns Matching firms, advisors, and teams.
  */
-export async function search(q) {
+export async function search(q, kind = "all") {
   const norm = String(q || "").trim();
   if (norm.length < 2)
-    return {
-      q: norm,
-      items: [],
-      counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
-    };
-  return api(`/Search?q=${encodeURIComponent(norm)}`);
+    // prettier-ignore
+    return { q: norm, counts: { firms: 0, advisors: 0, teams: 0, total: 0 }, items: [] };
+  const kindParam = ["advisor", "firm", "team"].includes(kind)
+    ? `&kind=${encodeURIComponent(kind)}`
+    : "";
+  return api(`/Search?q=${encodeURIComponent(norm)}${kindParam}`);
 }
 
 /**
