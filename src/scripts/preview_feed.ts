@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 /**
  * Offline smoke test for harper-app/resources.js.
  *
@@ -10,11 +9,11 @@
  * REST endpoints just fine; locally we still want to verify that the
  * Feed/profile resources produce sane output.
  *
- * What it does: pulls every @export table out of Harper via the
- * operations-API SQL endpoint (which IS reachable, via the
- * `~/.harperdb/operations-server` Unix socket), stubs out a
- * `globalThis.tables` shim that resembles what Harper would inject,
- * imports resources.js, and prints the JSON each resource returns.
+ * What it does: delegates to {@link loadResources} (which pulls every
+ * `@export` table out of Harper via the operations-API SQL endpoint and
+ * installs the `globalThis.tables` / `globalThis.Resource` shims the
+ * generated module expects), then invokes the requested generated
+ * resource and prints its JSON response.
  *
  * Run:
  *   bun run preview                         # /Feed
@@ -25,173 +24,156 @@
  *
  * Reads HDB_ADMIN_USERNAME / HDB_ADMIN_PASSWORD from the env, falling
  * back to admin/admin-local (the bootstrap.sh defaults).
- * @returns The computed value.
  */
 
-import { request } from "node:http";
-import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
-
-const SOCKET =
-  process.env.HDB_OPS_SOCKET ||
-  `${process.env.HOME}/.harperdb/operations-server`;
-const USER = process.env.HDB_ADMIN_USERNAME || "admin";
-const PASS = process.env.HDB_ADMIN_PASSWORD || "admin-local";
-const AUTH = `Basic ${Buffer.from(`${USER}:${PASS}`).toString("base64")}`;
-
-const TABLES = [
-  "Firm",
-  "FirmAlias",
-  "FirmMergeAudit",
-  "FirmSuccession",
-  "Branch",
-  "BranchAssignment",
-  "Advisor",
-  "Education",
-  "Designation",
-  "License",
-  "EmploymentHistory",
-  "RegistrationApplication",
-  "Team",
-  "TeamMembership",
-  "TeamMetricSnapshot",
-  "AdvisorMetricSnapshot",
-  "TransitionEvent",
-  "RecruitingDealQuote",
-  "Disclosure",
-  "DisclosureCluster",
-  "Sanction",
-  "OutsideBusinessActivity",
-  "EmployerConcentration",
-  "Ranking",
-  "RankingEntry",
-  "Article",
-  "ArticleAdvisorMention",
-  "ArticleFirmMention",
-  "ArticleTeamMention",
-  "ArticleTransitionEventMention",
-  "ArticleDisclosureMention",
-  "FieldAssertion",
-];
+import { loadResources } from "./dev_server_resources.js";
 
 /**
- * Handles ops call for this workflow.
- * @param body - body used by this operation.
- * @returns The computed value.
+ * The subset of resource commands `preview_feed` knows how to invoke.
+ * Anything outside this set surfaces a usage error.
  */
-function opsCall(body) {
-  return new Promise((resolve, reject) => {
-    const req = request(
-      {
-        socketPath: SOCKET,
-        method: "POST",
-        path: "/",
-        headers: { "Content-Type": "application/json", Authorization: AUTH },
-      },
-      async res => {
-        res.setEncoding("utf8");
-        const buf = await new Response(res).text();
-        try {
-          resolve(JSON.parse(buf));
-        } catch (_error) {
-          reject(new Error(`bad json: ${buf.slice(0, 200)}`));
-        }
-      }
+const PREVIEW_COMMANDS = [
+  "feed",
+  "firm",
+  "advisor",
+  "team",
+  "article",
+] as const;
+
+/** Recognized `bun run preview` subcommand. */
+type PreviewCommand = (typeof PREVIEW_COMMANDS)[number];
+
+/**
+ * Narrowing predicate: tells the type system whether a raw argv string
+ * is a valid {@link PreviewCommand}.
+ *
+ * @param value - First positional argument from `process.argv`.
+ * @returns True when `value` is one of {@link PREVIEW_COMMANDS}.
+ */
+function isPreviewCommand(value: string): value is PreviewCommand {
+  return (PREVIEW_COMMANDS as readonly string[]).includes(value);
+}
+
+/**
+ * The single class-export contract `preview_feed` exercises on the
+ * generated resources module. Each named export is a no-arg-constructible
+ * class whose instance exposes `.get(id?)`. The wider Harper `Resource`
+ * surface is intentionally not modelled here — this preview script only
+ * calls `new C().get(...)`.
+ */
+interface PreviewableResource {
+  readonly get: (id?: string) => Promise<unknown>;
+}
+
+/**
+ * Constructor shape for the generated resource classes. The compiled
+ * `harper-app/resources.js` exposes each `@export` class under its
+ * declared name; entries on the imported module are typed as `unknown`
+ * and narrowed at the call site by {@link isPreviewableConstructor}.
+ */
+type PreviewableConstructor = new () => PreviewableResource;
+
+/**
+ * Map of preview-command → exported class name in `harper-app/resources.js`.
+ * Centralizing this avoids a per-command switch and keeps the typed
+ * narrowing path identical for every command.
+ */
+const COMMAND_TO_EXPORT: Readonly<Record<PreviewCommand, string>> = {
+  feed: "Feed",
+  firm: "FirmProfile",
+  advisor: "AdvisorProfile",
+  team: "TeamProfile",
+  article: "ArticleView",
+};
+
+/**
+ * Reflective view of a constructor's prototype slot — used by
+ * {@link isPreviewableConstructor} for runtime narrowing of generated
+ * resource module exports.
+ */
+interface ConstructorWithPrototype {
+  readonly prototype?: unknown;
+}
+
+/**
+ * Reflective view of a generated-resource prototype that exposes a
+ * `get` method — used by {@link isPreviewableConstructor}.
+ */
+interface PrototypeWithGet {
+  readonly get?: unknown;
+}
+
+/**
+ * Narrowing predicate for a generated resource export.
+ *
+ * The resources module is typed as `Readonly<Record<string, unknown>>`
+ * because `harper-app/resources.js` is generated JavaScript with no
+ * published `.d.ts`. We assert just enough — constructible with no
+ * arguments and exposing a `get` function — to invoke it safely.
+ *
+ * @param value - Candidate module export.
+ * @returns True when `value` matches {@link PreviewableConstructor}.
+ */
+function isPreviewableConstructor(
+  value: unknown
+): value is PreviewableConstructor {
+  if (typeof value !== "function") return false;
+  const proto: unknown = (value as ConstructorWithPrototype).prototype;
+  if (typeof proto !== "object" || proto === null) return false;
+  return typeof (proto as PrototypeWithGet).get === "function";
+}
+
+/**
+ * Executes the requested generated resource and returns its JSON-ready
+ * payload, or `null` (with `process.exitCode = 2`) when the requested
+ * resource is missing/mistyped on the module.
+ *
+ * @param mod - Imported `harper-app/resources.js` module.
+ * @param cmd - Preview command name.
+ * @param id - Optional resource ID forwarded to `.get()`.
+ * @returns Resource response payload, or `null` on lookup failure.
+ */
+async function previewResult(
+  mod: Readonly<Record<string, unknown>>,
+  cmd: PreviewCommand,
+  id: string | undefined
+): Promise<unknown> {
+  const exportName = COMMAND_TO_EXPORT[cmd];
+  const exported = mod[exportName];
+  if (!isPreviewableConstructor(exported)) {
+    console.error(
+      `resource export "${exportName}" is missing or not a no-arg class`
     );
-    req.on("error", reject);
-    req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
-/**
- * Loads table from the configured source.
- * @param name - Display name or option name.
- * @returns Rows from the table or an empty array when absent.
- */
-async function loadTable(name) {
-  const res = await opsCall({
-    operation: "sql",
-    sql: `SELECT * FROM data.${name}`,
-  });
-  if (Array.isArray(res)) return res;
-  if (Array.isArray(res?.data)) return res.data;
-  if (res?.error) {
-    // Empty / unknown table → just skip.
-    return [];
+    process.exitCode = 2;
+    return null;
   }
-  return [];
+  return new exported().get(id);
 }
 
 /**
- * Runs the resource preview command.
+ * Entry point: parses argv, loads the generated resources module behind
+ * the Harper shim, runs the requested resource, and prints the JSON.
  */
-async function main() {
-  const cmd = process.argv[2] || "feed";
+async function main(): Promise<void> {
+  const rawCmd = process.argv[2] ?? "feed";
   const id = process.argv[3];
 
-  // 1. Pull everything once.
-  const data = Object.fromEntries(
-    await Promise.all(TABLES.map(async t => [t, await loadTable(t)]))
-  );
-
-  // 2. Build a `tables.X.search({})` shim that returns an AsyncIterable
-  //    over the rows we just loaded.
-  const tables = Object.fromEntries(
-    TABLES.map(t => [
-      t,
-      {
-        search: _query =>
-          (async function* () {
-            for (const r of data[t]) yield r;
-          })(),
-      },
-    ])
-  );
-
-  // 3. Stub Resource so resources.js can `extends Resource`.
-  /**
-   * Handles resource for this workflow.
-   */
-  class Resource {
-    /**
-     * Handles constructor for this workflow.
-     * @returns The computed value.
-     */
-    constructor() {}
+  if (!isPreviewCommand(rawCmd)) {
+    console.error(`unknown command: ${rawCmd}`);
+    process.exitCode = 2;
+    return;
   }
 
-  globalThis.tables = tables;
-  globalThis.Resource = Resource;
-
-  const mod = await import(
-    pathToFileURL(resolve("harper-app/resources.js")).href
-  );
-
-  const result = await previewResult(mod, cmd, id);
-
+  const mod = await loadResources();
+  const result = await previewResult(mod, rawCmd, id);
   console.log(JSON.stringify(result, null, 2));
 }
 
-/**
- * Executes the requested generated resource.
- * @param mod - Imported resources module.
- * @param cmd - Preview command name.
- * @param id - Optional resource ID.
- * @returns Resource response payload.
- */
-async function previewResult(mod, cmd, id) {
-  if (cmd === "feed") return new mod.Feed().get();
-  if (cmd === "firm") return new mod.FirmProfile().get(id);
-  if (cmd === "advisor") return new mod.AdvisorProfile().get(id);
-  if (cmd === "team") return new mod.TeamProfile().get(id);
-  if (cmd === "article") return new mod.ArticleView().get(id);
-  console.error(`unknown command: ${cmd}`);
-  process.exitCode = 2;
-  return null;
-}
-
-main().catch(err => {
-  console.error(err.stack || err.message || err);
+main().catch((err: unknown) => {
+  if (err instanceof Error) {
+    console.error(err.stack ?? err.message);
+  } else {
+    console.error(String(err));
+  }
   process.exit(1);
 });
