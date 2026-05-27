@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { advisorId, branchId, employmentHistoryId, uid } from "./ids.js";
 import { canonicalFirmId } from "./firm-identity.js";
 import {
