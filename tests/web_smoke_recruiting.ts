@@ -12,12 +12,14 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { smokeWatchlistMobile } from "./web_smoke_recruiting_watchlist.js";
 
 const STANDARD_DESKTOP_VIEWPORT = { width: 1280, height: 900 } as const;
 const RECRUITING_OVERFLOW_VIEWPORTS = [
   { name: "desktop", width: 1366, height: 900, tableBudgetPx: 16 },
   { name: "mobile", width: 390, height: 844, tableBudgetPx: 16 },
 ] as const;
+const WATCHLIST_CARD_SELECTOR = ".recruiting-watchlist";
 
 /** Viewport and overflow budget used by recruiting table smoke checks. */
 type RecruitingViewport = (typeof RECRUITING_OVERFLOW_VIEWPORTS)[number];
@@ -81,7 +83,14 @@ export async function smokeRecruiting(page: Page): Promise<readonly Check[]> {
   const overflowChecks = await smokeRecruitingOverflow(page);
   const empty = await readEmptyRecruiting(page);
   const watchlist = await readWatchlistRecruiting(page);
-  return recruitingChecks(loaded, empty, watchlist, overflowChecks);
+  const watchlistMobileChecks = await smokeWatchlistMobile(page);
+  return recruitingChecks(
+    loaded,
+    empty,
+    watchlist,
+    overflowChecks,
+    watchlistMobileChecks
+  );
 }
 
 /**
@@ -135,7 +144,7 @@ async function readWatchlistRecruiting(
   page: Page
 ): Promise<WatchlistRecruitingState> {
   await smokeGoto(page, WATCHLIST_URL);
-  await smokeWaitForSelector(page, ".recruiting-watchlist", QUICK_UI_TIMEOUT);
+  await smokeWaitForSelector(page, WATCHLIST_CARD_SELECTOR, QUICK_UI_TIMEOUT);
   const restored = await page.evaluate(() => ({
     firmValues: [
       ...document.querySelectorAll<HTMLInputElement>('input[name="firm"]'),
@@ -162,13 +171,15 @@ async function readWatchlistRecruiting(
  * @param empty - Empty-state observations.
  * @param watchlist - Watchlist observations.
  * @param overflowChecks - Desktop and mobile overflow checks.
+ * @param watchlistMobileChecks - Mobile watchlist readability checks.
  * @returns Smoke checks.
  */
 function recruitingChecks(
   loaded: LoadedRecruitingState,
   empty: EmptyRecruitingState,
   watchlist: WatchlistRecruitingState,
-  overflowChecks: readonly Check[]
+  overflowChecks: readonly Check[],
+  watchlistMobileChecks: readonly Check[]
 ): readonly Check[] {
   const { restored, updatedFirmValues, updatedUrl } = watchlist;
   return [
@@ -208,6 +219,7 @@ function recruitingChecks(
       "recruiting: filter submit updates URL and preserves firm set",
       updatedUrl.search
     ),
+    ...watchlistMobileChecks,
   ];
 }
 
