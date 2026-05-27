@@ -1,4 +1,3 @@
-// @ts-nocheck
 // AdvisorBook · Atomic Design — TEMPLATES
 //
 // Page-level layout shells. Templates own the global chrome
@@ -13,6 +12,68 @@
 import { el } from "./dom.js";
 import { Heading } from "./atoms.js";
 import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
+import type { BrowseCardOptions } from "./organisms-core-types.js";
+
+/** Typed adapter for the currently untyped navigation organism export. */
+type NavbarAdapter = (options: NavbarOptions) => HTMLElement;
+/** Typed adapter for the currently untyped footer organism export. */
+type SiteFooterAdapter = () => HTMLElement;
+/** Typed adapter for the currently untyped browse-card organism export. */
+type BrowseCardAdapter = (options: BrowseCardOptions) => HTMLElement;
+/** Optional session refresh function consumed by the navigation organism. */
+type SessionLoader = () => Promise<unknown>;
+/** Optional sign-out handler consumed by the navigation organism. */
+type LogoutHandler = () => void;
+
+/** Shared template options forwarded to the global page chrome. */
+interface BaseTemplateOptions {
+  readonly active?: string;
+  readonly refreshMe?: SessionLoader;
+  readonly logout?: LogoutHandler;
+  readonly search?: unknown;
+  readonly pageTitle?: string;
+}
+
+/** Navigation option bag forwarded by each template shell. */
+interface NavbarOptions extends BaseTemplateOptions {}
+
+/** Column references passed to three-column route builders. */
+interface ThreeColumnBuildContext {
+  readonly left: HTMLElement;
+  readonly center: HTMLElement;
+  readonly right: HTMLElement;
+  readonly layout: HTMLElement;
+}
+
+/** Column references passed to single-column route builders. */
+interface FullWidthBuildContext {
+  readonly center: HTMLElement;
+  readonly layout: HTMLElement;
+}
+
+/** Route callback that populates a three-column page shell. */
+type ThreeColumnBuilder = (context: ThreeColumnBuildContext) => void;
+/** Route callback that populates a single-column page shell. */
+type FullWidthBuilder = (context: FullWidthBuildContext) => void;
+
+/** Options for mounting the standard public three-column page shell. */
+interface ThreeColumnPageOptions extends BaseTemplateOptions {
+  readonly build?: ThreeColumnBuilder;
+}
+
+/** Options for mounting a full-width single-column page shell. */
+interface FullWidthPageOptions extends BaseTemplateOptions {
+  readonly build?: FullWidthBuilder;
+}
+
+/** Options for mounting a narrow centered single-column page shell. */
+interface CenteredNarrowPageOptions extends FullWidthPageOptions {
+  readonly maxWidth?: number | string;
+}
+
+const renderNavbar = Navbar as unknown as NavbarAdapter;
+const renderSiteFooter = SiteFooter as unknown as SiteFooterAdapter;
+const renderBrowseCard = BrowseCard as unknown as BrowseCardAdapter;
 
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
@@ -42,27 +103,29 @@ export function mountThreeColumnPage({
   search,
   pageTitle,
   build,
-} = {}) {
+}: ThreeColumnPageOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const left = el("aside", { class: "left rail" });
   const center = el("section", { class: "center" });
   const right = el("aside", { class: "right rail" });
-  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(
+    renderNavbar({ active, refreshMe, logout, search })
+  );
   document.body.appendChild(layout);
-  document.body.appendChild(SiteFooter());
+  document.body.appendChild(renderSiteFooter());
   appendPageTitle(layout, pageTitle);
   left.appendChild(primaryBrowseCard());
   layout.append(left, center, right);
 
-  build({ left, center, right, layout });
+  runBuilder(build, { left, center, right, layout });
 }
 
 /**
  * Builds the left-rail browse navigation shared by public pages.
  * @returns Browse card with the primary site sections.
  */
-function primaryBrowseCard() {
-  return BrowseCard({
+function primaryBrowseCard(): HTMLElement {
+  return renderBrowseCard({
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
@@ -96,19 +159,21 @@ export function mountFullWidthPage({
   search,
   pageTitle,
   build,
-} = {}) {
+}: FullWidthPageOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const center = el("section", {
     class: "center",
     style: "grid-column: 1 / -1;",
   });
-  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(
+    renderNavbar({ active, refreshMe, logout, search })
+  );
   document.body.appendChild(layout);
-  document.body.appendChild(SiteFooter());
+  document.body.appendChild(renderSiteFooter());
   appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
-  build({ center, layout });
+  runBuilder(build, { center, layout });
 }
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
@@ -132,19 +197,21 @@ export function mountCenteredNarrowPage({
   pageTitle,
   build,
   maxWidth = 420,
-} = {}) {
+}: CenteredNarrowPageOptions = {}): void {
   const layout = el("div", { class: "layout" });
   const center = el("section", {
     class: "center",
     style: `grid-column: 1 / -1; max-width: ${maxWidth}px; margin: 32px auto;`,
   });
-  document.body.appendChild(Navbar({ active, refreshMe, logout, search }));
+  document.body.appendChild(
+    renderNavbar({ active, refreshMe, logout, search })
+  );
   document.body.appendChild(layout);
-  document.body.appendChild(SiteFooter());
+  document.body.appendChild(renderSiteFooter());
   appendPageTitle(layout, pageTitle);
   layout.appendChild(center);
 
-  build({ center, layout });
+  runBuilder(build, { center, layout });
 }
 
 /**
@@ -153,7 +220,7 @@ export function mountCenteredNarrowPage({
  * @param root - Layout root that should contain the heading.
  * @param pageTitle - Route purpose label.
  */
-function appendPageTitle(root, pageTitle) {
+function appendPageTitle(root: HTMLElement, pageTitle?: string): void {
   if (!pageTitle) return;
   root.appendChild(
     Heading({
@@ -162,4 +229,19 @@ function appendPageTitle(root, pageTitle) {
       children: pageTitle,
     })
   );
+}
+
+/**
+ * Preserves the previous runtime contract: callers must supply a build
+ * callback even though the public template option bag is optional.
+ * @param build - Route callback that populates the page shell.
+ * @param context - Mounted column references.
+ */
+function runBuilder<Context>(
+  build: ((context: Context) => void) | undefined,
+  context: Context
+): void {
+  if (typeof build !== "function")
+    throw new TypeError("build is not a function");
+  build(context);
 }
