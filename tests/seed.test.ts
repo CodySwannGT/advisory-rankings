@@ -41,11 +41,12 @@ describe("seed data", () => {
           assertion.targetTable === "Advisor" &&
           assertion.targetId === advisorId
       );
-    const latestStatus = (advisorId: string) =>
-      advisorChecks(advisorId)
+    const latestStatus = (advisorId: string) => {
+      const sorted = advisorChecks(advisorId)
         .slice()
-        .sort((a, b) => a.checkedAt.localeCompare(b.checkedAt))
-        .at(-1)?.status;
+        .sort((a, b) => a.checkedAt.localeCompare(b.checkedAt));
+      return sorted[sorted.length - 1]?.status;
+    };
 
     it("seeds an advisor with a loaded evidence-freshness footprint", () => {
       const checks = advisorChecks(TAYLOR);
