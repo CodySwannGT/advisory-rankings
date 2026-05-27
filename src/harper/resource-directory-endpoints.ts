@@ -12,7 +12,12 @@ import {
   parsePagination,
 } from "./resource-pagination.js";
 import { currentEmploymentByAdvisor, searchCounts } from "./resource-search.js";
-import { canonicalizeFirmResourceRows } from "./resource-firm-canonicalization.js";
+import {
+  canonicalizeForAdvisorsDirectory,
+  canonicalizeForFirmsDirectory,
+  canonicalizeForSearch,
+  canonicalizeForTeamsDirectory,
+} from "./resource-firm-canonicalization.js";
 import {
   advisorMatchesFilters,
   firmMatchesFilters,
@@ -35,10 +40,6 @@ import {
 } from "./resource-directory-sorting.js";
 import type {
   DirectoryPage,
-  CanonicalAdvisorRows,
-  CanonicalFirmRows,
-  CanonicalSearchRows,
-  CanonicalTeamRows,
   SearchResponse,
   TeamDirectoryRow,
 } from "./resource-directory-types.js";
@@ -66,10 +67,10 @@ export class PublicFirms extends Resource {
    * @returns Firm page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<FirmRow>> {
-    const rows = canonicalizeFirmResourceRows({
+    const rows = canonicalizeForFirmsDirectory({
       firms: await allRows<FirmRow>(tables.Firm),
       firmAliases: await optionalAll<FirmAliasRow>(tables.FirmAlias),
-    }) as CanonicalFirmRows;
+    });
     const filters = parseFirmDirectoryFilters(target);
     const filtered = rows.firms.filter(firm =>
       firmMatchesFilters(firm, filters)
@@ -107,11 +108,11 @@ export class PublicAdvisors extends Resource {
       allRows<EmploymentHistoryRow>(tables.EmploymentHistory),
       optionalAll<FirmAliasRow>(tables.FirmAlias),
     ]);
-    const rows = canonicalizeFirmResourceRows({
+    const rows = canonicalizeForAdvisorsDirectory({
       firms,
       employments,
       firmAliases,
-    }) as CanonicalAdvisorRows;
+    });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
     const currentFirmByAdvisor = currentEmploymentByAdvisor(
       rows.employments
@@ -151,11 +152,11 @@ export class PublicTeams extends Resource {
       allRows<TeamRow>(tables.Team),
       allRows<FirmRow>(tables.Firm),
     ]);
-    const rows = canonicalizeFirmResourceRows({
+    const rows = canonicalizeForTeamsDirectory({
       teams,
       firms,
       firmAliases: await optionalAll<FirmAliasRow>(tables.FirmAlias),
-    }) as CanonicalTeamRows;
+    });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
     const filters = parseTeamDirectoryFilters(target);
     const filtered = rows.teams
@@ -213,12 +214,12 @@ export class Search extends Resource {
         allRows<EmploymentHistoryRow>(tables.EmploymentHistory),
         optionalAll<FirmAliasRow>(tables.FirmAlias),
       ]);
-    const rows = canonicalizeFirmResourceRows({
+    const rows = canonicalizeForSearch({
       firms,
       teams,
       employments,
       firmAliases,
-    }) as CanonicalSearchRows;
+    });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
     const currentFirmByAdvisor = currentEmploymentByAdvisor(
       rows.employments

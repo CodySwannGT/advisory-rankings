@@ -3,17 +3,59 @@
  * (e.g. "Morgan Stanley Wealth Management") into their canonical firm row
  * and rewrites foreign-key references across the loaded resource bundle.
  *
- * Typed against the raw rows-by-key shape produced upstream by the public
- * resource loader: each row is a `Readonly<Record<string, unknown>>` because
- * Harper hands back arbitrary column maps and the downstream
- * `narrowResourceTableRows` step is what enforces the per-table interfaces
- * from `src/types/harper-schema.ts`. Typing rows as `unknown`-valued maps
- * here keeps the canonicalizer honest about what it actually knows about
- * its inputs (id, name, plus configured foreign-key fields by name).
+ * The implementation is typed against the raw rows-by-key shape produced
+ * upstream by the public resource loader: each row is a
+ * `Readonly<Record<string, unknown>>` because Harper hands back arbitrary
+ * column maps and the downstream `narrowResourceTableRows` step is what
+ * enforces the per-table interfaces from `src/types/harper-schema.ts`.
+ * The public entry point is overloaded with named input/output shapes so
+ * directory-endpoint callers see strongly-typed results without `as`
+ * casts; see `canonicalizeFirmResourceRows` for the overload set.
  */
+
+import type {
+  EmploymentHistoryRow,
+  FirmAliasRow,
+  FirmRow,
+  TeamRow,
+} from "../types/harper-schema.js";
+import type {
+  CanonicalAdvisorRows,
+  CanonicalFirmRows,
+  CanonicalSearchRows,
+  CanonicalTeamRows,
+} from "./resource-directory-types.js";
 
 /** Single row pulled from a Harper table read; values are field-keyed. */
 type RawRow = Readonly<Record<string, unknown>>;
+
+/** Input shape for the `PublicFirms` directory endpoint. */
+export interface CanonicalFirmRowsInput {
+  readonly firms: ReadonlyArray<FirmRow>;
+  readonly firmAliases: ReadonlyArray<FirmAliasRow>;
+}
+
+/** Input shape for the `PublicAdvisors` directory endpoint. */
+export interface CanonicalAdvisorRowsInput {
+  readonly firms: ReadonlyArray<FirmRow>;
+  readonly employments: ReadonlyArray<EmploymentHistoryRow>;
+  readonly firmAliases: ReadonlyArray<FirmAliasRow>;
+}
+
+/** Input shape for the `PublicTeams` directory endpoint. */
+export interface CanonicalTeamRowsInput {
+  readonly teams: ReadonlyArray<TeamRow>;
+  readonly firms: ReadonlyArray<FirmRow>;
+  readonly firmAliases: ReadonlyArray<FirmAliasRow>;
+}
+
+/** Input shape for the global `Search` endpoint. */
+export interface CanonicalSearchRowsInput {
+  readonly firms: ReadonlyArray<FirmRow>;
+  readonly teams: ReadonlyArray<TeamRow>;
+  readonly employments: ReadonlyArray<EmploymentHistoryRow>;
+  readonly firmAliases: ReadonlyArray<FirmAliasRow>;
+}
 
 /**
  * Raw rows-by-key map shared with the public resource loader. Matches the
@@ -50,6 +92,14 @@ const FIRM_REFERENCE_FIELDS: FirmReferenceFieldMap = {
 
 /**
  * Canonicalizes curated firm aliases for public resource payloads.
+ *
+ * This is the loose-typed core used by `resource-data.ts`'s general
+ * resource loader (which narrows the result downstream via
+ * `narrowResourceTableRows`). Directory endpoints should call the typed
+ * wrappers — `canonicalizeForFirmsDirectory`,
+ * `canonicalizeForAdvisorsDirectory`, `canonicalizeForTeamsDirectory`,
+ * `canonicalizeForSearch` — which input/output the named Canonical*Rows
+ * types declared in `resource-directory-types.ts`.
  * @param rows - Raw rows loaded from Harper tables for one public request.
  * @returns Rows with stale alias firm IDs resolved to their canonical firm IDs.
  */
@@ -71,6 +121,153 @@ export function canonicalizeFirmResourceRows(rows: RawRowsByKey): RawRowsByKey {
     },
     replacements
   );
+}
+
+/**
+ * Typed entry point for `PublicFirms`. Returns canonicalized firm rows
+ * plus the curated firm-alias overlay, narrowed back to the
+ * directory-endpoint result interfaces via a per-key predicate so the
+ * call site never carries a structural-to-named cast.
+ * @param rows - Firm + firmAlias arrays the directory loader fetched.
+ * @returns Canonicalized firm rows ready for the directory response.
+ */
+export function canonicalizeForFirmsDirectory(
+  rows: CanonicalFirmRowsInput
+): CanonicalFirmRows {
+  const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
+  return {
+    firms: narrowRowArray<FirmRow>(raw.firms),
+  };
+}
+
+/**
+ * Typed entry point for `PublicAdvisors`. Narrows the canonicalized
+ * `firms` and `employments` arrays back to `FirmRow[]` /
+ * `EmploymentHistoryRow[]` for the advisor directory.
+ * @param rows - Firms + employments + firmAlias arrays the directory loader fetched.
+ * @returns Canonicalized firm and employment rows for advisor pages.
+ */
+export function canonicalizeForAdvisorsDirectory(
+  rows: CanonicalAdvisorRowsInput
+): CanonicalAdvisorRows {
+  const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
+  return {
+    firms: narrowRowArray<FirmRow>(raw.firms),
+    employments: narrowRowArray<EmploymentHistoryRow>(raw.employments),
+  };
+}
+
+/**
+ * Typed entry point for `PublicTeams`. Narrows the canonicalized
+ * `teams` and `firms` arrays back to `TeamRow[]` / `FirmRow[]` for the
+ * team directory.
+ * @param rows - Teams + firms + firmAlias arrays the directory loader fetched.
+ * @returns Canonicalized team and firm rows for team directory pages.
+ */
+export function canonicalizeForTeamsDirectory(
+  rows: CanonicalTeamRowsInput
+): CanonicalTeamRows {
+  const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
+  return {
+    teams: narrowRowArray<TeamRow>(raw.teams),
+    firms: narrowRowArray<FirmRow>(raw.firms),
+  };
+}
+
+/**
+ * Typed entry point for the global `Search` endpoint. Narrows the
+ * canonicalized firms, teams, and employments arrays back to their
+ * declared row types for ranked search.
+ * @param rows - Firms + teams + employments + firmAlias arrays the loader fetched.
+ * @returns Canonicalized cross-entity rows for ranked navbar search.
+ */
+export function canonicalizeForSearch(
+  rows: CanonicalSearchRowsInput
+): CanonicalSearchRows {
+  const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
+  return {
+    firms: narrowRowArray<FirmRow>(raw.firms),
+    teams: narrowRowArray<TeamRow>(raw.teams),
+    employments: narrowRowArray<EmploymentHistoryRow>(raw.employments),
+  };
+}
+
+/**
+ * Re-keys the caller's typed rows map into the loose `RawRowsByKey`
+ * shape the canonicalizer implementation operates on. Per-row interfaces
+ * from `harper-schema.ts` are structurally `Readonly<Record<string,
+ * unknown>>`, but TS does not widen a named row into an index signature
+ * automatically; this helper is the one place we cross that boundary,
+ * via `Object.entries`/`fromEntries` so the row values flow through
+ * `unknown` without `as` casts.
+ * @param rows - Caller-supplied typed rows-by-key map.
+ * @returns The same entries re-typed against the implementation's
+ *   `RawRowsByKey` contract.
+ */
+function toRawByKey(rows: object): RawRowsByKey {
+  const entries = Object.entries(rows).map(
+    ([key, value]): readonly [string, readonly RawRow[]] => [
+      key,
+      asRawRowArray(value),
+    ]
+  );
+  return Object.fromEntries(entries);
+}
+
+/**
+ * Defensive narrowing for one rows-by-key entry. Non-array values are
+ * coerced to an empty array — Harper-derived shapes always provide
+ * arrays, but the contract makes the assumption explicit.
+ * @param value - Value pulled from one rows-by-key entry.
+ * @returns The same array typed as `readonly RawRow[]`, or `[]` for
+ *   defensive non-array inputs.
+ */
+function asRawRowArray(value: unknown): readonly RawRow[] {
+  if (!Array.isArray(value)) return [];
+  const validated: readonly unknown[] = value;
+  return validated.every(isRawRow) ? validated : [];
+}
+
+/**
+ * Typed predicate: every non-null object satisfies the structural
+ * `Readonly<Record<string, unknown>>` shape used inside this module.
+ * @param value - Candidate row from a rows-by-key entry.
+ * @returns True when the value is a non-null object.
+ */
+function isRawRow(value: unknown): value is RawRow {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * Re-narrows a `RawRow[]` back to the caller's declared row interface.
+ * The canonicalizer preserves keys and per-field values verbatim except
+ * for documented firm-ID rewrites that retain `string` typing, so the
+ * Harper-enforced row shape is preserved by construction; this helper
+ * mirrors the `isTypedRowArray` pattern in `resource-data.ts` so the
+ * trust boundary stays grep-able and uniform across the public-resource
+ * stack.
+ * @param value - Canonicalized rows in the loose `RawRow[]` form.
+ * @returns Same array re-typed as the consumer's declared row type.
+ */
+function narrowRowArray<T>(
+  value: readonly RawRow[] | undefined
+): ReadonlyArray<T> {
+  if (!value) return [];
+  const candidate: unknown = value;
+  if (isTypedRowArray<T>(candidate)) return candidate;
+  return [];
+}
+
+/**
+ * Typed predicate adapter mirroring `isTypedRowArray` in
+ * `resource-data.ts`. Validates the structural invariant downstream code
+ * depends on — that the value is an array — and trusts the canonicalizer
+ * for row contents.
+ * @param value - Candidate rows pulled from the canonicalization output.
+ * @returns True when the candidate is an array; narrows to `readonly T[]`.
+ */
+function isTypedRowArray<T>(value: unknown): value is readonly T[] {
+  return Array.isArray(value);
 }
 
 /**
