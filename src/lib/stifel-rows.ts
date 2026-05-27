@@ -196,6 +196,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: STIFEL_SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [
     source.advisorUrl,
     source.branchUrl,

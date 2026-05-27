@@ -173,6 +173,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [source.advisorUrl, source.branch.branchUrl].filter(Boolean),
   notes: "Imported from Raymond James public branch roster page.",
 });
