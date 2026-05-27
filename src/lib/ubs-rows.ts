@@ -191,6 +191,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: UBS_SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [
     profileUrl(source),
     branchUrl(source),

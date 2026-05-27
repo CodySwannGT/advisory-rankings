@@ -160,6 +160,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: RBC_SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [source.advisorUrl, source.branch.branchUrl].filter(Boolean),
   notes: "Imported from RBC Wealth Management public advisor finder AJAX feed.",
 });

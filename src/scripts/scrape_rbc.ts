@@ -17,6 +17,7 @@ import {
 } from "../lib/rbc.js";
 import { describeTarget, upsert } from "../lib/harper.js";
 import { loadCreds, StudioSession } from "./_auth.js";
+import { touchFirmSourceTables } from "./firm_source_cli.js";
 
 /** Fabric operation response returned by the Studio cluster API. */
 type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
@@ -42,7 +43,6 @@ const studioPromise = {
 
 /**
  * Reads the option value after a CLI flag.
- *
  * @param name - CLI flag name to read.
  * @returns The flag value, when present.
  */
@@ -53,7 +53,6 @@ function arg(name: string): string | undefined {
 
 /**
  * Checks whether a CLI flag is present.
- *
  * @param name - CLI flag name to test.
  * @returns True when the flag exists.
  */
@@ -63,7 +62,6 @@ function has(name: string): boolean {
 
 /**
  * Reads a numeric CLI option.
- *
  * @param name - CLI flag name to read.
  * @param fallback - Value used when the flag is absent.
  * @returns Parsed numeric flag value or fallback.
@@ -75,7 +73,6 @@ function numberArg(name: string, fallback: number): number {
 
 /**
  * Reads RBC search inputs from repeated or CSV query flags.
- *
  * @returns Search inputs for the RBC finder.
  */
 function queryInputs(): readonly string[] {
@@ -102,22 +99,24 @@ async function main(): Promise<void> {
   const counts = Object.fromEntries(
     TABLE_ORDER.map(table => [table, rows[table].length])
   );
+  if (!options.json) {
+    console.log(
+      `[rbc] target: ${options.write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
+    );
+  }
+  const touchedCounts = await touchFirmSourceTables(
+    TABLE_ORDER,
+    rows,
+    options,
+    writeRows
+  );
   if (options.json) {
     console.log(
-      JSON.stringify({ write: options.write, counts, rows }, null, 2)
-    );
-    return;
-  }
-  console.log(
-    `[rbc] target: ${options.write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
-  );
-  for (const table of TABLE_ORDER) {
-    const tableRows = rows[table] as readonly Record<string, unknown>[];
-    const touched = options.write
-      ? await writeRows(table, tableRows)
-      : tableRows.length;
-    console.log(
-      `  ${options.write ? "upsert" : "dry"} ${table}: ${tableRows.length} (${touched} ${options.write ? "touched" : "mapped"})`
+      JSON.stringify(
+        { write: options.write, counts, touchedCounts, rows },
+        null,
+        2
+      )
     );
   }
 }
