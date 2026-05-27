@@ -481,16 +481,36 @@ describe("detail async states", () => {
       await confidence.waitFor({ timeout: QUICK_TIMEOUT });
       expect(await confidence.getByText("4 total").isVisible()).toBe(true);
       expect(await confidence.getByText("Asserted").isVisible()).toBe(true);
+      expect(await confidence.getByText("Derived").isVisible()).toBe(true);
+      expect(
+        await confidence
+          .locator(".advisor-confidence-bar")
+          .getAttribute("aria-label")
+      ).toBe("Fact confidence distribution");
 
       await page.goto(`${baseUrl}/advisor.html?id=advisor-warning`, {
         waitUntil: "domcontentloaded",
       });
-      await page
+      const warningEvidence = page
         .locator(".right .card")
         .filter({ hasText: "Evidence freshness" })
+        .first();
+      await warningEvidence
         .locator(".tag")
         .filter({ hasText: /^Warning$/ })
         .waitFor({ timeout: QUICK_TIMEOUT });
+      const warningLabels = warningEvidence.locator(
+        ".advisor-evidence-metric span"
+      );
+      expect(
+        await warningLabels.filter({ hasText: /^Failed$/ }).isVisible()
+      ).toBe(true);
+      expect(
+        await warningLabels.filter({ hasText: /^Ambiguous$/ }).isVisible()
+      ).toBe(true);
+      expect(
+        await warningEvidence.getByText("2 checks need review").isVisible()
+      ).toBe(true);
 
       await routeAdvisorEvidence(mobilePage);
       await mobilePage.goto(`${baseUrl}/advisor.html?id=advisor-empty`, {
@@ -506,6 +526,20 @@ describe("detail async states", () => {
       expect(
         await mobileEvidence.getByText("No confidence rows yet").isVisible()
       ).toBe(true);
+      expect(
+        await mobileEvidence
+          .locator(".tag")
+          .filter({ hasText: "No data" })
+          .count()
+      ).toBe(2);
+      const mobileLabels = await mobileEvidence
+        .locator(".advisor-evidence-metric span")
+        .evaluateAll(nodes =>
+          nodes.map(node => node.textContent?.trim()).filter(Boolean)
+        );
+      expect(mobileLabels).toEqual(
+        expect.arrayContaining(["Last checked", "Next check", "Asserted"])
+      );
       expect(
         await mobilePage.evaluate(
           () =>
