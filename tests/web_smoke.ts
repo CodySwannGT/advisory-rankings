@@ -21,6 +21,7 @@ import {
   shot,
   smokeGoto,
   smokeWaitForSelector,
+  warmDeployedEndpoints,
   type Check,
 } from "./web_smoke_support.js";
 import {
@@ -347,6 +348,9 @@ async function main(): Promise<void> {
       BASE,
       extraHTTPHeaders ? "(JWT bearer)" : "(anonymous, as a real visitor)"
     );
+    // Pay the post-restart cold-start (index load) once before scenarios so the
+    // gate measures warm behavior, not the deploy's first-request penalty.
+    await warmDeployedEndpoints(page);
     printResults(await runScenarios(browser, page, extraHTTPHeaders));
     await context.close();
   } finally {
