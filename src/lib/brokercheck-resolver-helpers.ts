@@ -46,7 +46,7 @@ export interface FirmCrdHit {
  * @param value - Candidate value parsed from a Harper REST response.
  * @returns True when the value is a non-array object suitable for row access.
  */
-export const isHarperRow = (value: unknown): value is HarperRow =>
+const isHarperRow = (value: unknown): value is HarperRow =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
@@ -102,7 +102,7 @@ export function datePrefix(value: unknown): string {
  * @param value - Raw value to normalize or parse.
  * @returns The normalized value.
  */
-export function normalizeFirmName(value: string): string {
+function normalizeFirmName(value: string): string {
   const compact = value
     .toLowerCase()
     .trim()
@@ -156,7 +156,7 @@ export function matchAdvisorLegalName(
  * @param last - Lowercased last name from BrokerCheck.
  * @returns Existing advisor ID when the last-name match is unique and compatible.
  */
-export function matchAdvisorLastNameInitial(
+function matchAdvisorLastNameInitial(
   advisorListing: ReadonlyArray<HarperRow>,
   first: string,
   last: string
