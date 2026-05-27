@@ -1,16 +1,16 @@
-// @ts-nocheck
+import type { RouteTarget } from "../types/harper-resource.js";
 
 const EVENT_BACKED_MODE = "event-backed";
 const RECRUITING_MOVES_MODE = "recruiting-moves";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 
-const FEED_MODE_ALIASES = new Map([
+const FEED_MODE_ALIASES = new Map<string, string>([
   ["event", EVENT_BACKED_MODE],
   ["moves", RECRUITING_MOVES_MODE],
   ["compliance", COMPLIANCE_DISCLOSURES_MODE],
 ]);
 
-const FEED_MODES = new Set([
+const FEED_MODES = new Set<string>([
   "all",
   EVENT_BACKED_MODE,
   RECRUITING_MOVES_MODE,
@@ -18,14 +18,73 @@ const FEED_MODES = new Set([
 ]);
 
 /**
+ * Subset of route-target shape this module inspects for `mode` and
+ * `category`. Mirrors the pattern used by `PaginationTargetShape` in
+ * `resource-pagination.ts` — we only need `.get(name)`.
+ */
+interface FeedFilterTargetShape {
+  readonly get?: (name: string) => unknown;
+}
+
+/** Normalized feed filter selection produced by `parseFeedFilters()`. */
+export interface FeedFilters {
+  readonly mode: string;
+  readonly category: string;
+}
+
+/**
+ * Minimal event-card shape `matchesFeedMode()` reads through. The full
+ * card carries additional summary fields (see `resource-feed.ts`); only
+ * the discriminator is needed here.
+ */
+interface FeedEventCard {
+  readonly kind: string;
+}
+
+/** Minimal article shape `matchesFeedCategory()` reads through. */
+interface FeedItemArticle {
+  readonly category?: string;
+}
+
+/**
+ * Minimal feed-item shape this module's predicates depend on. The full
+ * item produced by `feedItem()` in `resource-feed.ts` carries more
+ * fields; this module only consumes the article category and the
+ * `eventCards` discriminators.
+ */
+export interface FeedFilterableItem {
+  readonly eventCards?: readonly FeedEventCard[];
+  readonly article?: FeedItemArticle;
+}
+
+/** Summary counts returned alongside a filtered feed response. */
+export interface FeedSummary {
+  readonly returned: number;
+  readonly total: number;
+  readonly modeTotal: number;
+  readonly categoryTotal: number;
+}
+
+/** Empty-state metadata returned when active filters remove every row. */
+export interface FeedEmptyState {
+  readonly reason: "no-filtered-feed-results" | "no-feed-results";
+  readonly message: string;
+}
+
+/**
  * Parses public feed query params into bounded, stable filter values.
  * @param target - Request target carrying optional feed filter params.
  * @returns Normalized feed mode and category.
  */
-export function parseFeedFilters(target) {
+export function parseFeedFilters(
+  target: RouteTarget | null | undefined
+): FeedFilters {
+  const t = target as FeedFilterTargetShape | null | undefined;
   return {
-    mode: parseFeedMode(target),
-    category: normalizeFeedCategory(target?.get?.("category")),
+    mode: parseFeedMode(t),
+    category: normalizeFeedCategory(
+      t && typeof t.get === "function" ? t.get("category") : null
+    ),
   };
 }
 
@@ -35,14 +94,17 @@ export function parseFeedFilters(target) {
  * @param mode - Normalized feed mode.
  * @returns True when the item should remain in the mode-filtered set.
  */
-export function matchesFeedMode(item, mode) {
+export function matchesFeedMode(
+  item: FeedFilterableItem,
+  mode: string
+): boolean {
   switch (mode) {
     case EVENT_BACKED_MODE:
-      return (item.eventCards || []).length > 0;
+      return (item.eventCards ?? []).length > 0;
     case RECRUITING_MOVES_MODE:
-      return (item.eventCards || []).some(card => card.kind === "transition");
+      return (item.eventCards ?? []).some(card => card.kind === "transition");
     case COMPLIANCE_DISCLOSURES_MODE:
-      return (item.eventCards || []).some(card => card.kind === "disclosure");
+      return (item.eventCards ?? []).some(card => card.kind === "disclosure");
     default:
       return true;
   }
@@ -54,7 +116,10 @@ export function matchesFeedMode(item, mode) {
  * @param category - Normalized category filter.
  * @returns True when the item should remain in the category-filtered set.
  */
-export function matchesFeedCategory(item, category) {
+export function matchesFeedCategory(
+  item: FeedFilterableItem,
+  category: string
+): boolean {
   return (
     category === "all" ||
     normalizeFeedCategory(item.article?.category) === category
@@ -69,7 +134,12 @@ export function matchesFeedCategory(item, category) {
  * @param filters - Normalized active filters.
  * @returns Summary counts consumed by clients and evidence capture.
  */
-export function feedSummary(items, modeItems, filteredItems, filters) {
+export function feedSummary(
+  items: readonly FeedFilterableItem[],
+  modeItems: readonly FeedFilterableItem[],
+  filteredItems: readonly FeedFilterableItem[],
+  filters: FeedFilters
+): FeedSummary {
   return {
     returned: filteredItems.length,
     total: items.length,
@@ -88,7 +158,10 @@ export function feedSummary(items, modeItems, filteredItems, filters) {
  * @param filters - Normalized active filters.
  * @returns Empty-state metadata or null when results exist.
  */
-export function feedEmptyState(filteredItems, filters) {
+export function feedEmptyState(
+  filteredItems: readonly FeedFilterableItem[],
+  filters: FeedFilters
+): FeedEmptyState | null {
   if (filteredItems.length > 0) return null;
   const filtered = filters.mode !== "all" || filters.category !== "all";
   return {
@@ -104,11 +177,15 @@ export function feedEmptyState(filteredItems, filters) {
  * @param target - Request target carrying an optional `mode` query param.
  * @returns A supported feed mode, defaulting to `all`.
  */
-function parseFeedMode(target) {
-  const mode = String(target?.get?.("mode") || "all")
+function parseFeedMode(
+  target: FeedFilterTargetShape | null | undefined
+): string {
+  const raw =
+    target && typeof target.get === "function" ? target.get("mode") : null;
+  const mode = String(raw ?? "all")
     .trim()
     .toLowerCase();
-  const canonicalMode = FEED_MODE_ALIASES.get(mode) || mode;
+  const canonicalMode = FEED_MODE_ALIASES.get(mode) ?? mode;
   return FEED_MODES.has(canonicalMode) ? canonicalMode : "all";
 }
 
@@ -117,8 +194,8 @@ function parseFeedMode(target) {
  * @param category - Raw category query value.
  * @returns Normalized category value, or `all`.
  */
-function normalizeFeedCategory(category) {
-  const normalized = String(category || "all")
+function normalizeFeedCategory(category: unknown): string {
+  const normalized = String(category ?? "all")
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/gu, "_");

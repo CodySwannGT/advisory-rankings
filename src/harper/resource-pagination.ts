@@ -201,8 +201,8 @@ export function dateMs(v: DateLike): number {
 export const cmpAsc =
   <K extends string>(key: K) =>
   (
-    a: Readonly<Record<K, DateLike>>,
-    b: Readonly<Record<K, DateLike>>
+    a: Readonly<Partial<Record<K, DateLike>>>,
+    b: Readonly<Partial<Record<K, DateLike>>>
   ): number =>
     dateMs(a[key]) - dateMs(b[key]);
 
@@ -214,8 +214,8 @@ export const cmpAsc =
 export const cmpDesc =
   <K extends string>(key: K) =>
   (
-    a: Readonly<Record<K, DateLike>>,
-    b: Readonly<Record<K, DateLike>>
+    a: Readonly<Partial<Record<K, DateLike>>>,
+    b: Readonly<Partial<Record<K, DateLike>>>
   ): number =>
     dateMs(b[key]) - dateMs(a[key]);
 
