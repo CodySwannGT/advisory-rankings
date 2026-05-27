@@ -308,15 +308,24 @@ export class Search extends Resource {
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
-    // Load only the bounded tables fully. The largest table —
-    // EmploymentHistory — is NOT scanned here; its rows are fetched per
-    // displayed advisor below via the `advisorId` index. Scanning the whole
-    // table on every navbar request was the root cause of ~16s backend time
-    // under the homepage's concurrent fan-out.
+    // Load only the tables the requested kind actually needs. A kind-scoped
+    // request (e.g. the navbar "Firms"/"Teams" toggles) must not scan the
+    // 13k-row Advisor table just to discard it via the kind filter below —
+    // that needless load made `kind=firm` searches flake past the smoke's
+    // timeout under concurrent load. Firms stay loaded for every kind because
+    // they back the advisor/team subtitle (`byFirm`) as well as firm results.
+    // EmploymentHistory is never scanned here; per-displayed-advisor rows are
+    // fetched below via the `advisorId` index.
+    const needAdvisors = kind === "all" || kind === "advisor";
+    const needTeams = kind === "all" || kind === "team";
     const [advisors, firms, teams, firmAliases] = await Promise.all([
-      allRows<AdvisorRow>(tables.Advisor),
+      needAdvisors
+        ? allRows<AdvisorRow>(tables.Advisor)
+        : Promise.resolve<readonly AdvisorRow[]>([]),
       allRows<FirmRow>(tables.Firm),
-      allRows<TeamRow>(tables.Team),
+      needTeams
+        ? allRows<TeamRow>(tables.Team)
+        : Promise.resolve<readonly TeamRow[]>([]),
       optionalAll<FirmAliasRow>(tables.FirmAlias),
     ]);
     // Canonicalize firms/teams with an empty employment set: firm/team
