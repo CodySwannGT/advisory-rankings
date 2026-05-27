@@ -67,8 +67,8 @@ mountThreeColumnPage({
       return;
     }
     renderDetailLoading({ center, right, label: "article" });
-    api(`/ArticleView/${encodeURIComponent(id)}`)
-      .then((d: ArticleViewPayload) => {
+    api<ArticleViewPayload>(`/ArticleView/${encodeURIComponent(id)}`)
+      .then(d => {
         clear(center);
         clear(right);
         render(d, center, right);

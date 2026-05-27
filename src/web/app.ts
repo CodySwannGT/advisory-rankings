@@ -80,11 +80,22 @@ export type JsonBody = Readonly<Record<string, unknown>>;
  * Performs a same-origin JSON fetch and surfaces non-2xx responses as
  * thrown {@link Error}s carrying the method, path, status, and the first
  * 200 chars of the response body for diagnostics.
+ *
+ * The generic `T` lets callers annotate the expected response shape at
+ * the call site (e.g. `api<AdvisorProfile>("/AdvisorProfile/…")`); it
+ * defaults to `unknown` so unannotated calls preserve the original
+ * dynamic behavior without `any`. The function itself does not validate
+ * the response shape — callers remain responsible for runtime narrowing.
+ *
+ * @template T - Caller-supplied response shape. Defaults to `unknown`.
  * @param path - Same-origin request path.
  * @param init - Fetch options merged with the default `Accept` header.
- * @returns Parsed JSON body, or `null` for 204 responses.
+ * @returns Parsed JSON body cast to `T`, or `null` for 204 responses.
  */
-export async function api(path: string, init: ApiInit = {}): Promise<unknown> {
+export async function api<T = unknown>(
+  path: string,
+  init: ApiInit = {}
+): Promise<T> {
   const res = await fetch(path, {
     credentials: "same-origin",
     ...init,
@@ -96,7 +107,8 @@ export async function api(path: string, init: ApiInit = {}): Promise<unknown> {
       `${init.method || "GET"} ${path} → ${res.status} ${text.slice(0, 200)}`
     );
   }
-  return res.status === 204 ? null : res.json();
+  if (res.status === 204) return null as T;
+  return (await res.json()) as T;
 }
 
 /**
