@@ -89,17 +89,16 @@ export function advisorEvidenceProfileSections(
 function evidenceFreshnessSection(freshness: EvidenceFreshness): HTMLElement {
   const state = evidenceFreshnessState(freshness);
   return SectionCardComponent({
-    title: "Evidence freshness",
+    title: sectionTitleWithHelp(
+      "Evidence freshness",
+      "Evidence freshness explains when public-source checks last ran and whether any checks need review."
+    ),
     attrs: {
       class: `advisor-evidence-card advisor-evidence-card--${state.tone}`,
     },
     body: el(
       "div",
       { class: "advisor-evidence" },
-      helpText(
-        "Evidence freshness",
-        "Evidence freshness explains when public-source checks last ran and whether any checks need review."
-      ),
       evidenceStateHeader(state),
       evidenceDateGrid(freshness),
       evidenceCountGrid(
@@ -124,15 +123,14 @@ function evidenceFreshnessSection(freshness: EvidenceFreshness): HTMLElement {
 function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
   const total = numericCount(confidence.total);
   return SectionCardComponent({
-    title: "Fact confidence",
+    title: sectionTitleWithHelp(
+      "Fact confidence",
+      "Fact confidence groups advisor facts by how directly each fact is supported by public source rows."
+    ),
     attrs: { class: "advisor-evidence-card advisor-evidence-card--neutral" },
     body: el(
       "div",
       { class: "advisor-evidence" },
-      helpText(
-        "Fact confidence",
-        "Fact confidence groups advisor facts by how directly each fact is supported by loaded source rows."
-      ),
       confidence.hasData
         ? [
             evidenceStateHeader({
@@ -141,7 +139,12 @@ function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
               body: "Advisor facts are grouped by assertion confidence.",
             }),
             confidenceDistribution(confidence, total),
-            evidenceCountGrid("Distribution", CONFIDENCE_LEVELS, confidence),
+            evidenceCountGrid(
+              "Distribution",
+              CONFIDENCE_LEVELS,
+              confidence,
+              confidenceLabel
+            ),
           ]
         : [
             evidenceStateHeader({
@@ -149,10 +152,30 @@ function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
               tone: "warn",
               body: "No confidence rows yet. Fact confidence will appear after source-backed assertions are loaded.",
             }),
-            evidenceCountGrid("Distribution", CONFIDENCE_LEVELS, confidence),
+            evidenceCountGrid(
+              "Distribution",
+              CONFIDENCE_LEVELS,
+              confidence,
+              confidenceLabel
+            ),
           ]
     ),
   });
+}
+
+/**
+ * Builds a heading label with a keyboard-focusable explanation affordance.
+ * @param label - Term being explained.
+ * @param explanation - Public explanation copy.
+ * @returns Heading content.
+ */
+function sectionTitleWithHelp(label: string, explanation: string): HTMLElement {
+  return el(
+    "span",
+    { class: "advisor-evidence-title" },
+    el("span", {}, label),
+    helpText(label, explanation)
+  );
 }
 
 /**
@@ -197,13 +220,13 @@ function evidenceDateGrid(freshness: EvidenceFreshness): HTMLElement {
       "Last checked",
       freshness.lastCheckedAt
         ? fmtDate(freshness.lastCheckedAt, { mode: "short" })
-        : "not loaded"
+        : "Not yet checked"
     ),
     evidenceMetric(
       "Next check",
       freshness.nearestNextCheckAfter
         ? fmtDate(freshness.nearestNextCheckAfter, { mode: "short" })
-        : "not scheduled"
+        : "Not scheduled"
     )
   );
 }
@@ -213,12 +236,14 @@ function evidenceDateGrid(freshness: EvidenceFreshness): HTMLElement {
  * @param title - Grid title.
  * @param keys - Count keys in display order.
  * @param counts - Count payload.
+ * @param formatLabel - Optional display formatter for count keys.
  * @returns Count grid node.
  */
 function evidenceCountGrid<K extends string>(
   title: string,
   keys: readonly K[],
-  counts: Readonly<Partial<Record<K, number>>>
+  counts: Readonly<Partial<Record<K, number>>>,
+  formatLabel: (key: K) => string = readableLabel
 ): HTMLElement {
   return el(
     "div",
@@ -232,7 +257,10 @@ function evidenceCountGrid<K extends string>(
       "div",
       { class: "advisor-evidence-metrics" },
       ...keys.map(key =>
-        evidenceMetric(humanize(key), formatNumber(numericCount(counts[key])))
+        evidenceMetric(
+          formatLabel(key),
+          formatNumber(numericCount(counts[key]))
+        )
       )
     )
   );
@@ -277,7 +305,7 @@ function confidenceDistribution(
       el("span", {
         class: `advisor-confidence-bar__segment advisor-confidence-bar__segment--${level}`,
         style: `flex-grow:${numericCount(confidence[level])};`,
-        title: `${humanize(level)}: ${formatNumber(numericCount(confidence[level]))}`,
+        title: `${confidenceLabel(level)}: ${formatNumber(numericCount(confidence[level]))}`,
       })
     )
   );
@@ -316,10 +344,26 @@ function evidenceFreshnessState(freshness: EvidenceFreshness): EvidenceState {
   }
 
   return {
-    label: "Loaded",
+    label: "Current",
     tone: "ok",
     body: "Evidence checks are loaded with no failed or ambiguous statuses.",
   };
+}
+
+/**
+ * Converts machine confidence levels into reader-facing labels.
+ * @param level - Confidence level returned by the API.
+ * @returns Plain-language confidence label.
+ */
+function confidenceLabel(level: ConfidenceLevel): string {
+  switch (level) {
+    case "asserted":
+      return "Direct source";
+    case "inferred":
+      return "Supported inference";
+    case "derived":
+      return "Calculated";
+  }
 }
 
 /**
@@ -348,6 +392,15 @@ function numericCount(value: unknown): number {
  */
 function formatNumber(value: unknown): string {
   return numericCount(value).toLocaleString();
+}
+
+/**
+ * Converts machine keys into a non-empty display label.
+ * @param value - Raw key.
+ * @returns Human-readable label.
+ */
+function readableLabel(value: string): string {
+  return humanize(value) || value;
 }
 
 /**
