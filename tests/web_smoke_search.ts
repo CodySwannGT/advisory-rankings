@@ -154,14 +154,21 @@ async function selectFirmSearchKind(
   page: Page,
   results: Locator
 ): Promise<SearchKindModeEvidence> {
-  const firmResponse = page.waitForResponse(response => {
-    const url = new URL(response.url());
-    return (
-      url.pathname === "/Search" &&
-      url.searchParams.get("q") === "wells" &&
-      url.searchParams.get("kind") === "firm"
-    );
-  });
+  const firmResponse = page.waitForResponse(
+    response => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/Search" &&
+        url.searchParams.get("q") === "wells" &&
+        url.searchParams.get("kind") === "firm"
+      );
+    },
+    // Without an explicit timeout this used Playwright's 30s default, not the
+    // smoke's deployed-data budget. Under the cluster's serialized concurrency
+    // the kind=firm response queues behind the homepage /Feed and the slower
+    // kind=all search, so it needs the full DEPLOYED_DATA_TIMEOUT window.
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
   await page.getByRole("button", { name: "Firms" }).click();
   await firmResponse;
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
