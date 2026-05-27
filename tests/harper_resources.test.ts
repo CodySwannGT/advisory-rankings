@@ -2293,6 +2293,148 @@ describe("Harper directory and search resources", () => {
     ]);
   });
 
+  it("never queries EmploymentHistory when no firm filter is set", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: "Avery Stone",
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Young",
+        legalName: "Blake Young",
+        careerStatus: "retired",
+      },
+    ]);
+    const original = (globalThis as any).tables.EmploymentHistory;
+    const calls: any[] = [];
+    (globalThis as any).tables.EmploymentHistory = {
+      search: (query: any) => {
+        calls.push(query);
+        return (async function* () {})();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).PublicAdvisors().get(
+        routeTarget("", { careerStatus: "active", hasCrd: "true", q: "stone" })
+      );
+
+      // No firm filter → EmploymentHistory must not be touched at all.
+      expect(calls).toHaveLength(0);
+      expect(result).toMatchObject({
+        total: 1,
+        items: [expect.objectContaining({ id: "advisor-a" })],
+        nextCursor: null,
+      });
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
+  it("resolves the firm filter via indexed firmId queries, not a full scan", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: "Avery Stone",
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Stone",
+        legalName: "Blake Stone",
+        careerStatus: "active",
+        finraCrd: "2222222",
+      },
+      {
+        id: "advisor-c",
+        firstName: "Casey",
+        lastName: "Stone",
+        legalName: "Casey Stone",
+        careerStatus: "active",
+        finraCrd: "3333333",
+      },
+    ]);
+    const employmentRows = [
+      { id: "e-a", advisorId: "advisor-a", firmId: "firm-a" },
+      // advisor-b left firm-a (endDate) → excluded.
+      {
+        id: "e-b",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        endDate: "2024-01-01",
+      },
+      // advisor-c is at firm-b (no name match) → excluded.
+      { id: "e-c", advisorId: "advisor-c", firmId: "firm-b" },
+    ];
+    setRows("EmploymentHistory", employmentRows);
+    const queriedFirmIds: string[] = [];
+    const original = (globalThis as any).tables.EmploymentHistory;
+    (globalThis as any).tables.EmploymentHistory = {
+      search: (query: any) => {
+        const condition = query?.conditions?.[0];
+        if (!condition || condition.attribute !== "firmId") {
+          throw new Error(
+            "PublicAdvisors must query EmploymentHistory by firmId"
+          );
+        }
+        queriedFirmIds.push(condition.value);
+        return (async function* () {
+          for (const row of employmentRows)
+            if (row.firmId === condition.value) yield row;
+        })();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).PublicAdvisors().get(
+        routeTarget("", { firm: "Example Wealth" })
+      );
+
+      // Only firm-a (name matches "Example Wealth") was queried by firmId.
+      expect(queriedFirmIds).toEqual(["firm-a"]);
+      expect(result).toMatchObject({
+        total: 1,
+        items: [expect.objectContaining({ id: "advisor-a" })],
+        nextCursor: null,
+      });
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
+  it("returns empty for a firm filter that matches no firm without querying", async () => {
+    const original = (globalThis as any).tables.EmploymentHistory;
+    const calls: any[] = [];
+    (globalThis as any).tables.EmploymentHistory = {
+      search: (query: any) => {
+        calls.push(query);
+        return (async function* () {})();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).PublicAdvisors().get(
+        routeTarget("", { firm: "zzznomatch" })
+      );
+
+      // No matching firm → no firmId queries are issued.
+      expect(calls).toHaveLength(0);
+      expect(result).toMatchObject({ total: 0, items: [], nextCursor: null });
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
   it("filters firm and team directories while preserving cursor pagination", async () => {
     setRows("Firm", [
       {
