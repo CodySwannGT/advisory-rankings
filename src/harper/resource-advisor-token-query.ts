@@ -23,6 +23,17 @@ import type { AdvisorSearchIndexRow } from "../lib/advisor-search-index.js";
 /** Hard ceiling on the intersected advisor-id set per /PublicAdvisors q query. */
 export const TOKEN_INTERSECTION_CAP = 500;
 
+/**
+ * Per-token fetch ceiling for a single `starts_with` btree scan. Bounds
+ * the work a pathological short prefix can produce *before* the
+ * intersection step — so even a worst-case prefix that matches every
+ * row in the index cannot materialize unbounded memory in
+ * `tokenIdsFor`. Sized comfortably above `TOKEN_INTERSECTION_CAP` so a
+ * legitimate multi-token query (e.g. `"smi"` ∩ `"jo"`) still has
+ * headroom before intersection.
+ */
+const TOKEN_FETCH_LIMIT = TOKEN_INTERSECTION_CAP * 8;
+
 /** Result of {@link searchAdvisorsByTokens}. */
 export interface TokenQueryResult {
   /** Distinct advisor ids matching every query token, in stable order. */
@@ -61,6 +72,10 @@ const tokenIdsFor = async (
       conditions: [
         { attribute: "token", comparator: "starts_with", value: token },
       ],
+      // Bound the per-token fetch so a pathological prefix cannot
+      // materialize the entire index. The intersection step still
+      // applies `TOKEN_INTERSECTION_CAP` on the post-merge set.
+      limit: TOKEN_FETCH_LIMIT,
     })
   );
   return new Set(rows.map(row => row.advisorId));

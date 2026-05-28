@@ -64,10 +64,20 @@ export async function loadFeedDbForArticles(
 ): Promise<FeedDb> {
   const articleIds = articles.map(article => article.id);
   if (articleIds.length === 0) return emptyFeedDb();
-  const mentions = await loadArticleMentions(articleIds);
-  const events = await loadEventRows(mentions);
-  const entities = await loadMentionedEntities(mentions, events);
-  return buildFeedDb({ ...mentions, ...events, ...entities });
+  try {
+    const mentions = await loadArticleMentions(articleIds);
+    const events = await loadEventRows(mentions);
+    const entities = await loadMentionedEntities(mentions, events);
+    return buildFeedDb({ ...mentions, ...events, ...entities });
+  } catch (error) {
+    // Surface the stage + article count so a failing /Feed page is
+    // diagnosable from the request log without re-running with a
+    // debugger attached.
+    throw new Error(
+      `feed: loadFeedDbForArticles failed while hydrating ${articleIds.length} article(s): ${String(error)}`,
+      { cause: error }
+    );
+  }
 }
 
 /**

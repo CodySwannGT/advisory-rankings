@@ -34,6 +34,9 @@ const matchStartsWith = (candidate: any, value: any): boolean =>
 const matchGreaterThan = (candidate: any, value: any): boolean =>
   candidate != null && candidate > value;
 
+const matchGreaterThanEqual = (candidate: any, value: any): boolean =>
+  candidate != null && candidate >= value;
+
 const matchesCondition = (row: any, condition: any): boolean => {
   const candidate = row?.[condition.attribute];
   const comparator = condition.comparator ?? "equals";
@@ -41,8 +44,10 @@ const matchesCondition = (row: any, condition: any): boolean => {
     return matchStartsWith(candidate, condition.value);
   if (comparator === "ne" || comparator === "not_equal")
     return matchNe(candidate, condition.value);
-  if (comparator === "greater_than" || comparator === "greater_than_equal")
+  if (comparator === "greater_than")
     return matchGreaterThan(candidate, condition.value);
+  if (comparator === "greater_than_equal")
+    return matchGreaterThanEqual(candidate, condition.value);
   return matchEquals(candidate, condition.value);
 };
 

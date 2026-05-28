@@ -85,12 +85,29 @@ export async function searchPageAndCount<T>(
   const pageQuery: Readonly<Record<string, unknown>> = sort
     ? { conditions, sort, limit, offset }
     : { conditions, limit, offset };
-  const [items, all] = await Promise.all([
+  const [items, total] = await Promise.all([
     Array.fromAsync(searchable.search(pageQuery)),
-    Array.fromAsync(searchable.search({ conditions })),
+    // Streaming count: the iterator is consumed without materializing
+    // every row into an array, so a wide filter (e.g. an unfiltered
+    // `/Feed` page) does not reintroduce the unbounded-memory
+    // full-table read this issue is meant to remove. Harper's btree
+    // path still drives the scan; only the row payloads are
+    // discarded.
+    streamCount(searchable, conditions),
   ]);
-  return { items, total: all.length };
+  return { items, total };
 }
+
+const streamCount = async <T>(
+  searchable: SearchableTable<T>,
+  conditions: readonly HarperCondition[]
+): Promise<number> => {
+  const counter = { count: 0 };
+  for await (const _unused of searchable.search({ conditions })) {
+    Object.assign(counter, { count: counter.count + 1 });
+  }
+  return counter.count;
+};
 
 /**
  * Hydrates entity rows for a bounded id list via the indexed primary

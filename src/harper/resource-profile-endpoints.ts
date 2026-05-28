@@ -121,7 +121,7 @@ export class Feed extends Resource {
    * `limit` items on a given page.
    *
    * `summary.total` is the matching-articles count for the active
-   * category filter (NOT a global pre-filter total); `summary.hasMore`
+   * category filter (NOT a global pre-filter total); top-level `hasMore`
    * is added so clients can render "more available" without computing
    * a global count.
    * @param target - Request target carrying optional `mode`, `category`,

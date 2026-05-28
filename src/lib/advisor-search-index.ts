@@ -25,6 +25,23 @@ interface ReindexSummary {
 }
 
 /**
+ * Soft cap on concurrent REST writes/deletes per batch in the
+ * REST-backed handle. Backfilling 13k advisors produces tens of
+ * thousands of token rows; without chunking, `Promise.all(...)` would
+ * fan out into thousands of concurrent PUT/DELETE requests and
+ * saturate Fabric's REST surface.
+ */
+const REST_BATCH_SIZE = 25;
+
+const chunkArray = <T>(
+  items: readonly T[],
+  size: number
+): readonly (readonly T[])[] =>
+  Array.from({ length: Math.ceil(items.length / size) }, (_unused, index) =>
+    items.slice(index * size, index * size + size)
+  );
+
+/**
  * Injectable Harper IO surface for the reindex algorithm. Every reindex
  * call MUST supply a handle — production code constructs a Harper-backed
  * one (`createHarperOpAdvisorSearchIndexHandle`,
@@ -217,12 +234,20 @@ export function createRestAdvisorSearchIndexHandle(
       return asArray(raw).map(row => narrowTokenRow(asRecord(row)));
     },
     upsertTokens: async (rows: readonly AdvisorSearchIndexRow[]) => {
-      await Promise.all(
-        rows.map(row => rest.put("AdvisorSearchIndex", { ...row }))
-      );
+      // Chunk the writes so a 13k-row backfill cannot fan out into
+      // thousands of concurrent PUTs and saturate the REST surface.
+      for (const batch of chunkArray(rows, REST_BATCH_SIZE)) {
+        await Promise.all(
+          batch.map(row => rest.put("AdvisorSearchIndex", { ...row }))
+        );
+      }
     },
     deleteTokens: async (ids: readonly string[]) => {
-      await Promise.all(ids.map(id => rest.delete("AdvisorSearchIndex", id)));
+      for (const batch of chunkArray(ids, REST_BATCH_SIZE)) {
+        await Promise.all(
+          batch.map(id => rest.delete("AdvisorSearchIndex", id))
+        );
+      }
     },
   };
 }

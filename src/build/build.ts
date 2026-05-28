@@ -82,18 +82,26 @@ async function copyHarperResources(): Promise<void> {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
-  await cp("dist/lib", join(HARPER_APP_DIR, "lib"), {
-    recursive: true,
-    filter: source => source.endsWith(".js") || !source.includes("."),
-  });
-  // Rewrite parent-dir lib imports to same-dir lib imports inside the
-  // component root. `dist/harper/foo.js`'s compiled `../lib/bar.js` would
-  // otherwise resolve to `<repo-root>/lib/...` (one level above
-  // `harper-app/`) because Node ESM follows the file's real path, not the
-  // symlinked component path Fabric expects. Pointing the same imports at
-  // `./lib/` keeps everything within `harper-app/` so the deployed
-  // component is self-contained.
-  await rewriteParentLibImports(HARPER_APP_DIR);
+  try {
+    await cp("dist/lib", join(HARPER_APP_DIR, "lib"), {
+      recursive: true,
+      filter: source => source.endsWith(".js") || !source.includes("."),
+    });
+    // Rewrite parent-dir lib imports to same-dir lib imports inside
+    // the component root. `dist/harper/foo.js`'s compiled
+    // `../lib/bar.js` would otherwise resolve to `<repo-root>/lib/...`
+    // (one level above `harper-app/`) because Node ESM follows the
+    // file's real path, not the symlinked component path Fabric
+    // expects. Pointing the same imports at `./lib/` keeps everything
+    // within `harper-app/` so the deployed component is
+    // self-contained.
+    await rewriteParentLibImports(HARPER_APP_DIR);
+  } catch (error) {
+    throw new Error(
+      `build: failed to mirror dist/lib → ${join(HARPER_APP_DIR, "lib")} and rewrite parent-lib imports (likely a missing dist/lib from a skipped tsc, or a FS permission error): ${String(error)}`,
+      { cause: error }
+    );
+  }
 }
 
 /**

@@ -68,7 +68,10 @@ bun run seed
 # exercises the same shape the deployed dev cluster will. Idempotent — safe
 # to re-run.
 say "Backfilling AdvisorSearchIndex tokens…"
-bun run backfill:search-index
+if ! bun run backfill:search-index; then
+  say "Backfill failed — aborting e2e to avoid running smoke against the wrong data shape."
+  exit 1
+fi
 
 say "Starting dev server on :$DEV_PORT (web shell + resource proxy)…"
 PORT="$DEV_PORT" node dist/scripts/dev_server.js >/tmp/e2e-devserver.log 2>&1 &

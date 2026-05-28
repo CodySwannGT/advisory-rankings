@@ -125,8 +125,11 @@ export function decodeOffsetCursor(cursor: string | null | undefined): number {
   if (!cursor) return 0;
   try {
     const raw = Buffer.from(cursor, "base64url").toString("utf8");
-    const parsed = parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    // Reject partial-numeric payloads like "12x": `parseInt` would
+    // accept the prefix and let a malformed cursor advance pagination.
+    if (!/^\d+$/.test(raw)) return 0;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
   } catch {
     return 0;
   }

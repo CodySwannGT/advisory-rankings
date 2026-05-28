@@ -135,18 +135,28 @@ export class HarperREST {
    */
   async delete(table: string, id: string): Promise<boolean> {
     Object.assign(this.state, { writeCount: this.state.writeCount + 1 });
-    const res = await fetch(`${this.base}/${table}/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { Accept: "application/json", Authorization: this.auth },
-    });
-    if (res.status === 404) return true;
-    if (![200, 204].includes(res.status)) {
-      console.error(
-        `  ! DELETE /${table}/${id} -> ${res.status}: ${(await res.text()).slice(0, 200)}`
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(
+        `${this.base}/${table}/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+          headers: { Accept: "application/json", Authorization: this.auth },
+          signal: controller.signal,
+        }
       );
-      return false;
+      if (res.status === 404) return true;
+      if (![200, 204].includes(res.status)) {
+        console.error(
+          `  ! DELETE /${table}/${id} -> ${res.status}: ${(await res.text()).slice(0, 200)}`
+        );
+        return false;
+      }
+      return true;
+    } finally {
+      clearTimeout(timer);
     }
-    return true;
   }
 }
 
