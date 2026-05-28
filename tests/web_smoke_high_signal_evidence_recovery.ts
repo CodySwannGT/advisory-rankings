@@ -149,14 +149,13 @@ async function captureTransientErrorRecoveryEvidence(
   );
   const page = await context.newPage();
   const oneShotFailure = async (route: Route): Promise<void> => {
-    await page.unroute("**/Feed", oneShotFailure);
     await route.fulfill({
       status: 503,
       contentType: "application/json",
       body: JSON.stringify({ error: "transient-evidence" }),
     });
   };
-  await page.route("**/Feed", oneShotFailure);
+  await page.route("**/Feed", oneShotFailure, { times: 1 });
 
   await smokeGoto(page, `${BASE}/`);
   await page.waitForSelector(FEED_ERROR_SELECTOR, {
