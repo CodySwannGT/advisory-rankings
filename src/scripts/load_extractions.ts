@@ -16,7 +16,7 @@ import {
   canonicalFirmName,
   curatedFirmAliasRows,
 } from "../lib/firm-identity.js";
-import { describeTarget, upsert } from "../lib/harper.js";
+import { describeTarget } from "../lib/harper.js";
 import {
   advisorKey,
   advisorLookup,
@@ -29,6 +29,7 @@ import {
   firmSourceRows,
   mergeGroups,
   stringValue,
+  summarizeUpserts,
   uniqueById,
   type Row,
 } from "./load_extractions_helpers.js";
@@ -286,19 +287,7 @@ const disclosureIdForLocal = (
 
 const loadFile = async (file: string, dryRun: boolean): Promise<void> => {
   const rows = buildRows(JSON.parse(await readFile(file, "utf8")) as unknown);
-  const summary = Object.fromEntries(
-    await Promise.all(
-      Object.entries(rows).map(async ([table, tableRows]) => [
-        table,
-        dryRun
-          ? tableRows.length
-          : await upsert(
-              table,
-              tableRows.map(row => ({ ...row }))
-            ),
-      ])
-    )
-  );
+  const summary = await summarizeUpserts(rows, dryRun);
   console.log(`${file}: ${JSON.stringify(summary)}`);
   if (!dryRun)
     await rename(

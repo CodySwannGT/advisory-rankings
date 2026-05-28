@@ -138,6 +138,19 @@ type Advisor @table @export {
   updatedAt: Date @updatedTime
 }
 
+# Inverted token index for advisor name/alias substring search.
+# Populated by the loader-side reindex hook and the one-time backfill
+# script. One row per (advisorId, token, kind) tuple. The composite
+# primary key is materialized as a uuid5 of `ASI:advisorId:kind:token`
+# so re-indexing the same advisor produces the same row id (idempotent
+# upsert; no orphan tokens after a write-path diff).
+type AdvisorSearchIndex @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  token: String! @indexed
+  kind: String! @indexed # name | firstName | lastName | preferredName | alias
+}
+
 type Education @table @export {
   id: ID @primaryKey
   advisorId: ID! @indexed

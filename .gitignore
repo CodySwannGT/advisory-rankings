@@ -185,6 +185,7 @@ tasks.json
 **/.claude/settings.local.json
 **/.claude/debug/
 **/.claude/worktrees/
+**/.claude/scratch/
 **/.claude/scheduled_tasks.lock
 .roo
 .roo/
@@ -233,6 +234,13 @@ harper-app/detail-shell-negotiation.js
 harper-app/detail-shell-negotiation.js.map
 harper-app/web/**/*.js
 harper-app/web/**/*.js.map
+# Generated mirror of src/lib/. The harper component imports a small
+# number of shared helpers (e.g. advisor-tokens.ts for the search-index
+# token query) via `./lib/...` after the build rewrites the
+# `../lib/...` imports emitted by tsc. The build copies dist/lib/ →
+# harper-app/lib/ on every run; nothing here is source.
+harper-app/lib/**/*.js
+harper-app/lib/**/*.js.map
 .lisabak/
 .lisabak
 # END: AI GUARDRAILS HARPER-FABRIC

@@ -54,6 +54,12 @@ bun run firms:merge-aliases -- --write
 bun run preview       # render the /Feed JSON locally (sandbox-friendly)
 bun run dev:server    # serve harper-app/web/ + custom resources locally
 bun run smoke         # Playwright suite (BASE_URL=… for prod)
+bun run backfill:search-index
+                     # one-off backfill of AdvisorSearchIndex from
+                     # current Advisor rows (run once per cluster after
+                     # the AdvisorSearchIndex table is deployed)
+bun run reindex:advisor-tokens <advisorId>...
+                     # targeted reindex of one or more advisors
 
 bun run stop          # stop Harper
 bun run status        # check if it's running

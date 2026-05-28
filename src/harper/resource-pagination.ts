@@ -96,6 +96,46 @@ export function encodeCursor(
 }
 
 /**
+ * Encodes a non-negative integer offset into a URL-safe cursor token so
+ * Harper-native `search({ limit, offset })` pagination can round-trip the
+ * page boundary through the existing opaque-cursor contract without
+ * exposing a numeric offset to clients. Used by the rewritten
+ * `/PublicAdvisors` and `/Feed` resources whose page boundary is a
+ * stable Harper sort-then-skip position rather than a `(sortKey, id)`
+ * pair. The legacy `(sortKey, id)` cursors stay in
+ * {@link encodeCursor}/{@link decodeCursor} for `/PublicFirms` and
+ * `/PublicTeams` until those endpoints migrate.
+ * @param offset - Zero-based row offset to encode.
+ * @returns Opaque base64url cursor token.
+ */
+export function encodeOffsetCursor(offset: number): string {
+  return Buffer.from(String(Math.max(0, Math.trunc(offset))), "utf8").toString(
+    "base64url"
+  );
+}
+
+/**
+ * Decodes an offset cursor produced by {@link encodeOffsetCursor}. Invalid
+ * or missing cursors decode to `0` (first page) so a torn cursor does not
+ * 500 the request — clients see the same data they would with no cursor.
+ * @param cursor - Opaque cursor from the previous page, or null.
+ * @returns Non-negative integer offset.
+ */
+export function decodeOffsetCursor(cursor: string | null | undefined): number {
+  if (!cursor) return 0;
+  try {
+    const raw = Buffer.from(cursor, "base64url").toString("utf8");
+    // Reject partial-numeric payloads like "12x": `parseInt` would
+    // accept the prefix and let a malformed cursor advance pagination.
+    if (!/^\d+$/.test(raw)) return 0;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Decodes a cursor token back into its sort key and row id.
  * @param cursor - Pagination cursor from the previous page, or null.
  * @returns Decoded cursor payload, or null when invalid.

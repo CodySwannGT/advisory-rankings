@@ -29,6 +29,19 @@ export interface FeedResponse {
   readonly summary: FeedSummary;
   readonly emptyState: FeedEmptyState | null;
   readonly items: readonly FeedItem[];
+  /**
+   * Opaque cursor for the next page of articles, or `null` when the
+   * caller has reached the end. Added by issue #721 so `/Feed` no
+   * longer serves an unbounded `loadAll()` result.
+   */
+  readonly nextCursor: string | null;
+  /**
+   * True when more articles match the active category filter than fit
+   * on the current page. Distinct from `nextCursor` only conceptually;
+   * clients that don't need cursors can render "more available" off
+   * this flag alone.
+   */
+  readonly hasMore: boolean;
 }
 
 /** Article body slice exposed by the article detail resource. */

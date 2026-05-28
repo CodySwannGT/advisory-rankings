@@ -1,5 +1,10 @@
-import { advisorId } from "../lib/ids.js";
+import {
+  createHarperOpAdvisorSearchIndexHandle,
+  reindexAdvisorTokens,
+} from "../lib/advisor-search-index.js";
 import { canonicalFirmId, canonicalFirmName } from "../lib/firm-identity.js";
+import { upsert } from "../lib/harper.js";
+import { advisorId } from "../lib/ids.js";
 
 /** Extraction row after runtime object narrowing. */
 export interface Row {
@@ -71,6 +76,42 @@ export const stringValue = (value: unknown): string =>
 export const uniqueById = (rows: ReadonlyArray<Row>): ReadonlyArray<Row> => [
   ...new Map(rows.map(row => [String(row.id), row])).values(),
 ];
+
+export const reindexAdvisorsFromRows = async (
+  rows: Readonly<Record<string, ReadonlyArray<Row>>>,
+  dryRun: boolean
+): Promise<Readonly<Record<string, unknown>>> => {
+  if (dryRun) return {};
+  const ids = (rows.Advisor ?? [])
+    .map(row => stringValue(row.id))
+    .filter(Boolean);
+  if (ids.length === 0) return {};
+  return {
+    AdvisorSearchIndex: await reindexAdvisorTokens(
+      createHarperOpAdvisorSearchIndexHandle(),
+      ids
+    ),
+  };
+};
+
+export const summarizeUpserts = async (
+  rows: Readonly<Record<string, ReadonlyArray<Row>>>,
+  dryRun: boolean
+): Promise<Readonly<Record<string, unknown>>> => {
+  const entries = await Promise.all(
+    Object.entries(rows).map(async ([table, tableRows]) => [
+      table,
+      dryRun
+        ? tableRows.length
+        : await upsert(
+            table,
+            tableRows.map(r => ({ ...r }))
+          ),
+    ])
+  );
+  const reindex = await reindexAdvisorsFromRows(rows, dryRun);
+  return { ...Object.fromEntries(entries), ...reindex };
+};
 
 export const mergeGroups = (
   ...groups: ReadonlyArray<Record<string, ReadonlyArray<Row>>>

@@ -1,6 +1,9 @@
 /* eslint-disable max-lines, sonarjs/no-duplicate-string -- In-memory Harper fixture data is intentionally literal-heavy. */
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { tokensForAdvisor } from "../src/lib/advisor-tokens.js";
+import { advisorSearchIndexId } from "../src/lib/advisor-search-index.js";
+
 /**
  * Harper resource tests use a small in-memory table snapshot so profile,
  * directory, and feed behavior can be verified without a running Harper node.
@@ -19,21 +22,82 @@ class Resource {
 
 const tableRows = new Map<string, any[]>();
 
+const matchEquals = (candidate: any, value: any): boolean =>
+  value === null ? candidate == null : candidate === value;
+
+const matchNe = (candidate: any, value: any): boolean =>
+  value === null ? candidate != null : candidate !== value;
+
+const matchStartsWith = (candidate: any, value: any): boolean =>
+  typeof candidate === "string" && candidate.startsWith(String(value));
+
+const matchGreaterThan = (candidate: any, value: any): boolean =>
+  candidate != null && candidate > value;
+
+const matchGreaterThanEqual = (candidate: any, value: any): boolean =>
+  candidate != null && candidate >= value;
+
+const matchesCondition = (row: any, condition: any): boolean => {
+  const candidate = row?.[condition.attribute];
+  const comparator = condition.comparator ?? "equals";
+  if (comparator === "starts_with")
+    return matchStartsWith(candidate, condition.value);
+  if (comparator === "ne" || comparator === "not_equal")
+    return matchNe(candidate, condition.value);
+  if (comparator === "greater_than")
+    return matchGreaterThan(candidate, condition.value);
+  if (comparator === "greater_than_equal")
+    return matchGreaterThanEqual(candidate, condition.value);
+  return matchEquals(candidate, condition.value);
+};
+
+const compareValues = (av: any, bv: any): number => {
+  if (av === bv) return 0;
+  if (av == null) return -1;
+  if (bv == null) return 1;
+  return av < bv ? -1 : 1;
+};
+
+const applySort = (rows: readonly any[], sort: any): readonly any[] => {
+  if (!sort) return rows;
+  const direction = sort.descending ? -1 : 1;
+  return [...rows].sort(
+    (a, b) =>
+      direction * compareValues(a?.[sort.attribute], b?.[sort.attribute])
+  );
+};
+
+const matchesAllConditions = (row: any, conditions: readonly any[]): boolean =>
+  conditions.every((condition: any) => matchesCondition(row, condition));
+
+/**
+ * Streams the rows backing the named in-memory test table that match the
+ * supplied Harper-style query (conditions + optional sort/limit/offset),
+ * yielding them like a real `tables.X.search()` async iterable would.
+ * @param name - Test-shim table name.
+ * @param query - Harper-shaped query object (conditions/sort/limit/offset).
+ */
+async function* iterateMatchingRows(name: string, query: any) {
+  const conditions = query?.conditions ?? [];
+  const allRows = tableRows.get(name) ?? [];
+  const filtered = allRows.filter(row => matchesAllConditions(row, conditions));
+  const sorted = applySort(filtered, query?.sort);
+  const offset = typeof query?.offset === "number" ? query.offset : 0;
+  const limit = typeof query?.limit === "number" ? query.limit : sorted.length;
+  for (const row of sorted.slice(offset, offset + limit)) yield row;
+}
+
 const table = (name: string) => ({
-  // Honor equality `conditions` like real Harper does (default-ignoring them
-  // masked query-shape bugs); an empty/absent condition list yields all rows.
-  search: (query?: any) =>
-    (async function* () {
-      const conditions = query?.conditions ?? [];
-      for (const row of tableRows.get(name) ?? [])
-        if (conditions.every((c: any) => (row as any)[c.attribute] === c.value))
-          yield row;
-    })(),
+  // Honor the subset of Harper search semantics the rewritten read
+  // paths depend on: equality conditions (default), `starts_with`
+  // btree-range, `ne` null-emptiness, `sort`, `limit`, and `offset`.
+  search: (query?: any) => iterateMatchingRows(name, query),
 });
 
 (globalThis as any).tables = {
   Advisor: table("Advisor"),
   AdvisorMetricSnapshot: table("AdvisorMetricSnapshot"),
+  AdvisorSearchIndex: table("AdvisorSearchIndex"),
   Article: table("Article"),
   ArticleAdvisorMention: table("ArticleAdvisorMention"),
   ArticleDisclosureMention: table("ArticleDisclosureMention"),
@@ -75,7 +139,25 @@ const firmResource = await import("../src/harper/resource-firm.js");
 const firmDueDiligenceResource =
   await import("../src/harper/resource-firm-due-diligence.js");
 
-const setRows = (name: string, rows: any[]) => tableRows.set(name, rows);
+const rebuildAdvisorSearchIndex = (advisorRows: readonly any[]) => {
+  const tokenRows = advisorRows.flatMap((advisor: any) =>
+    tokensForAdvisor(advisor as any).map(({ token, kind }) => ({
+      id: advisorSearchIndexId(advisor.id, kind, token),
+      advisorId: advisor.id,
+      token,
+      kind,
+    }))
+  );
+  tableRows.set("AdvisorSearchIndex", [...tokenRows]);
+};
+
+const setRows = (name: string, rows: any[]) => {
+  tableRows.set(name, rows);
+  // Mirror the production write hook: any change to Advisor rows
+  // re-emits the AdvisorSearchIndex token rows so the q-path queries
+  // see a consistent inverted index without per-test plumbing.
+  if (name === "Advisor") rebuildAdvisorSearchIndex(rows);
+};
 
 const routeTarget = (
   id: string,
@@ -1467,12 +1549,16 @@ describe("Harper resource endpoints", () => {
       routeTarget("", { category: "firm bio" })
     );
 
+    // /Feed paginates natively post-#721. `summary.total` now means
+    // "items on this page" (= `returned`); `summary.categoryTotal` is
+    // the index-backed count of articles matching the active category
+    // filter and serves as the global total for `category="all"`.
     expect(eventBacked).toMatchObject({
       count: 2,
       filters: { mode: "event-backed", category: "all" },
       summary: {
         returned: 2,
-        total: 3,
+        total: 2,
         modeTotal: 2,
         categoryTotal: 3,
       },
@@ -1486,7 +1572,7 @@ describe("Harper resource endpoints", () => {
       filters: { mode: "event-backed", category: "all" },
       summary: {
         returned: 2,
-        total: 3,
+        total: 2,
         modeTotal: 2,
         categoryTotal: 3,
       },
@@ -1525,7 +1611,7 @@ describe("Harper resource endpoints", () => {
       filters: { mode: "compliance-disclosures", category: "compliance" },
       summary: {
         returned: 1,
-        total: 3,
+        total: 1,
         modeTotal: 1,
         categoryTotal: 1,
       },
@@ -1538,7 +1624,7 @@ describe("Harper resource endpoints", () => {
     expect(empty).toMatchObject({
       count: 0,
       filters: { mode: "all", category: "firm_bio" },
-      summary: { returned: 0, total: 3, modeTotal: 3, categoryTotal: 0 },
+      summary: { returned: 0, total: 0, modeTotal: 0, categoryTotal: 0 },
       emptyState: {
         reason: "no-filtered-feed-results",
         message: "No feed items match the selected filters.",

@@ -67,6 +67,13 @@ async function versionGeneratedWebModules(dir: string): Promise<void> {
 
 /**
  * Copies all compiled Harper resource modules into the Fabric component root.
+ *
+ * Also mirrors `dist/lib/` into `harper-app/lib/` so harper resources can
+ * safely `import { ... } from "../lib/..."` (e.g. the AdvisorSearchIndex
+ * token query reuses the same `splitQueryTokens` / `normalizeQueryToken`
+ * helpers the write-side reindex uses). Without this, Fabric refuses to
+ * load `resources.js` because the relative `../lib/*.js` path resolves to
+ * a directory that doesn't exist in the deployed component root.
  * @returns Promise that resolves after resource entrypoint and helpers are copied.
  */
 async function copyHarperResources(): Promise<void> {
@@ -75,6 +82,47 @@ async function copyHarperResources(): Promise<void> {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
+  try {
+    await cp("dist/lib", join(HARPER_APP_DIR, "lib"), {
+      recursive: true,
+      filter: source => source.endsWith(".js") || !source.includes("."),
+    });
+    // Rewrite parent-dir lib imports to same-dir lib imports inside
+    // the component root. `dist/harper/foo.js`'s compiled
+    // `../lib/bar.js` would otherwise resolve to `<repo-root>/lib/...`
+    // (one level above `harper-app/`) because Node ESM follows the
+    // file's real path, not the symlinked component path Fabric
+    // expects. Pointing the same imports at `./lib/` keeps everything
+    // within `harper-app/` so the deployed component is
+    // self-contained.
+    await rewriteParentLibImports(HARPER_APP_DIR);
+  } catch (error) {
+    throw new Error(
+      `build: failed to mirror dist/lib → ${join(HARPER_APP_DIR, "lib")} and rewrite parent-lib imports (likely a missing dist/lib from a skipped tsc, or a FS permission error): ${String(error)}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Replaces `from "../lib/..."` with `from "./lib/..."` in every JS file
+ * directly under the Harper component root. The component root is flat —
+ * the `lib/` mirror lives as a sibling of the resource files — so the
+ * rewrite is shallow by design (we deliberately do not recurse into
+ * `web/` or `node_modules/`).
+ * @param dir - Component root containing the copied harper resources.
+ * @returns Promise that resolves after all relevant imports are rewritten.
+ */
+async function rewriteParentLibImports(dir: string): Promise<void> {
+  const importRe =
+    /(\bfrom\s+["']|\bimport\s*\(\s*["']|\bimport\s+["'])\.\.\/lib\//g;
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+    const path = join(dir, entry.name);
+    const source = await readFile(path, "utf8");
+    const rewritten = source.replace(importRe, "$1./lib/");
+    if (rewritten !== source) await writeFile(path, rewritten);
+  }
 }
 
 // Copies compiled Harper resources into the component root expected by Fabric.

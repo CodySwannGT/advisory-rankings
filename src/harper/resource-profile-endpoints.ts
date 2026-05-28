@@ -11,19 +11,20 @@ import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import { loadAll } from "./resource-data.js";
 import {
   feedEmptyState,
-  feedSummary,
-  matchesFeedCategory,
   matchesFeedMode,
   parseFeedFilters,
 } from "./resource-feed-filters.js";
 import { feedItem } from "./resource-feed.js";
 import { firmAdvisorRows } from "./resource-firm.js";
 import {
-  cmpDesc,
   decodeCursor,
+  decodeOffsetCursor,
+  encodeOffsetCursor,
   paginate,
   parsePagination,
 } from "./resource-pagination.js";
+import { feedArticlePage } from "./resource-directory-search-queries.js";
+import { loadFeedDbForArticles } from "./resource-feed-page-load.js";
 import {
   normalizeId,
   resolveAdvisor,
@@ -107,26 +108,61 @@ export class Feed extends Resource {
 
   /**
    * Hydrates the feed with article metadata, mentions, and event cards.
-   * @param target - Request target carrying optional `mode` and `category`.
+   *
+   * Replaces the legacy full-table `loadAll()` scan with a paginated
+   * `tables.Article.search({conditions, sort, limit, offset})` (spike
+   * §0.1 Q1/Q2) plus per-page hydration of mention tables by indexed
+   * `articleId`. See `.claude/scratch/issue-721-architecture.md` §5.3.
+   *
+   * Mode filtering (`event-backed`, `recruiting-moves`,
+   * `compliance-disclosures`) stays in-process because it depends on
+   * hydrated event cards — Harper conditions cannot express it (see
+   * §5.3.3). For `mode !== "all"` the resource may return fewer than
+   * `limit` items on a given page.
+   *
+   * `summary.total` is the matching-articles count for the active
+   * category filter (NOT a global pre-filter total); top-level `hasMore`
+   * is added so clients can render "more available" without computing
+   * a global count.
+   * @param target - Request target carrying optional `mode`, `category`,
+   *   `cursor`, and `limit`.
    * @returns Hydrated feed items ordered by publication date.
    */
   async get(target?: RouteTarget): Promise<FeedResponse> {
-    const db = await loadAll();
-    const items: readonly FeedItem[] = [...db.articles]
-      .sort(cmpDesc("publishedDate"))
-      .map(article => feedItem(article, db));
     const filters = parseFeedFilters(target);
-    const modeItems = items.filter(item => matchesFeedMode(item, filters.mode));
-    const filteredItems = modeItems.filter(item =>
-      matchesFeedCategory(item, filters.category)
+    const { cursor, limit } = parsePagination(target);
+    const offset = decodeOffsetCursor(cursor);
+    const { items: articles, total: categoryTotal } = await feedArticlePage(
+      filters.category,
+      limit,
+      offset
     );
+    const db = await loadFeedDbForArticles(articles);
+    const pageItems: readonly FeedItem[] = articles.map(article =>
+      feedItem(article, db)
+    );
+    const modeItems = pageItems.filter(item =>
+      matchesFeedMode(item, filters.mode)
+    );
+    const filteredItems = modeItems;
+    const hasMore = offset + articles.length < categoryTotal;
+    const nextCursor = hasMore
+      ? encodeOffsetCursor(offset + articles.length)
+      : null;
     return {
       generatedAt: new Date().toISOString(),
       count: filteredItems.length,
       filters,
-      summary: feedSummary(items, modeItems, filteredItems, filters),
+      summary: {
+        returned: filteredItems.length,
+        total: filteredItems.length,
+        modeTotal: modeItems.length,
+        categoryTotal,
+      },
       emptyState: feedEmptyState(filteredItems, filters),
       items: filteredItems,
+      nextCursor,
+      hasMore,
     };
   }
 }

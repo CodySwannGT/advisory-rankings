@@ -1,28 +1,26 @@
 import type {
   AdvisorRow,
-  EmploymentHistoryRow,
   FirmAliasRow,
   FirmRow,
   TeamRow,
 } from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
+import type {
+  DirectoryPage,
+  SearchResponse,
+  TeamDirectoryRow,
+} from "./resource-directory-types.js";
 import {
   decodeCursor,
+  decodeOffsetCursor,
   paginate,
   parsePagination,
 } from "./resource-pagination.js";
-import { searchCounts } from "./resource-search.js";
 import {
   canonicalizeForFirmsDirectory,
-  canonicalizeForSearch,
   canonicalizeForTeamsDirectory,
 } from "./resource-firm-canonicalization.js";
 import {
-  advisorsMatchingFirm,
-  resolveDisplayedAdvisorFirms,
-} from "./resource-directory-advisor-firm.js";
-import {
-  advisorMatchesNonFirmFilters,
   firmMatchesFilters,
   parseAdvisorDirectoryFilters,
   parseFirmDirectoryFilters,
@@ -33,19 +31,13 @@ import {
 } from "./resource-directory-filters.js";
 import { allRows, optionalAll } from "./resource-directory-tables.js";
 import {
-  advisorDirectoryKey,
-  compareAdvisorDirectoryRows,
   compareFirmDirectoryRows,
   compareTeamDirectoryRows,
   firmDirectoryKey,
-  rankedSearchMatches,
   teamDirectoryKey,
 } from "./resource-directory-sorting.js";
-import type {
-  DirectoryPage,
-  SearchResponse,
-  TeamDirectoryRow,
-} from "./resource-directory-types.js";
+import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
+import { runGlobalSearch } from "./resource-directory-search-runner.js";
 
 export type {
   SearchCounts,
@@ -100,30 +92,24 @@ export class PublicAdvisors extends Resource {
   }
 
   /**
-   * Lists public advisor rows with cursor pagination.
+   * Lists public advisor rows with cursor pagination. Issues
+   * index-backed Harper queries instead of `allRows()` scans — see
+   * `.claude/scratch/issue-721-architecture.md` §5.1. The hot path
+   * picks the most selective indexed condition (token index for `q`,
+   * indexed `firmId` employment lookup for `firm`, Harper-native
+   * `search({conditions, sort, limit, offset})` for the no-`q`/no-`firm`
+   * directory listing) and applies the remainder as either a row
+   * predicate inside the Harper AND-planner or an in-memory filter on
+   * the already-bounded candidate set.
    * @param target - Request target carrying optional cursor and limit.
-   * @returns Advisor page, next cursor, and total row count.
+   * @returns Advisor page, next cursor, total row count, and an
+   *   optional `truncated` flag when the `q` intersection hit the cap.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<AdvisorRow>> {
     const filters = parseAdvisorDirectoryFilters(target);
-    // When a `firm` filter is active, drive the result from the firm's current
-    // employees (a bounded, indexed `firmId` lookup) and load ONLY those
-    // advisors by id — never scanning the 13k-row Advisor table. Without a
-    // firm filter the directory genuinely enumerates all advisors to sort and
-    // paginate them, so the full load is unavoidable there.
-    const matched = filters.firm
-      ? await advisorsMatchingFirm(filters, filters.firm)
-      : (await allRows<AdvisorRow>(tables.Advisor)).filter(advisor =>
-          advisorMatchesNonFirmFilters(advisor, filters)
-        );
-    const sorted = [...matched].sort(compareAdvisorDirectoryRows);
     const { cursor, limit } = parsePagination(target);
-    const { items, nextCursor } = paginate(
-      sorted,
-      { cursor: decodeCursor(cursor), limit },
-      advisorDirectoryKey
-    );
-    return { items, nextCursor, total: sorted.length };
+    const offset = decodeOffsetCursor(cursor);
+    return runAdvisorDirectoryQuery(filters, offset, limit);
   }
 }
 
@@ -184,7 +170,10 @@ export class Search extends Resource {
   }
 
   /**
-   * Searches firms, advisors, and teams for the global navbar.
+   * Searches firms, advisors, and teams for the global navbar. Each
+   * entity side runs through its own index-backed prefix path; the
+   * actual query orchestration lives in `runGlobalSearch` so this
+   * method stays a thin parameter-parse + dispatch.
    * @param target - Request target carrying `q` and optional `limit`.
    * @returns Ranked search matches with per-kind counts.
    */
@@ -201,76 +190,6 @@ export class Search extends Resource {
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
-    // Load only the tables the requested kind actually needs. A kind-scoped
-    // request (e.g. the navbar "Firms"/"Teams" toggles) must not scan the
-    // 13k-row Advisor table just to discard it via the kind filter below —
-    // that needless load made `kind=firm` searches flake past the smoke's
-    // timeout under concurrent load. Firms stay loaded for every kind because
-    // they back the advisor/team subtitle (`byFirm`) as well as firm results.
-    // EmploymentHistory is never scanned here; per-displayed-advisor rows are
-    // fetched below via the `advisorId` index.
-    const needAdvisors = kind === "all" || kind === "advisor";
-    const needTeams = kind === "all" || kind === "team";
-    const [advisors, firms, teams, firmAliases] = await Promise.all([
-      needAdvisors
-        ? allRows<AdvisorRow>(tables.Advisor)
-        : Promise.resolve<readonly AdvisorRow[]>([]),
-      allRows<FirmRow>(tables.Firm),
-      needTeams
-        ? allRows<TeamRow>(tables.Team)
-        : Promise.resolve<readonly TeamRow[]>([]),
-      optionalAll<FirmAliasRow>(tables.FirmAlias),
-    ]);
-    // Canonicalize firms/teams with an empty employment set: firm/team
-    // scoring and the `byFirm` subtitle map do not depend on employments,
-    // and the advisor subtitle is resolved separately below.
-    const rows = canonicalizeForSearch({
-      firms,
-      teams,
-      employments: [],
-      firmAliases,
-    });
-    const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    // Pass an EMPTY current-employment map so advisor subtitles fall back to
-    // careerStatus during scoring. Score, sortKey, counts, and ordering do
-    // not depend on `sub`, so this is safe; subtitles are overridden below.
-    const matches = rankedSearchMatches({
-      advisors,
-      firms: rows.firms,
-      teams: rows.teams,
-      byFirm,
-      currentFirmByAdvisor: new Map<string, EmploymentHistoryRow>(),
-      norm,
-    }).filter(match => kind === "all" || match.kind === kind);
-    const displayed = matches.slice(0, cap);
-    // Fetch current employment ONLY for the advisors actually displayed.
-    const advisorIds = displayed
-      .filter(match => match.kind === "advisor")
-      .map(match => match.id);
-    const subtitleByAdvisor = await resolveDisplayedAdvisorFirms(
-      advisorIds,
-      firms,
-      teams,
-      firmAliases,
-      byFirm
-    );
-    const advisorById = new Map(advisors.map(advisor => [advisor.id, advisor]));
-    return {
-      q: norm,
-      kind,
-      items: displayed.map(({ sortKey, ...row }) =>
-        row.kind === "advisor"
-          ? {
-              ...row,
-              // Mirror advisorSearchMatches exactly: resolved firm name, else
-              // `careerStatus || null` (empty string folds to null).
-              sub:
-                subtitleByAdvisor.get(row.id) ??
-                (advisorById.get(row.id)?.careerStatus || null),
-            }
-          : row
-      ),
-      counts: searchCounts(matches),
-    };
+    return runGlobalSearch({ norm, kind, cap });
   }
 }
