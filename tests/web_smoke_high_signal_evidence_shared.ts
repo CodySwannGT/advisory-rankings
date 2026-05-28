@@ -4,9 +4,9 @@
  * selectors and case matrices are declared exactly once.
  */
 export const ARTICLE_CARD = "article.card";
-export const EVENT_CARD = ".event-card";
-export const TRANSITION_EVENT = ".event-card.transition";
-export const DISCLOSURE_EVENT = ".event-card.disclosure";
+const EVENT_CARD = ".event-card";
+const TRANSITION_EVENT = ".event-card.transition";
+const DISCLOSURE_EVENT = ".event-card.disclosure";
 export const FEED_MODE_SELECT = 'form.feed-filters select[name="mode"]';
 export const FEED_CATEGORY_SELECT = 'form.feed-filters select[name="category"]';
 export const FEED_FILTER_SUMMARY = ".feed-filter-summary";
