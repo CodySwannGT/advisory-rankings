@@ -7,11 +7,19 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
+import {
+  matchLegacyDetailShell,
+  prefersHtmlDocument,
+  type DetailRequestHeaders,
+} from "../harper/detail-shell-negotiation.js";
 import { loadTable } from "./dev_server_ops.js";
 import { loadResources } from "./dev_server_resources.js";
 import { readJsonBody, sendJsonHandled } from "./dev_server_json.js";
 import { DEV_SERVER_TABLES } from "./dev_server_tables.js";
+import { DEV_SERVER_WEB_ROOT } from "./dev_server_static.js";
 
 const TABLES: readonly string[] = [...DEV_SERVER_TABLES];
 
@@ -98,6 +106,35 @@ const NO_ARG_RESOURCE =
   /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer)$/;
 const PROFILE_RESOURCE =
   /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/;
+
+/**
+ * Serves the AdvisorBook HTML shell for browser document navigations to the
+ * legacy detail data-routes, mirroring `harper-app/detail_shell.js` on the
+ * deployed Harper component. The SPA's own `Accept: application/json` data
+ * fetches are left to fall through to {@link handleResourceRoute}.
+ *
+ * @param req - Incoming HTTP request (read for negotiation headers).
+ * @param res - HTTP response.
+ * @param url - Parsed request URL.
+ * @returns Whether the request was handled by serving a shell.
+ */
+export async function handleDetailShellRoute(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL
+): Promise<boolean> {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  const shell = matchLegacyDetailShell(url.pathname);
+  if (!shell) return false;
+  if (!prefersHtmlDocument(req.headers as DetailRequestHeaders)) return false;
+  const html = await readFile(join(DEV_SERVER_WEB_ROOT, shell), "utf8");
+  res.writeHead(200, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  res.end(html);
+  return true;
+}
 
 /**
  * Handles generated Harper resource routes.

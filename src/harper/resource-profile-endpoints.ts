@@ -1,5 +1,11 @@
+import { readFile } from "node:fs/promises";
+
 import type { RouteTarget } from "../types/harper-resource.js";
 
+import {
+  detailShellResponse,
+  type ContentResponse,
+} from "./detail-shell-negotiation.js";
 import { advisorProfilePayload } from "./resource-advisor.js";
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import { loadAll } from "./resource-data.js";
@@ -59,6 +65,35 @@ export type {
 } from "./resource-profile-endpoints-types.js";
 
 /**
+ * Reads a static detail shell from the deployed `web/` directory. The path
+ * resolves relative to this compiled module, which Harper places at
+ * `harper-app/` alongside the served `web/` assets. Shells are only served on
+ * (rare) direct browser navigations to a legacy detail route, so an OS-cached
+ * read per navigation is cheap and keeps this module free of mutable state.
+ * @param shellFile - Shell HTML file name (e.g. `advisor.html`).
+ * @returns The shell HTML contents.
+ */
+function readShellHtml(shellFile: string): Promise<string> {
+  return readFile(new URL(`./web/${shellFile}`, import.meta.url), "utf8");
+}
+
+/**
+ * Serves AdvisorBook's HTML app shell when a browser navigates straight to a
+ * legacy detail data-route (so an invalid id renders the in-app not-found UI
+ * instead of raw resource JSON). Returns `null` for the SPA's own JSON data
+ * fetches and any non-document request, leaving the JSON payload untouched.
+ * @param context - The resource's `getContext()` value (carries request headers).
+ * @param resourceName - The detail resource class name.
+ * @returns A `{ contentType, data }` shell response, or `null`.
+ */
+function maybeDetailShell(
+  context: unknown,
+  resourceName: string
+): Promise<ContentResponse | null> {
+  return detailShellResponse(context, resourceName, readShellHtml);
+}
+
+/**
  * Public article feed resource.
  */
 export class Feed extends Resource {
@@ -109,9 +144,14 @@ export class ArticleView extends Resource {
   /**
    * Loads one article with body, provenance, events, and entity chips.
    * @param target - Route target containing article id or slug.
-   * @returns Article detail payload or a route error.
+   * @returns Article detail payload, a route error, or the HTML shell when a
+   *   browser navigates directly to this route.
    */
-  async get(target?: RouteTarget): Promise<ArticleDetail | RouteError> {
+  async get(
+    target?: RouteTarget
+  ): Promise<ArticleDetail | RouteError | ContentResponse> {
+    const shell = await maybeDetailShell(this.getContext(), "ArticleView");
+    if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing article id" };
     const db = await loadAll();
@@ -142,9 +182,14 @@ export class FirmProfile extends Resource {
   /**
    * Loads one firm profile without expanding large advisor rosters.
    * @param target - Route target containing firm id, slug, or alias.
-   * @returns Firm profile payload or a route error.
+   * @returns Firm profile payload, a route error, or the HTML shell when a
+   *   browser navigates directly to this route.
    */
-  async get(target?: RouteTarget): Promise<FirmProfileResponse | RouteError> {
+  async get(
+    target?: RouteTarget
+  ): Promise<FirmProfileResponse | RouteError | ContentResponse> {
+    const shell = await maybeDetailShell(this.getContext(), "FirmProfile");
+    if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing firm id" };
     const db = await loadAll();
@@ -200,9 +245,14 @@ export class AdvisorProfile extends Resource {
   /**
    * Loads one advisor profile with career, teams, compliance, and coverage.
    * @param target - Route target containing advisor id or slug.
-   * @returns Advisor profile payload or a route error.
+   * @returns Advisor profile payload, a route error, or the HTML shell when a
+   *   browser navigates directly to this route.
    */
-  async get(target?: RouteTarget): Promise<AdvisorProfilePayload | RouteError> {
+  async get(
+    target?: RouteTarget
+  ): Promise<AdvisorProfilePayload | RouteError | ContentResponse> {
+    const shell = await maybeDetailShell(this.getContext(), "AdvisorProfile");
+    if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing advisor id" };
     const db = await loadAll();
@@ -226,9 +276,14 @@ export class TeamProfile extends Resource {
   /**
    * Loads one team profile with members, metrics, transitions, and coverage.
    * @param target - Route target containing team id or slug.
-   * @returns Team profile payload or a route error.
+   * @returns Team profile payload, a route error, or the HTML shell when a
+   *   browser navigates directly to this route.
    */
-  async get(target?: RouteTarget): Promise<TeamProfileResponse | RouteError> {
+  async get(
+    target?: RouteTarget
+  ): Promise<TeamProfileResponse | RouteError | ContentResponse> {
+    const shell = await maybeDetailShell(this.getContext(), "TeamProfile");
+    if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing team id" };
     const db = await loadAll();

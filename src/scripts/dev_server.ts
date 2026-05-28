@@ -48,6 +48,7 @@ import {
 import { sendJson } from "./dev_server_json.js";
 import { clearResourcesCache } from "./dev_server_resources.js";
 import {
+  handleDetailShellRoute,
   handleMcpRoute,
   handleResourceRoute,
   handleTableRoute,
@@ -80,6 +81,7 @@ async function routeRequest(
 ): Promise<void> {
   if (await handleAuthRoute(req, res, url.pathname)) return;
   if (await handleMcpRoute(req, res, url.pathname)) return;
+  if (await handleDetailShellRoute(req, res, url)) return;
   if (await handleResourceRoute(res, url)) return;
   if (await handleTableRoute(res, url.pathname)) return;
   await serveStatic(req, res);

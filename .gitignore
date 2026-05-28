@@ -229,6 +229,8 @@ expo-env.d.ts
 # BEGIN: AI GUARDRAILS HARPER-FABRIC
 harper-app/resources.js
 harper-app/resource-*.js
+harper-app/detail-shell-negotiation.js
+harper-app/detail-shell-negotiation.js.map
 harper-app/web/**/*.js
 harper-app/web/**/*.js.map
 .lisabak/
