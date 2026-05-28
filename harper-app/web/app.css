@@ -1585,6 +1585,26 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-status {
   padding-top: 2px;
 }
+.watchlist-generated {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.watchlist-coverage {
+  display: grid;
+  gap: 4px;
+}
+.watchlist-coverage-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.watchlist-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
 
 @media (max-width: 700px) {
   .recruiting-stat-grid,

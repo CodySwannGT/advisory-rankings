@@ -24,7 +24,96 @@ const WATCHLIST_MOBILE_VIEWPORTS = [
   { name: "mobile-320", width: 320, height: 844 },
 ] as const;
 const WATCHLIST_PAGE_OVERFLOW_BUDGET_PX = 0;
-const WATCHLIST_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&firm=${encodeURIComponent(WATCHLIST_FIRM_TWO)}&state=NY&year=2026`;
+const WATCHLIST_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&firm=${encodeURIComponent(WATCHLIST_FIRM_TWO)}&state=NY`;
+const WATCHLIST_NO_MATCH_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&state=ZZ`;
+
+export { WATCHLIST_FIRM_ONE, WATCHLIST_FIRM_TWO };
+
+/** Watchlist Recruiting route observations. */
+export interface WatchlistRecruitingState {
+  readonly restored: {
+    readonly coverageCount: number;
+    readonly firmValues: readonly string[];
+    readonly hasGenerated: boolean;
+    readonly hasInbound: boolean;
+    readonly hasKnownAum: boolean;
+    readonly hasNet: boolean;
+    readonly hasOutbound: boolean;
+    readonly hasWatchlist: boolean;
+    readonly panelCount: number;
+  };
+  readonly noMatch: {
+    readonly firmValue: string | undefined;
+    readonly hasEmptyCopy: boolean;
+    readonly hasWatchlist: boolean;
+  };
+  readonly updatedFirmValues: readonly string[];
+  readonly updatedUrl: URL;
+}
+
+/**
+ * Reads the URL-restored watchlist state, freshness/coverage indicators, and
+ * submit behavior, then the no-match empty state.
+ * @param page - Browser page shared by smoke scenarios.
+ * @returns Watchlist assertions.
+ */
+export async function readWatchlistRecruiting(
+  page: Page
+): Promise<WatchlistRecruitingState> {
+  await smokeGoto(page, WATCHLIST_URL);
+  await smokeWaitForSelector(page, WATCHLIST_CARD_SELECTOR, QUICK_UI_TIMEOUT);
+  const restored = await page.evaluate(() => ({
+    coverageCount: document.querySelectorAll(
+      ".recruiting-watchlist .watchlist-coverage"
+    ).length,
+    firmValues: [
+      ...document.querySelectorAll<HTMLInputElement>('input[name="firm"]'),
+    ].map(input => input.value),
+    hasGenerated: Boolean(
+      document
+        .querySelector(".recruiting-watchlist .watchlist-generated")
+        ?.textContent?.includes("Generated")
+    ),
+    hasWatchlist: document.body.innerText.includes("Recruiting watchlist"),
+    hasInbound: document.body.innerText.includes("Inbound"),
+    hasOutbound: document.body.innerText.includes("Outbound"),
+    hasNet: document.body.innerText.includes("Net"),
+    hasKnownAum: /\$\d[\d,.]*(?:\.\d+)?[KMB]?/.test(document.body.innerText),
+    panelCount: document.querySelectorAll(".watchlist-item").length,
+  }));
+  await page.locator('input[name="year"]').fill("2025");
+  await page.locator(".filter-button").click();
+  await page.waitForURL(/year=2025/, { timeout: QUICK_UI_TIMEOUT });
+  const updatedUrl = new URL(page.url());
+  const updatedFirmValues = updatedUrl.searchParams.getAll("firm");
+  await shot(page, "11-recruiting-watchlist");
+  const noMatch = await readNoMatchWatchlist(page);
+  return { restored, noMatch, updatedFirmValues, updatedUrl };
+}
+
+/**
+ * Reads the no-match watchlist state: a watched firm with an impossible
+ * filter still renders the card with explicit empty copy and keeps the firm
+ * control editable.
+ * @param page - Browser page shared by smoke scenarios.
+ * @returns No-match watchlist observations.
+ */
+async function readNoMatchWatchlist(
+  page: Page
+): Promise<WatchlistRecruitingState["noMatch"]> {
+  await smokeGoto(page, WATCHLIST_NO_MATCH_URL);
+  await smokeWaitForSelector(page, WATCHLIST_CARD_SELECTOR, QUICK_UI_TIMEOUT);
+  const noMatch = await page.evaluate(() => ({
+    firmValue:
+      document.querySelector<HTMLInputElement>('input[name="firm"]')?.value,
+    hasEmptyCopy: Boolean(
+      document.querySelector(".recruiting-watchlist .watchlist-empty")
+    ),
+    hasWatchlist: document.body.innerText.includes("Recruiting watchlist"),
+  }));
+  await shot(page, "11-recruiting-watchlist-no-match");
+  return noMatch;
+}
 
 /** Viewport used by watchlist card mobile smoke checks. */
 type WatchlistMobileViewport = (typeof WATCHLIST_MOBILE_VIEWPORTS)[number];

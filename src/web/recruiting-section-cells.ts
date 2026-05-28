@@ -16,9 +16,11 @@ import type {
 import type {
   WatchlistItem,
   WatchlistMoveSummary,
+  WatchlistSourceCoverage,
 } from "../harper/resource-recruiting-watchlist.js";
 
 const STACKED_CELL_CLASS = "stacked-cell";
+const NO_MATCHING_MOVES = "no-matching-moves";
 
 /**
  * Minimal firm shape consumed by `firmCell`. Compatible with `FirmChip`,
@@ -92,6 +94,10 @@ export function firmCell(firm: FirmCellChip | null | undefined): DomChild {
  * @returns Watchlist item node.
  */
 export function watchlistItem(item: WatchlistItem): HTMLElement {
+  const hasMoves = item.sourceCoverage.moveCount > 0;
+  const statuses = item.sourceStatus.filter(
+    status => status !== NO_MATCHING_MOVES
+  );
   return el(
     "article",
     { class: "watchlist-item" },
@@ -101,20 +107,72 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
       firmCell(item.firm),
       item.query ? el("span", { class: "watchlist-query" }, item.query) : null
     ),
-    el(
-      "div",
-      { class: "watchlist-metrics" },
-      metricBlock("Inbound", summaryValue(item.inbound)),
-      metricBlock("Outbound", summaryValue(item.outbound)),
-      metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
-    ),
-    item.sourceStatus?.length
+    hasMoves
+      ? el(
+          "div",
+          { class: "watchlist-metrics" },
+          metricBlock("Inbound", summaryValue(item.inbound)),
+          metricBlock("Outbound", summaryValue(item.outbound)),
+          metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
+        )
+      : watchlistNoMatch(),
+    coverageBlock(item.sourceCoverage),
+    statuses.length
       ? el(
           "div",
           { class: "tag-list watchlist-status" },
-          ...item.sourceStatus.map(status => statusTag(status))
+          ...statuses.map(status => statusTag(status))
         )
       : null
+  );
+}
+
+/**
+ * Renders the per-item no-match empty state for a watched firm with no moves.
+ * @returns No-match copy node.
+ */
+function watchlistNoMatch(): HTMLElement {
+  return el(
+    "p",
+    { class: "watchlist-empty watchlist-note" },
+    "No matching moves for this firm under the current filters. Adjust or remove filters above to broaden results."
+  );
+}
+
+/**
+ * Renders per-item source coverage indicators near a watch item. Surfaces the
+ * source-backed ratio plus explicit missing-source and missing-location
+ * counts so analysts can see provenance gaps without leaving the row.
+ * @param coverage - Source coverage counts for the watched firm's moves.
+ * @returns Coverage indicator node, or null when the row has no moves.
+ */
+export function coverageBlock(
+  coverage: WatchlistSourceCoverage
+): HTMLElement | null {
+  if (coverage.moveCount === 0) return null;
+  const tags: ReadonlyArray<HTMLElement> = [
+    Tag({
+      kind: coverage.missingSourceCount > 0 ? "warn" : "ok",
+      children: `${fmtNumber(coverage.sourceBackedCount)}/${fmtNumber(coverage.moveCount)} source-backed`,
+    }),
+    coverage.missingSourceCount > 0
+      ? Tag({
+          kind: "warn",
+          children: `${fmtNumber(coverage.missingSourceCount)} missing source`,
+        })
+      : null,
+    coverage.missingLocationCount > 0
+      ? Tag({
+          kind: "warn",
+          children: `${fmtNumber(coverage.missingLocationCount)} missing location`,
+        })
+      : null,
+  ].filter((tag): tag is HTMLElement => tag !== null);
+  return el(
+    "div",
+    { class: "watchlist-coverage" },
+    el("span", { class: "watchlist-coverage-label" }, "Source coverage"),
+    el("div", { class: "tag-list" }, ...tags)
   );
 }
 

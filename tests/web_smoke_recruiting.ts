@@ -12,14 +12,19 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
-import { smokeWatchlistMobile } from "./web_smoke_recruiting_watchlist.js";
+import {
+  readWatchlistRecruiting,
+  smokeWatchlistMobile,
+  WATCHLIST_FIRM_ONE,
+  WATCHLIST_FIRM_TWO,
+  type WatchlistRecruitingState,
+} from "./web_smoke_recruiting_watchlist.js";
 
 const STANDARD_DESKTOP_VIEWPORT = { width: 1280, height: 900 } as const;
 const RECRUITING_OVERFLOW_VIEWPORTS = [
   { name: "desktop", width: 1366, height: 900, tableBudgetPx: 16 },
   { name: "mobile", width: 390, height: 844, tableBudgetPx: 16 },
 ] as const;
-const WATCHLIST_CARD_SELECTOR = ".recruiting-watchlist";
 
 /** Viewport and overflow budget used by recruiting table smoke checks. */
 type RecruitingViewport = (typeof RECRUITING_OVERFLOW_VIEWPORTS)[number];
@@ -54,25 +59,6 @@ interface EmptyRecruitingState {
   readonly noOverflow: boolean;
   readonly state: string | undefined;
 }
-/** Watchlist Recruiting route observations. */
-interface WatchlistRecruitingState {
-  readonly restored: {
-    readonly firmValues: readonly string[];
-    readonly hasInbound: boolean;
-    readonly hasKnownAum: boolean;
-    readonly hasNet: boolean;
-    readonly hasOutbound: boolean;
-    readonly hasWatchlist: boolean;
-    readonly panelCount: number;
-  };
-  readonly updatedFirmValues: readonly string[];
-  readonly updatedUrl: URL;
-}
-
-const WATCHLIST_FIRM_ONE = "Wells Fargo Advisors";
-const WATCHLIST_FIRM_TWO = "Morgan Stanley";
-const WATCHLIST_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&firm=${encodeURIComponent(WATCHLIST_FIRM_TWO)}&state=NY&year=2026`;
-
 /**
  * Verifies the public Recruiting Market Map page and empty filter state.
  * @param page - Browser page shared by smoke scenarios.
@@ -136,36 +122,6 @@ async function readEmptyRecruiting(page: Page): Promise<EmptyRecruitingState> {
 }
 
 /**
- * Reads the URL-restored watchlist state and submit behavior.
- * @param page - Browser page shared by smoke scenarios.
- * @returns Watchlist assertions.
- */
-async function readWatchlistRecruiting(
-  page: Page
-): Promise<WatchlistRecruitingState> {
-  await smokeGoto(page, WATCHLIST_URL);
-  await smokeWaitForSelector(page, WATCHLIST_CARD_SELECTOR, QUICK_UI_TIMEOUT);
-  const restored = await page.evaluate(() => ({
-    firmValues: [
-      ...document.querySelectorAll<HTMLInputElement>('input[name="firm"]'),
-    ].map(input => input.value),
-    hasWatchlist: document.body.innerText.includes("Recruiting watchlist"),
-    hasInbound: document.body.innerText.includes("Inbound"),
-    hasOutbound: document.body.innerText.includes("Outbound"),
-    hasNet: document.body.innerText.includes("Net"),
-    hasKnownAum: /\$\d[\d,.]*(?:\.\d+)?[KMB]?/.test(document.body.innerText),
-    panelCount: document.querySelectorAll(".watchlist-item").length,
-  }));
-  await page.locator('input[name="year"]').fill("2025");
-  await page.locator(".filter-button").click();
-  await page.waitForURL(/year=2025/, { timeout: QUICK_UI_TIMEOUT });
-  const updatedUrl = new URL(page.url());
-  const updatedFirmValues = updatedUrl.searchParams.getAll("firm");
-  await shot(page, "11-recruiting-watchlist");
-  return { restored, updatedFirmValues, updatedUrl };
-}
-
-/**
  * Converts recruiting observations into smoke checks.
  * @param loaded - Default page observations.
  * @param empty - Empty-state observations.
@@ -181,7 +137,7 @@ function recruitingChecks(
   overflowChecks: readonly Check[],
   watchlistMobileChecks: readonly Check[]
 ): readonly Check[] {
-  const { restored, updatedFirmValues, updatedUrl } = watchlist;
+  const { restored, noMatch, updatedFirmValues, updatedUrl } = watchlist;
   return [
     check(loaded.hasHeader, "recruiting: page header renders"),
     check(loaded.hasMomentum, "recruiting: firm momentum renders"),
@@ -211,6 +167,22 @@ function recruitingChecks(
         restored.hasNet &&
         restored.hasKnownAum,
       "recruiting: watchlist exposes directional AUM metrics"
+    ),
+    check(
+      restored.hasGenerated,
+      "recruiting: watchlist summary shows generated freshness"
+    ),
+    check(
+      restored.coverageCount >= 1,
+      "recruiting: watchlist exposes per-item source coverage",
+      `coverage blocks ${restored.coverageCount}`
+    ),
+    check(
+      noMatch.hasWatchlist &&
+        noMatch.hasEmptyCopy &&
+        noMatch.firmValue === WATCHLIST_FIRM_ONE,
+      "recruiting: no-match watchlist shows empty copy with editable firm",
+      `watchlist ${noMatch.hasWatchlist}, empty ${noMatch.hasEmptyCopy}, firm ${noMatch.firmValue}`
     ),
     check(
       updatedUrl.searchParams.get("year") === "2025" &&

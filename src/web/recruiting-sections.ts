@@ -76,6 +76,9 @@ export function watchlistCard(
   watchlist: WatchlistPayload | null
 ): HTMLElement | null {
   if (!watchlist?.items?.length) return null;
+  const anyMoves = watchlist.items.some(
+    item => item.sourceCoverage.moveCount > 0
+  );
   return SectionCard({
     title: "Recruiting watchlist",
     attrs: { class: "recruiting-watchlist" },
@@ -93,6 +96,18 @@ export function watchlistCard(
           )
         )
       ),
+      el(
+        "p",
+        { class: "watchlist-generated" },
+        "Generated ",
+        fmtDate(watchlist.generatedAt, { mode: "rel" })
+      ),
+      anyMoves
+        ? null
+        : EmptyText({
+            children:
+              "No watched firms have matching moves under the current filters. Your selected firms and filters remain editable above.",
+          }),
       el(
         "div",
         { class: "watchlist-grid" },
