@@ -129,22 +129,21 @@ export async function routeRating(
   onPost: (body: Readonly<Record<string, unknown>>) => void,
   rating: Readonly<Record<string, unknown>> | null
 ): Promise<void> {
-  const state = { currentRating: rating };
+  const state = { current: rating };
   await page.route(RATING_ROUTE, async (route: Route) => {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON() as Readonly<
         Record<string, unknown>
       >;
       onPost(body);
-      /* eslint-disable-next-line functional/immutable-data -- Stateful route fixture simulates persisted rating reloads. */
-      state.currentRating = body;
+      state.current = body;
       await route.fulfill({
-        json: { authenticated: true, rating: state.currentRating },
+        json: { authenticated: true, rating: state.current },
       });
       return;
     }
     await route.fulfill({
-      json: { authenticated: true, rating: state.currentRating },
+      json: { authenticated: true, rating: state.current },
     });
   });
 }

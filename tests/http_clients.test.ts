@@ -1,4 +1,3 @@
-/* eslint-disable max-lines, sonarjs/no-duplicate-string, sonarjs/publicly-writable-directories -- HTTP transport tests use repeated fixture URLs and synthetic temp paths. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -11,6 +10,11 @@ import { basicAuth, restGet, restPut } from "../src/lib/rest.js";
 import { describeTarget, harperConfig, op, upsert } from "../src/lib/harper.js";
 import { HarperREST } from "../src/lib/brokercheck-rest.js";
 import { teamMemberGroups } from "../src/harper/resource-team.js";
+
+const EXAMPLE_TEST_HOST = "https://example.test";
+const USER_EMAIL = "user@example.test";
+const SEARCH_INDIVIDUAL_PATH = "/search/individual";
+const CLUSTER_EXAMPLE_HOST = "https://cluster.example";
 
 /**
  * Minimal Harper Resource shim for auth resource unit tests.
@@ -79,12 +83,12 @@ describe("REST helpers", () => {
     await expect(
       restGet("https://example.test///", "Firm", "auth")
     ).resolves.toEqual([{ id: "row-1" }]);
-    await expect(
-      restGet("https://example.test", "Firm", "auth")
-    ).resolves.toEqual([]);
-    await expect(
-      restGet("https://example.test", "Firm", "auth")
-    ).resolves.toEqual([]);
+    await expect(restGet(EXAMPLE_TEST_HOST, "Firm", "auth")).resolves.toEqual(
+      []
+    );
+    await expect(restGet(EXAMPLE_TEST_HOST, "Firm", "auth")).resolves.toEqual(
+      []
+    );
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://example.test/Firm/");
   });
 
@@ -97,13 +101,13 @@ describe("REST helpers", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      restPut("https://example.test", "Advisor", { id: "A B" }, "auth")
+      restPut(EXAMPLE_TEST_HOST, "Advisor", { id: "A B" }, "auth")
     ).resolves.toBe(true);
     await expect(
-      restPut("https://example.test", "Advisor", { id: "bad" }, "auth")
+      restPut(EXAMPLE_TEST_HOST, "Advisor", { id: "bad" }, "auth")
     ).resolves.toBe(false);
     await expect(
-      restPut("https://example.test", "Advisor", {}, "auth")
+      restPut(EXAMPLE_TEST_HOST, "Advisor", {}, "auth")
     ).rejects.toThrow("record missing id");
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "https://example.test/Advisor/A%20B"
@@ -196,8 +200,8 @@ describe("Harper auth and team helpers", () => {
     const login = new authResources.Login() as any;
     login.context = { login: vi.fn().mockResolvedValue(undefined) };
     await expect(
-      login.post({ email: "user@example.test", password: "pw" })
-    ).resolves.toEqual({ ok: true, username: "user@example.test" });
+      login.post({ email: USER_EMAIL, password: "pw" })
+    ).resolves.toEqual({ ok: true, username: USER_EMAIL });
 
     const usernameLogin = new authResources.Login() as any;
     usernameLogin.context = { login: vi.fn().mockResolvedValue(undefined) };
@@ -211,7 +215,7 @@ describe("Harper auth and team helpers", () => {
     const rejected = new authResources.Login() as any;
     rejected.context = { login: vi.fn().mockRejectedValue(new Error("no")) };
     await expect(
-      rejected.post({ email: "user@example.test", password: "bad" })
+      rejected.post({ email: USER_EMAIL, password: "bad" })
     ).rejects.toMatchObject({ status: 401 });
 
     const logout = new authResources.Logout() as any;
@@ -325,14 +329,14 @@ describe("BrokerCheck client", () => {
 
     await expect(
       client.searchIndividual("Avery", "GA", 2, 5)
-    ).resolves.toMatchObject({ ok: true, path: "/search/individual" });
+    ).resolves.toMatchObject({ ok: true, path: SEARCH_INDIVIDUAL_PATH });
     await client.searchFirm("Example", 1, 3);
     await client.getIndividual("123");
     await client.getFirm("456");
     await client.firmRoster("789", 1, 10);
 
     expect(calls[0]).toEqual([
-      "/search/individual",
+      SEARCH_INDIVIDUAL_PATH,
       expect.objectContaining({ query: "Avery", state: "GA", start: 10 }),
     ]);
     expect(calls[1]).toEqual([
@@ -342,7 +346,7 @@ describe("BrokerCheck client", () => {
     expect(calls[2]).toEqual(["/search/individual/123", { wt: "json" }]);
     expect(calls[3]).toEqual(["/search/firm/456", { wt: "json" }]);
     expect(calls[4]).toEqual([
-      "/search/individual",
+      SEARCH_INDIVIDUAL_PATH,
       expect.objectContaining({ firm: "789", start: 10 }),
     ]);
   });
@@ -475,7 +479,7 @@ describe("Harper transport helpers", () => {
       },
       () => {
         expect(harperConfig()).toMatchObject({
-          target: "https://cluster.example",
+          target: CLUSTER_EXAMPLE_HOST,
           auth: "dXNlcjpwdw==",
         });
         expect(describeTarget()).toBe("HTTPS https://cluster.example");
@@ -488,7 +492,7 @@ describe("Harper transport helpers", () => {
       {
         HDB_ADMIN_PASSWORD: "pw",
         HDB_ADMIN_USERNAME: "user",
-        HDB_TARGET_URL: "https://cluster.example",
+        HDB_TARGET_URL: CLUSTER_EXAMPLE_HOST,
       },
       async () => {
         const fetchMock = vi
@@ -515,7 +519,7 @@ describe("Harper transport helpers", () => {
       {
         HDB_ADMIN_PASSWORD: "pw",
         HDB_ADMIN_USERNAME: "user",
-        HDB_TARGET_URL: "https://cluster.example",
+        HDB_TARGET_URL: CLUSTER_EXAMPLE_HOST,
       },
       async () => {
         vi.stubGlobal(
@@ -538,4 +542,3 @@ describe("Harper transport helpers", () => {
     );
   });
 });
-/* eslint-enable max-lines, sonarjs/no-duplicate-string, sonarjs/publicly-writable-directories -- Re-enable fixture-only suppressions. */

@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- Private resource helpers are covered through the public endpoint. */
 import type { ResourceIndex } from "./resource-data.js";
 import type { RankingSortFields } from "./resource-rankings-explorer-entries.js";
 import type {
@@ -14,6 +13,13 @@ import { resolveFirm } from "./resource-routing.js";
 
 export { rankingsCoverage } from "./resource-rankings-explorer-coverage.js";
 
+/**
+ * Builds the canonical RankingExplorerFilters object from the request's URL parameter map,
+ * resolving firm queries against the index and applying defensive bounds to numeric inputs.
+ * @param target Harper URLSearchParams-like filter target, or null when none was supplied.
+ * @param db Resource index used to translate a firm name/id into a real firm record.
+ * @returns A fully populated, sanitized filter object.
+ */
 export function parseFilters(
   target: FilterTarget | null | undefined,
   db: ResourceIndex
@@ -33,6 +39,12 @@ export function parseFilters(
   };
 }
 
+/**
+ * Defensively reads one URL parameter via duck-typed `get`, tolerating non-object targets.
+ * @param target Possible URLSearchParams-shaped value.
+ * @param name Parameter name to read.
+ * @returns The parameter as a string, or null when missing or empty.
+ */
 function readTarget(
   target: FilterTarget | null | undefined,
   name: string
@@ -46,6 +58,12 @@ function readTarget(
   return text || null;
 }
 
+/**
+ * Applies every filter predicate to each entry, keeping only those that pass all of them.
+ * @param entries Source entries.
+ * @param filters Active filter object.
+ * @returns Entries that satisfy every active filter.
+ */
 export function filteredEntries(
   entries: readonly RankingExplorerEntry[],
   filters: RankingExplorerFilters
@@ -55,6 +73,12 @@ export function filteredEntries(
   );
 }
 
+/**
+ * Builds the per-entry boolean array used by `filteredEntries`, with one slot per filter dimension.
+ * @param entry Candidate entry.
+ * @param filters Active filter object.
+ * @returns Array of match booleans, one per filter dimension.
+ */
 function filterPredicates(
   entry: RankingExplorerEntry,
   filters: RankingExplorerFilters
@@ -83,12 +107,24 @@ const SORT_KEYS = [
   "year",
 ] as const satisfies readonly (keyof RankingSortFields)[];
 
+/**
+ * Parses a sort token like `-rank` into the underlying sort-field name, with `rank` as fallback.
+ * @param sort Raw sort token, possibly prefixed with `-` for descending.
+ * @returns A known sort-field key.
+ */
 function parseSortKey(sort: string): keyof RankingSortFields {
   const stripped = sort.replace(/^-/, "");
   const match = SORT_KEYS.find(candidate => candidate === stripped);
   return match ?? "rank";
 }
 
+/**
+ * Returns a new array of entries sorted by the requested field/direction, putting missing numeric
+ * values last so they don't pollute the top of the list.
+ * @param entries Source entries (not mutated).
+ * @param sort Sort token, possibly prefixed with `-` for descending.
+ * @returns A new sorted array.
+ */
 export function sortEntries(
   entries: readonly RankingExplorerEntry[],
   sort: string
@@ -106,6 +142,13 @@ export function sortEntries(
   });
 }
 
+/**
+ * Numeric comparator that always sends NaN/Infinity values to the end of the sort.
+ * @param left Left value.
+ * @param right Right value.
+ * @param direction 1 for ascending, -1 for descending.
+ * @returns Standard comparator result.
+ */
 function compareNumeric(
   left: number,
   right: number,
@@ -119,6 +162,11 @@ function compareNumeric(
   return (left - right) * direction;
 }
 
+/**
+ * Aggregates totals across the filtered rankings slice for the explorer header strip.
+ * @param entries Filtered entries to summarise.
+ * @returns Counts of total/resolved/unresolved rows plus the unique firm and state counts.
+ */
 export function summarize(
   entries: readonly RankingExplorerEntry[]
 ): RankingsSummary {
@@ -142,6 +190,11 @@ export function summarize(
   };
 }
 
+/**
+ * Groups entries by firm and returns the leaderboard rows, ordered by count then firm name.
+ * @param entries Filtered entries to roll up.
+ * @returns Top-firm rows ready for UI rendering.
+ */
 export function topFirms(
   entries: readonly RankingExplorerEntry[]
 ): readonly TopFirmRow[] {
@@ -163,6 +216,12 @@ export function topFirms(
   );
 }
 
+/**
+ * Reducer folding one entry into a top-firm row, growing the count and source-id list.
+ * @param row Accumulator row.
+ * @param entry Entry being merged in.
+ * @returns The updated row.
+ */
 function mergeFirmEntry(
   row: TopFirmRow,
   entry: RankingExplorerEntry
@@ -174,6 +233,11 @@ function mergeFirmEntry(
   };
 }
 
+/**
+ * Computes the facet lists used by the explorer's filter controls (categories, years, firms, states).
+ * @param entries Source entries to derive facets from.
+ * @returns Sorted, de-duplicated facet lists.
+ */
 export function facets(
   entries: readonly RankingExplorerEntry[]
 ): RankingsFacets {
@@ -198,11 +262,22 @@ export function facets(
   };
 }
 
+/**
+ * Strips the internal `_sort` index off an entry so the wire-facing object stays narrow.
+ * @param entry Internal entry shape.
+ * @returns The same entry without internal sort metadata.
+ */
 export function publicEntry(entry: RankingExplorerEntry): PublicRankingEntry {
   const { _sort: _omitSort, ...publicRow } = entry;
   return publicRow;
 }
 
+/**
+ * Returns a defensive copy of the filter object so callers can echo it back to clients without leaking
+ * internal mutation.
+ * @param filters Filter object to clone.
+ * @returns A shallow copy with the same fields.
+ */
 export function publicFilters(
   filters: RankingExplorerFilters
 ): RankingExplorerFilters {
@@ -219,21 +294,44 @@ export function publicFilters(
   };
 }
 
+/**
+ * Normalises a free-text state input to upper-case to match canonical state codes.
+ * @param value Raw input value.
+ * @returns The upper-cased state, or null when input was empty.
+ */
 export function normalizeState(value: unknown): string | null {
   const text = clean(value);
   return text ? text.toUpperCase() : null;
 }
 
+/**
+ * Trims and string-coerces an unknown value, returning null when the result is empty.
+ * @param value Raw input value.
+ * @returns The trimmed string, or null when empty.
+ */
 function clean(value: unknown): string | null {
   const text = String(value ?? "").trim();
   return text || null;
 }
 
+/**
+ * Parses an unknown value as a calendar year above 1900, rejecting non-integers.
+ * @param value Raw input value.
+ * @returns The parsed year, or null when invalid.
+ */
 function normalizeYear(value: unknown): number | null {
   const year = Number(value);
   return Number.isInteger(year) && year > 1900 ? year : null;
 }
 
+/**
+ * Parses a numeric input, clamps it into [min, max], and falls back when it is missing/invalid.
+ * @param value Raw input value.
+ * @param fallback Value to use when input is missing/invalid.
+ * @param min Inclusive minimum after clamping.
+ * @param max Inclusive maximum after clamping.
+ * @returns The bounded integer.
+ */
 function boundedNumber(
   value: unknown,
   fallback: number,
@@ -246,11 +344,21 @@ function boundedNumber(
   return Math.min(max, Math.max(min, Math.trunc(number)));
 }
 
+/**
+ * Coerces a raw resolved-filter input to the allowed enum, rejecting anything else.
+ * @param value Raw input value.
+ * @returns The valid filter value, or null when invalid.
+ */
 function resolvedFilter(value: unknown): "resolved" | "unresolved" | null {
   if (value === "resolved" || value === "unresolved") return value;
   return null;
 }
 
+/**
+ * Coerces a raw sort token to one of the allowed sort options, defaulting to `rank`.
+ * @param value Raw input value.
+ * @returns A valid sort token.
+ */
 function sortFilter(value: unknown): string {
   const allowed = [
     "rank",
@@ -266,10 +374,13 @@ function sortFilter(value: unknown): string {
   return typeof value === "string" && allowed.includes(value) ? value : "rank";
 }
 
+/**
+ * De-duplicates a value array and sorts it lexicographically, dropping null/undefined entries.
+ * @param values Input values.
+ * @returns The deduped, sorted array.
+ */
 function uniqueSorted<T>(values: readonly T[]): readonly T[] {
   return [...new Set(values.filter(value => value != null))].sort(
     (left, right) => String(left).localeCompare(String(right))
   );
 }
-
-/* eslint-enable jsdoc/require-jsdoc -- End local helper exception. */

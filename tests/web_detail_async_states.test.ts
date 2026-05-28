@@ -1,5 +1,4 @@
 import { createServer, type Server } from "node:http";
-/* eslint-disable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- Browser fixture payloads keep this detail-route regression self-contained. */
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -8,6 +7,20 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
 const QUICK_TIMEOUT = 2_000;
+const HEADLINE_TEXT = "Advisor moves in test market";
+const ADVISOR_NAME = "Avery Stone";
+const TEMPORARY_OUTAGE = "temporary outage";
+const TRY_AGAIN_TEXT = "Try again shortly.";
+const FIRM_PROFILE_ROUTE = "**/FirmProfile/firm-1";
+const COULD_NOT_LOAD_FIRM = "Could not load firm";
+const FIRM_DUE_DILIGENCE = "Firm due diligence";
+const RECRUITING_MOMENTUM = "Recruiting momentum";
+const NEEDS_DATA = "Needs data";
+const RIGHT_CARD_SELECTOR = ".right .card";
+const EVIDENCE_FRESHNESS = "Evidence freshness";
+const EXAMPLE_WEALTH_SHORT = "Example Wealth";
+const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
+const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -149,14 +162,14 @@ describe("detail async states", () => {
         path: "/article.html?id=article-1",
         resource: "/ArticleView/article-1",
         title: "Could not load article",
-        successText: "Advisor moves in test market",
+        successText: HEADLINE_TEXT,
         payload: articleWithPartialFailures(),
       },
       {
         path: "/advisor.html?id=advisor-loaded",
         resource: "/AdvisorProfile/advisor-loaded",
         title: "Could not load advisor",
-        successText: "Avery Stone",
+        successText: ADVISOR_NAME,
         payload: advisorEvidenceProfile("advisor-loaded"),
       },
       {
@@ -182,7 +195,7 @@ describe("detail async states", () => {
             await route.fulfill({
               status: 503,
               contentType: "application/json",
-              body: JSON.stringify({ error: "temporary outage" }),
+              body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
             });
             return;
           }
@@ -196,10 +209,8 @@ describe("detail async states", () => {
         await page.getByText(detailCase.title).waitFor({
           timeout: QUICK_TIMEOUT,
         });
-        expect(await page.getByText("Try again shortly.").isVisible()).toBe(
-          true
-        );
-        expect(await page.getByText("temporary outage").count()).toBe(0);
+        expect(await page.getByText(TRY_AGAIN_TEXT).isVisible()).toBe(true);
+        expect(await page.getByText(TEMPORARY_OUTAGE).count()).toBe(0);
 
         await page.getByRole("button", { name: "Retry" }).click();
         await page.getByText(detailCase.successText).first().waitFor({
@@ -224,13 +235,13 @@ describe("detail async states", () => {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
-      await page.route("**/FirmProfile/firm-1", async route => {
+      await page.route(FIRM_PROFILE_ROUTE, async route => {
         firmProfileRequests.push(route.request().url());
         if (firmProfileRequests.length === 1) {
           await route.fulfill({
             status: 503,
             contentType: "application/json",
-            body: JSON.stringify({ error: "temporary outage" }),
+            body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
           });
           return;
         }
@@ -241,30 +252,30 @@ describe("detail async states", () => {
         waitUntil: "domcontentloaded",
       });
 
-      const errorCard = page.getByText("Could not load firm");
+      const errorCard = page.getByText(COULD_NOT_LOAD_FIRM);
       await errorCard.waitFor({
         timeout: QUICK_TIMEOUT,
       });
       const firmsNav = page.locator(".nav a", { hasText: "Firms" });
       await firmsNav.waitFor();
       expect(await errorCard.isVisible()).toBe(true);
-      expect(await page.getByText("Try again shortly.").isVisible()).toBe(true);
-      expect(await page.getByText("temporary outage").count()).toBe(0);
+      expect(await page.getByText(TRY_AGAIN_TEXT).isVisible()).toBe(true);
+      expect(await page.getByText(TEMPORARY_OUTAGE).count()).toBe(0);
       expect(await firmsNav.isVisible()).toBe(true);
 
       await page.getByRole("button", { name: "Retry" }).click();
-      await page.getByRole("heading", { name: "Firm due diligence" }).waitFor({
+      await page.getByRole("heading", { name: FIRM_DUE_DILIGENCE }).waitFor({
         timeout: QUICK_TIMEOUT,
       });
       expect(
         await page
-          .getByRole("heading", { name: "Recruiting momentum" })
+          .getByRole("heading", { name: RECRUITING_MOMENTUM })
           .isVisible()
       ).toBe(true);
       expect(
         firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
       ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
-      expect(await page.getByText("Could not load firm").count()).toBe(0);
+      expect(await page.getByText(COULD_NOT_LOAD_FIRM).count()).toBe(0);
     } finally {
       await page.close();
     }
@@ -295,7 +306,7 @@ describe("detail async states", () => {
           renderRecoverableDetailError({
             center,
             right,
-            title: "Could not load firm",
+            title: "${COULD_NOT_LOAD_FIRM}",
             error: new Error("temporary outage with raw backend details"),
             onRetry: () => {
               retryCount += 1;
@@ -344,8 +355,8 @@ describe("detail async states", () => {
       );
 
       expect(result).toEqual({
-        title: "Could not load firm",
-        body: "Try again shortly.",
+        title: COULD_NOT_LOAD_FIRM,
+        body: TRY_AGAIN_TEXT,
         buttonText: "Retry",
         asyncState: "error",
         retryRule: "required",
@@ -378,7 +389,7 @@ describe("detail async states", () => {
         waitUntil: "domcontentloaded",
       });
 
-      const headline = page.getByText("Advisor moves in test market");
+      const headline = page.getByText(HEADLINE_TEXT);
       await headline.waitFor({
         timeout: QUICK_TIMEOUT,
       });
@@ -405,7 +416,7 @@ describe("detail async states", () => {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
-      await page.route("**/FirmProfile/firm-1", async route => {
+      await page.route(FIRM_PROFILE_ROUTE, async route => {
         await route.fulfill({ json: firmDueDiligenceProfile() });
       });
 
@@ -413,11 +424,11 @@ describe("detail async states", () => {
         waitUntil: "domcontentloaded",
       });
 
-      await page.getByRole("heading", { name: "Firm due diligence" }).waitFor({
+      await page.getByRole("heading", { name: FIRM_DUE_DILIGENCE }).waitFor({
         timeout: QUICK_TIMEOUT,
       });
       const recruitingHeading = page.getByRole("heading", {
-        name: "Recruiting momentum",
+        name: RECRUITING_MOMENTUM,
       });
       expect(await recruitingHeading.isVisible()).toBe(true);
       expect(
@@ -449,7 +460,7 @@ describe("detail async states", () => {
         true
       );
 
-      await page.getByRole("button", { name: "Needs data" }).click();
+      await page.getByRole("button", { name: NEEDS_DATA }).click();
       expect(
         await page
           .getByRole("heading", { name: "Ranking presence" })
@@ -477,7 +488,7 @@ describe("detail async states", () => {
         await page.route("**/Me", async route => {
           await route.fulfill({ json: { authenticated: false } });
         });
-        await page.route("**/FirmProfile/firm-1", async route => {
+        await page.route(FIRM_PROFILE_ROUTE, async route => {
           await route.fulfill({ json: firmDueDiligenceProfile() });
         });
 
@@ -515,9 +526,9 @@ describe("detail async states", () => {
 
         const section = page.locator(".firm-dd-card").first();
         await section
-          .getByRole("heading", { name: "Firm due diligence" })
+          .getByRole("heading", { name: FIRM_DUE_DILIGENCE })
           .waitFor({ timeout: QUICK_TIMEOUT });
-        await section.getByRole("button", { name: "Needs data" }).click();
+        await section.getByRole("button", { name: NEEDS_DATA }).click();
 
         expect(
           await section.getByText("No modules currently need data.").isVisible()
@@ -548,7 +559,7 @@ describe("detail async states", () => {
         ).toBe(true);
         expect(
           await section
-            .getByRole("heading", { name: "Recruiting momentum" })
+            .getByRole("heading", { name: RECRUITING_MOMENTUM })
             .isVisible()
         ).toBe(true);
       } finally {
@@ -572,8 +583,8 @@ describe("detail async states", () => {
       });
 
       const desktopEvidence = page
-        .locator(".right .card")
-        .filter({ hasText: "Evidence freshness" })
+        .locator(RIGHT_CARD_SELECTOR)
+        .filter({ hasText: EVIDENCE_FRESHNESS })
         .first();
       await desktopEvidence.waitFor({ timeout: QUICK_TIMEOUT });
       expect(
@@ -597,7 +608,7 @@ describe("detail async states", () => {
         true
       );
       const confidence = page
-        .locator(".right .card")
+        .locator(RIGHT_CARD_SELECTOR)
         .filter({ hasText: "Fact confidence" })
         .first();
       await confidence.waitFor({ timeout: QUICK_TIMEOUT });
@@ -622,8 +633,8 @@ describe("detail async states", () => {
         waitUntil: "domcontentloaded",
       });
       const warningEvidence = page
-        .locator(".right .card")
-        .filter({ hasText: "Evidence freshness" })
+        .locator(RIGHT_CARD_SELECTOR)
+        .filter({ hasText: EVIDENCE_FRESHNESS })
         .first();
       await warningEvidence
         .locator(".tag")
@@ -648,7 +659,7 @@ describe("detail async states", () => {
       });
       const mobileEvidence = mobilePage.locator(".advisor-mobile-evidence");
       await mobileEvidence
-        .getByRole("heading", { name: "Evidence freshness" })
+        .getByRole("heading", { name: EVIDENCE_FRESHNESS })
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
         await mobileEvidence.getByText("No evidence checks yet").isVisible()
@@ -802,7 +813,7 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
   return {
     article: {
       id: "article-1",
-      headline: "Advisor moves in test market",
+      headline: HEADLINE_TEXT,
       dek: "Primary article metadata loaded.",
       category: "transitions",
       publishedDate: "2026-05-24",
@@ -829,7 +840,7 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
     firm: {
       id: "firm-1",
       name: "Example Wealth LLC",
-      short: "Example Wealth",
+      short: EXAMPLE_WEALTH_SHORT,
       logoUrl: null,
       channel: "wirehouse",
       subChannel: "wealth_management",
@@ -880,7 +891,7 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
           freshness: {
             status: "loaded",
             asOf: "2026-05-01T00:00:00.000Z",
-            note: "Source timestamp loaded.",
+            note: SOURCE_TIMESTAMP_NOTE,
           },
         },
         rosterFootprint: {
@@ -893,8 +904,8 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
           provenance: { sourceTables: ["EmploymentHistory", "Team", "Branch"] },
           freshness: {
             status: "loaded",
-            asOf: "2026-05-02T00:00:00.000Z",
-            note: "Source timestamp loaded.",
+            asOf: MAY_2_TIMESTAMP,
+            note: SOURCE_TIMESTAMP_NOTE,
           },
         },
         rankingPresence: {
@@ -924,7 +935,7 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
             sourceName: "FINRA BrokerCheck",
             sourceUrl: "https://brokercheck.finra.org/firm/summary/67890",
             termsUrl: "https://brokercheck.finra.org/terms",
-            compiledAsOf: "2026-05-02T00:00:00.000Z",
+            compiledAsOf: MAY_2_TIMESTAMP,
           },
           provenance: {
             sourceTable: "BrokerCheckSnapshot",
@@ -932,8 +943,8 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
           },
           freshness: {
             status: "loaded",
-            asOf: "2026-05-02T00:00:00.000Z",
-            note: "Source timestamp loaded.",
+            asOf: MAY_2_TIMESTAMP,
+            note: SOURCE_TIMESTAMP_NOTE,
           },
         },
         coverageTimeline: {
@@ -1077,8 +1088,8 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
   return {
     advisor: {
       id,
-      legalName: "Avery Stone",
-      preferredName: "Avery Stone",
+      legalName: ADVISOR_NAME,
+      preferredName: ADVISOR_NAME,
       headshotUrl: null,
       careerStatus: "active",
       yearsExperience: 12,
@@ -1088,11 +1099,11 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
       birthYear: null,
       gender: "undisclosed",
     },
-    displayName: "Avery Stone",
+    displayName: ADVISOR_NAME,
     career: [
       {
         roleTitle: "Advisor",
-        firm: { id: "firm-a", name: "Example Wealth", short: "Example WM" },
+        firm: { id: "firm-a", name: EXAMPLE_WEALTH_SHORT, short: "Example WM" },
         branch: { id: "branch-a", name: "Atlanta", city: "Atlanta" },
         startDate: "2020-01-01",
         endDate: null,
@@ -1121,7 +1132,7 @@ function teamProfile(): TeamProfileFixture {
       firmProgram: "Private wealth",
       foundedYear: 2020,
     },
-    currentFirm: { id: "firm-1", name: "Example Wealth" },
+    currentFirm: { id: "firm-1", name: EXAMPLE_WEALTH_SHORT },
     currentBranch: {
       id: "branch-1",
       name: "Atlanta",
@@ -1132,7 +1143,7 @@ function teamProfile(): TeamProfileFixture {
       {
         advisor: {
           id: "advisor-1",
-          name: "Avery Stone",
+          name: ADVISOR_NAME,
           careerStatus: "active",
         },
         role: "lead_advisor",
@@ -1188,10 +1199,10 @@ function emptyConfidenceSummary() {
 async function expectCompactFirmDueDiligenceFilters(page: Page): Promise<void> {
   const section = page.locator(".firm-dd-card").first();
   await section
-    .getByRole("heading", { name: "Firm due diligence" })
+    .getByRole("heading", { name: FIRM_DUE_DILIGENCE })
     .waitFor({ timeout: QUICK_TIMEOUT });
 
-  for (const name of ["All", "Source-backed", "Needs data"]) {
+  for (const name of ["All", "Source-backed", NEEDS_DATA]) {
     await section.getByRole("button", { name }).click();
     const activeMetric = await section
       .locator(".firm-dd-filter[aria-pressed='true']")
@@ -1257,5 +1268,3 @@ type ArticleWithPartialFailures = Readonly<{
 type FirmDueDiligenceProfile = Readonly<Record<string, unknown>>;
 type AdvisorEvidenceProfile = Readonly<Record<string, unknown>>;
 type TeamProfileFixture = Readonly<Record<string, unknown>>;
-
-/* eslint-enable max-lines, sonarjs/no-duplicate-string, jsdoc/require-jsdoc -- End self-contained browser fixture exception. */

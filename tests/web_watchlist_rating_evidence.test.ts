@@ -3,7 +3,6 @@ import { mkdir } from "node:fs/promises";
 import type { Server } from "node:http";
 import { chromium, type Browser, type Page, type Route } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-/* eslint-disable jsdoc/require-jsdoc, max-lines, sonarjs/assertions-in-tests, sonarjs/no-duplicate-string -- Browser evidence fixture for issue #232. */
 
 import {
   ADVISOR_ID,
@@ -27,6 +26,9 @@ const browserDescribe =
   existsSync(chromium.executablePath())
     ? describe.sequential
     : describe.skip;
+
+const NOTE_RETAIN_FOR_REVIEW = "retain for review";
+const REVIEW_TEXT_STRONG_FIT = "Strong fit for recruiting follow-up.";
 
 let baseUrl = "";
 
@@ -223,20 +225,20 @@ async function persistRankAndNote(
     '.watchlist-firm-row[data-advisor-id="advisor-b"]'
   );
   await movedRow.waitFor({ timeout: QUICK_TIMEOUT });
-  await movedRow.locator('input[name="note"]').fill("retain for review");
+  await movedRow.locator('input[name="note"]').fill(NOTE_RETAIN_FOR_REVIEW);
   await movedRow.locator(".watchlist-save-note").click();
   await waitForPost(
     watchlistPosts,
     post =>
       post.body.action === "updateEntry" &&
-      post.body.note === "retain for review"
+      post.body.note === NOTE_RETAIN_FOR_REVIEW
   );
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
     () =>
       document.querySelector<HTMLInputElement>(
         '.watchlist-firm-row[data-advisor-id="advisor-b"] input[name="note"]'
-      )?.value === "retain for review",
+      )?.value === NOTE_RETAIN_FOR_REVIEW,
     undefined,
     { timeout: QUICK_TIMEOUT }
   );
@@ -255,11 +257,11 @@ async function persistRating(
     .fill("4");
   await page
     .locator('.private-rating-form textarea[name="reviewText"]')
-    .fill("Strong fit for recruiting follow-up.");
+    .fill(REVIEW_TEXT_STRONG_FIT);
   await page.locator(".private-rating-save").click();
   await waitForPost(
     ratingPosts,
-    post => post.body.reviewText === "Strong fit for recruiting follow-up."
+    post => post.body.reviewText === REVIEW_TEXT_STRONG_FIT
   );
   await page.getByText("Saved.").waitFor({ timeout: QUICK_TIMEOUT });
   await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
@@ -272,7 +274,7 @@ async function persistRating(
       )?.value === "5" &&
       document.querySelector<HTMLTextAreaElement>(
         '.private-rating-form textarea[name="reviewText"]'
-      )?.value === "Strong fit for recruiting follow-up.",
+      )?.value === REVIEW_TEXT_STRONG_FIT,
     undefined,
     { timeout: QUICK_TIMEOUT }
   );
@@ -379,4 +381,3 @@ async function routeBlockedMutations(
   await page.route(WATCHLISTS_ROUTE, block);
   await page.route(RATING_ROUTE, block);
 }
-/* eslint-enable jsdoc/require-jsdoc, max-lines, sonarjs/assertions-in-tests, sonarjs/no-duplicate-string -- Browser evidence fixture for issue #232. */

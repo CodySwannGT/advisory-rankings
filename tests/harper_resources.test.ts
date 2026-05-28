@@ -1,4 +1,3 @@
-/* eslint-disable max-lines, sonarjs/no-duplicate-string -- In-memory Harper fixture data is intentionally literal-heavy. */
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { tokensForAdvisor } from "../src/lib/advisor-tokens.js";
@@ -8,6 +7,61 @@ import { advisorSearchIndexId } from "../src/lib/advisor-search-index.js";
  * Harper resource tests use a small in-memory table snapshot so profile,
  * directory, and feed behavior can be verified without a running Harper node.
  */
+const ADVISORHUB_AW_RANKINGS_URL =
+  "https://www.advisorhub.com/advisors-to-watch-rankings/";
+const STONE_JOINS_EXAMPLE_URL =
+  "https://www.advisorhub.com/stone-joins-example/";
+const ADVISORHUB_AW_2025_LABEL = "AdvisorHub Advisors to Watch 2025";
+const ADVISORHUB_NEXTGEN_2025_LABEL = "AdvisorHub Next Gen 2025";
+const EXAMPLE_WEALTH_MANAGEMENT = "Example Wealth Management";
+const EXAMPLE_WEALTH_LLC = "Example Wealth LLC";
+const EXAMPLE_WEALTH_SHORT_NAME = "Example Wealth";
+const EXAMPLE_WM_SHORT = "Example WM";
+const BETA_ADVISORS = "Beta Advisors";
+const AVERY_STONE_NAME = "Avery Stone";
+const AVERY_STONE_SLUG = "avery-stone";
+const BLAKE_YOUNG_NAME = "Blake Young";
+const STONE_GROUP_NAME = "Stone Group";
+const STONE_GROUP_SLUG = "stone-group";
+const JORDAN_EXAMPLE_NAME = "Jordan Example";
+const UNRESOLVED_CAPITAL = "Unresolved Capital";
+const MORGAN_GAP_NAME = "Morgan Gap";
+const TAYLOR_MARKET_NAME = "Taylor Market";
+const CASEY_STONE_NAME = "Casey Stone";
+const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
+const EMPLOYMENT_A_ID = "employment-a";
+const EMPLOYMENT_B_ID = "employment-b";
+const RANKING_ENTRY_A_ID = "ranking-entry-a";
+const RANKING_ENTRY_B_ID = "ranking-entry-b";
+const TRANSITION_A_ID = "transition-a";
+const TRANSITION_TEAM_ID = "transition-team";
+const TRANSITION_OUT_ID = "transition-out";
+const DISCLOSURE_A_ID = "disclosure-a";
+const COVERAGE_UNRESOLVED_MISSING_SCORE_ID =
+  "coverage-unresolved-missing-score";
+const COVERAGE_UNRESOLVED_MISSING_MARKET_ID =
+  "coverage-unresolved-missing-market";
+const STONE_JOINS_EXAMPLE_SLUG = "stone-joins-example";
+const SOURCE_BACKED_REASON = "source-backed";
+const UNRESOLVED_ENTITY_REASON = "unresolved-entity";
+const UNRESOLVED_FIRM_REASON = "unresolved-firm";
+const MISSING_SCALE_REASON = "missing-scale";
+const MISSING_SOURCE_REASON = "missing-source";
+const MISSING_STATE_REASON = "missing-state";
+const MISSING_AUM_REASON = "missing-aum";
+const MISSING_T12_REASON = "missing-t12";
+const MISSING_FIRM_REASON = "missing-firm";
+const EVENT_BACKED_MODE = "event-backed";
+const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
+const DATE_2018_01_01 = "2018-01-01";
+const DATE_2020_01_01 = "2020-01-01";
+const DATE_2021_01_01 = "2021-01-01";
+const DATE_2023_01_01 = "2023-01-01";
+const DATE_2024_01_01 = "2024-01-01";
+const DATE_2024_04_01 = "2024-04-01";
+const DATE_2025_01_02 = "2025-01-02";
+const DATE_2026_05_25 = "2026-05-25";
+
 class Resource {
   /**
    * Matches the minimal Harper Resource shim shape expected by modules.
@@ -180,19 +234,19 @@ const baseRows = () => {
   setRows("Firm", [
     {
       id: "firm-a",
-      name: "Example Wealth Management",
+      name: EXAMPLE_WEALTH_MANAGEMENT,
       slug: "example-wealth",
       hqCity: "Atlanta",
       hqState: "GA",
       channel: "ria",
       logoUrl: "https://example.com/logo.png",
     },
-    { id: "firm-b", name: "Beta Advisors", slug: "beta-advisors" },
+    { id: "firm-b", name: BETA_ADVISORS, slug: "beta-advisors" },
   ]);
   setRows("FirmAlias", [
     {
       id: "alias-a",
-      alias: "Example Wealth LLC",
+      alias: EXAMPLE_WEALTH_LLC,
       normalizedAlias: "example wealth",
       firmId: "firm-a",
     },
@@ -202,8 +256,8 @@ const baseRows = () => {
       id: "advisor-a",
       firstName: "Avery",
       lastName: "Stone",
-      legalName: "Avery Stone",
-      slug: "avery-stone",
+      legalName: AVERY_STONE_NAME,
+      slug: AVERY_STONE_SLUG,
       careerStatus: "active",
       headshotUrl: "https://example.com/avery.jpg",
     },
@@ -211,15 +265,15 @@ const baseRows = () => {
       id: "advisor-b",
       firstName: "Blake",
       lastName: "Young",
-      legalName: "Blake Young",
+      legalName: BLAKE_YOUNG_NAME,
       careerStatus: "retired",
     },
   ]);
   setRows("Team", [
     {
       id: "team-a",
-      name: "Stone Group",
-      slug: "stone-group",
+      name: STONE_GROUP_NAME,
+      slug: STONE_GROUP_SLUG,
       currentFirmId: "firm-a",
       currentBranchId: "branch-a",
       serviceModel: "ensemble",
@@ -238,21 +292,21 @@ const baseRows = () => {
   ]);
   setRows("EmploymentHistory", [
     {
-      id: "employment-a",
+      id: EMPLOYMENT_A_ID,
       advisorId: "advisor-a",
       firmId: "firm-a",
       branchId: "branch-a",
       roleTitle: "Partner",
       roleCategory: "advisor",
-      startDate: "2020-01-01",
+      startDate: DATE_2020_01_01,
     },
     {
-      id: "employment-b",
+      id: EMPLOYMENT_B_ID,
       advisorId: "advisor-b",
       firmId: "firm-a",
       roleTitle: "Advisor",
-      startDate: "2018-01-01",
-      endDate: "2021-01-01",
+      startDate: DATE_2018_01_01,
+      endDate: DATE_2021_01_01,
       reasonForLeaving: "retired",
     },
   ]);
@@ -262,15 +316,15 @@ const baseRows = () => {
       advisorId: "advisor-a",
       teamId: "team-a",
       role: "lead",
-      startDate: "2020-01-01",
+      startDate: DATE_2020_01_01,
     },
     {
       id: "membership-b",
       advisorId: "advisor-b",
       teamId: "team-a",
       role: "alum",
-      startDate: "2018-01-01",
-      endDate: "2021-01-01",
+      startDate: DATE_2018_01_01,
+      endDate: DATE_2021_01_01,
     },
   ]);
   setRows("TeamMetricSnapshot", [
@@ -286,10 +340,10 @@ const baseRows = () => {
     {
       id: "ranking-a",
       publisher: "AdvisorHub",
-      name: "Advisors to Watch",
+      name: ADVISORS_TO_WATCH_LABEL,
       year: 2025,
       subjectType: "advisor",
-      methodologyUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+      methodologyUrl: ADVISORHUB_AW_RANKINGS_URL,
     },
     {
       id: "ranking-b",
@@ -297,22 +351,22 @@ const baseRows = () => {
       name: "Next Gen",
       year: 2025,
       subjectType: "advisor",
-      methodologyUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+      methodologyUrl: ADVISORHUB_AW_RANKINGS_URL,
     },
   ]);
   setRows("RankingEntry", [
     {
-      id: "ranking-entry-a",
+      id: RANKING_ENTRY_A_ID,
       rankingId: "ranking-a",
       subjectAdvisorId: "advisor-a",
       firmId: "firm-a",
-      rawDisplayName: "Avery Stone",
-      firmText: "Example Wealth LLC",
+      rawDisplayName: AVERY_STONE_NAME,
+      firmText: EXAMPLE_WEALTH_LLC,
       city: "Atlanta",
       state: "GA",
-      sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
-      sourceLabel: "AdvisorHub Advisors to Watch 2025",
-      loadedAt: "2026-05-25",
+      sourceUrl: ADVISORHUB_AW_RANKINGS_URL,
+      sourceLabel: ADVISORHUB_AW_2025_LABEL,
+      loadedAt: DATE_2026_05_25,
       resolutionStatus: "resolved",
       rank: 12,
       scoreTotal: 92.4,
@@ -322,15 +376,15 @@ const baseRows = () => {
       regulatoryClean: true,
     },
     {
-      id: "ranking-entry-b",
+      id: RANKING_ENTRY_B_ID,
       rankingId: "ranking-b",
-      rawDisplayName: "Jordan Example",
-      firmText: "Unresolved Capital",
+      rawDisplayName: JORDAN_EXAMPLE_NAME,
+      firmText: UNRESOLVED_CAPITAL,
       city: "Austin",
       state: "TX",
       sourceUrl: "https://www.advisorhub.com/advisors-to-watch-next-gen-2025/",
-      sourceLabel: "AdvisorHub Next Gen 2025",
-      loadedAt: "2026-05-25",
+      sourceLabel: ADVISORHUB_NEXTGEN_2025_LABEL,
+      loadedAt: DATE_2026_05_25,
       resolutionStatus: "unresolved",
       rank: 3,
       scoreScale: null,
@@ -340,7 +394,7 @@ const baseRows = () => {
   setRows("AdvisorMetricSnapshot", []);
   setRows("TransitionEvent", [
     {
-      id: "transition-a",
+      id: TRANSITION_A_ID,
       subjectAdvisorId: "advisor-a",
       fromFirmId: "firm-b",
       toFirmId: "firm-a",
@@ -351,7 +405,7 @@ const baseRows = () => {
       recruitingDealId: "deal-a",
     },
     {
-      id: "transition-team",
+      id: TRANSITION_TEAM_ID,
       subjectTeamId: "team-a",
       fromFirmId: "firm-b",
       toFirmId: "firm-a",
@@ -359,12 +413,12 @@ const baseRows = () => {
       moveDate: "2024-03-01",
     },
     {
-      id: "transition-out",
+      id: TRANSITION_OUT_ID,
       subjectAdvisorId: "advisor-b",
       fromFirmId: "firm-a",
       toFirmId: "firm-b",
       fromBranchId: "branch-a",
-      moveDate: "2024-04-01",
+      moveDate: DATE_2024_04_01,
       aumMoved: null,
     },
   ]);
@@ -373,7 +427,7 @@ const baseRows = () => {
   ]);
   setRows("Disclosure", [
     {
-      id: "disclosure-a",
+      id: DISCLOSURE_A_ID,
       advisorId: "advisor-a",
       firmIdAtTime: "firm-a",
       disclosureType: "customer",
@@ -383,7 +437,7 @@ const baseRows = () => {
     },
   ]);
   setRows("Sanction", [
-    { id: "sanction-a", disclosureId: "disclosure-a", sanctionType: "fine" },
+    { id: "sanction-a", disclosureId: DISCLOSURE_A_ID, sanctionType: "fine" },
   ]);
   setRows("DisclosureCluster", [{ id: "cluster-a" }]);
   setRows("OutsideBusinessActivity", [
@@ -407,7 +461,7 @@ const baseRows = () => {
       id: "designation-a",
       advisorId: "advisor-a",
       code: "CFP",
-      earnedDate: "2020-01-01",
+      earnedDate: DATE_2020_01_01,
       status: "active",
     },
   ]);
@@ -433,7 +487,7 @@ const baseRows = () => {
       id: "bc-firm",
       subjectKind: "firm",
       subjectFirmId: "firm-a",
-      fetchedAt: "2025-01-02",
+      fetchedAt: DATE_2025_01_02,
       subjectCrd: "67890",
       registeredStateCount: 12,
     },
@@ -442,8 +496,8 @@ const baseRows = () => {
     {
       id: "article-a",
       headline: "Stone joins Example",
-      url: "https://www.advisorhub.com/stone-joins-example/",
-      slug: "stone-joins-example",
+      url: STONE_JOINS_EXAMPLE_URL,
+      slug: STONE_JOINS_EXAMPLE_SLUG,
       publishedDate: "2025-02-01",
       bodyText:
         "Avery Stone joined Example Wealth Management with a large team and client base.",
@@ -471,14 +525,14 @@ const baseRows = () => {
     {
       id: "mention-transition",
       articleId: "article-a",
-      transitionEventId: "transition-a",
+      transitionEventId: TRANSITION_A_ID,
     },
   ]);
   setRows("ArticleDisclosureMention", [
     {
       id: "mention-disclosure",
       articleId: "article-b",
-      disclosureId: "disclosure-a",
+      disclosureId: DISCLOSURE_A_ID,
     },
   ]);
   setRows("FieldAssertion", [
@@ -488,8 +542,8 @@ const baseRows = () => {
       targetTable: "Advisor",
       targetId: "advisor-a",
       fieldName: "legalName",
-      assertedValue: JSON.stringify("Avery Stone"),
-      quotePhrase: "Avery Stone",
+      assertedValue: JSON.stringify(AVERY_STONE_NAME),
+      quotePhrase: AVERY_STONE_NAME,
       confidence: "asserted",
     },
     {
@@ -544,7 +598,9 @@ describe("Harper resource routing helpers", () => {
   it("normalizes ids and resolves aliases, slugs, and display names", async () => {
     const db = await resourceData.loadAll();
 
-    expect(routing.normalizeId({ id: "avery-stone" })).toBe("avery-stone");
+    expect(routing.normalizeId({ id: AVERY_STONE_SLUG })).toBe(
+      AVERY_STONE_SLUG
+    );
     expect(routing.normalizeId("/advisor-a")).toBe("advisor-a");
     expect(routing.slugifyText("Example Wealth & Co.")).toBe(
       "example-wealth-and-co"
@@ -552,14 +608,14 @@ describe("Harper resource routing helpers", () => {
     expect(routing.normalizeFirmAlias("Example Wealth, LLC")).toBe(
       "example wealth"
     );
-    expect(routing.resolveFirm(db, "Example Wealth LLC")?.id).toBe("firm-a");
-    expect(routing.resolveAdvisor(db, "Avery Stone")?.id).toBe("advisor-a");
-    expect(routing.resolveTeam(db, "stone-group")?.id).toBe("team-a");
+    expect(routing.resolveFirm(db, EXAMPLE_WEALTH_LLC)?.id).toBe("firm-a");
+    expect(routing.resolveAdvisor(db, AVERY_STONE_NAME)?.id).toBe("advisor-a");
+    expect(routing.resolveTeam(db, STONE_GROUP_SLUG)?.id).toBe("team-a");
     expect(routing.resolveArticle(db, "Stone joins Example")?.id).toBe(
       "article-a"
     );
     expect(routing.advisorDisplayName({ preferredName: "Ave" })).toBe("Ave");
-    expect(routing.firmShort("Example Wealth Management")).toBe("Example WM");
+    expect(routing.firmShort(EXAMPLE_WEALTH_MANAGEMENT)).toBe(EXAMPLE_WM_SHORT);
   });
 });
 
@@ -573,7 +629,7 @@ describe("Harper feed and profile builders", () => {
     expect(item.advisors[0]).toMatchObject({
       id: "advisor-a",
       role: "Partner",
-      firm: { id: "firm-a", short: "Example WM" },
+      firm: { id: "firm-a", short: EXAMPLE_WM_SHORT },
     });
     expect(item.firms[0]).toMatchObject({
       id: "firm-a",
@@ -586,7 +642,7 @@ describe("Harper feed and profile builders", () => {
     });
     expect(item.eventCards[0]).toMatchObject({
       kind: "transition",
-      subject: { kind: "advisor", id: "advisor-a", name: "Avery Stone" },
+      subject: { kind: "advisor", id: "advisor-a", name: AVERY_STONE_NAME },
       fromFirm: { id: "firm-b" },
       deal: { upfrontPctT12: 180 },
     });
@@ -599,7 +655,7 @@ describe("Harper feed and profile builders", () => {
       db.byAdvisor.get("advisor-a")
     );
 
-    expect(payload.displayName).toBe("Avery Stone");
+    expect(payload.displayName).toBe(AVERY_STONE_NAME);
     expect(payload.career[0]).toMatchObject({
       firm: { id: "firm-a" },
       branch: { id: "branch-a", city: "Atlanta" },
@@ -609,8 +665,8 @@ describe("Harper feed and profile builders", () => {
       role: "lead",
     });
     expect(payload.disclosures[0]).toMatchObject({
-      id: "disclosure-a",
-      sanctions: [{ id: "sanction-a", disclosureId: "disclosure-a" }],
+      id: DISCLOSURE_A_ID,
+      sanctions: [{ id: "sanction-a", disclosureId: DISCLOSURE_A_ID }],
     });
     expect(payload.licenses[0]).toMatchObject({ licenseType: "Series 7" });
     expect(payload.designations[0]).toMatchObject({ code: "CFP" });
@@ -710,7 +766,7 @@ describe("Harper feed and profile builders", () => {
       {
         id: "disclosure-resolved",
         advisorId: "advisor-a",
-        dateResolved: "2021-01-01",
+        dateResolved: DATE_2021_01_01,
         disclosureType: "regulatory",
       },
     ];
@@ -729,7 +785,7 @@ describe("Harper feed and profile builders", () => {
     );
     expect(withOptionalRows.disclosures.map((row: any) => row.id)).toEqual([
       "disclosure-resolved",
-      "disclosure-a",
+      DISCLOSURE_A_ID,
     ]);
     expect(withOptionalRows.education.map((row: any) => row.id)).toEqual([
       "education-undated",
@@ -776,7 +832,7 @@ describe("Harper feed and profile builders", () => {
   it("builds source-backed firm due-diligence modules", async () => {
     const db = await resourceData.loadAll();
     const profile = await new (resources as any).FirmProfile().get(
-      routeTarget("Example Wealth LLC")
+      routeTarget(EXAMPLE_WEALTH_LLC)
     );
 
     expect(profile.dueDiligence).toMatchObject({
@@ -790,11 +846,11 @@ describe("Harper feed and profile builders", () => {
           netAumMoved: 500_000_000,
           provenance: {
             sourceTable: "TransitionEvent",
-            sourceIds: ["transition-team", "transition-a", "transition-out"],
+            sourceIds: [TRANSITION_TEAM_ID, TRANSITION_A_ID, TRANSITION_OUT_ID],
           },
           freshness: {
             status: "loaded",
-            asOf: "2024-04-01",
+            asOf: DATE_2024_04_01,
           },
         },
         rosterFootprint: {
@@ -811,7 +867,7 @@ describe("Harper feed and profile builders", () => {
           topRank: 12,
           provenance: {
             sourceTable: "RankingEntry",
-            sourceIds: ["ranking-entry-a"],
+            sourceIds: [RANKING_ENTRY_A_ID],
           },
         },
         regulatorySnapshot: {
@@ -819,7 +875,7 @@ describe("Harper feed and profile builders", () => {
           source: {
             sourceName: "FINRA BrokerCheck",
             sourceUrl: "https://brokercheck.finra.org/firm/summary/67890",
-            compiledAsOf: "2025-01-02",
+            compiledAsOf: DATE_2025_01_02,
           },
           provenance: {
             sourceTable: "BrokerCheckSnapshot",
@@ -840,11 +896,11 @@ describe("Harper feed and profile builders", () => {
         modules: [
           expect.objectContaining({
             name: "recruitingMomentum",
-            freshness: expect.objectContaining({ asOf: "2024-04-01" }),
+            freshness: expect.objectContaining({ asOf: DATE_2024_04_01 }),
           }),
           expect.objectContaining({
             name: "rosterFootprint",
-            freshness: expect.objectContaining({ asOf: "2025-01-02" }),
+            freshness: expect.objectContaining({ asOf: DATE_2025_01_02 }),
           }),
           expect.objectContaining({
             name: "rankingPresence",
@@ -852,7 +908,7 @@ describe("Harper feed and profile builders", () => {
           }),
           expect.objectContaining({
             name: "regulatorySnapshot",
-            freshness: expect.objectContaining({ asOf: "2025-01-02" }),
+            freshness: expect.objectContaining({ asOf: DATE_2025_01_02 }),
           }),
           expect.objectContaining({
             name: "coverageTimeline",
@@ -865,7 +921,7 @@ describe("Harper feed and profile builders", () => {
       "function"
     );
     expect(db.byRanking.get("ranking-a")).toMatchObject({
-      name: "Advisors to Watch",
+      name: ADVISORS_TO_WATCH_LABEL,
     });
   });
 
@@ -873,7 +929,7 @@ describe("Harper feed and profile builders", () => {
     setRows("RankingEntry", []);
     setRows("BrokerCheckSnapshot", []);
     const profile = await new (resources as any).FirmProfile().get(
-      routeTarget("Example Wealth LLC")
+      routeTarget(EXAMPLE_WEALTH_LLC)
     );
 
     expect(profile.dueDiligence.modules.rankingPresence).toMatchObject({
@@ -926,38 +982,38 @@ describe("Harper feed and profile builders", () => {
             missingFirm: 1,
             missingMarket: 0,
             missingScore: 1,
-            latestLoadedAt: "2026-05-25",
-            sourceLabels: ["AdvisorHub Next Gen 2025"],
+            latestLoadedAt: DATE_2026_05_25,
+            sourceLabels: [ADVISORHUB_NEXTGEN_2025_LABEL],
             sampleRows: [
               {
-                id: "ranking-entry-b",
-                label: "Jordan Example",
-                firmText: "Unresolved Capital",
-                sourceLabel: "AdvisorHub Next Gen 2025",
+                id: RANKING_ENTRY_B_ID,
+                label: JORDAN_EXAMPLE_NAME,
+                firmText: UNRESOLVED_CAPITAL,
+                sourceLabel: ADVISORHUB_NEXTGEN_2025_LABEL,
               },
             ],
           },
         ],
       },
       facets: {
-        categories: ["Advisors to Watch", "Next Gen"],
+        categories: [ADVISORS_TO_WATCH_LABEL, "Next Gen"],
         years: [2025],
         states: ["GA", "TX"],
       },
     });
     expect(payload.items).toHaveLength(1);
     expect(payload.items[0]).toMatchObject({
-      id: "ranking-entry-b",
+      id: RANKING_ENTRY_B_ID,
       ranking: {
         name: "Next Gen",
         year: 2025,
       },
       subject: {
-        displayName: "Jordan Example",
+        displayName: JORDAN_EXAMPLE_NAME,
         id: null,
         url: null,
       },
-      firmText: "Unresolved Capital",
+      firmText: UNRESOLVED_CAPITAL,
       resolutionStatus: "unresolved",
       scores: {
         scale: {
@@ -971,31 +1027,31 @@ describe("Harper feed and profile builders", () => {
         },
       },
       sourceStatus: [
-        "source-backed",
-        "unresolved-entity",
-        "unresolved-firm",
-        "missing-scale",
+        SOURCE_BACKED_REASON,
+        UNRESOLVED_ENTITY_REASON,
+        UNRESOLVED_FIRM_REASON,
+        MISSING_SCALE_REASON,
       ],
       provenance: {
         sourceTable: "RankingEntry",
-        sourceIds: ["ranking-entry-b"],
+        sourceIds: [RANKING_ENTRY_B_ID],
         rankingId: "ranking-b",
       },
     });
     expect(payload.coverage.gapBuckets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: "source-backed",
+          status: SOURCE_BACKED_REASON,
           count: 1,
           query: "/rankings",
         }),
         expect.objectContaining({
-          status: "unresolved-firm",
+          status: UNRESOLVED_FIRM_REASON,
           count: 1,
           query: "/rankings?resolved=unresolved",
         }),
         expect.objectContaining({
-          status: "missing-scale",
+          status: MISSING_SCALE_REASON,
           count: 1,
         }),
       ])
@@ -1004,7 +1060,7 @@ describe("Harper feed and profile builders", () => {
 
   it("filters and sorts resolved rankings explorer rows", async () => {
     const payload = await new (resources as any).RankingsExplorer().get(
-      routeTarget("", { firm: "Example Wealth LLC", resolved: "resolved" })
+      routeTarget("", { firm: EXAMPLE_WEALTH_LLC, resolved: "resolved" })
     );
 
     expect(payload.summary).toMatchObject({
@@ -1014,21 +1070,21 @@ describe("Harper feed and profile builders", () => {
       representedFirms: 1,
     });
     expect(payload.items[0]).toMatchObject({
-      id: "ranking-entry-a",
+      id: RANKING_ENTRY_A_ID,
       subject: {
         kind: "advisor",
         id: "advisor-a",
-        displayName: "Avery Stone",
+        displayName: AVERY_STONE_NAME,
         url: "/advisor.html?id=avery-stone",
       },
       firm: {
         id: "firm-a",
-        name: "Example Wealth Management",
+        name: EXAMPLE_WEALTH_MANAGEMENT,
         url: "/firm.html?id=example-wealth",
       },
       source: {
-        url: "https://www.advisorhub.com/advisors-to-watch-rankings/",
-        loadedAt: "2026-05-25",
+        url: ADVISORHUB_AW_RANKINGS_URL,
+        loadedAt: DATE_2026_05_25,
       },
     });
   });
@@ -1040,13 +1096,13 @@ describe("Harper feed and profile builders", () => {
         rankingId: "ranking-a",
         subjectAdvisorId: "advisor-a",
         firmId: "firm-a",
-        rawDisplayName: "Avery Stone",
-        firmText: "Example Wealth LLC",
+        rawDisplayName: AVERY_STONE_NAME,
+        firmText: EXAMPLE_WEALTH_LLC,
         city: "Atlanta",
         state: "GA",
-        sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
-        sourceLabel: "AdvisorHub Advisors to Watch 2025",
-        loadedAt: "2026-05-25",
+        sourceUrl: ADVISORHUB_AW_RANKINGS_URL,
+        sourceLabel: ADVISORHUB_AW_2025_LABEL,
+        loadedAt: DATE_2026_05_25,
         resolutionStatus: "resolved",
         rank: 1,
         scoreTotal: 97,
@@ -1055,25 +1111,25 @@ describe("Harper feed and profile builders", () => {
         scoreProfessionalism: 96,
       },
       {
-        id: "coverage-unresolved-missing-score",
+        id: COVERAGE_UNRESOLVED_MISSING_SCORE_ID,
         rankingId: "ranking-a",
-        rawDisplayName: "Morgan Gap",
-        firmText: "Unresolved Capital",
+        rawDisplayName: MORGAN_GAP_NAME,
+        firmText: UNRESOLVED_CAPITAL,
         city: "Austin",
         state: "TX",
-        sourceUrl: "https://www.advisorhub.com/advisors-to-watch-rankings/",
-        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        sourceUrl: ADVISORHUB_AW_RANKINGS_URL,
+        sourceLabel: ADVISORHUB_AW_2025_LABEL,
         loadedAt: "2026-05-26",
         resolutionStatus: "unresolved",
         rank: 2,
         scoreGrowth: 88,
       },
       {
-        id: "coverage-unresolved-missing-market",
+        id: COVERAGE_UNRESOLVED_MISSING_MARKET_ID,
         rankingId: "ranking-a",
-        rawDisplayName: "Taylor Market",
-        firmText: "Unresolved Capital",
-        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        rawDisplayName: TAYLOR_MARKET_NAME,
+        firmText: UNRESOLVED_CAPITAL,
+        sourceLabel: ADVISORHUB_AW_2025_LABEL,
         loadedAt: "2026-05-24",
         resolutionStatus: "unresolved",
         rank: 3,
@@ -1082,19 +1138,19 @@ describe("Harper feed and profile builders", () => {
       {
         id: "coverage-other-category",
         rankingId: "ranking-b",
-        rawDisplayName: "Jordan Example",
-        firmText: "Beta Advisors",
+        rawDisplayName: JORDAN_EXAMPLE_NAME,
+        firmText: BETA_ADVISORS,
         city: "Dallas",
         state: "TX",
-        sourceLabel: "AdvisorHub Next Gen 2025",
-        loadedAt: "2026-05-25",
+        sourceLabel: ADVISORHUB_NEXTGEN_2025_LABEL,
+        loadedAt: DATE_2026_05_25,
         resolutionStatus: "unresolved",
         rank: 4,
       },
     ]);
 
     const payload = await new (resources as any).RankingsExplorer().get(
-      routeTarget("", { category: "Advisors to Watch", year: "2025" })
+      routeTarget("", { category: ADVISORS_TO_WATCH_LABEL, year: "2025" })
     );
 
     expect(payload.summary).toMatchObject({
@@ -1116,31 +1172,31 @@ describe("Harper feed and profile builders", () => {
           missingMarket: 1,
           missingScore: 2,
           latestLoadedAt: "2026-05-26",
-          sourceLabels: ["AdvisorHub Advisors to Watch 2025"],
+          sourceLabels: [ADVISORHUB_AW_2025_LABEL],
         },
       ],
     });
     expect(payload.coverage.buckets[0].sampleRows).toEqual([
       expect.objectContaining({
         id: "coverage-resolved",
-        label: "Avery Stone",
-        sourceLabel: "AdvisorHub Advisors to Watch 2025",
+        label: AVERY_STONE_NAME,
+        sourceLabel: ADVISORHUB_AW_2025_LABEL,
       }),
       expect.objectContaining({
-        id: "coverage-unresolved-missing-score",
-        label: "Morgan Gap",
+        id: COVERAGE_UNRESOLVED_MISSING_SCORE_ID,
+        label: MORGAN_GAP_NAME,
         sourceStatus: expect.arrayContaining([
-          "unresolved-entity",
-          "unresolved-firm",
-          "missing-scale",
+          UNRESOLVED_ENTITY_REASON,
+          UNRESOLVED_FIRM_REASON,
+          MISSING_SCALE_REASON,
         ]),
       }),
       expect.objectContaining({
-        id: "coverage-unresolved-missing-market",
-        label: "Taylor Market",
+        id: COVERAGE_UNRESOLVED_MISSING_MARKET_ID,
+        label: TAYLOR_MARKET_NAME,
         sourceStatus: expect.arrayContaining([
-          "missing-source",
-          "missing-state",
+          MISSING_SOURCE_REASON,
+          MISSING_STATE_REASON,
           "missing-growth",
         ]),
       }),
@@ -1148,32 +1204,32 @@ describe("Harper feed and profile builders", () => {
     expect(payload.coverage.gapBuckets).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: "unresolved-firm",
+          status: UNRESOLVED_FIRM_REASON,
           count: 2,
           sampleRows: expect.arrayContaining([
             expect.objectContaining({
-              id: "coverage-unresolved-missing-score",
-              sourceLabel: "AdvisorHub Advisors to Watch 2025",
+              id: COVERAGE_UNRESOLVED_MISSING_SCORE_ID,
+              sourceLabel: ADVISORHUB_AW_2025_LABEL,
             }),
           ]),
         }),
         expect.objectContaining({
-          status: "missing-scale",
+          status: MISSING_SCALE_REASON,
           count: 1,
           sampleRows: [
             expect.objectContaining({
-              id: "coverage-unresolved-missing-score",
-              label: "Morgan Gap",
+              id: COVERAGE_UNRESOLVED_MISSING_SCORE_ID,
+              label: MORGAN_GAP_NAME,
             }),
           ],
         }),
         expect.objectContaining({
-          status: "missing-state",
+          status: MISSING_STATE_REASON,
           count: 1,
           sampleRows: [
             expect.objectContaining({
-              id: "coverage-unresolved-missing-market",
-              label: "Taylor Market",
+              id: COVERAGE_UNRESOLVED_MISSING_MARKET_ID,
+              label: TAYLOR_MARKET_NAME,
             }),
           ],
         }),
@@ -1214,8 +1270,8 @@ describe("Harper feed and profile builders", () => {
         rankingId: "ranking-a",
         subjectTeamId: "team-a",
         firmId: "firm-a",
-        rawDisplayName: "Stone Group",
-        firmText: "Example Wealth Management",
+        rawDisplayName: STONE_GROUP_NAME,
+        firmText: EXAMPLE_WEALTH_MANAGEMENT,
         city: "Atlanta",
         state: "GA",
         sourceLabel: "AdvisorHub ranking fixture",
@@ -1227,8 +1283,8 @@ describe("Harper feed and profile builders", () => {
         id: "ranking-entry-firm",
         rankingId: "missing-ranking",
         subjectFirmId: "firm-b",
-        rawDisplayName: "Beta Advisors",
-        firmText: "Beta Advisors",
+        rawDisplayName: BETA_ADVISORS,
+        firmText: BETA_ADVISORS,
         rank: 2,
         scoreScale: 96,
         scoreGrowth: 64,
@@ -1261,11 +1317,11 @@ describe("Harper feed and profile builders", () => {
       subject: {
         kind: "team",
         id: "team-a",
-        displayName: "Stone Group",
+        displayName: STONE_GROUP_NAME,
         url: "/team.html?id=stone-group",
       },
       source: {
-        url: "https://www.advisorhub.com/advisors-to-watch-rankings/",
+        url: ADVISORHUB_AW_RANKINGS_URL,
         label: "AdvisorHub ranking fixture",
       },
     });
@@ -1280,10 +1336,13 @@ describe("Harper feed and profile builders", () => {
       subject: {
         kind: "firm",
         id: "firm-b",
-        displayName: "Beta Advisors",
+        displayName: BETA_ADVISORS,
         url: "/firm.html?id=beta-advisors",
       },
-      sourceStatus: expect.arrayContaining(["missing-source", "missing-state"]),
+      sourceStatus: expect.arrayContaining([
+        MISSING_SOURCE_REASON,
+        MISSING_STATE_REASON,
+      ]),
     });
     expect(sorted.items[2]).toMatchObject({
       subject: {
@@ -1293,8 +1352,8 @@ describe("Harper feed and profile builders", () => {
       },
       resolutionStatus: "ambiguous",
       sourceStatus: expect.arrayContaining([
-        "unresolved-entity",
-        "unresolved-firm",
+        UNRESOLVED_ENTITY_REASON,
+        UNRESOLVED_FIRM_REASON,
         "missing-growth",
       ]),
     });
@@ -1333,7 +1392,7 @@ describe("Harper feed and profile builders", () => {
       feed.deriveDek({}, [
         {
           kind: "transition",
-          subject: { kind: "firm", name: "Example Wealth" },
+          subject: { kind: "firm", name: EXAMPLE_WEALTH_SHORT_NAME },
           fromFirm: { short: "Old" },
           toFirm: { short: "New" },
           aumMoved: 2_500_000_000,
@@ -1343,7 +1402,7 @@ describe("Harper feed and profile builders", () => {
     expect(
       feed.deriveDek({}, [
         {
-          advisor: { name: "Avery Stone" },
+          advisor: { name: AVERY_STONE_NAME },
           disclosureType: "customer",
           kind: "disclosure",
           regulator: "FINRA",
@@ -1369,7 +1428,7 @@ describe("Harper feed and profile builders", () => {
     expect(
       feed.transitionRow({ id: "firm-subject", subjectFirmId: "firm-a" }, db)
         ?.subject
-    ).toMatchObject({ kind: "firm", name: "Example Wealth Management" });
+    ).toMatchObject({ kind: "firm", name: EXAMPLE_WEALTH_MANAGEMENT });
   });
 });
 
@@ -1475,19 +1534,19 @@ describe("Harper resource endpoints", () => {
   it("serves feed, article, firm, advisor, and team profiles", async () => {
     const feedResponse = await new (resources as any).Feed().get();
     const article = await new (resources as any).ArticleView().get(
-      routeTarget("stone-joins-example")
+      routeTarget(STONE_JOINS_EXAMPLE_SLUG)
     );
     const firm = await new (resources as any).FirmProfile().get(
-      routeTarget("Example Wealth LLC")
+      routeTarget(EXAMPLE_WEALTH_LLC)
     );
     const advisors = await new (resources as any).FirmAdvisors().get(
       routeTarget("firm-a", { status: "past", limit: "1" })
     );
     const advisor = await new (resources as any).AdvisorProfile().get(
-      routeTarget("avery-stone")
+      routeTarget(AVERY_STONE_SLUG)
     );
     const team = await new (resources as any).TeamProfile().get(
-      routeTarget("stone-group")
+      routeTarget(STONE_GROUP_SLUG)
     );
 
     expect(feedResponse).toMatchObject({ count: 2 });
@@ -1506,7 +1565,7 @@ describe("Harper resource endpoints", () => {
     });
     expect(advisor).toMatchObject({
       advisor: { id: "advisor-a" },
-      displayName: "Avery Stone",
+      displayName: AVERY_STONE_NAME,
     });
     expect(team).toMatchObject({
       team: { id: "team-a" },
@@ -1528,7 +1587,7 @@ describe("Harper resource endpoints", () => {
     ]);
 
     const eventBacked = await new (resources as any).Feed().get(
-      routeTarget("", { mode: "event-backed" })
+      routeTarget("", { mode: EVENT_BACKED_MODE })
     );
     const browserEvent = await new (resources as any).Feed().get(
       routeTarget("", { mode: "event" })
@@ -1542,7 +1601,7 @@ describe("Harper resource endpoints", () => {
     const compliance = await new (resources as any).Feed().get(
       routeTarget("", {
         category: "compliance",
-        mode: "compliance-disclosures",
+        mode: COMPLIANCE_DISCLOSURES_MODE,
       })
     );
     const empty = await new (resources as any).Feed().get(
@@ -1555,7 +1614,7 @@ describe("Harper resource endpoints", () => {
     // filter and serves as the global total for `category="all"`.
     expect(eventBacked).toMatchObject({
       count: 2,
-      filters: { mode: "event-backed", category: "all" },
+      filters: { mode: EVENT_BACKED_MODE, category: "all" },
       summary: {
         returned: 2,
         total: 2,
@@ -1569,7 +1628,7 @@ describe("Harper resource endpoints", () => {
     ).toBe(true);
     expect(browserEvent).toMatchObject({
       count: 2,
-      filters: { mode: "event-backed", category: "all" },
+      filters: { mode: EVENT_BACKED_MODE, category: "all" },
       summary: {
         returned: 2,
         total: 2,
@@ -1595,7 +1654,7 @@ describe("Harper resource endpoints", () => {
     });
     expect(browserCompliance).toMatchObject({
       count: 1,
-      filters: { mode: "compliance-disclosures", category: "all" },
+      filters: { mode: COMPLIANCE_DISCLOSURES_MODE, category: "all" },
       items: [
         expect.objectContaining({
           eventCards: [
@@ -1608,7 +1667,7 @@ describe("Harper resource endpoints", () => {
     });
     expect(compliance).toMatchObject({
       count: 1,
-      filters: { mode: "compliance-disclosures", category: "compliance" },
+      filters: { mode: COMPLIANCE_DISCLOSURES_MODE, category: "compliance" },
       summary: {
         returned: 1,
         total: 1,
@@ -1650,19 +1709,19 @@ describe("Harper resource endpoints", () => {
     });
     const feedResult = await callTool("get_feed", { limit: 1 });
     const advisorResult = await callTool("get_advisor_profile", {
-      id: "avery-stone",
+      id: AVERY_STONE_SLUG,
     });
     const advisorResourceResult = await new (
       resources as any
-    ).AdvisorProfile().get(routeTarget("avery-stone"));
+    ).AdvisorProfile().get(routeTarget(AVERY_STONE_SLUG));
     const firmResult = await callTool("get_firm_profile", {
-      id: "Example Wealth LLC",
+      id: EXAMPLE_WEALTH_LLC,
     });
     const teamResult = await callTool("get_team_profile", {
-      id: "stone-group",
+      id: STONE_GROUP_SLUG,
     });
     const articleResult = await callTool("get_article", {
-      id: "stone-joins-example",
+      id: STONE_JOINS_EXAMPLE_SLUG,
     });
 
     expect(searchResult.items).toEqual([
@@ -1721,7 +1780,7 @@ describe("Harper resource endpoints", () => {
 
   it("serves source-backed recruiting market aggregates", async () => {
     const market = await new (resources as any).RecruitingMarket().get(
-      routeTarget("", { firm: "Example Wealth LLC", state: "ga", year: "2024" })
+      routeTarget("", { firm: EXAMPLE_WEALTH_LLC, state: "ga", year: "2024" })
     );
 
     expect(market).toMatchObject({
@@ -1739,14 +1798,14 @@ describe("Harper resource endpoints", () => {
       provenance: {
         sourceTables: expect.arrayContaining(["TransitionEvent", "Article"]),
         sourceIds: expect.arrayContaining([
-          "transition-a",
-          "transition-team",
-          "transition-out",
+          TRANSITION_A_ID,
+          TRANSITION_TEAM_ID,
+          TRANSITION_OUT_ID,
         ]),
       },
     });
     expect(market.firmMomentum[0]).toMatchObject({
-      firm: { id: "firm-a", short: "Example WM" },
+      firm: { id: "firm-a", short: EXAMPLE_WM_SHORT },
       inbound: { count: 2, knownAum: 500_000_000, unknownAumCount: 1 },
       outbound: { count: 1, knownAum: 0, unknownAumCount: 1 },
       netMoveCount: 1,
@@ -1758,34 +1817,34 @@ describe("Harper resource endpoints", () => {
     });
     expect(market.recentMoves).toEqual([
       expect.objectContaining({
-        id: "transition-out",
+        id: TRANSITION_OUT_ID,
         sourceStatus: expect.arrayContaining([
-          "missing-source",
-          "missing-aum",
-          "missing-t12",
+          MISSING_SOURCE_REASON,
+          MISSING_AUM_REASON,
+          MISSING_T12_REASON,
         ]),
       }),
       expect.objectContaining({
-        id: "transition-team",
+        id: TRANSITION_TEAM_ID,
         article: null,
         sourceStatus: expect.arrayContaining([
-          "missing-source",
-          "missing-aum",
-          "missing-t12",
+          MISSING_SOURCE_REASON,
+          MISSING_AUM_REASON,
+          MISSING_T12_REASON,
         ]),
       }),
       expect.objectContaining({
-        id: "transition-a",
+        id: TRANSITION_A_ID,
         article: expect.objectContaining({
-          url: "https://www.advisorhub.com/stone-joins-example/",
+          url: STONE_JOINS_EXAMPLE_URL,
         }),
-        sourceStatus: ["source-backed"],
+        sourceStatus: [SOURCE_BACKED_REASON],
       }),
     ]);
 
     await expect(
       new (resources as any).RecruitingMarket().get(
-        routeTarget("", { firm: "missing-firm" })
+        routeTarget("", { firm: MISSING_FIRM_REASON })
       )
     ).resolves.toMatchObject({
       summary: { count: 3 },
@@ -1805,7 +1864,7 @@ describe("Harper resource endpoints", () => {
   it("serves deterministic recruiting watchlist snapshots", async () => {
     const market = await new (resources as any).RecruitingMarket().get(
       routeTarget("", {
-        firm: ["Example Wealth LLC", "Beta Advisors"],
+        firm: [EXAMPLE_WEALTH_LLC, BETA_ADVISORS],
         state: "ga",
         year: "2024",
       })
@@ -1816,7 +1875,7 @@ describe("Harper resource endpoints", () => {
       firmQuery: null,
       state: "GA",
       watchlistFirmIds: ["firm-a", "firm-b"],
-      watchlistFirmQueries: ["Example Wealth LLC", "Beta Advisors"],
+      watchlistFirmQueries: [EXAMPLE_WEALTH_LLC, BETA_ADVISORS],
       year: "2024",
     });
     expect(market.watchlist).toMatchObject({
@@ -1831,8 +1890,11 @@ describe("Harper resource endpoints", () => {
     });
     expect(market.watchlist.items).toEqual([
       expect.objectContaining({
-        query: "Example Wealth LLC",
-        firm: expect.objectContaining({ id: "firm-a", short: "Example WM" }),
+        query: EXAMPLE_WEALTH_LLC,
+        firm: expect.objectContaining({
+          id: "firm-a",
+          short: EXAMPLE_WM_SHORT,
+        }),
         inbound: {
           count: 2,
           knownAum: 500_000_000,
@@ -1853,11 +1915,14 @@ describe("Harper resource endpoints", () => {
           missingSourceCount: 2,
           missingLocationCount: 0,
         },
-        sourceMoveIds: ["transition-a", "transition-team", "transition-out"],
-        sourceStatus: expect.arrayContaining(["missing-source", "missing-aum"]),
+        sourceMoveIds: [TRANSITION_A_ID, TRANSITION_TEAM_ID, TRANSITION_OUT_ID],
+        sourceStatus: expect.arrayContaining([
+          MISSING_SOURCE_REASON,
+          MISSING_AUM_REASON,
+        ]),
       }),
       expect.objectContaining({
-        query: "Beta Advisors",
+        query: BETA_ADVISORS,
         firm: expect.objectContaining({ id: "firm-b" }),
         inbound: {
           count: 1,
@@ -1879,8 +1944,11 @@ describe("Harper resource endpoints", () => {
           missingSourceCount: 2,
           missingLocationCount: 0,
         },
-        sourceMoveIds: ["transition-out", "transition-a", "transition-team"],
-        sourceStatus: expect.arrayContaining(["missing-source", "missing-aum"]),
+        sourceMoveIds: [TRANSITION_OUT_ID, TRANSITION_A_ID, TRANSITION_TEAM_ID],
+        sourceStatus: expect.arrayContaining([
+          MISSING_SOURCE_REASON,
+          MISSING_AUM_REASON,
+        ]),
       }),
     ]);
   });
@@ -1889,7 +1957,7 @@ describe("Harper resource endpoints", () => {
     const target = routeTarget("", {
       firm: [
         "Example Wealth LLC, Beta Advisors",
-        "Example Wealth LLC",
+        EXAMPLE_WEALTH_LLC,
         "Missing One",
         "Missing Two",
         "Missing Three",
@@ -1926,8 +1994,8 @@ describe("Harper resource endpoints", () => {
       state: "GA",
       watchlistFirmIds: ["firm-a", "firm-b"],
       watchlistFirmQueries: [
-        "Example Wealth LLC",
-        "Beta Advisors",
+        EXAMPLE_WEALTH_LLC,
+        BETA_ADVISORS,
         "Missing One",
         "Missing Two",
         "Missing Three",
@@ -1941,7 +2009,7 @@ describe("Harper resource endpoints", () => {
       expect.arrayContaining([
         expect.objectContaining({
           firm: null,
-          sourceStatus: ["unresolved-firm"],
+          sourceStatus: [UNRESOLVED_FIRM_REASON],
         }),
       ])
     );
@@ -1961,7 +2029,7 @@ describe("Harper resource endpoints", () => {
       },
     ]);
     const degraded = await new (resources as any).RecruitingMarket().get(
-      routeTarget("", { firm: "Example Wealth LLC", year: "2024" })
+      routeTarget("", { firm: EXAMPLE_WEALTH_LLC, year: "2024" })
     );
 
     expect(degraded.watchlist.items[0]).toMatchObject({
@@ -1973,21 +2041,21 @@ describe("Harper resource endpoints", () => {
         missingLocationCount: 1,
       },
       sourceMoveIds: [
-        "transition-a",
-        "transition-team",
+        TRANSITION_A_ID,
+        TRANSITION_TEAM_ID,
         "transition-unlocated",
-        "transition-out",
+        TRANSITION_OUT_ID,
       ],
       sourceStatus: expect.arrayContaining([
         "missing-location",
-        "missing-source",
-        "missing-t12",
+        MISSING_SOURCE_REASON,
+        MISSING_T12_REASON,
       ]),
     });
 
     const empty = await new (resources as any).RecruitingMarket().get(
       routeTarget("", {
-        firm: ["Example Wealth LLC", "Missing Firm"],
+        firm: [EXAMPLE_WEALTH_LLC, "Missing Firm"],
         state: "TX",
       })
     );
@@ -2000,7 +2068,7 @@ describe("Harper resource endpoints", () => {
         count: 2,
         items: [
           {
-            query: "Example Wealth LLC",
+            query: EXAMPLE_WEALTH_LLC,
             firm: expect.objectContaining({ id: "firm-a" }),
             inbound: {
               count: 0,
@@ -2049,7 +2117,7 @@ describe("Harper resource endpoints", () => {
               missingLocationCount: 0,
             },
             sourceMoveIds: [],
-            sourceStatus: ["unresolved-firm"],
+            sourceStatus: [UNRESOLVED_FIRM_REASON],
           },
         ],
       },
@@ -2081,14 +2149,14 @@ describe("Harper resource endpoints", () => {
     expect(feed).toMatchObject({ count: 2 });
     expect(advisor).toMatchObject({
       advisor: { id: "advisor-a" },
-      displayName: "Avery Stone",
+      displayName: AVERY_STONE_NAME,
     });
     expect(firm).toMatchObject({ firm: { id: "firm-a" } });
     expect(team).toMatchObject({ team: { id: "team-a" } });
     expect(article).toMatchObject({
       article: {
         id: "article-a",
-        url: "https://www.advisorhub.com/stone-joins-example/",
+        url: STONE_JOINS_EXAMPLE_URL,
       },
       body: {
         text: "Avery Stone joined Example Wealth Management with a large team and client base.",
@@ -2156,7 +2224,7 @@ describe("Harper directory and search resources", () => {
     );
 
     expect(firms).toMatchObject({
-      items: [expect.objectContaining({ name: "Beta Advisors" })],
+      items: [expect.objectContaining({ name: BETA_ADVISORS })],
       total: 2,
     });
     expect(firms.nextCursor).toBeTruthy();
@@ -2170,14 +2238,14 @@ describe("Harper directory and search resources", () => {
       items: [
         expect.objectContaining({
           id: "team-a",
-          currentFirmName: "Example Wealth Management",
+          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
         }),
       ],
     });
     expect(teams.nextCursor).toBeNull();
     expect(teams.items[0]).toMatchObject({
       id: "team-a",
-      currentFirmName: "Example Wealth Management",
+      currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
     });
     expect(result.counts).toEqual({
       firms: 0,
@@ -2200,7 +2268,7 @@ describe("Harper directory and search resources", () => {
     setRows("FirmAlias", []);
     setRows("Team", [
       { id: "team-z", name: "Zeta Team" },
-      { id: "team-a", name: "Alpha Team", currentFirmId: "missing-firm" },
+      { id: "team-a", name: "Alpha Team", currentFirmId: MISSING_FIRM_REASON },
     ]);
     setRows(
       "Advisor",
@@ -2234,7 +2302,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-a",
         firstName: "Avery",
         lastName: "Stone",
-        legalName: "Avery Stone",
+        legalName: AVERY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "1234567",
       },
@@ -2242,43 +2310,43 @@ describe("Harper directory and search resources", () => {
         id: "advisor-b",
         firstName: "Blake",
         lastName: "Young",
-        legalName: "Blake Young",
+        legalName: BLAKE_YOUNG_NAME,
         careerStatus: "retired",
       },
       {
         id: "advisor-c",
         firstName: "Casey",
         lastName: "Stone",
-        legalName: "Casey Stone",
+        legalName: CASEY_STONE_NAME,
         careerStatus: "active",
       },
     ]);
     setRows("EmploymentHistory", [
       {
-        id: "employment-a",
+        id: EMPLOYMENT_A_ID,
         advisorId: "advisor-a",
         firmId: "firm-a",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
       {
-        id: "employment-b",
+        id: EMPLOYMENT_B_ID,
         advisorId: "advisor-b",
         firmId: "firm-a",
-        startDate: "2023-01-01",
-        endDate: "2024-01-01",
+        startDate: DATE_2023_01_01,
+        endDate: DATE_2024_01_01,
       },
       {
         id: "employment-c",
         advisorId: "advisor-c",
         firmId: "firm-b",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
     ]);
 
     const result = await new (resources as any).PublicAdvisors().get(
       routeTarget("", {
         careerStatus: "active",
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         hasCrd: "true",
         limit: "1",
         q: "stone",
@@ -2298,7 +2366,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-a",
         firstName: "Avery",
         lastName: "Stone",
-        legalName: "Avery Stone",
+        legalName: AVERY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "1234567",
       },
@@ -2306,7 +2374,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-c",
         firstName: "Casey",
         lastName: "Stone",
-        legalName: "Casey Stone",
+        legalName: CASEY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "7654321",
       },
@@ -2314,36 +2382,36 @@ describe("Harper directory and search resources", () => {
         id: "advisor-b",
         firstName: "Blake",
         lastName: "Young",
-        legalName: "Blake Young",
+        legalName: BLAKE_YOUNG_NAME,
         careerStatus: "active",
         finraCrd: "8888888",
       },
     ]);
     setRows("EmploymentHistory", [
       {
-        id: "employment-a",
+        id: EMPLOYMENT_A_ID,
         advisorId: "advisor-a",
         firmId: "firm-a",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
       {
         id: "employment-c",
         advisorId: "advisor-c",
         firmId: "firm-a",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
       {
-        id: "employment-b",
+        id: EMPLOYMENT_B_ID,
         advisorId: "advisor-b",
         firmId: "firm-b",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
     ]);
 
     const first = await new (resources as any).PublicAdvisors().get(
       routeTarget("", {
         careerStatus: "active",
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         hasCrd: "true",
         limit: "1",
         q: "stone",
@@ -2353,7 +2421,7 @@ describe("Harper directory and search resources", () => {
       routeTarget("", {
         careerStatus: "active",
         cursor: first.nextCursor,
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         hasCrd: "true",
         limit: "1",
         q: "stone",
@@ -2390,7 +2458,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-a",
         firstName: "Avery",
         lastName: "Stone",
-        legalName: "Avery Stone",
+        legalName: AVERY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "1234567",
       },
@@ -2398,7 +2466,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-b",
         firstName: "Blake",
         lastName: "Young",
-        legalName: "Blake Young",
+        legalName: BLAKE_YOUNG_NAME,
         careerStatus: "retired",
       },
     ]);
@@ -2434,7 +2502,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-a",
         firstName: "Avery",
         lastName: "Stone",
-        legalName: "Avery Stone",
+        legalName: AVERY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "1234567",
       },
@@ -2450,7 +2518,7 @@ describe("Harper directory and search resources", () => {
         id: "advisor-c",
         firstName: "Casey",
         lastName: "Stone",
-        legalName: "Casey Stone",
+        legalName: CASEY_STONE_NAME,
         careerStatus: "active",
         finraCrd: "3333333",
       },
@@ -2462,7 +2530,7 @@ describe("Harper directory and search resources", () => {
         id: "e-b",
         advisorId: "advisor-b",
         firmId: "firm-a",
-        endDate: "2024-01-01",
+        endDate: DATE_2024_01_01,
       },
       // advisor-c is at firm-b (no name match) → excluded.
       { id: "e-c", advisorId: "advisor-c", firmId: "firm-b" },
@@ -2488,10 +2556,10 @@ describe("Harper directory and search resources", () => {
 
     try {
       const result = await new (resources as any).PublicAdvisors().get(
-        routeTarget("", { firm: "Example Wealth" })
+        routeTarget("", { firm: EXAMPLE_WEALTH_SHORT_NAME })
       );
 
-      // Only firm-a (name matches "Example Wealth") was queried by firmId.
+      // Only firm-a (name matches EXAMPLE_WEALTH_SHORT_NAME) was queried by firmId.
       expect(queriedFirmIds).toEqual(["firm-a"]);
       expect(result).toMatchObject({
         total: 1,
@@ -2530,13 +2598,13 @@ describe("Harper directory and search resources", () => {
     setRows("Firm", [
       {
         id: "firm-a",
-        name: "Example Wealth Management",
+        name: EXAMPLE_WEALTH_MANAGEMENT,
         hqState: "GA",
         channel: "ria",
       },
       {
         id: "firm-b",
-        name: "Beta Advisors",
+        name: BETA_ADVISORS,
         hqState: "TX",
         channel: "ria",
         dissolvedYear: 2020,
@@ -2551,7 +2619,7 @@ describe("Harper directory and search resources", () => {
     setRows("Team", [
       {
         id: "team-a",
-        name: "Stone Group",
+        name: STONE_GROUP_NAME,
         currentFirmId: "firm-a",
         serviceModel: "ensemble",
       },
@@ -2579,7 +2647,7 @@ describe("Harper directory and search resources", () => {
     );
     const teamsFirst = await new (resources as any).PublicTeams().get(
       routeTarget("", {
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         limit: "1",
         q: "stone",
         serviceModel: "ensemble",
@@ -2588,7 +2656,7 @@ describe("Harper directory and search resources", () => {
     const teamsSecond = await new (resources as any).PublicTeams().get(
       routeTarget("", {
         cursor: teamsFirst.nextCursor,
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         limit: "1",
         q: "stone",
         serviceModel: "ensemble",
@@ -2605,7 +2673,7 @@ describe("Harper directory and search resources", () => {
       items: [
         expect.objectContaining({
           id: "team-a",
-          currentFirmName: "Example Wealth Management",
+          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
         }),
       ],
     });
@@ -2622,13 +2690,13 @@ describe("Harper directory and search resources", () => {
     setRows("Firm", [
       {
         id: "firm-a",
-        name: "Example Wealth Management",
+        name: EXAMPLE_WEALTH_MANAGEMENT,
         hqState: "GA",
         channel: "ria",
       },
       {
         id: "firm-b",
-        name: "Beta Advisors",
+        name: BETA_ADVISORS,
         hqState: "TX",
         channel: "broker-dealer",
         dissolvedYear: 2020,
@@ -2705,7 +2773,7 @@ describe("Harper directory and search resources", () => {
 
     const first = await new (resources as any).PublicTeams().get(
       routeTarget("", {
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         limit: "1",
         q: "stone",
         serviceModel: "ensemble",
@@ -2714,7 +2782,7 @@ describe("Harper directory and search resources", () => {
     const second = await new (resources as any).PublicTeams().get(
       routeTarget("", {
         cursor: first.nextCursor,
-        firm: "Example Wealth",
+        firm: EXAMPLE_WEALTH_SHORT_NAME,
         limit: "1",
         q: "stone",
         serviceModel: "ensemble",
@@ -2728,7 +2796,7 @@ describe("Harper directory and search resources", () => {
       total: 2,
       items: [
         expect.objectContaining({
-          currentFirmName: "Example Wealth Management",
+          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
           id: "team-a",
           slug: "stone-alpha",
         }),
@@ -2739,7 +2807,7 @@ describe("Harper directory and search resources", () => {
       total: 2,
       items: [
         expect.objectContaining({
-          currentFirmName: "Example Wealth Management",
+          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
           id: "team-b",
           slug: "stone-beta",
         }),
@@ -2756,12 +2824,12 @@ describe("Harper directory and search resources", () => {
 
   it("scores search helper results and short query responses", async () => {
     const employments = [
-      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2020-01-01" },
-      { advisorId: "advisor-a", firmId: "firm-b", startDate: "2024-01-01" },
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: DATE_2020_01_01 },
+      { advisorId: "advisor-a", firmId: "firm-b", startDate: DATE_2024_01_01 },
       {
         advisorId: "advisor-a",
         firmId: "firm-c",
-        startDate: "2018-01-01",
+        startDate: DATE_2018_01_01,
         endDate: "2019-01-01",
       },
     ];
@@ -2777,18 +2845,18 @@ describe("Harper directory and search resources", () => {
     expect(
       search.advisorSearchMatches(
         [{ id: "advisor-a", firstName: "Avery", lastName: "Stone" }],
-        new Map([["firm-a", { name: "Example Wealth" }]]),
+        new Map([["firm-a", { name: EXAMPLE_WEALTH_SHORT_NAME }]]),
         new Map([["advisor-a", { firmId: "firm-a" }]]),
         "sto"
       )[0]
-    ).toMatchObject({ kind: "advisor", sub: "Example Wealth" });
+    ).toMatchObject({ kind: "advisor", sub: EXAMPLE_WEALTH_SHORT_NAME });
     expect(
       search.teamSearchMatches(
-        [{ id: "team-a", name: "Stone Group", currentFirmId: "firm-a" }],
-        new Map([["firm-a", { name: "Example Wealth" }]]),
+        [{ id: "team-a", name: STONE_GROUP_NAME, currentFirmId: "firm-a" }],
+        new Map([["firm-a", { name: EXAMPLE_WEALTH_SHORT_NAME }]]),
         "stone"
       )[0]
-    ).toMatchObject({ kind: "team", sub: "Example Wealth" });
+    ).toMatchObject({ kind: "team", sub: EXAMPLE_WEALTH_SHORT_NAME });
     await expect(
       new (resources as any).Search().get(routeTarget("", { q: "s" }))
     ).resolves.toEqual({
@@ -2801,13 +2869,13 @@ describe("Harper directory and search resources", () => {
 
   it("builds current-employment subtitles without repeated full-table scans", () => {
     const employments = [
-      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2020-01-01" },
-      { advisorId: "advisor-a", firmId: "firm-b", startDate: "2024-01-01" },
-      { advisorId: "advisor-b", firmId: "firm-c", startDate: "2023-01-01" },
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: DATE_2020_01_01 },
+      { advisorId: "advisor-a", firmId: "firm-b", startDate: DATE_2024_01_01 },
+      { advisorId: "advisor-b", firmId: "firm-c", startDate: DATE_2023_01_01 },
       {
         advisorId: "advisor-b",
         firmId: "firm-d",
-        startDate: "2021-01-01",
+        startDate: DATE_2021_01_01,
         endDate: "2022-01-01",
       },
     ];
@@ -2823,11 +2891,15 @@ describe("Harper directory and search resources", () => {
 
   it("currentEmploymentByAdvisor keeps the first-seen row on a startDate tie", () => {
     const employments = [
-      { advisorId: "advisor-a", firmId: "firm-first", startDate: "2024-01-01" },
+      {
+        advisorId: "advisor-a",
+        firmId: "firm-first",
+        startDate: DATE_2024_01_01,
+      },
       {
         advisorId: "advisor-a",
         firmId: "firm-second",
-        startDate: "2024-01-01",
+        startDate: DATE_2024_01_01,
       },
     ];
 
@@ -2838,21 +2910,21 @@ describe("Harper directory and search resources", () => {
 
   it("currentFirmNameByAdvisor resolves names only for known firms", () => {
     const employments = [
-      { advisorId: "advisor-a", firmId: "firm-a", startDate: "2024-01-01" },
+      { advisorId: "advisor-a", firmId: "firm-a", startDate: DATE_2024_01_01 },
       {
         advisorId: "advisor-b",
-        firmId: "missing-firm",
-        startDate: "2024-01-01",
+        firmId: MISSING_FIRM_REASON,
+        startDate: DATE_2024_01_01,
       },
       {
         advisorId: "advisor-c",
         firmId: "firm-a",
-        startDate: "2023-01-01",
-        endDate: "2024-01-01",
+        startDate: DATE_2023_01_01,
+        endDate: DATE_2024_01_01,
       },
     ];
     const byFirm = new Map([
-      ["firm-a", { id: "firm-a", name: "Example Wealth" }],
+      ["firm-a", { id: "firm-a", name: EXAMPLE_WEALTH_SHORT_NAME }],
     ]);
 
     const names = search.currentFirmNameByAdvisor(
@@ -2860,7 +2932,7 @@ describe("Harper directory and search resources", () => {
       byFirm as any
     );
 
-    expect(names.get("advisor-a")).toBe("Example Wealth");
+    expect(names.get("advisor-a")).toBe(EXAMPLE_WEALTH_SHORT_NAME);
     expect(names.has("advisor-b")).toBe(false);
     expect(names.has("advisor-c")).toBe(false);
   });
@@ -2894,7 +2966,7 @@ describe("Harper directory and search resources", () => {
       );
       expect(advisorItem).toMatchObject({
         id: "advisor-a",
-        sub: "Example Wealth Management",
+        sub: EXAMPLE_WEALTH_MANAGEMENT,
       });
       expect(result.counts).toEqual({
         firms: 0,
@@ -2940,4 +3012,3 @@ describe("Harper directory and search resources", () => {
     }
   });
 });
-/* eslint-enable max-lines, sonarjs/no-duplicate-string -- Re-enable fixture-only suppressions. */

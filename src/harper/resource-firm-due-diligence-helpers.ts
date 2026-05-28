@@ -1,5 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- Private helper names are descriptive and kept local to this resource module. */
-
 import type { RankingEntryRow } from "../types/harper-schema.js";
 import type {
   CoverageTimelineModule,
@@ -28,6 +26,14 @@ import {
   transitionFirmId,
 } from "./resource-firm-due-diligence-utils.js";
 
+/**
+ * Builds the recruiting-momentum due-diligence module from the firm's inbound and outbound
+ * transitions, computing net counts/AUM and surfacing the five most recent moves.
+ * @param firmId The firm id under review; used to label each recent move as inbound or outbound.
+ * @param transitionsIn Transitions where the firm is the destination.
+ * @param transitionsOut Transitions where the firm is the origin.
+ * @returns The fully populated recruiting-momentum module.
+ */
 export function recruitingMomentumModule(
   firmId: string,
   transitionsIn: readonly FirmTransitionRowView[] = [],
@@ -73,6 +79,11 @@ export function recruitingMomentumModule(
   };
 }
 
+/**
+ * Reduces a transition list into total/known-AUM/unknown-AUM counters, treating non-finite AUM as unknown.
+ * @param rows Transition rows for one direction.
+ * @returns Summary used by the recruiting-momentum module.
+ */
 function summarizeTransitions(
   rows: readonly FirmTransitionRowView[]
 ): TransitionsSummary {
@@ -91,6 +102,12 @@ function summarizeTransitions(
   );
 }
 
+/**
+ * Assembles the roster-footprint module by reading the canonical advisor, team, and branch counts off
+ * the profile, deriving status from whether any rows are present.
+ * @param profile Hydrated firm profile.
+ * @returns The roster-footprint module.
+ */
 export function rosterFootprintModule(
   profile: FirmDueDiligenceProfile
 ): RosterFootprintModule {
@@ -121,6 +138,13 @@ export function rosterFootprintModule(
   };
 }
 
+/**
+ * Builds the ranking-presence module from a firm's RankingEntry rows, returning a `not_found`-style
+ * payload when no rows are loaded and computing top rank/resolved counts when they are.
+ * @param db Firm due-diligence database providing ranking lookups.
+ * @param rows RankingEntry rows linked to this firm.
+ * @returns The ranking-presence module.
+ */
 export function rankingPresenceModule(
   db: FirmDueDiligenceDb,
   rows: readonly RankingEntryRow[]
@@ -162,6 +186,13 @@ export function rankingPresenceModule(
   };
 }
 
+/**
+ * Collects every RankingEntry row that ties to the firm directly, via one of its advisors, or via
+ * one of its current teams.
+ * @param db Firm due-diligence database.
+ * @param firmId Firm id under review.
+ * @returns Matching ranking rows.
+ */
 export function rankingRows(
   db: FirmDueDiligenceDb,
   firmId: string
@@ -187,6 +218,12 @@ export function rankingRows(
   );
 }
 
+/**
+ * Hydrates one RankingEntry row into a RankingAppearance, joining the ranking lookup when available.
+ * @param db Firm due-diligence database providing ranking lookups.
+ * @param row RankingEntry row.
+ * @returns The compact appearance view.
+ */
 function rankingAppearance(
   db: FirmDueDiligenceDb,
   row: RankingEntryRow
@@ -212,6 +249,11 @@ function rankingAppearance(
   };
 }
 
+/**
+ * Picks a default subject-type label based on which subject id column the row populates.
+ * @param row RankingEntry row.
+ * @returns `firm`, `team`, `advisor`, or `unresolved`.
+ */
 function inferredRankingSubject(row: RankingEntryRow): string {
   if (row.subjectFirmId) return "firm";
   if (row.subjectTeamId) return "team";
@@ -219,6 +261,12 @@ function inferredRankingSubject(row: RankingEntryRow): string {
   return "unresolved";
 }
 
+/**
+ * Assembles the regulatory-snapshot module from the firm's BrokerCheck snapshot, returning an
+ * `unavailable`-status payload when no snapshot is loaded.
+ * @param snapshot Loaded BrokerCheck snapshot or null.
+ * @returns The regulatory-snapshot module.
+ */
 export function regulatorySnapshotModule(
   snapshot: FirmBrokerCheckSnapshotSlice | null
 ): RegulatorySnapshotModule {
@@ -253,6 +301,12 @@ export function regulatorySnapshotModule(
   };
 }
 
+/**
+ * Assembles the coverage-timeline module from the firm's mentioned articles, surfacing the five most
+ * recent and the overall article count.
+ * @param articles Article stubs mentioning the firm.
+ * @returns The coverage-timeline module.
+ */
 export function coverageTimelineModule(
   articles: readonly FirmArticleStubView[] = []
 ): CoverageTimelineModule {
@@ -274,6 +328,12 @@ export function coverageTimelineModule(
   };
 }
 
+/**
+ * Folds the other modules into a high-level confidence summary, marking the report `partial` once
+ * any submodule is `loaded` and `unavailable` otherwise.
+ * @param modules The other due-diligence modules.
+ * @returns The data-confidence module.
+ */
 export function dataConfidenceModule(
   modules: DueDiligenceModules
 ): DataConfidenceModule {
@@ -294,5 +354,3 @@ export function dataConfidenceModule(
     modules: moduleEntries,
   };
 }
-
-/* eslint-enable jsdoc/require-jsdoc -- End local private-helper exception. */

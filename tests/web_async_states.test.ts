@@ -1,5 +1,4 @@
 import { createServer, type Server } from "node:http";
-/* eslint-disable max-lines -- Browser fixture coverage for async page states stays self-contained. */
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -840,5 +839,3 @@ function contentType(filePath: string): string {
       return "application/octet-stream";
   }
 }
-
-/* eslint-enable max-lines -- End self-contained async-state browser coverage. */

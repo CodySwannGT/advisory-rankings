@@ -1,4 +1,3 @@
-/* eslint-disable sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- branch roster markdown parsing is bounded to one public page at a time. */
 import { cleanText } from "./morgan-stanley-row-utils.js";
 import type {
   RaymondJamesAdvisorSource,
@@ -22,6 +21,16 @@ const ROLE_TITLES = [
   "First Vice President",
   "Branch Manager",
 ] as const;
+
+const branchTitlePattern =
+  /^#\s{1,10}([^\n]{1,200}?)\s{1,10}of Raymond James/im;
+const branchContactPattern =
+  /\*\s{1,10}Raymond James Financial\s{1,10}([^\n[]{1,500})\[T:\s{0,10}([^\]]{1,50})\]/u;
+const advisorEmailPattern = /mailto:([^)]{1,200})/iu;
+const advisorPhonePattern = /tel:([^)]{1,50})/iu;
+const addressPattern =
+  /^(.{1,500}),\s{1,10}([A-Z]{2})\s{1,10}(\d{5}(?:-\d{4})?)$/u;
+const credentialSuffixPattern = /\s{1,10}(CFP®|CFA®|AAMS™|CPWA®)$/u;
 
 /**
  * Parses a Raymond James branch roster markdown document.
@@ -49,10 +58,8 @@ export function parseRaymondJamesBranch(
   markdown: string,
   branchUrl: string
 ): RaymondJamesBranchSource {
-  const title = markdown.match(/^#\s+(.+?)\s+of Raymond James/im)?.[1];
-  const contact = markdown.match(
-    /\*\s+Raymond James Financial\s+([^\n[]+)\[T:\s*([^\]]+)\]/u
-  );
+  const title = branchTitlePattern.exec(markdown)?.[1];
+  const contact = branchContactPattern.exec(markdown);
   const address = parseAddress(cleanText(contact?.[1] ?? ""));
   return {
     name: cleanText(title ?? "Raymond James Branch"),
@@ -79,8 +86,8 @@ const advisorSource = (
     roleTitle: parsed.roleTitle,
     advisorUrl: absoluteRaymondJamesUrl(match[3] ?? ""),
     headshotUrl: absoluteRaymondJamesUrl(match[1] ?? ""),
-    businessEmail: contact.match(/mailto:([^)]+)/iu)?.[1],
-    businessPhone: normalizePhone(contact.match(/tel:([^)]+)/iu)?.[1]),
+    businessEmail: advisorEmailPattern.exec(contact)?.[1],
+    businessPhone: normalizePhone(advisorPhonePattern.exec(contact)?.[1]),
     branch,
   };
 };
@@ -107,7 +114,7 @@ const parseNameAndRole = (value: string): NameAndRole => {
 };
 
 const parseAddress = (value: string): ParsedAddress => {
-  const match = value.match(/^(.+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/u);
+  const match = addressPattern.exec(value);
   if (!match) return {};
   const beforeState = cleanText(match[1] ?? "");
   const city = cityFromAddressPrefix(beforeState);
@@ -123,7 +130,7 @@ const dedupeTrailingWords = (value: string): string => {
   const words = cleanText(value).split(" ").filter(Boolean);
   return trimTrailingDuplicates(words)
     .join(" ")
-    .replace(/\s+(CFP®|CFA®|AAMS™|CPWA®)$/u, ", $1")
+    .replace(credentialSuffixPattern, ", $1")
     .replace(/,,/gu, ",");
 };
 
@@ -155,5 +162,3 @@ const absoluteRaymondJamesUrl = (value: string): string | undefined => {
     ? value
     : `https://www.raymondjames.com${value.startsWith("/") ? "" : "/"}${value}`;
 };
-
-/* eslint-enable sonarjs/prefer-regexp-exec, sonarjs/slow-regex -- re-enable global parser lint rules after this bounded markdown parser. */
