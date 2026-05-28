@@ -127,8 +127,7 @@ function createLinks(active?: string): HTMLElement {
     link("/recruiting", "Recruiting"),
     link("/rankings", "Rankings"),
     link("/advisors", "Advisors"),
-    link("/teams", "Teams"),
-    link("/watchlists", "Watchlists")
+    link("/teams", "Teams")
   );
 }
 

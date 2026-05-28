@@ -16,6 +16,7 @@ const EXPECTED_BROWSE_LABELS = [
   "Rankings",
   "Advisors",
   "Teams",
+  "Watchlists",
   "Compliance",
 ];
 const RAW_IDENTIFIER_PATTERN = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
