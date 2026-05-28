@@ -189,6 +189,7 @@ function renderLeft(root: HTMLElement, items: readonly FeedItem[]): void {
       { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },
+      { label: "Watchlists", icon: "⭐", href: "/watchlists" },
       { label: "Compliance", icon: "⚖️", href: "/regulatory" },
     ],
   });
