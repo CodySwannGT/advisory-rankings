@@ -236,17 +236,34 @@ export function createRestAdvisorSearchIndexHandle(
     upsertTokens: async (rows: readonly AdvisorSearchIndexRow[]) => {
       // Chunk the writes so a 13k-row backfill cannot fan out into
       // thousands of concurrent PUTs and saturate the REST surface.
+      // `HarperREST.put` returns `false` on non-2xx; surface that as a
+      // throw so a partial failure does not silently corrupt the
+      // index (which would let a stale token row outlive the advisor
+      // it tagged).
       for (const batch of chunkArray(rows, REST_BATCH_SIZE)) {
-        await Promise.all(
+        const results = await Promise.all(
           batch.map(row => rest.put("AdvisorSearchIndex", { ...row }))
         );
+        const failed = results.filter(ok => !ok).length;
+        if (failed > 0)
+          throw new Error(
+            `advisor-search-index: ${failed}/${batch.length} AdvisorSearchIndex PUTs failed (see HarperREST stderr)`
+          );
       }
     },
     deleteTokens: async (ids: readonly string[]) => {
+      // Same fail-fast pattern as upsertTokens: a discarded `false`
+      // from `HarperREST.delete` would let a stale token row persist
+      // after the diffed write claimed it removed the row.
       for (const batch of chunkArray(ids, REST_BATCH_SIZE)) {
-        await Promise.all(
+        const results = await Promise.all(
           batch.map(id => rest.delete("AdvisorSearchIndex", id))
         );
+        const failed = results.filter(ok => !ok).length;
+        if (failed > 0)
+          throw new Error(
+            `advisor-search-index: ${failed}/${batch.length} AdvisorSearchIndex DELETEs failed (see HarperREST stderr)`
+          );
       }
     },
   };

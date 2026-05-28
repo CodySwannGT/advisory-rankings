@@ -67,18 +67,25 @@ const tokenIdsFor = async (
   // happens post-hydration, so dropping `select` saves nothing and
   // simplifies the row shape downstream.
   const searchable = table as SearchableTokenTable;
-  const rows = await Array.fromAsync(
-    searchable.search({
-      conditions: [
-        { attribute: "token", comparator: "starts_with", value: token },
-      ],
-      // Bound the per-token fetch so a pathological prefix cannot
-      // materialize the entire index. The intersection step still
-      // applies `TOKEN_INTERSECTION_CAP` on the post-merge set.
-      limit: TOKEN_FETCH_LIMIT,
-    })
-  );
-  return new Set(rows.map(row => row.advisorId));
+  try {
+    const rows = await Array.fromAsync(
+      searchable.search({
+        conditions: [
+          { attribute: "token", comparator: "starts_with", value: token },
+        ],
+        // Bound the per-token fetch so a pathological prefix cannot
+        // materialize the entire index. The intersection step still
+        // applies `TOKEN_INTERSECTION_CAP` on the post-merge set.
+        limit: TOKEN_FETCH_LIMIT,
+      })
+    );
+    return new Set(rows.map(row => row.advisorId));
+  } catch (error) {
+    throw new Error(
+      `advisor-token-query: AdvisorSearchIndex starts_with("${token}") failed: ${String(error)}`,
+      { cause: error }
+    );
+  }
 };
 
 /**

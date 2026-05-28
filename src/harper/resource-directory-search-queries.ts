@@ -85,17 +85,28 @@ export async function searchPageAndCount<T>(
   const pageQuery: Readonly<Record<string, unknown>> = sort
     ? { conditions, sort, limit, offset }
     : { conditions, limit, offset };
-  const [items, total] = await Promise.all([
-    Array.fromAsync(searchable.search(pageQuery)),
-    // Streaming count: the iterator is consumed without materializing
-    // every row into an array, so a wide filter (e.g. an unfiltered
-    // `/Feed` page) does not reintroduce the unbounded-memory
-    // full-table read this issue is meant to remove. Harper's btree
-    // path still drives the scan; only the row payloads are
-    // discarded.
-    streamCount(searchable, conditions),
-  ]);
-  return { items, total };
+  try {
+    const [items, total] = await Promise.all([
+      Array.fromAsync(searchable.search(pageQuery)),
+      // Streaming count: the iterator is consumed without materializing
+      // every row into an array, so a wide filter (e.g. an unfiltered
+      // `/Feed` page) does not reintroduce the unbounded-memory
+      // full-table read this issue is meant to remove. Harper's btree
+      // path still drives the scan; only the row payloads are
+      // discarded.
+      streamCount(searchable, conditions),
+    ]);
+    return { items, total };
+  } catch (error) {
+    // Tag the rejection with the operation + the conditions that drove
+    // it. `pageQuery` is the same shape Harper consumes, so the log
+    // line is enough to reproduce a failing query without re-attaching
+    // a debugger.
+    throw new Error(
+      `searchPageAndCount: Harper search failed for ${JSON.stringify(pageQuery)}: ${String(error)}`,
+      { cause: error }
+    );
+  }
 }
 
 const streamCount = async <T>(
