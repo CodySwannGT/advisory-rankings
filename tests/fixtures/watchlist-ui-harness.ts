@@ -24,9 +24,10 @@ const ADVISOR_NAME = "Avery Stone";
 export const LIST_NAME = "Top targets";
 /** UserWatchlists resource route glob. */
 export const WATCHLISTS_ROUTE = "**/UserWatchlists";
+/** AdvisorRating resource route glob. */
+export const RATING_ROUTE = "**/AdvisorRating/**";
 
 const ME_ROUTE = "**/Me";
-const RATING_ROUTE = "**/AdvisorRating/**";
 
 /** Desktop + mobile viewports captured for evidence. */
 const EVIDENCE_VIEWPORTS = [
@@ -71,13 +72,19 @@ export async function routeAuth(
 }
 
 /**
- * Routes the AdvisorProfile + AdvisorRating resources for the profile page.
+ * Routes the AdvisorProfile resource and, by default, an empty AdvisorRating
+ * resource for profile-page tests that do not need rating mutation state.
  * @param page - Playwright page under test.
+ * @param includeRating - Whether to route AdvisorRating as an empty response.
  */
-export async function routeAdvisor(page: Page): Promise<void> {
+export async function routeAdvisor(
+  page: Page,
+  includeRating: boolean = true
+): Promise<void> {
   await page.route("**/AdvisorProfile/**", async route => {
     await route.fulfill({ json: advisorProfile(ADVISOR_ID) });
   });
+  if (!includeRating) return;
   await page.route(RATING_ROUTE, async route => {
     await route.fulfill({ json: { authenticated: true, rating: null } });
   });
@@ -107,6 +114,38 @@ export async function routeWatchlists(
       return;
     }
     await route.fulfill({ json: { authenticated: true, lists } });
+  });
+}
+
+/**
+ * Routes AdvisorRating: GET returns the supplied rating; POST captures and
+ * returns the saved private rating envelope.
+ * @param page - Playwright page under test.
+ * @param onPost - Callback invoked with each captured POST body.
+ * @param rating - Rating returned by GET before the first mutation.
+ */
+export async function routeRating(
+  page: Page,
+  onPost: (body: Readonly<Record<string, unknown>>) => void,
+  rating: Readonly<Record<string, unknown>> | null
+): Promise<void> {
+  const state = { currentRating: rating };
+  await page.route(RATING_ROUTE, async (route: Route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as Readonly<
+        Record<string, unknown>
+      >;
+      onPost(body);
+      /* eslint-disable-next-line functional/immutable-data -- Stateful route fixture simulates persisted rating reloads. */
+      state.currentRating = body;
+      await route.fulfill({
+        json: { authenticated: true, rating: state.currentRating },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: { authenticated: true, rating: state.currentRating },
+    });
   });
 }
 
