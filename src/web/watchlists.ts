@@ -34,16 +34,23 @@ MountThreeColumnPage({
 });
 
 /**
+ * Refreshes the current session, returning null instead of throwing on failure.
+ * @returns The session envelope, or null when the lookup fails.
+ */
+async function safeRefreshMe(): Promise<MeEnvelope | null> {
+  try {
+    return await refreshMe();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Loads the current session and watchlists, then renders the page.
  * @param center - Main content column.
  */
 async function load(center: HTMLElement): Promise<void> {
-  let me: MeEnvelope | null = null;
-  try {
-    me = await refreshMe();
-  } catch {
-    me = null;
-  }
+  const me = await safeRefreshMe();
   if (!me?.authenticated) {
     renderSignedOut(center);
     return;

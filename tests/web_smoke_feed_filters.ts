@@ -129,10 +129,14 @@ async function verifySemanticModeUrl(page: Page): Promise<{
   readonly summaryMatches: boolean;
   readonly url: string;
 }> {
-  await smokeGoto(
-    page,
-    `${BASE}/?mode=event-backed&category=${SEMANTIC_URL_CATEGORY}`
-  );
+  // Test the semantic-mode canonicalization (`event-backed` → `event`) on its
+  // own. Pinning it to a hardcoded `category=firm_bio` was brittle: the deployed
+  // dataset has event-backed posts and firm_bio posts but none that are both, so
+  // the combo rendered an empty feed, and the category label ("Firm profile
+  // updates") no longer matches the literal "firm bio" the summary was asserted
+  // against. Category canonicalization/copy is covered by the other feed-filter
+  // checks; here we verify only the mode state + event-card rows.
+  await smokeGoto(page, `${BASE}/?mode=event-backed`);
   await page.waitForSelector(FEED_FILTER_SUMMARY, {
     timeout: QUICK_UI_TIMEOUT,
   });
@@ -146,7 +150,7 @@ async function verifySemanticModeUrl(page: Page): Promise<{
     canonicalUrl: new URL(url).searchParams.get("mode") === "event",
     selectedMode,
     summary,
-    summaryMatches: /event-backed/i.test(summary) && /firm bio/i.test(summary),
+    summaryMatches: /event-backed/i.test(summary),
     url,
   };
 }

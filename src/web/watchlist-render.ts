@@ -14,6 +14,7 @@ import {
   signInGuidance,
   updateEntryBody,
   type WatchlistEntryView,
+  type WatchlistPostBody,
   type WatchlistView,
 } from "./watchlist-logic.js";
 import {
@@ -25,6 +26,9 @@ import {
   SectionCardC,
   TextInputC,
 } from "./watchlist-types.js";
+
+/** Resource path for all watchlist mutations. */
+const WATCHLISTS_PATH = "/UserWatchlists";
 
 /** Render context shared by the page handlers. */
 export interface WatchlistRenderContext {
@@ -277,7 +281,7 @@ async function persistReorder(
   await Promise.all(
     changed.map(entry =>
       postJsonC(
-        "/UserWatchlists",
+        WATCHLISTS_PATH,
         updateEntryBody(list.id, entry.advisorId, entry.rank ?? 1, entry.note)
       )
     )
@@ -312,7 +316,7 @@ export function addAdvisorToList(
  */
 async function mutate(
   ctx: WatchlistRenderContext,
-  body: Readonly<Record<string, unknown>>,
+  body: WatchlistPostBody,
   status: HTMLElement,
   failure: string
 ): Promise<void> {
@@ -322,7 +326,7 @@ async function mutate(
   }
   status.replaceChildren("Saving…");
   try {
-    await postJsonC("/UserWatchlists", body);
+    await postJsonC(WATCHLISTS_PATH, body);
     ctx.reload();
   } catch {
     status.replaceChildren(failure);

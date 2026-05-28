@@ -12,11 +12,6 @@ const ADVISOR_STATS_TITLE = "Advisor directory";
 const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
 const STATS_CARD_SELECTOR = ".right .card";
 
-/** Minimal advisor row shape needed for filter smoke assertions. */
-interface AdvisorFixture {
-  readonly legalName?: string;
-}
-
 /**
  * Checks URL-backed advisor filters, zero-result recovery, and narrow layouts.
  * @param page - Browser page used for the advisor directory scenario.
@@ -26,11 +21,18 @@ export async function smokeAdvisorDirectoryFilters(
   page: Page
 ): Promise<readonly Check[]> {
   const viewport = page.viewportSize();
-  const fixture = await firstAdvisorFilterFixture(page);
-  const filteredQuery = advisorFilterQuery(fixture);
-  const filteredUrl = `${BASE}/advisors?${filteredQuery.toString()}`;
   const rows = page.locator(DIRECTORY_ROW_SELECTOR);
   const filterForm = page.locator(".advisor-directory-filters");
+
+  // Derive the firm filter from live data rather than hardcoding a firm: pick a
+  // real active advisor that has a CRD, read their current firm, and filter by
+  // it. This keeps the firm+careerStatus+hasCrd assertion satisfiable against
+  // whatever data is deployed (a hardcoded firm can have zero CRD-holders and
+  // silently render no rows).
+  const firm = await discoverFilterableFirm(page);
+  const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(
+    firm
+  )}&careerStatus=active&hasCrd=true`;
 
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -58,13 +60,14 @@ export async function smokeAdvisorDirectoryFilters(
   await page.setViewportSize({ width: 320, height: 720 });
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const mobile320 = await viewportOverflow(page);
   await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const mobile320 = await viewportOverflow(page);
   await shot(page, "06-advisors-filtered-mobile-320");
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
     emptyFacts,
+    expectedFirm: firm,
     filteredFacts,
     mobile320,
     mobile390,
@@ -73,9 +76,43 @@ export async function smokeAdvisorDirectoryFilters(
 }
 
 /**
+ * Finds a firm that demonstrably has at least one active, CRD-holding advisor
+ * by reading live data: it loads the active+CRD advisor directory, opens the
+ * first result, and returns that advisor's current firm name. Filtering by this
+ * firm together with `careerStatus=active&hasCrd=true` is therefore guaranteed
+ * to match at least that advisor.
+ * @param page - Browser page used for discovery.
+ * @returns A firm name with active CRD-holding advisors.
+ */
+async function discoverFilterableFirm(page: Page): Promise<string> {
+  await smokeGoto(page, `${BASE}/advisors?careerStatus=active&hasCrd=true`);
+  const firstRow = page.locator(DIRECTORY_ROW_SELECTOR).first();
+  await firstRow.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const href = await firstRow.evaluate(
+    row =>
+      row.getAttribute("href") ||
+      row.closest("a")?.getAttribute("href") ||
+      row.querySelector("a")?.getAttribute("href") ||
+      ""
+  );
+  if (!href) throw new Error("advisor directory row has no profile link");
+  await smokeGoto(page, `${BASE}${href}`);
+  const firm = await page
+    .locator(".subtitle")
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT })
+    .then(() => page.locator(".subtitle").first().textContent());
+  const trimmed = (firm ?? "").trim();
+  if (!trimmed)
+    throw new Error("advisor profile has no current firm to filter by");
+  return trimmed;
+}
+
+/**
  * Builds pass/fail checks from captured advisor-filter facts.
  * @param facts - Captured desktop, reload, empty, and mobile facts.
  * @param facts.emptyFacts - Empty-filter result facts.
+ * @param facts.expectedFirm - Firm name derived from live data for the filter.
  * @param facts.filteredFacts - Initial filtered result facts.
  * @param facts.mobile320 - Overflow metrics at 320px.
  * @param facts.mobile390 - Overflow metrics at 390px.
@@ -84,6 +121,7 @@ export async function smokeAdvisorDirectoryFilters(
  */
 function filterChecks(facts: {
   readonly emptyFacts: AdvisorFilterFacts;
+  readonly expectedFirm: string;
   readonly filteredFacts: AdvisorFilterFacts;
   readonly mobile320: ViewportOverflow;
   readonly mobile390: ViewportOverflow;
@@ -91,7 +129,7 @@ function filterChecks(facts: {
 }): readonly Check[] {
   return [
     check(
-      facts.filteredFacts.q.length > 0 &&
+      facts.filteredFacts.firm === facts.expectedFirm &&
         facts.filteredFacts.careerStatus === "active" &&
         facts.filteredFacts.hasCrd === "true",
       "advisors filters: controls reflect URL",
@@ -190,13 +228,12 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
         bodyText: document.body.textContent || "",
         careerStatus: valueOf("careerStatus"),
         firm: valueOf("firm"),
-        hasCrd: valueOf("hasCrd"),
         firstHref:
           rows[0]?.closest("a")?.getAttribute("href") ||
           rows[0]?.querySelector("a")?.getAttribute("href") ||
           "",
+        hasCrd: valueOf("hasCrd"),
         loaded: Number(loadedValue.replace(/,/g, "")),
-        q: valueOf("q"),
         rowCount: rows.length,
         rowTexts: rows
           .slice(0, 5)
@@ -232,7 +269,6 @@ interface AdvisorFilterFacts {
   readonly firstHref: string;
   readonly hasCrd: string;
   readonly loaded: number;
-  readonly q: string;
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
   readonly total: number;
@@ -242,33 +278,4 @@ interface AdvisorFilterFacts {
 interface ViewportOverflow {
   readonly clientWidth: number;
   readonly scrollWidth: number;
-}
-
-/**
- * Loads a live advisor row with stable filter fields.
- * @param page - Browser page used for resource requests.
- * @returns Advisor filter fixture.
- */
-async function firstAdvisorFilterFixture(page: Page): Promise<AdvisorFixture> {
-  const response = await page.request.get(
-    `${BASE}/PublicAdvisors?limit=20&careerStatus=active&hasCrd=true`
-  );
-  const payload = await response.json();
-  const advisor = (payload.items || []).find((item: AdvisorFixture) =>
-    Boolean(item.legalName)
-  );
-  return { legalName: String(advisor?.legalName || "") };
-}
-
-/**
- * Builds a public advisor directory query from a fixture row.
- * @param fixture - Advisor row used to choose stable filter values.
- * @returns URL query for the filtered advisor directory.
- */
-function advisorFilterQuery(fixture: AdvisorFixture): URLSearchParams {
-  const qs = new URLSearchParams();
-  if (fixture.legalName) qs.set("q", fixture.legalName);
-  qs.set("careerStatus", "active");
-  qs.set("hasCrd", "true");
-  return qs;
 }

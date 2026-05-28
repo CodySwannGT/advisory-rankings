@@ -215,6 +215,13 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `sec_iard?` | str | RIA representatives |
 | `pii_level` | enum (`public`, `restricted`) | Per-record render gating |
 
+Public advisor directory filtering (`GET /PublicAdvisors`) is derived from
+these fields plus current employment context. `q` matches display, legal,
+preferred, first, and last names by case-insensitive substring;
+`careerStatus` exactly matches `career_status`; `hasCrd` filters on whether
+`finra_crd` is present; `firm` matches the current firm id or canonical firm
+name.
+
 ### 4.2 `Education`
 
 | Field | Type |
@@ -269,6 +276,13 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `is_aggregator?` | bool | Beacon Pointe, Focus, Hightower, Wealthcare, Steward |
 | `website?` | url | |
 | `logo_url?` | url | Public firm logo captured from scraped source metadata or firm-bio pages. |
+
+Public firm directory filtering (`GET /PublicFirms`) is derived from these
+fields after approved `FirmAlias` canonicalization. `q` matches `name` or
+`legal_name` by case-insensitive substring; `channel` exactly matches
+`channel`; `state` exactly matches `hq_state`; `active` filters firms with
+no `dissolved_year`. `status=active` and `status=dissolved|inactive` are
+compatibility aliases for the active-state filter.
 
 ### 4.5a `FirmAlias`
 
@@ -371,6 +385,11 @@ A new entity (not in v0.1). Captures attempted-but-not-completed registrations.
 | `average_account_size?` | decimal | |
 | `team_size?` | int | |
 | `service_model` | enum (`mass_affluent`, `hnw`, `uhnw`, `institutional`, `mixed`) | |
+
+Public team directory filtering (`GET /PublicTeams`) is derived from these
+fields plus current firm context. `q` matches team names by
+case-insensitive substring; `firm` matches the current firm id or canonical
+firm name; `serviceModel` exactly matches `service_model`.
 
 ### 4.10 `TeamMembership`
 

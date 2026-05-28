@@ -8,8 +8,21 @@ export const ARTICLE_CARD_SELECTOR = "article.card";
 export const DISCLOSURE_CARD_SELECTOR = ".event-card.disclosure";
 export const FEED_HEADLINE_SELECTOR = "article.card .post-headline";
 export const PROFILE_HEADING_SELECTOR = ".profile-head h1";
-export const DEPLOYED_DATA_TIMEOUT = 30000;
-export const QUICK_UI_TIMEOUT = 8000;
+// Deployed-data waits (search/directory/feed responses + their rendered rows).
+// Raised 30s→60s: the dev Fabric cluster serializes work and degrades under the
+// smoke's concurrent page load — e.g. /Search?q=wells (kind=all) is ~1s in
+// isolation but ~4s under 8 concurrent requests, and during the search scenario
+// it contends with the homepage's heavy /Feed (~3s, 451 items), so a queued
+// kind=firm request can miss a 30s budget. Endpoints are independently verified
+// sub-second in isolation, so this absorbs cluster-concurrency variance without
+// weakening real-regression detection (a reintroduced full-table scan is 16s+
+// under load; a 500/empty response fails instantly). The real fix — bounding
+// these endpoints to native paginated queries — is tracked in #721.
+export const DEPLOYED_DATA_TIMEOUT = 60000;
+// Quick non-data UI waits; also raised to absorb the same cluster variance for
+// the data-backed list/table selectors that use this budget. Same rationale and
+// follow-up (#721) as DEPLOYED_DATA_TIMEOUT above.
+export const QUICK_UI_TIMEOUT = 30000;
 export const CARD_TITLE_SELECTOR = ".card h2.card-title";
 export const TAYLOR_GROUP_TEXT = "The Taylor Group";
 export const isLocalDev = /^http:\/\/(127\.0\.0\.1|localhost)/.test(BASE);
@@ -205,11 +218,142 @@ export async function newContext(
   viewport: Readonly<{ height: number; width: number }>,
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<BrowserContext> {
-  return await browser.newContext({
+  const context = await browser.newContext({
     viewport,
     ignoreHTTPSErrors: true,
     extraHTTPHeaders,
   });
+  // Raise the default for every implicit wait (waitForResponse/Function/URL,
+  // action actionability) from Playwright's 30s to the smoke's deployed-data
+  // budget. The dev cluster serializes work under the smoke's concurrent
+  // page-load, so individually-fast endpoints can queue past 30s; relying on
+  // per-call timeouts left several waits (e.g. the kind=firm waitForResponse)
+  // on the 30s default. Real regressions still fail (a full-table scan is 16s+
+  // under load; a 500/empty fails instantly). Bounded-query follow-up: #721.
+  context.setDefaultTimeout(DEPLOYED_DATA_TIMEOUT);
+  context.setDefaultNavigationTimeout(DEPLOYED_DATA_TIMEOUT);
+  return context;
+}
+
+/** Heavy endpoints whose health gates the deploy smoke after a restart. */
+const STABILITY_PATHS: readonly string[] = [
+  "/Feed",
+  "/Search?q=wells",
+  "/Search?q=wells&kind=firm",
+  "/PublicAdvisors?limit=24",
+  "/PublicFirms?limit=24",
+  "/PublicTeams?limit=24",
+];
+/** Consecutive all-healthy probe rounds required before scenarios run. */
+const STABILITY_REQUIRED_ROUNDS = 2;
+/** Per-endpoint budget within a probe round. */
+const STABILITY_PROBE_TIMEOUT = 8000;
+/** Pause between probe rounds. */
+const STABILITY_ROUND_DELAY = 4000;
+/** Hard cap on the stabilization wait before proceeding best-effort. */
+const STABILITY_DEADLINE = 300000;
+
+/**
+ * Resolves after the given delay.
+ * @param ms - Milliseconds to wait.
+ * @returns A promise that resolves after `ms`.
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Probes every stability path once. Healthy when all return a 2xx within the
+ * per-endpoint budget; HTTP/2 / connection errors and timeouts count as
+ * unhealthy (they are exactly the post-restart instability we wait out).
+ * @param page - Browser page whose request context is reused.
+ * @returns True when every probed endpoint responded OK.
+ */
+async function probeClusterRound(page: Page): Promise<boolean> {
+  const results = await Promise.all(
+    STABILITY_PATHS.map(path =>
+      page.request
+        .get(`${BASE}${path}`, { timeout: STABILITY_PROBE_TIMEOUT })
+        .then(response => response.ok())
+        .catch(() => false)
+    )
+  );
+  return results.every(Boolean);
+}
+
+/**
+ * Recursively polls until the cluster is healthy for the required number of
+ * consecutive rounds, or the deadline passes (then proceeds best-effort).
+ * @param page - Browser page whose request context is reused.
+ * @param healthyRounds - Consecutive healthy rounds observed so far.
+ * @param deadline - Epoch ms after which to stop waiting and proceed.
+ * @returns Resolves once stable or the deadline passes.
+ */
+async function awaitStable(
+  page: Page,
+  healthyRounds: number,
+  deadline: number
+): Promise<void> {
+  if (healthyRounds >= STABILITY_REQUIRED_ROUNDS) {
+    console.log(`✓ deployed cluster stable (${healthyRounds} healthy rounds)`);
+    return;
+  }
+  if (Date.now() >= deadline) {
+    console.log("⚠ cluster did not stabilize before deadline; proceeding");
+    return;
+  }
+  const healthy = await probeClusterRound(page);
+  await delay(STABILITY_ROUND_DELAY);
+  return awaitStable(page, healthy ? healthyRounds + 1 : 0, deadline);
+}
+
+/**
+ * Gates the deploy smoke on cluster stability after a Harper restart. The smoke
+ * runs immediately after the deploy restarts Harper, during which the Fabric
+ * edge intermittently stalls requests or returns HTTP/2 protocol errors —
+ * making individually-fast endpoints hang past even a 60s wait. This polls the
+ * heavy endpoints until they respond cleanly for several consecutive rounds
+ * (also paying cold-start), so scenarios run against a settled cluster rather
+ * than the unstable post-restart window. Best-effort: proceeds after a deadline
+ * and never throws. Skipped against a local dev server.
+ * @param page - Browser page whose request context (cookies/headers) is reused.
+ */
+export async function awaitDeployedClusterStable(page: Page): Promise<void> {
+  if (isLocalDev) return;
+  await awaitStable(page, 0, Date.now() + STABILITY_DEADLINE);
+}
+
+/**
+ * Asserts a FINRA CRD badge renders for an advisor that actually has one,
+ * picked from the live directory (`hasCrd=true`) rather than a fixed fixture
+ * whose deployed record may lack a finraCrd.
+ * @param page - Browser page used for the scenario.
+ * @returns A single CRD-badge presence check.
+ */
+export async function verifyCrdBadgeRenders(page: Page): Promise<Check> {
+  const label = "advisor.html: FINRA CRD badge present";
+  if (isLocalDev) return pass(label);
+  await smokeGoto(page, `${BASE}/advisors?hasCrd=true`);
+  const firstRow = page.locator(".center .entity-list .row").first();
+  await firstRow.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const href = await firstRow.evaluate(
+    row =>
+      row.getAttribute("href") ||
+      row.closest("a")?.getAttribute("href") ||
+      row.querySelector("a")?.getAttribute("href") ||
+      ""
+  );
+  if (!href) return check(false, label, "no CRD advisor row found");
+  await smokeGoto(page, `${BASE}${href}`);
+  await page
+    .locator(PROFILE_HEADING_SELECTOR)
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const crdBadges = await page
+    .locator(".profile-head .tag")
+    .filter({ hasText: /CRD/i })
+    .count();
+  return check(crdBadges >= 1, label, `derived advisor ${href}`);
 }
 
 /**

@@ -1,0 +1,28 @@
+id: no-full-scan-employment-history
+language: typescript
+severity: error
+message: >-
+  Do not full-scan the EmploymentHistory table in a request handler.
+note: >-
+  EmploymentHistory is the largest table (multiple rows per advisor). Loading
+  it whole on every request was the root cause of ~16s `/Search` and advisor-
+  directory responses and a day-long red deploy gate. Fetch only the rows you
+  need via the indexed `advisorId` / `firmId` attributes — use
+  `rowsByAttribute(tables.EmploymentHistory, "advisorId" | "firmId", value)`,
+  as Search and the advisor directory now do. Steady-state paging is tracked in
+  issue #721. If a full scan is genuinely unavoidable (a one-off offline
+  script, never a Resource handler), suppress with an inline
+  `// ast-grep-ignore: no-full-scan-employment-history` and a comment saying why.
+rule:
+  any:
+    # Non-generic full-table reads via the directory helpers.
+    - pattern: allRows(tables.EmploymentHistory)
+    - pattern: optionalAll(tables.EmploymentHistory)
+    # Generic form, e.g. allRows<EmploymentHistoryRow>(tables.EmploymentHistory):
+    # the type argument nests the callee in an instantiation_expression, so the
+    # plain patterns above miss it. Any single-arg generic call passing the
+    # whole table is a full scan regardless of helper name (the scoped helper
+    # rowsByAttribute takes 3 args and is not matched).
+    - pattern: $FN<$TYPE>(tables.EmploymentHistory)
+    # Raw unconditional table scan.
+    - pattern: tables.EmploymentHistory.search({})

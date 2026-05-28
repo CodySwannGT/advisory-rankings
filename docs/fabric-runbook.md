@@ -406,11 +406,25 @@ Once the dataset grows past ~10k rows, narrow them to indexed
 `search({ conditions: [...] })` queries on the hot paths
 (article-by-publishedDate, employments-by-firmId, etc.).
 
-**Paginated endpoints (added 2026-05-03):** `/PublicAdvisors` and
-`/FirmAdvisors/<id>` accept `?cursor=…&limit=…` (default 50, max 100)
-and return `{ items, nextCursor }` (PublicAdvisors also returns
-`total`). The cursor is opaque base64url and stable under inserts —
-clients round-trip whatever they got.
+**Paginated directory endpoints:** `/PublicAdvisors`, `/PublicFirms`,
+`/PublicTeams`, and `/FirmAdvisors/<id>` accept `?cursor=…&limit=…`
+(default 50, max 100). Directory endpoints return
+`{ items, nextCursor, total }`, where `total` is the filtered row count;
+`/FirmAdvisors/<id>` returns `{ items, nextCursor }`. The cursor is
+opaque base64url and stable under inserts — clients round-trip whatever
+they got.
+
+Supported public directory filters:
+
+| Endpoint | Filters |
+|---|---|
+| `/PublicAdvisors` | `q` matches advisor display/legal/preferred/first/last name substrings; `firm` matches current firm id or name substrings after firm-alias canonicalization; `careerStatus` exactly matches `Advisor.career_status`; `hasCrd=true|false` filters whether `finra_crd` is present. |
+| `/PublicFirms` | `q` matches firm name/legal name substrings; `channel` exactly matches `Firm.channel`; `state` exactly matches `Firm.hq_state`; `active=true|false` filters on missing/present `dissolved_year`. `status=active` and `status=dissolved|inactive` are compatibility aliases. |
+| `/PublicTeams` | `q` matches team name substrings; `firm` matches current firm id or name substrings after firm-alias canonicalization; `serviceModel` exactly matches `Team.service_model`. |
+
+All filter comparisons are case-insensitive. Unsupported, missing, or
+empty filter values are ignored except booleans, where unsupported
+values behave like no filter.
 
 **Global search (`/Search?q=…`):** Public endpoint backing the navbar
 search box. Does an in-memory case-insensitive name match across
@@ -499,7 +513,7 @@ Everything else still requires auth.
 |---|---|---|
 | `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
-| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Tiny wrappers added to `resources.js` so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
@@ -941,7 +955,7 @@ organisms / templates) — see `docs/design-system.md`.
 | `/advisors/<slug>-<id>` (`advisor.html?id=…` still works) | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
 | `/teams/<slug>-<id>` (`team.html?id=…` still works) | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
 | `/articles/<slug>-<id>` (`article.html?id=…` still works) | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
-| `/firms`, `/advisors`, `/teams` (`*.html` still works) | Plain directory pages (alphabetical), driven by public directory resources. |
+| `/firms`, `/advisors`, `/teams` (`*.html` still works) | Plain directory pages (alphabetical), driven by public directory resources with GET filters and cursor pagination. |
 | `/recruiting` (`recruiting.html` still works) | Recruiting Market Map: state filter, summary KPIs, firm momentum, market activity, and recent advisor-team moves from `/RecruitingMarket`. |
 | `/rankings` (`rankings.html` still works) | Interactive Rankings Explorer: category/year/firm/state/city filters, resolved/unresolved status, source URLs, unavailable score labels, and ranking rows from `/RankingsExplorer`. |
 | `/regulatory` (`regulatory.html` still works) | Compliance events page: recent disclosure cards sourced from `/Feed`, with regulatory context and load-error fallback. |

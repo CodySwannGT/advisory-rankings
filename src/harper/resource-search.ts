@@ -27,19 +27,67 @@ function scoreName(name: string | null | undefined, query: string): number {
 
 /**
  * Finds each advisor's latest current employment row for search subtitles.
+ *
+ * O(n log n): copies the input, drops ended employments, then orders the
+ * remaining rows so each advisor's winning row lands last within its group
+ * and constructs the result with a single `new Map(entries)` pass (the Map
+ * constructor keeps the last entry per key). The ordering is ascending by
+ * `startDate` with original-index descending as the tie-break, which makes
+ * the most-recent `startDate` win and, on equal `startDate`, preserves the
+ * first-seen row exactly as the prior O(n^2) `cmpDesc("startDate") >= 0`
+ * dedupe did. Construction is fully immutable — no `let`, no mutation of the
+ * input or of an intermediate Map.
  * @param employments - Employment rows loaded from Harper.
  * @returns Map keyed by advisor ID.
  */
 export function currentEmploymentByAdvisor(
   employments: ReadonlyArray<EmploymentHistoryRow>
 ): ReadonlyMap<string, EmploymentHistoryRow> {
-  return employments.reduce((current, employment) => {
-    if (employment.endDate) return current;
-    const existing = current.get(employment.advisorId);
-    if (existing && cmpDesc("startDate")(employment, existing) >= 0)
-      return current;
-    return new Map(current).set(employment.advisorId, employment);
-  }, new Map<string, EmploymentHistoryRow>());
+  const byStart = cmpDesc("startDate");
+  const ordered = [...employments]
+    .map((employment, index) => ({ employment, index }))
+    .filter(({ employment }) => !employment.endDate)
+    .sort(
+      (a, b) =>
+        // Winner last: oldest startDate first (cmpDesc is newest-first, so
+        // negate it), and on a startDate tie the higher index sorts first so
+        // the first-seen (lowest index) row lands last and wins.
+        -byStart(a.employment, b.employment) || b.index - a.index
+    );
+  return new Map(
+    ordered.map(({ employment }) => [employment.advisorId, employment])
+  );
+}
+
+/**
+ * Resolves each advisor's current-firm display name from a SCOPED set of
+ * employment rows (e.g. only the rows fetched for the displayed search
+ * slice), reusing {@link currentEmploymentByAdvisor} to pick the current
+ * employment and `byFirm` to resolve the firm name. Only advisors whose
+ * current firm resolves to a known firm are present in the result; advisors
+ * with no current employment or an unresolved firm are omitted so callers
+ * fall back to `careerStatus` exactly as {@link advisorSearchMatches} does.
+ * Lets the global search avoid loading the entire EmploymentHistory table
+ * just to render subtitles for at most a page of advisors.
+ * @param employments - Canonicalized employment rows for the scoped advisors.
+ * @param byFirm - Firm lookup keyed by firm ID.
+ * @returns Map of advisor ID to resolved current firm name.
+ */
+export function currentFirmNameByAdvisor(
+  employments: ReadonlyArray<EmploymentHistoryRow>,
+  byFirm: ReadonlyMap<string, FirmRow>
+): ReadonlyMap<string, string> {
+  const current = currentEmploymentByAdvisor(employments);
+  return new Map(
+    [...current.entries()]
+      .map(([advisorId, employment]): readonly [string, string | undefined] => [
+        advisorId,
+        byFirm.get(employment.firmId)?.name,
+      ])
+      .filter(
+        (entry): entry is readonly [string, string] => entry[1] !== undefined
+      )
+  );
 }
 
 /**

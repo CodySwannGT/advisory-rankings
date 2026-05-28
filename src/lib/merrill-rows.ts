@@ -261,6 +261,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: MERRILL_SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [sourceUrl(source)].filter(Boolean),
   notes: "Imported from Merrill public advisor directory Yext feed.",
 });

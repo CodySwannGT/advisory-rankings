@@ -1,0 +1,32 @@
+id: no-full-scan-employment-history
+snapshots:
+  const e = await allRows(tables.EmploymentHistory);:
+    labels:
+      - source: allRows(tables.EmploymentHistory)
+        style: primary
+        start: 16
+        end: 49
+  const e = await allRows<EmploymentHistoryRow>(tables.EmploymentHistory);:
+    labels:
+      - source: await allRows<EmploymentHistoryRow>(tables.EmploymentHistory)
+        style: primary
+        start: 10
+        end: 71
+  const e = await optionalAll(tables.EmploymentHistory);:
+    labels:
+      - source: optionalAll(tables.EmploymentHistory)
+        style: primary
+        start: 16
+        end: 53
+  const e = await optionalAll<EmploymentHistoryRow>(tables.EmploymentHistory);:
+    labels:
+      - source: await optionalAll<EmploymentHistoryRow>(tables.EmploymentHistory)
+        style: primary
+        start: 10
+        end: 75
+  const e = tables.EmploymentHistory.search({});:
+    labels:
+      - source: tables.EmploymentHistory.search({})
+        style: primary
+        start: 10
+        end: 45

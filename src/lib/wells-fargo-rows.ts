@@ -204,6 +204,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: WELLS_FARGO_SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [source.advisorUrl, source.branch.branchUrl].filter(Boolean),
   notes:
     "Imported from Wells Fargo Advisors public locator and branch profile HTML.",

@@ -50,15 +50,24 @@ export interface CreateListBody {
   readonly action: "create";
   readonly name: string;
 }
+/**
+ *
+ */
 export interface RenameListBody {
   readonly action: "rename";
   readonly listId: string;
   readonly name: string;
 }
+/**
+ *
+ */
 export interface DeleteListBody {
   readonly action: "delete";
   readonly listId: string;
 }
+/**
+ *
+ */
 export interface AddEntryBody {
   readonly action: "addEntry";
   readonly listId: string;
@@ -66,6 +75,9 @@ export interface AddEntryBody {
   readonly rank: number;
   readonly note: string;
 }
+/**
+ *
+ */
 export interface UpdateEntryBody {
   readonly action: "updateEntry";
   readonly listId: string;
@@ -73,11 +85,23 @@ export interface UpdateEntryBody {
   readonly rank: number;
   readonly note: string;
 }
+/**
+ *
+ */
 export interface DeleteEntryBody {
   readonly action: "deleteEntry";
   readonly listId: string;
   readonly advisorId: string;
 }
+
+/** Union of every POST body accepted by the `UserWatchlists` resource. */
+export type WatchlistPostBody =
+  | CreateListBody
+  | RenameListBody
+  | DeleteListBody
+  | AddEntryBody
+  | UpdateEntryBody
+  | DeleteEntryBody;
 
 const SIGN_IN_HREF = "/login.html";
 

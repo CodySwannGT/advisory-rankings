@@ -145,26 +145,43 @@ async function main(): Promise<void> {
   const counts = Object.fromEntries(
     TABLE_ORDER.map(table => [table, rows[table].length])
   );
+  if (!options.json) {
+    console.log(
+      `[morgan-stanley] target: ${options.write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
+    );
+  }
+  const touchedCounts = Object.fromEntries(
+    await Promise.all(
+      TABLE_ORDER.map(async table => touchTable(table, rows, options))
+    )
+  );
   if (options.json) {
     console.log(
-      JSON.stringify({ write: options.write, counts, rows }, null, 2)
+      JSON.stringify(
+        { write: options.write, counts, touchedCounts, rows },
+        null,
+        2
+      )
     );
-    return;
   }
+}
 
-  console.log(
-    `[morgan-stanley] target: ${options.write ? (targetUrl() ?? describeTarget()) : "dry-run"}`
-  );
-  for (const table of TABLE_ORDER) {
-    const tableRows = rows[table] as readonly Record<string, unknown>[];
-    const touched = options.write
-      ? await writeRows(table, tableRows)
-      : tableRows.length;
+const touchTable = async (
+  table: (typeof TABLE_ORDER)[number],
+  rows: MorganStanleyRows,
+  options: FirmSourceRunOptions
+): Promise<readonly [string, number]> => {
+  const tableRows = rows[table] as readonly Record<string, unknown>[];
+  const touched = options.write
+    ? await writeRows(table, tableRows)
+    : tableRows.length;
+  if (!options.json) {
     console.log(
       `  ${options.write ? "upsert" : "dry"} ${table}: ${tableRows.length} (${touched} ${options.write ? "touched" : "mapped"})`
     );
   }
-}
+  return [table, touched] as const;
+};
 
 const runOptions = (): FirmSourceRunOptions => ({
   write: has("--write"),

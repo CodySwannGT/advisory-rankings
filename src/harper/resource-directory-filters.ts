@@ -95,6 +95,26 @@ export function advisorMatchesFilters(
   const employment = currentFirmByAdvisor.get(advisor.id);
   const firm = employment ? byFirm.get(employment.firmId) : null;
   return (
+    advisorMatchesNonFirmFilters(advisor, filters) &&
+    textMatches(filters.firm, [employment?.firmId, firm?.id, firm?.name])
+  );
+}
+
+/**
+ * Checks an advisor against the advisor-field-only directory filters,
+ * excluding the `firm` filter (which requires employment data). The advisor
+ * directory endpoint applies this first so the bulk of advisors can be
+ * filtered without touching the large `EmploymentHistory` table; the `firm`
+ * portion is resolved separately via indexed `firmId` lookups.
+ * @param advisor - Advisor row from the public table.
+ * @param filters - Normalized advisor filters.
+ * @returns Whether the advisor matches `q`, `careerStatus`, and `hasCrd`.
+ */
+export function advisorMatchesNonFirmFilters(
+  advisor: AdvisorRow,
+  filters: AdvisorDirectoryFilters
+): boolean {
+  return (
     textMatches(filters.q, [
       advisorDisplayName(advisor),
       advisor.legalName,
@@ -102,7 +122,6 @@ export function advisorMatchesFilters(
       advisor.firstName,
       advisor.lastName,
     ]) &&
-    textMatches(filters.firm, [employment?.firmId, firm?.id, firm?.name]) &&
     exactMatches(filters.careerStatus, advisor.careerStatus) &&
     booleanMatches(filters.hasCrd, Boolean(advisor.finraCrd))
   );
@@ -144,6 +163,20 @@ export function teamMatchesFilters(
     textMatches(filters.firm, [team.currentFirmId, firm?.id, firm?.name]) &&
     exactMatches(filters.serviceModel, team.serviceModel)
   );
+}
+
+/**
+ * Applies the directory `firm` filter's case-insensitive substring match to a
+ * single firm's identifier and name, using the exact same normalization as the
+ * internal `textMatches` helper. Used by the advisor directory endpoint to
+ * pre-compute which canonical firms match the `firm` filter before issuing
+ * indexed `firmId` employment lookups.
+ * @param query - Normalized `firm` filter string (already lowercased/trimmed).
+ * @param firm - Canonical firm row whose id/name should be tested.
+ * @returns True when the query is empty or the firm id/name contains it.
+ */
+export function firmFilterMatchesFirm(query: string, firm: FirmRow): boolean {
+  return textMatches(query, [firm.id, firm.name]);
 }
 
 /**

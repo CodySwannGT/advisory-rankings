@@ -173,6 +173,7 @@ const researchCheckRow = (
   advisorId: advisor.id,
   sourceType: SOURCE_TYPE,
   checkedAt,
+  status: "success",
   sourcesChecked: [
     sourceUrl(source.faUrl),
     sourceUrl(source.faContactUrl),

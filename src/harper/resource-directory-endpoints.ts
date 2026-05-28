@@ -11,15 +11,18 @@ import {
   paginate,
   parsePagination,
 } from "./resource-pagination.js";
-import { currentEmploymentByAdvisor, searchCounts } from "./resource-search.js";
+import { searchCounts } from "./resource-search.js";
 import {
-  canonicalizeForAdvisorsDirectory,
   canonicalizeForFirmsDirectory,
   canonicalizeForSearch,
   canonicalizeForTeamsDirectory,
 } from "./resource-firm-canonicalization.js";
 import {
-  advisorMatchesFilters,
+  advisorsMatchingFirm,
+  resolveDisplayedAdvisorFirms,
+} from "./resource-directory-advisor-firm.js";
+import {
+  advisorMatchesNonFirmFilters,
   firmMatchesFilters,
   parseAdvisorDirectoryFilters,
   parseFirmDirectoryFilters,
@@ -102,26 +105,18 @@ export class PublicAdvisors extends Resource {
    * @returns Advisor page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<AdvisorRow>> {
-    const [advisors, firms, employments, firmAliases] = await Promise.all([
-      allRows<AdvisorRow>(tables.Advisor),
-      allRows<FirmRow>(tables.Firm),
-      allRows<EmploymentHistoryRow>(tables.EmploymentHistory),
-      optionalAll<FirmAliasRow>(tables.FirmAlias),
-    ]);
-    const rows = canonicalizeForAdvisorsDirectory({
-      firms,
-      employments,
-      firmAliases,
-    });
-    const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    const currentFirmByAdvisor = currentEmploymentByAdvisor(
-      rows.employments
-    ) as ReadonlyMap<string, EmploymentHistoryRow>;
     const filters = parseAdvisorDirectoryFilters(target);
-    const filtered = advisors.filter(advisor =>
-      advisorMatchesFilters(advisor, filters, currentFirmByAdvisor, byFirm)
-    );
-    const sorted = [...filtered].sort(compareAdvisorDirectoryRows);
+    // When a `firm` filter is active, drive the result from the firm's current
+    // employees (a bounded, indexed `firmId` lookup) and load ONLY those
+    // advisors by id — never scanning the 13k-row Advisor table. Without a
+    // firm filter the directory genuinely enumerates all advisors to sort and
+    // paginate them, so the full load is unavoidable there.
+    const matched = filters.firm
+      ? await advisorsMatchingFirm(filters, filters.firm)
+      : (await allRows<AdvisorRow>(tables.Advisor)).filter(advisor =>
+          advisorMatchesNonFirmFilters(advisor, filters)
+        );
+    const sorted = [...matched].sort(compareAdvisorDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
       sorted,
@@ -206,36 +201,75 @@ export class Search extends Resource {
         items: [],
         counts: { firms: 0, advisors: 0, teams: 0, total: 0 },
       };
-    const [advisors, firms, teams, employments, firmAliases] =
-      await Promise.all([
-        allRows<AdvisorRow>(tables.Advisor),
-        allRows<FirmRow>(tables.Firm),
-        allRows<TeamRow>(tables.Team),
-        allRows<EmploymentHistoryRow>(tables.EmploymentHistory),
-        optionalAll<FirmAliasRow>(tables.FirmAlias),
-      ]);
+    // Load only the tables the requested kind actually needs. A kind-scoped
+    // request (e.g. the navbar "Firms"/"Teams" toggles) must not scan the
+    // 13k-row Advisor table just to discard it via the kind filter below —
+    // that needless load made `kind=firm` searches flake past the smoke's
+    // timeout under concurrent load. Firms stay loaded for every kind because
+    // they back the advisor/team subtitle (`byFirm`) as well as firm results.
+    // EmploymentHistory is never scanned here; per-displayed-advisor rows are
+    // fetched below via the `advisorId` index.
+    const needAdvisors = kind === "all" || kind === "advisor";
+    const needTeams = kind === "all" || kind === "team";
+    const [advisors, firms, teams, firmAliases] = await Promise.all([
+      needAdvisors
+        ? allRows<AdvisorRow>(tables.Advisor)
+        : Promise.resolve<readonly AdvisorRow[]>([]),
+      allRows<FirmRow>(tables.Firm),
+      needTeams
+        ? allRows<TeamRow>(tables.Team)
+        : Promise.resolve<readonly TeamRow[]>([]),
+      optionalAll<FirmAliasRow>(tables.FirmAlias),
+    ]);
+    // Canonicalize firms/teams with an empty employment set: firm/team
+    // scoring and the `byFirm` subtitle map do not depend on employments,
+    // and the advisor subtitle is resolved separately below.
     const rows = canonicalizeForSearch({
       firms,
       teams,
-      employments,
+      employments: [],
       firmAliases,
     });
     const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
-    const currentFirmByAdvisor = currentEmploymentByAdvisor(
-      rows.employments
-    ) as ReadonlyMap<string, EmploymentHistoryRow>;
+    // Pass an EMPTY current-employment map so advisor subtitles fall back to
+    // careerStatus during scoring. Score, sortKey, counts, and ordering do
+    // not depend on `sub`, so this is safe; subtitles are overridden below.
     const matches = rankedSearchMatches({
       advisors,
       firms: rows.firms,
       teams: rows.teams,
       byFirm,
-      currentFirmByAdvisor,
+      currentFirmByAdvisor: new Map<string, EmploymentHistoryRow>(),
       norm,
     }).filter(match => kind === "all" || match.kind === kind);
+    const displayed = matches.slice(0, cap);
+    // Fetch current employment ONLY for the advisors actually displayed.
+    const advisorIds = displayed
+      .filter(match => match.kind === "advisor")
+      .map(match => match.id);
+    const subtitleByAdvisor = await resolveDisplayedAdvisorFirms(
+      advisorIds,
+      firms,
+      teams,
+      firmAliases,
+      byFirm
+    );
+    const advisorById = new Map(advisors.map(advisor => [advisor.id, advisor]));
     return {
       q: norm,
       kind,
-      items: matches.slice(0, cap).map(({ sortKey, ...row }) => row),
+      items: displayed.map(({ sortKey, ...row }) =>
+        row.kind === "advisor"
+          ? {
+              ...row,
+              // Mirror advisorSearchMatches exactly: resolved firm name, else
+              // `careerStatus || null` (empty string folds to null).
+              sub:
+                subtitleByAdvisor.get(row.id) ??
+                (advisorById.get(row.id)?.careerStatus || null),
+            }
+          : row
+      ),
       counts: searchCounts(matches),
     };
   }

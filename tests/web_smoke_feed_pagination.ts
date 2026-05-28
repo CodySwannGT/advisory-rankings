@@ -15,6 +15,7 @@ interface FeedLoadMoreResult {
   readonly appended: boolean;
   readonly beforeCount: number;
   readonly duplicateLinks: readonly string[];
+  readonly initialDocumentHeight: number;
   readonly initialCount: number;
   readonly noDuplicateLinks: boolean;
 }
@@ -33,6 +34,11 @@ export async function smokeFeedPagination(
       loadMoreBehavior.initialCount <= FEED_PAGE_SIZE,
       "/ feed: initial render stays within first-page budget",
       String(loadMoreBehavior.initialCount)
+    ),
+    check(
+      loadMoreBehavior.initialDocumentHeight < 12000,
+      "/ feed: initial document height is bounded",
+      String(loadMoreBehavior.initialDocumentHeight)
     ),
     check(
       loadMoreBehavior.appended,
@@ -116,6 +122,9 @@ async function exerciseFeedLoadMore(page: Page): Promise<FeedLoadMoreResult> {
   const loadMore = page.locator(FEED_LOAD_MORE_SELECTOR);
   const beforeCount = await cards.count();
   const beforeLinks = await feedPostLinks(page);
+  const initialDocumentHeight = await page.evaluate(
+    () => document.body.scrollHeight
+  );
 
   if ((await loadMore.count()) === 0) {
     return {
@@ -123,6 +132,7 @@ async function exerciseFeedLoadMore(page: Page): Promise<FeedLoadMoreResult> {
       appended: true,
       beforeCount,
       duplicateLinks: [],
+      initialDocumentHeight,
       initialCount: beforeCount,
       noDuplicateLinks: true,
     };
@@ -145,6 +155,7 @@ async function exerciseFeedLoadMore(page: Page): Promise<FeedLoadMoreResult> {
     appended: afterLinks.length > beforeLinks.length,
     beforeCount,
     duplicateLinks,
+    initialDocumentHeight,
     initialCount: beforeCount,
     noDuplicateLinks: duplicateLinks.length === 0,
   };

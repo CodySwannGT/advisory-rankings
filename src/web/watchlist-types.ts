@@ -6,6 +6,7 @@
 // page itself stays strictly typed (no file-level `@ts-nocheck`).
 
 import { api, postJson } from "./app.js";
+import type { WatchlistPostBody } from "./watchlist-logic.js";
 import {
   Button,
   clear,
@@ -107,7 +108,7 @@ export const TextInputC = TextInput as unknown as TextInputAdapter;
 export const apiC = api as <T>(path: string) => Promise<T>;
 
 /** Typed JSON POST adapter. */
-export const postJsonC = postJson as (
+export const postJsonC = postJson as unknown as (
   path: string,
-  body: Readonly<Record<string, unknown>>
+  body: WatchlistPostBody
 ) => Promise<unknown>;
