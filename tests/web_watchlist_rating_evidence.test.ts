@@ -1,0 +1,363 @@
+import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import type { Server } from "node:http";
+import { chromium, type Browser, type Page, type Route } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+/* eslint-disable jsdoc/require-jsdoc, max-lines, sonarjs/assertions-in-tests, sonarjs/no-duplicate-string -- Browser evidence fixture for issue #232. */
+
+import {
+  ADVISOR_ID,
+  baseUrlOf,
+  captureViewports,
+  type CapturedPost,
+  LIST_NAME,
+  QUICK_TIMEOUT,
+  RATING_ROUTE,
+  routeAdvisor,
+  routeAuth,
+  routeRating,
+  SHOTS,
+  startStaticServer,
+  WATCHLISTS_ROUTE,
+  waitForPost,
+} from "./fixtures/watchlist-ui-harness.js";
+
+const browserDescribe =
+  process.env.RUN_WEB_WATCHLIST_UI === "1" &&
+  existsSync(chromium.executablePath())
+    ? describe.sequential
+    : describe.skip;
+
+let baseUrl = "";
+
+interface EntryFixture {
+  readonly id: string;
+  readonly listId: string;
+  readonly advisorId: string;
+  readonly rank: number;
+  readonly note: string;
+}
+
+interface ListFixture {
+  readonly id: string;
+  readonly name: string;
+  entries: EntryFixture[];
+}
+
+browserDescribe("watchlist and rating evidence (#232)", () => {
+  let browser: Browser;
+  let server: Server;
+
+  beforeAll(async () => {
+    server = await startStaticServer();
+    baseUrl = baseUrlOf(server);
+    await mkdir(SHOTS, { recursive: true });
+    browser = await chromium.launch({ headless: true });
+  });
+
+  afterAll(async () => {
+    await browser?.close();
+    await new Promise<void>((resolveClose, rejectClose) => {
+      server.close(error => (error ? rejectClose(error) : resolveClose()));
+    });
+  });
+
+  it("captures persistence evidence for signed-in watchlists and ratings", async () => {
+    const page = await browser.newPage();
+    const watchlistPosts: CapturedPost[] = [];
+    const ratingPosts: CapturedPost[] = [];
+    const lists = mutableLists();
+
+    await routeAuth(page, true);
+    await routeAdvisor(page, false);
+    await routeStatefulWatchlists(page, watchlistPosts, lists);
+    await routeRating(page, body => ratingPosts.push({ body }), null);
+
+    await createWatchlist(page);
+    await addAdvisorFromProfile(page, watchlistPosts);
+    await persistRankAndNote(page, watchlistPosts);
+    await persistRating(page, ratingPosts);
+    expect(watchlistPosts.length).toBeGreaterThan(0);
+    expect(ratingPosts.length).toBeGreaterThan(0);
+    await captureViewports(page, "issue-232-watchlist-rating-mobile");
+    await page.close();
+  });
+
+  it("captures auth-gated mutation payloads and safe sign-in guidance", async () => {
+    const page = await browser.newPage();
+    const blockedPayloads: CapturedPost[] = [];
+
+    await routeAuth(page, false);
+    await routeAdvisor(page, false);
+    await routeBlockedMutations(page, blockedPayloads);
+
+    await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page
+      .getByText(/sign in to add private ratings/iu)
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .getByText(/sign in to create and manage private watchlists/iu)
+      .waitFor({ timeout: QUICK_TIMEOUT });
+
+    const statuses = await page.evaluate(
+      async ({ advisorId, listName }) =>
+        await Promise.all([
+          fetch("/UserWatchlists", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "create", name: listName }),
+          }).then(response => response.status),
+          fetch(`/AdvisorRating/${advisorId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ratingInt: 5, reviewText: "private" }),
+          }).then(response => response.status),
+        ]),
+      { advisorId: ADVISOR_ID, listName: LIST_NAME }
+    );
+
+    expect(statuses).toEqual([401, 401]);
+    expect(blockedPayloads.map(post => post.body)).toEqual([
+      { action: "create", name: LIST_NAME },
+      { ratingInt: 5, reviewText: "private" },
+    ]);
+    await captureViewports(page, "issue-232-auth-gate");
+    await page.close();
+  });
+});
+
+function mutableLists(): ListFixture[] {
+  return [
+    {
+      id: "list-1",
+      name: LIST_NAME,
+      entries: [
+        {
+          id: "entry-b",
+          listId: "list-1",
+          advisorId: "advisor-b",
+          rank: 1,
+          note: "",
+        },
+      ],
+    },
+  ];
+}
+
+async function createWatchlist(page: Page): Promise<void> {
+  await page.goto(`${baseUrl}/watchlists.html`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page
+    .locator('.watchlist-create-form input[name="name"]')
+    .fill("Diligence");
+  await page.locator(".watchlist-create-form button").click();
+  await page
+    .locator('.watchlist-card[data-list-id="list-created"]')
+    .waitFor({ timeout: QUICK_TIMEOUT });
+}
+
+async function addAdvisorFromProfile(
+  page: Page,
+  watchlistPosts: readonly CapturedPost[]
+): Promise<void> {
+  await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+    waitUntil: "domcontentloaded",
+  });
+  const card = page.locator(".add-watchlist-card");
+  await card.locator(".add-watchlist-select").waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+  await card.locator(".add-watchlist-select").selectOption("list-1");
+  await card.locator(".add-watchlist-add").click();
+  await waitForPost(
+    watchlistPosts,
+    post =>
+      post.body.action === "addEntry" && post.body.advisorId === ADVISOR_ID
+  );
+  await card.getByText(`Added to ${LIST_NAME}.`).waitFor({
+    timeout: QUICK_TIMEOUT,
+  });
+}
+
+async function persistRankAndNote(
+  page: Page,
+  watchlistPosts: readonly CapturedPost[]
+): Promise<void> {
+  await page.goto(`${baseUrl}/watchlists.html`, {
+    waitUntil: "domcontentloaded",
+  });
+  const rows = page.locator(".watchlist-firm-row");
+  await rows.first().waitFor({ timeout: QUICK_TIMEOUT });
+  await rows.first().locator(".watchlist-move--down").click();
+  await waitForPost(
+    watchlistPosts,
+    post => post.body.action === "updateEntry" && post.body.rank === 2
+  );
+  await page.waitForFunction(
+    advisorId =>
+      document
+        .querySelector(".watchlist-firm-row")
+        ?.getAttribute("data-advisor-id") === advisorId,
+    ADVISOR_ID,
+    { timeout: QUICK_TIMEOUT }
+  );
+  const movedRow = page.locator(
+    '.watchlist-firm-row[data-advisor-id="advisor-b"]'
+  );
+  await movedRow.waitFor({ timeout: QUICK_TIMEOUT });
+  await movedRow.locator('input[name="note"]').fill("retain for review");
+  await movedRow.locator(".watchlist-save-note").click();
+  await waitForPost(
+    watchlistPosts,
+    post =>
+      post.body.action === "updateEntry" &&
+      post.body.note === "retain for review"
+  );
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () =>
+      document.querySelector<HTMLInputElement>(
+        '.watchlist-firm-row[data-advisor-id="advisor-b"] input[name="note"]'
+      )?.value === "retain for review",
+    undefined,
+    { timeout: QUICK_TIMEOUT }
+  );
+}
+
+async function persistRating(
+  page: Page,
+  ratingPosts: readonly CapturedPost[]
+): Promise<void> {
+  await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.locator('.private-rating-form input[name="ratingInt"]').fill("5");
+  await page
+    .locator('.private-rating-form input[name="responsiveness"]')
+    .fill("4");
+  await page
+    .locator('.private-rating-form textarea[name="reviewText"]')
+    .fill("Strong fit for recruiting follow-up.");
+  await page.locator(".private-rating-save").click();
+  await waitForPost(
+    ratingPosts,
+    post => post.body.reviewText === "Strong fit for recruiting follow-up."
+  );
+  await page.getByText("Saved.").waitFor({ timeout: QUICK_TIMEOUT });
+  await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForFunction(
+    () =>
+      document.querySelector<HTMLInputElement>(
+        '.private-rating-form input[name="ratingInt"]'
+      )?.value === "5" &&
+      document.querySelector<HTMLTextAreaElement>(
+        '.private-rating-form textarea[name="reviewText"]'
+      )?.value === "Strong fit for recruiting follow-up.",
+    undefined,
+    { timeout: QUICK_TIMEOUT }
+  );
+}
+
+async function routeStatefulWatchlists(
+  page: Page,
+  posts: CapturedPost[],
+  lists: ListFixture[]
+): Promise<void> {
+  await page.route(WATCHLISTS_ROUTE, async route => {
+    if (route.request().method() !== "POST") {
+      await route.fulfill({ json: { authenticated: true, lists } });
+      return;
+    }
+    const body = route.request().postDataJSON() as Readonly<
+      Record<string, unknown>
+    >;
+    posts.push({ body });
+    const list = applyWatchlistMutation(lists, body);
+    await route.fulfill({ json: { authenticated: true, list } });
+  });
+}
+
+function applyWatchlistMutation(
+  lists: ListFixture[],
+  body: Readonly<Record<string, unknown>>
+): ListFixture | undefined {
+  if (body.action === "create") {
+    const list: ListFixture = {
+      id: "list-created",
+      name: String(body.name),
+      entries: [],
+    };
+    lists.push(list);
+    return list;
+  }
+  const list = lists.find(candidate => candidate.id === body.listId);
+  if (!list) return undefined;
+  if (body.action === "addEntry") return addEntry(list, body);
+  if (body.action === "updateEntry") return updateEntry(list, body);
+  return list;
+}
+
+function addEntry(
+  list: ListFixture,
+  body: Readonly<Record<string, unknown>>
+): ListFixture {
+  const entry = {
+    id: `entry-${String(body.advisorId)}`,
+    listId: list.id,
+    advisorId: String(body.advisorId),
+    rank: Number(body.rank),
+    note: String(body.note ?? ""),
+  };
+  replaceEntries(list, [...list.entries, entry]);
+  return list;
+}
+
+function updateEntry(
+  list: ListFixture,
+  body: Readonly<Record<string, unknown>>
+): ListFixture {
+  replaceEntries(
+    list,
+    list.entries.map(entry =>
+      entry.advisorId === body.advisorId
+        ? { ...entry, rank: Number(body.rank), note: String(body.note ?? "") }
+        : entry
+    )
+  );
+  return list;
+}
+
+function replaceEntries(
+  list: ListFixture,
+  entries: readonly EntryFixture[]
+): void {
+  Object.assign(list, {
+    entries: [...entries].sort((left, right) => left.rank - right.rank),
+  });
+}
+
+async function routeBlockedMutations(
+  page: Page,
+  posts: CapturedPost[]
+): Promise<void> {
+  const block = async (route: Route): Promise<void> => {
+    if (route.request().method() === "POST") {
+      posts.push({
+        body: route.request().postDataJSON() as Readonly<
+          Record<string, unknown>
+        >,
+      });
+      await route.fulfill({ status: 401, json: { error: "sign in required" } });
+      return;
+    }
+    await route.fulfill({ json: { authenticated: false, lists: [] } });
+  };
+  await page.route(WATCHLISTS_ROUTE, block);
+  await page.route(RATING_ROUTE, block);
+}
+/* eslint-enable jsdoc/require-jsdoc, max-lines, sonarjs/assertions-in-tests, sonarjs/no-duplicate-string -- Browser evidence fixture for issue #232. */
