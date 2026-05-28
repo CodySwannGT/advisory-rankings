@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- Private aggregation helpers build compact response objects in local maps. */
 /**
  * Aggregation helpers for the public `RecruitingMarket` resource.
  *
@@ -40,6 +39,12 @@ import {
   toIsoOrNull,
 } from "./resource-recruiting-market-utils.js";
 
+/**
+ * Lifts every stored TransitionEvent into a RecruitingMove, dropping rows that the feed layer can't
+ * shape into a TransitionRow.
+ * @param db Resource index providing transitions, mentions, and firm/branch lookup maps.
+ * @returns The hydrated recruiting-move list.
+ */
 export function recruitingMoves(db: ResourceIndex): readonly RecruitingMove[] {
   return db.transitions.flatMap((transition): readonly RecruitingMove[] => {
     const row = transitionRow(transition, db);
@@ -48,6 +53,13 @@ export function recruitingMoves(db: ResourceIndex): readonly RecruitingMove[] {
   });
 }
 
+/**
+ * Combines a transition's feed row, source article, branch, and provenance into one RecruitingMove.
+ * @param db Resource index used for source/branch lookups.
+ * @param transition Source transition row.
+ * @param row Feed-shaped transition row for the same transition.
+ * @returns The fully assembled recruiting move.
+ */
 function buildRecruitingMove(
   db: ResourceIndex,
   transition: TransitionEventRow,
@@ -71,6 +83,11 @@ function buildRecruitingMove(
   };
 }
 
+/**
+ * Builds the move's location pair from a branch row, computing a `"City, ST"` label when present.
+ * @param branch Branch row or null.
+ * @returns The move-location object.
+ */
 function buildMoveLocation(branch: BranchRow | null): MoveLocation {
   return {
     city: branch?.city ?? null,
@@ -80,6 +97,12 @@ function buildMoveLocation(branch: BranchRow | null): MoveLocation {
   };
 }
 
+/**
+ * Finds the most-recently-published article tied to a transition and condenses it into a TransitionSource.
+ * @param db Resource index providing mentions and article lookups.
+ * @param transitionId Transition id to source.
+ * @returns Article, loadedAt timestamp, and mention id list.
+ */
 function transitionSource(
   db: ResourceIndex,
   transitionId: string
@@ -100,6 +123,11 @@ function transitionSource(
   };
 }
 
+/**
+ * Projects an ArticleRow into the slim MoveArticle representation surfaced to clients.
+ * @param article Source article row.
+ * @returns The MoveArticle.
+ */
 function toMoveArticle(article: ArticleRow): MoveArticle {
   return {
     id: article.id,
@@ -110,6 +138,12 @@ function toMoveArticle(article: ArticleRow): MoveArticle {
   };
 }
 
+/**
+ * Resolves a transition's branch, preferring the destination branch over the origin.
+ * @param db Resource index providing branch lookups.
+ * @param transition Source transition row.
+ * @returns The selected branch, or null when neither end is known.
+ */
 function transitionBranch(
   db: ResourceIndex,
   transition: TransitionEventRow
@@ -125,6 +159,12 @@ function transitionBranch(
   return null;
 }
 
+/**
+ * Filters the recruiting-move list by year/state/direction, including watchlist-derived firm scoping.
+ * @param moves Full move list.
+ * @param filters Active filter object.
+ * @returns Moves passing every filter dimension.
+ */
 export function filteredMoves(
   moves: readonly RecruitingMove[],
   filters: RecruitingFilters
@@ -133,6 +173,13 @@ export function filteredMoves(
   return moves.filter(move => matchesFilters(move, filters, firmIds));
 }
 
+/**
+ * Composes the per-move filter predicate, short-circuiting on year/state and delegating direction matching.
+ * @param move Candidate move.
+ * @param filters Active filter object.
+ * @param firmIds Watchlist-derived firm ids; empty when no firm filter is active.
+ * @returns True when the move passes every filter.
+ */
 function matchesFilters(
   move: RecruitingMove,
   filters: RecruitingFilters,
@@ -144,16 +191,35 @@ function matchesFilters(
   return matchesDirection(move, filters.direction, firmIds);
 }
 
+/**
+ * Checks whether a move's date starts with the requested year string.
+ * @param move Candidate move.
+ * @param year Year filter (e.g. `"2024"`) or null.
+ * @returns True when no year filter is set or the move matches it.
+ */
 function matchesYear(move: RecruitingMove, year: string | null): boolean {
   if (!year) return true;
   return String(move.moveDate ?? "").startsWith(year);
 }
 
+/**
+ * Checks whether a move's destination state matches the filter.
+ * @param move Candidate move.
+ * @param state State filter or null.
+ * @returns True when no state filter is set or the move matches it.
+ */
 function matchesState(move: RecruitingMove, state: string | null): boolean {
   if (!state) return true;
   return move.location.state === state;
 }
 
+/**
+ * Checks whether a move's inbound/outbound firm matches the watchlist scope, honoring direction.
+ * @param move Candidate move.
+ * @param direction Direction filter (`inbound`, `outbound`, or both).
+ * @param firmIds Watchlist firm ids to compare against.
+ * @returns True when the move qualifies for the given direction.
+ */
 function matchesDirection(
   move: RecruitingMove,
   direction: RecruitingDirection,
@@ -168,6 +234,12 @@ function matchesDirection(
   return inboundHit || outboundHit;
 }
 
+/**
+ * Computes per-firm momentum stats (inbound vs outbound) across a move set, returning rows sorted by net AUM.
+ * @param db Resource index used to refresh firm chips for the final rows.
+ * @param moves Filtered recruiting moves.
+ * @returns Firm momentum rows ordered by descending net known AUM.
+ */
 export function firmMomentum(
   db: ResourceIndex,
   moves: readonly RecruitingMove[]
@@ -188,6 +260,11 @@ export function firmMomentum(
     }));
 }
 
+/**
+ * Finalises an accumulator into a publishable momentum row by computing net counts and AUM.
+ * @param row Accumulator row.
+ * @returns The finalised momentum row.
+ */
 function toFirmMomentumRow(row: FirmMomentumAccumulator): FirmMomentumRow {
   return {
     ...row,
@@ -196,6 +273,14 @@ function toFirmMomentumRow(row: FirmMomentumAccumulator): FirmMomentumRow {
   };
 }
 
+/**
+ * Folds one (firm, direction, move) tuple into the per-firm accumulator map, returning a new map.
+ * @param byFirm Accumulator map.
+ * @param firm Firm chip on the chosen side of the move; ignored when null.
+ * @param direction Whether the firm received (`inbound`) or lost (`outbound`) the team.
+ * @param move The move being merged in.
+ * @returns The updated accumulator map.
+ */
 function foldFirmMove(
   byFirm: ReadonlyMap<string, FirmMomentumAccumulator>,
   firm: FirmChip | null,
@@ -217,6 +302,11 @@ function foldFirmMove(
   return new Map(byFirm).set(firm.id, updated);
 }
 
+/**
+ * Groups moves by location label and returns the per-market activity rollups sorted by known AUM.
+ * @param moves Filtered recruiting moves.
+ * @returns Market-activity rows ordered for display.
+ */
 export function marketActivity(
   moves: readonly RecruitingMove[]
 ): readonly MarketActivityRow[] {
@@ -231,6 +321,12 @@ export function marketActivity(
   );
 }
 
+/**
+ * Folds one move into its market-activity bucket, keying on `location.label` with a safe fallback.
+ * @param acc Accumulator map.
+ * @param move Move being merged.
+ * @returns The updated accumulator map.
+ */
 function foldMarketActivity(
   acc: ReadonlyMap<string, MarketActivityRow>,
   move: RecruitingMove
@@ -251,14 +347,29 @@ function foldMarketActivity(
   return new Map(acc).set(key, updated);
 }
 
+/**
+ * Reduces a move list into the totals summary surfaced on the recruiting dashboard header.
+ * @param moves Move list.
+ * @returns Aggregated summary.
+ */
 export function summarizeMoves(moves: readonly RecruitingMove[]): MoveSummary {
   return moves.reduce(addToSummary, emptySummary());
 }
 
+/**
+ * Constructs the zeroed summary used as the seed for every reducer in this module.
+ * @returns A summary with all counters at 0.
+ */
 export function emptySummary(): MoveSummary {
   return { count: 0, knownAum: 0, unknownAumCount: 0, missingT12Count: 0 };
 }
 
+/**
+ * Folds one move into an existing summary, advancing counts and known-AUM/missing-T12 tallies.
+ * @param summary Current summary.
+ * @param move Move to merge.
+ * @returns The updated summary.
+ */
 export function addToSummary(
   summary: MoveSummary,
   move: WatchlistMove
@@ -277,6 +388,11 @@ export function addToSummary(
   };
 }
 
+/**
+ * Projects an internal RecruitingMove into the client-facing PublicMove, stripping non-public fields.
+ * @param move Internal move shape.
+ * @returns The public move payload.
+ */
 export function publicMove(move: RecruitingMove): PublicMove {
   return {
     id: move.id,
@@ -295,6 +411,13 @@ export function publicMove(move: RecruitingMove): PublicMove {
   };
 }
 
+/**
+ * Builds the move's status-code list, emitting one code per missing/unresolved aspect of the row.
+ * @param move Feed-shaped transition row.
+ * @param article Resolved source article or null.
+ * @param branch Resolved branch row or null.
+ * @returns Ordered list of source-status codes.
+ */
 function sourceStatus(
   move: TransitionRow,
   article: MoveArticle | null,
@@ -308,5 +431,3 @@ function sourceStatus(
     branch ? null : "missing-location",
   ].filter(isNonEmptyString);
 }
-
-/* eslint-enable jsdoc/require-jsdoc -- End local private-helper exception. */

@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 
 import { beforeEach, describe, expect, it } from "vitest";
-/* eslint-disable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
+
+const REVIEW_TEXT_STRONG_FIT = "Strong fit for private client recruiting.";
+const REVIEW_TEXT_JUST_A_NOTE = "Just a note";
 
 class Resource {
   user: unknown = null;
@@ -116,7 +118,7 @@ describe("AdvisorRating resource", () => {
         transparency: 3,
         performance: 6,
         planningDepth: 1,
-        reviewText: "  Strong fit for private client recruiting.  ",
+        reviewText: `  ${REVIEW_TEXT_STRONG_FIT}  `,
       })
     ).resolves.toEqual({
       authenticated: true,
@@ -127,7 +129,7 @@ describe("AdvisorRating resource", () => {
         transparency: 3,
         performance: null,
         planningDepth: 1,
-        reviewText: "Strong fit for private client recruiting.",
+        reviewText: REVIEW_TEXT_STRONG_FIT,
       },
     });
 
@@ -136,7 +138,7 @@ describe("AdvisorRating resource", () => {
       rating: {
         advisorId: "advisor-a",
         ratingInt: 5,
-        reviewText: "Strong fit for private client recruiting.",
+        reviewText: REVIEW_TEXT_STRONG_FIT,
       },
     });
     expect(rows).toHaveLength(2);
@@ -148,17 +150,19 @@ describe("AdvisorRating resource", () => {
     endpoint.user = { username: "user-a" };
 
     await expect(
-      endpoint.post(target("advisor-a"), { reviewText: "Just a note" })
+      endpoint.post(target("advisor-a"), {
+        reviewText: REVIEW_TEXT_JUST_A_NOTE,
+      })
     ).resolves.toMatchObject({
       authenticated: true,
       rating: {
         advisorId: "advisor-a",
         ratingInt: null,
-        reviewText: "Just a note",
+        reviewText: REVIEW_TEXT_JUST_A_NOTE,
       },
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.reviewText).toBe("Just a note");
+    expect(rows[0]?.reviewText).toBe(REVIEW_TEXT_JUST_A_NOTE);
   });
 });
 
@@ -307,4 +311,3 @@ describe("UserWatchlists resource", () => {
     }
   });
 });
-/* eslint-enable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */

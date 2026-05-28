@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- Private aggregation helpers build compact response objects in local maps. */
 import type { ResourceIndex } from "./resource-data.js";
 import {
   advisorDisplayName,
@@ -118,6 +117,12 @@ export interface RankingExplorerEntry {
   readonly _sort: RankingSortFields;
 }
 
+/**
+ * Hydrates each stored RankingEntryRow into the rich RankingExplorerEntry shape consumed by the
+ * explorer endpoints, joining in ranking metadata, subject resolution, firm cards, and sort keys.
+ * @param db Resource index providing the lookup maps used during hydration.
+ * @returns The list of explorer entries, in source order.
+ */
 export function rankingEntries(
   db: ResourceIndex
 ): readonly RankingExplorerEntry[] {
@@ -171,6 +176,13 @@ export function rankingEntries(
   });
 }
 
+/**
+ * Composes the public-facing RankingPayload from the joined ranking metadata and the source row,
+ * filling in safe defaults whenever the ranking isn't found.
+ * @param ranking Joined ranking row, or null when unresolved.
+ * @param row Source RankingEntry row.
+ * @returns The compact ranking payload.
+ */
 function rankingPayload(
   ranking: RankingRow | null,
   row: RankingEntryRow
@@ -185,6 +197,14 @@ function rankingPayload(
   };
 }
 
+/**
+ * Resolves the row's subject by preferring advisor → team → firm references, falling back to a raw
+ * display name when no canonical entity is known.
+ * @param db Resource index used for lookups.
+ * @param row Source RankingEntry row.
+ * @param ranking Joined ranking row used to infer subject kind on fallback.
+ * @returns The resolved subject descriptor.
+ */
 function entrySubject(
   db: ResourceIndex,
   row: RankingEntryRow,
@@ -228,6 +248,13 @@ function entrySubject(
   };
 }
 
+/**
+ * Resolves the firm card for a ranking entry, preferring explicit subject/firm ids, then a free-text
+ * firm name, then the advisor's most-recent employment.
+ * @param db Resource index used for lookups.
+ * @param row Source RankingEntry row.
+ * @returns The firm card, or null when no firm could be resolved.
+ */
 function entryFirm(
   db: ResourceIndex,
   row: RankingEntryRow
@@ -247,6 +274,11 @@ function entryFirm(
   );
 }
 
+/**
+ * Converts a resolved firm into its compact card representation, or null when no firm exists.
+ * @param firm Resolved firm row, or null/undefined when missing.
+ * @returns The card, or null when no firm was provided.
+ */
 function firmPayload(
   firm: ResolvableFirm | null | undefined
 ): RankingFirmCard | null {
@@ -260,6 +292,11 @@ function firmPayload(
     : null;
 }
 
+/**
+ * Builds the four-slot score payload from the row's raw score columns.
+ * @param row Source RankingEntry row.
+ * @returns The structured score quadruple.
+ */
 function scorePayload(row: RankingEntryRow): ScorePayload {
   return {
     total: valueState(row.scoreTotal),
@@ -269,12 +306,24 @@ function scorePayload(row: RankingEntryRow): ScorePayload {
   };
 }
 
+/**
+ * Wraps a raw score value in the loaded/unavailable state object the UI renders.
+ * @param value Raw score value.
+ * @returns A score slot indicating availability.
+ */
 function valueState(value: number | string | null | undefined): ScoreSlot {
   return value == null || value === ""
     ? { value: null, status: "unavailable", label: "Unavailable" }
     : { value, status: "loaded", label: String(value) };
 }
 
+/**
+ * Derives the entry's resolution status: `resolved` when a canonical subject id exists, otherwise the
+ * row's stored status (with a safe `unresolved` default).
+ * @param row Source RankingEntry row.
+ * @param subject Resolved subject descriptor.
+ * @returns The resolution-status string.
+ */
 function resolutionStatus(
   row: RankingEntryRow,
   subject: RankingSubject | null
@@ -283,6 +332,14 @@ function resolutionStatus(
   return row.resolutionStatus || "unresolved";
 }
 
+/**
+ * Computes the source-status code list, emitting one code per missing/unresolved aspect of the row.
+ * @param row Source RankingEntry row.
+ * @param subject Resolved subject descriptor.
+ * @param firm Resolved firm card.
+ * @param location Resolved location pair.
+ * @returns Ordered list of status codes (empty when nothing is missing).
+ */
 function sourceStatus(
   row: RankingEntryRow,
   subject: RankingSubject | null,
@@ -299,17 +356,34 @@ function sourceStatus(
   ].filter((status): status is string => Boolean(status));
 }
 
+/**
+ * Picks a default subject-type label based on which subject id column the row populates.
+ * @param row Source RankingEntry row.
+ * @returns `firm`, `team`, or `advisor` (the default).
+ */
 function inferredSubjectType(row: RankingEntryRow): string {
   if (row.subjectFirmId) return "firm";
   if (row.subjectTeamId) return "team";
   return "advisor";
 }
 
+/**
+ * Converts an unknown value to a number suitable for sort comparators, mapping non-finite values to
+ * +Infinity so they sort to the end.
+ * @param value Raw value.
+ * @returns A finite number, or +Infinity for missing/invalid input.
+ */
 function numericSort(value: number | string | null | undefined): number {
   const number = Number(value);
   return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
 }
 
+/**
+ * Builds a comparator that sorts rows by the given string-keyed date field in descending order, using
+ * lexicographic comparison appropriate for ISO date strings.
+ * @param field Field name to sort by.
+ * @returns A comparator function.
+ */
 function dateDesc<
   TField extends string,
   TRow extends { readonly [K in TField]?: unknown },
@@ -317,5 +391,3 @@ function dateDesc<
   return (left, right) =>
     String(right?.[field] || "").localeCompare(String(left?.[field] || ""));
 }
-
-/* eslint-enable jsdoc/require-jsdoc -- End local helper exception. */
