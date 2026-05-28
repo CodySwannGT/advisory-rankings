@@ -11,6 +11,7 @@
     "deploy": "bun run build && node dist/scripts/deploy.js",
     "smoke": "bun run build && bun run smoke:run",
     "smoke:run": "bun tests/web_smoke.ts || (echo '↻ retrying smoke once after a transient failure (dev-cluster spike)' && bun tests/web_smoke.ts)",
+    "test:e2e": "bash scripts/e2e-local-harper.sh",
     "smoke:brokercheck": "bun run build && bun tests/brokercheck_web_smoke.ts",
     "token": "bun run build && node dist/scripts/get_token.js",
     "crawl:wpjson": "bun run build && node dist/scripts/crawl_via_wpjson.js",
