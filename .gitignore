@@ -3,6 +3,7 @@ package-lock.json
 dist/
 coverage/
 .harperdb/
+.playwright-mcp/
 __pycache__/
 *.pyc
 research/extractions/*.json
