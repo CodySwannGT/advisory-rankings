@@ -28,6 +28,14 @@ const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
 const SEARCH_COUNT_HINT_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-more`;
 const ACTIVE_SEARCH_RESULT_SELECTOR = ".gs-item-active";
 
+/** Budget for the /Search?kind=firm request triggered by clicking the Firms
+ *  toggle. The request queues behind the homepage /Feed and the prior
+ *  kind=all /Search under the dev cluster's serialized concurrency, so under
+ *  GHA-runner network conditions it can exceed the standard DEPLOYED_DATA_TIMEOUT
+ *  budget (60s). Use 2x that budget specifically for this waiter; multiple
+ *  Release-and-Deploy runs have failed precisely here on the 60s budget. */
+const SEARCH_KIND_QUEUE_TIMEOUT = DEPLOYED_DATA_TIMEOUT * 2;
+
 /**
  * Checks global search suggestions and keyboard navigation against backend data.
  * @param page - Browser page used for the scenario.
@@ -163,11 +171,11 @@ async function selectFirmSearchKind(
         url.searchParams.get("kind") === "firm"
       );
     },
-    // Without an explicit timeout this used Playwright's 30s default, not the
-    // smoke's deployed-data budget. Under the cluster's serialized concurrency
-    // the kind=firm response queues behind the homepage /Feed and the slower
-    // kind=all search, so it needs the full DEPLOYED_DATA_TIMEOUT window.
-    { timeout: DEPLOYED_DATA_TIMEOUT }
+    // The kind=firm response queues behind the homepage /Feed and the prior
+    // kind=all /Search under the dev cluster's serialized concurrency. The
+    // standard 60s DEPLOYED_DATA_TIMEOUT budget has been exceeded multiple
+    // times under GHA-runner conditions, so use the doubled budget here.
+    { timeout: SEARCH_KIND_QUEUE_TIMEOUT }
   );
   await page.getByRole("button", { name: "Firms" }).click();
   await firmResponse;
