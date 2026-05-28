@@ -218,6 +218,17 @@ function reindex(
 }
 
 /**
+ * Computes the 1-based rank for a new entry appended to a list: one past the
+ * current entry count. Used by the add-to-watchlist entry points so a freshly
+ * added advisor lands at the bottom of the saved rank order.
+ * @param entries - Current entries on the target watchlist.
+ * @returns The next contiguous 1-based rank.
+ */
+export function nextRank(entries: ReadonlyArray<WatchlistEntryView>): number {
+  return entries.length + 1;
+}
+
+/**
  * Decides whether watchlist mutations are allowed for the current session.
  * Only a confirmed authenticated session may mutate; an unavailable or
  * unauthenticated session is gated.

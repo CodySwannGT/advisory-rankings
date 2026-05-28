@@ -6,6 +6,7 @@ import {
   createListBody,
   deleteEntryBody,
   deleteListBody,
+  nextRank,
   normalizeWatchlistResponse,
   reorderEntries,
   renameListBody,
@@ -107,6 +108,27 @@ describe("reorderEntries", () => {
   it("is a no-op when the advisor is not on the list", () => {
     const moved = reorderEntries(entries, "missing", "up");
     expect(moved.map(entry => entry.advisorId)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("nextRank", () => {
+  it("places a new advisor one past the current entry count", () => {
+    expect(nextRank([])).toBe(1);
+    expect(
+      nextRank([
+        { id: "e1", listId: "l", advisorId: "a", rank: 1, note: "" },
+        { id: "e2", listId: "l", advisorId: "b", rank: 2, note: "" },
+      ])
+    ).toBe(3);
+  });
+
+  it("ignores any gaps in stored rank values and counts entries", () => {
+    expect(
+      nextRank([
+        { id: "e1", listId: "l", advisorId: "a", rank: 5, note: "" },
+        { id: "e2", listId: "l", advisorId: "b", rank: null, note: "" },
+      ])
+    ).toBe(3);
   });
 });
 

@@ -275,9 +275,15 @@ async function persistReorder(
     return;
   }
   const reordered = reorderEntries(list.entries, advisorId, direction);
-  const changed = reordered.filter(
-    (entry, index) => entry.rank !== list.entries[index]?.rank
-  );
+  // Detect changes by comparing each entry's new rank to the rank it held
+  // before the move (keyed by advisor), not positionally: after re-indexing
+  // the rank numbers stay 1..n, so a positional compare never sees a change.
+  const changed = reordered.filter(entry => {
+    const previous = list.entries.find(
+      candidate => candidate.advisorId === entry.advisorId
+    );
+    return previous?.rank !== entry.rank;
+  });
   await Promise.all(
     changed.map(entry =>
       postJsonC(

@@ -27,6 +27,7 @@ import {
   clear,
 } from "./design-system/index.js";
 import { privateRatingCard } from "./advisor-rating.js";
+import { addToWatchlistCard } from "./add-to-watchlist.js";
 import {
   DetailNotFoundCard,
   PartialFailureCard,
@@ -297,6 +298,7 @@ function advisorCenterSections(
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
   return [
+    addToWatchlistCard(d.advisor.id),
     privateRatingCard(d.advisor.id),
     mobileEvidenceProfileSections(d),
     careerSection(d),

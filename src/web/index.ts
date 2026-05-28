@@ -23,6 +23,7 @@ import {
   entityPath,
 } from "./app.js";
 import { clear, el } from "./design-system/index.js";
+import { addToWatchlistControl } from "./add-to-watchlist.js";
 import {
   feedCategories,
   feedFilterCard,
@@ -270,16 +271,7 @@ function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
             children: "Recent compliance events",
           }),
           EntityListC({
-            rows: recentDisc.map(d =>
-              EntityRowC({
-                avatar: "⚠",
-                name: d.advisor?.name || "Disclosure",
-                sub: [humanize(d.regulator), humanize(d.disclosureType)]
-                  .filter(Boolean)
-                  .join(" · "),
-                href: d.advisor ? entityPath("advisor", d.advisor) : "#",
-              })
-            ),
+            rows: recentDisc.map(disclosureDiscoveryRow),
           }),
         ],
       })
@@ -288,6 +280,33 @@ function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
   clear(root);
   root.appendChild(firmCard);
   if (complianceCard) root.appendChild(complianceCard);
+}
+
+/**
+ * Builds a compliance-event discovery row: the advisor EntityRow plus, when a
+ * real advisor is attached, the compact add-to-watchlist control beside it.
+ * The control is a sibling of the row's link (not nested inside the anchor) so
+ * the row stays a valid navigable link and the button stays independently
+ * clickable.
+ * @param d - Disclosure event card from the feed.
+ * @returns Discovery row element for the right-rail compliance list.
+ */
+function disclosureDiscoveryRow(d: DisclosureEventCard): HTMLElement {
+  const row = EntityRowC({
+    avatar: "⚠",
+    name: d.advisor?.name || "Disclosure",
+    sub: [humanize(d.regulator), humanize(d.disclosureType)]
+      .filter(Boolean)
+      .join(" · "),
+    href: d.advisor ? entityPath("advisor", d.advisor) : "#",
+  });
+  if (!d.advisor?.id) return row;
+  return el(
+    "div",
+    { class: "discovery-row" },
+    row,
+    addToWatchlistControl(d.advisor.id)
+  );
 }
 
 /**
