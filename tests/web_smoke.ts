@@ -308,6 +308,19 @@ async function runScenarios(
   page: Parameters<typeof smokeFeed>[0],
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[]> {
+  // SMOKE_SCOPE=core runs only the resource-backed scenarios that pass against
+  // the small seeded fixture used by the PR-time local-Harper run (`test:e2e`).
+  // These cover the highest-value backend-regression classes — the /Search
+  // resource (the requiredTable 500), the kind toggle, and feed rendering —
+  // without the larger-dataset scenarios (rankings, directory pagination/stats)
+  // that the fixture cannot satisfy. The full suite still runs at deploy time.
+  if (process.env.SMOKE_SCOPE === "core") {
+    return [
+      ...(await smokeFavicon(page)),
+      ...(await smokeFeed(page)),
+      ...(await smokeGlobalSearch(page)),
+    ];
+  }
   return [
     ...(await smokeFavicon(page)),
     ...(await smokeFeed(page)),
