@@ -24,11 +24,11 @@ export interface SearchableTable<Row> {
 }
 
 export function userListTable(): SearchableTable<UserListRow> {
-  return requiredTable<UserListRow>("UserList");
+  return requiredTable<UserListRow>("UserList", tables.UserList);
 }
 
 export function userListEntryTable(): SearchableTable<UserListEntryRow> {
-  return requiredTable<UserListEntryRow>("UserListEntry");
+  return requiredTable<UserListEntryRow>("UserListEntry", tables.UserListEntry);
 }
 
 export async function rowsFor<Row>(
@@ -105,8 +105,10 @@ export function throwStatus(message: string, status: number): never {
   throw error;
 }
 
-function requiredTable<Row>(name: string): SearchableTable<Row> {
-  const candidate: unknown = Reflect.get(tables, name);
+function requiredTable<Row>(
+  name: string,
+  candidate: unknown
+): SearchableTable<Row> {
   if (isSearchableTable<Row>(candidate)) return candidate;
   throwStatus(`${name} table is unavailable`, 503);
 }
