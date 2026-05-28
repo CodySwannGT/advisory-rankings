@@ -59,7 +59,7 @@ function matchesConditions(row: any, conditions: TableQuery["conditions"]) {
   UserListEntry: table(entries),
 };
 (globalThis as any).databases = {
-  data: {
+  advisoryRankings: {
     UserList: table(lists),
     UserListEntry: table(entries),
   },
@@ -279,12 +279,12 @@ describe("UserWatchlists resource", () => {
 
     expect(source).toContain("tables.UserList");
     expect(source).toContain("tables.UserListEntry");
-    expect(source).toContain("databases.data?.UserList");
-    expect(source).toContain("databases.data?.UserListEntry");
+    expect(source).toContain('databaseTable("UserList")');
+    expect(source).toContain('databaseTable("UserListEntry")');
     expect(source).not.toContain("Reflect.get(tables");
   });
 
-  it("falls back to the default Harper database registry when tables are unbound", async () => {
+  it("falls back to the Harper database registry when tables are unbound", async () => {
     const endpoint = new watchlistResources.UserWatchlists() as any;
     endpoint.user = { username: "user-a" };
     const originalUserList = (globalThis as any).tables.UserList;

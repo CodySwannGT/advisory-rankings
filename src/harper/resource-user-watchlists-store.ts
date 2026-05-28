@@ -26,14 +26,14 @@ export interface SearchableTable<Row> {
 export function userListTable(): SearchableTable<UserListRow> {
   return requiredTable<UserListRow>(
     "UserList",
-    tables.UserList ?? databases.data?.UserList
+    tables.UserList ?? databaseTable("UserList")
   );
 }
 
 export function userListEntryTable(): SearchableTable<UserListEntryRow> {
   return requiredTable<UserListEntryRow>(
     "UserListEntry",
-    tables.UserListEntry ?? databases.data?.UserListEntry
+    tables.UserListEntry ?? databaseTable("UserListEntry")
   );
 }
 
@@ -117,6 +117,14 @@ function requiredTable<Row>(
 ): SearchableTable<Row> {
   if (isSearchableTable<Row>(candidate)) return candidate;
   throwStatus(`${name} table is unavailable`, 503);
+}
+
+function databaseTable(name: string): unknown {
+  for (const database of Object.values(databases)) {
+    const candidate = Reflect.get(database, name);
+    if (candidate) return candidate;
+  }
+  return undefined;
 }
 
 function isSearchableTable<Row>(value: unknown): value is SearchableTable<Row> {
