@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { beforeEach, describe, expect, it } from "vitest";
 /* eslint-disable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
 
@@ -261,6 +263,17 @@ describe("UserWatchlists resource", () => {
       endpoint.post({ action: "rename", listId: "list-a", name: "Stolen" })
     ).rejects.toMatchObject({ status: 404 });
     expect(lists.find(row => row.id === "list-a")?.name).toBe("A");
+  });
+
+  it("keeps watchlist tables statically bound for Harper jsResource packaging", async () => {
+    const source = await readFile(
+      "src/harper/resource-user-watchlists-store.ts",
+      "utf8"
+    );
+
+    expect(source).toContain("tables.UserList");
+    expect(source).toContain("tables.UserListEntry");
+    expect(source).not.toContain("Reflect.get(tables");
   });
 });
 /* eslint-enable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
