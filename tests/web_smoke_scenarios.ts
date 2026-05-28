@@ -31,6 +31,7 @@ import {
   revealFeedSelector,
   smokeFeedPagination,
 } from "./web_smoke_feed_pagination.js";
+import { expectedSanctionPillCount } from "./web_smoke_sanction_pills.js";
 
 /**
  * Checks feed cards, transition/disclosure event rendering, and right-rail content.
@@ -58,6 +59,8 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
   const initialPostCount = await postCards.count();
+  const sanctionPillExpectation = await expectedSanctionPillCount(page);
+  const actualSanctionPillCount = await page.locator(".sanction-pill").count();
   const initialFeedChecks = [
     check(initialPostCount >= 2, "/ feed: at least two post cards"),
     check(
@@ -78,8 +81,8 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
       "/ feed: transition shows 275% T-12 deal"
     ),
     check(
-      (await page.locator(".sanction-pill").count()) >= 2,
-      "/ feed: sanction pills rendered"
+      actualSanctionPillCount >= sanctionPillExpectation,
+      `/ feed: sanction pills rendered (expected≥${sanctionPillExpectation}, got ${actualSanctionPillCount})`
     ),
     check(
       /FINRA|regulatory/i.test(
