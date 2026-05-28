@@ -20,6 +20,15 @@ HDB_BIN="$REPO_ROOT/node_modules/.bin/harperdb"
 DEV_PORT="${E2E_PORT:-9931}"
 DEV_PID=""
 
+# Force all Harper data-plane operations (seed) at the LOCAL instance via its
+# unix socket. In CI the HARPER_* env vars point at the deployed cluster, so
+# without this the seed authenticates against production and 401s. An empty
+# HDB_TARGET_URL makes the client fall back to $HDB_ROOT/operations-server, and
+# the local admin creds match what bootstrap.sh installs.
+export HDB_TARGET_URL=""
+export HDB_ADMIN_USERNAME="${HDB_ADMIN_USERNAME:-admin}"
+export HDB_ADMIN_PASSWORD="${HDB_ADMIN_PASSWORD:-admin-local}"
+
 say() { printf '\n[e2e] %s\n' "$*"; }
 
 cleanup() {
