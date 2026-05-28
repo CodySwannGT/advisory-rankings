@@ -24,11 +24,17 @@ export interface SearchableTable<Row> {
 }
 
 export function userListTable(): SearchableTable<UserListRow> {
-  return requiredTable<UserListRow>("UserList", tables.UserList);
+  return requiredTable<UserListRow>(
+    "UserList",
+    tables.UserList ?? databases.data?.UserList
+  );
 }
 
 export function userListEntryTable(): SearchableTable<UserListEntryRow> {
-  return requiredTable<UserListEntryRow>("UserListEntry", tables.UserListEntry);
+  return requiredTable<UserListEntryRow>(
+    "UserListEntry",
+    tables.UserListEntry ?? databases.data?.UserListEntry
+  );
 }
 
 export async function rowsFor<Row>(
