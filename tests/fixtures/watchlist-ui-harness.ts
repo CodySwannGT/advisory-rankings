@@ -79,7 +79,7 @@ export async function routeAuth(
  */
 export async function routeAdvisor(
   page: Page,
-  includeRating = true
+  includeRating: boolean = true
 ): Promise<void> {
   await page.route("**/AdvisorProfile/**", async route => {
     await route.fulfill({ json: advisorProfile(ADVISOR_ID) });

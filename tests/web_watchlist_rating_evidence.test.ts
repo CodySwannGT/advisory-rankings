@@ -64,67 +64,82 @@ browserDescribe("watchlist and rating evidence (#232)", () => {
 
   it("captures persistence evidence for signed-in watchlists and ratings", async () => {
     const page = await browser.newPage();
-    const watchlistPosts: CapturedPost[] = [];
-    const ratingPosts: CapturedPost[] = [];
-    const lists = mutableLists();
+    try {
+      const watchlistPosts: CapturedPost[] = [];
+      const ratingPosts: CapturedPost[] = [];
+      const lists = mutableLists();
 
-    await routeAuth(page, true);
-    await routeAdvisor(page, false);
-    await routeStatefulWatchlists(page, watchlistPosts, lists);
-    await routeRating(page, body => ratingPosts.push({ body }), null);
+      await routeAuth(page, true);
+      await routeAdvisor(page, false);
+      await routeStatefulWatchlists(page, watchlistPosts, lists);
+      await routeRating(page, body => ratingPosts.push({ body }), null);
 
-    await createWatchlist(page);
-    await addAdvisorFromProfile(page, watchlistPosts);
-    await persistRankAndNote(page, watchlistPosts);
-    await persistRating(page, ratingPosts);
-    expect(watchlistPosts.length).toBeGreaterThan(0);
-    expect(ratingPosts.length).toBeGreaterThan(0);
-    await captureViewports(page, "issue-232-watchlist-rating-mobile");
-    await page.close();
+      await createWatchlist(page);
+      await addAdvisorFromProfile(page, watchlistPosts);
+      await persistRankAndNote(page, watchlistPosts);
+      await persistRating(page, ratingPosts);
+      expect(watchlistPosts.length).toBeGreaterThan(0);
+      expect(ratingPosts.length).toBeGreaterThan(0);
+      await captureViewports(page, "issue-232-watchlist-rating-mobile");
+    } finally {
+      await page.close();
+    }
   });
 
   it("captures auth-gated mutation payloads and safe sign-in guidance", async () => {
     const page = await browser.newPage();
-    const blockedPayloads: CapturedPost[] = [];
+    try {
+      const blockedPayloads: CapturedPost[] = [];
 
-    await routeAuth(page, false);
-    await routeAdvisor(page, false);
-    await routeBlockedMutations(page, blockedPayloads);
+      await routeAuth(page, false);
+      await routeAdvisor(page, false);
+      await routeBlockedMutations(page, blockedPayloads);
 
-    await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
-      waitUntil: "domcontentloaded",
-    });
-    await page
-      .getByText(/sign in to add private ratings/iu)
-      .waitFor({ timeout: QUICK_TIMEOUT });
-    await page
-      .getByText(/sign in to create and manage private watchlists/iu)
-      .waitFor({ timeout: QUICK_TIMEOUT });
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .getByText(/sign in to add private ratings/iu)
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .getByText(/sign in to create and manage private watchlists/iu)
+        .waitFor({ timeout: QUICK_TIMEOUT });
 
-    const statuses = await page.evaluate(
-      async ({ advisorId, listName }) =>
-        await Promise.all([
-          fetch("/UserWatchlists", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "create", name: listName }),
-          }).then(response => response.status),
-          fetch(`/AdvisorRating/${advisorId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ratingInt: 5, reviewText: "private" }),
-          }).then(response => response.status),
-        ]),
-      { advisorId: ADVISOR_ID, listName: LIST_NAME }
-    );
+      const statuses = await page.evaluate(
+        async ({
+          advisorId,
+          listName,
+        }: {
+          advisorId: string;
+          listName: string;
+        }) =>
+          await Promise.all([
+            fetch("/UserWatchlists", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "create", name: listName }),
+            }).then(response => response.status),
+            fetch(`/AdvisorRating/${advisorId}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ratingInt: 5, reviewText: "private" }),
+            }).then(response => response.status),
+          ]),
+        { advisorId: ADVISOR_ID, listName: LIST_NAME }
+      );
 
-    expect(statuses).toEqual([401, 401]);
-    expect(blockedPayloads.map(post => post.body)).toEqual([
-      { action: "create", name: LIST_NAME },
-      { ratingInt: 5, reviewText: "private" },
-    ]);
-    await captureViewports(page, "issue-232-auth-gate");
-    await page.close();
+      expect(statuses).toEqual([401, 401]);
+      expect(blockedPayloads).toHaveLength(2);
+      expect(blockedPayloads.map(post => post.body)).toEqual(
+        expect.arrayContaining([
+          { action: "create", name: LIST_NAME },
+          { ratingInt: 5, reviewText: "private" },
+        ])
+      );
+      await captureViewports(page, "issue-232-auth-gate");
+    } finally {
+      await page.close();
+    }
   });
 });
 
@@ -353,6 +368,10 @@ async function routeBlockedMutations(
         >,
       });
       await route.fulfill({ status: 401, json: { error: "sign in required" } });
+      return;
+    }
+    if (route.request().url().includes("/AdvisorRating/")) {
+      await route.fulfill({ json: { authenticated: false, rating: null } });
       return;
     }
     await route.fulfill({ json: { authenticated: false, lists: [] } });
