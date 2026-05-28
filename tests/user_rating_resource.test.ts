@@ -58,6 +58,12 @@ function matchesConditions(row: any, conditions: TableQuery["conditions"]) {
   UserList: table(lists),
   UserListEntry: table(entries),
 };
+(globalThis as any).databases = {
+  data: {
+    UserList: table(lists),
+    UserListEntry: table(entries),
+  },
+};
 
 const resources = await import("../src/harper/resource-user-rating.js");
 const watchlistResources =
@@ -273,7 +279,32 @@ describe("UserWatchlists resource", () => {
 
     expect(source).toContain("tables.UserList");
     expect(source).toContain("tables.UserListEntry");
+    expect(source).toContain("databases.data?.UserList");
+    expect(source).toContain("databases.data?.UserListEntry");
     expect(source).not.toContain("Reflect.get(tables");
+  });
+
+  it("falls back to the default Harper database registry when tables are unbound", async () => {
+    const endpoint = new watchlistResources.UserWatchlists() as any;
+    endpoint.user = { username: "user-a" };
+    const originalUserList = (globalThis as any).tables.UserList;
+    const originalUserListEntry = (globalThis as any).tables.UserListEntry;
+    delete (globalThis as any).tables.UserList;
+    delete (globalThis as any).tables.UserListEntry;
+    try {
+      const created = await endpoint.post({
+        action: "create",
+        name: "Database fallback",
+      });
+
+      await expect(endpoint.get()).resolves.toMatchObject({
+        authenticated: true,
+        lists: [{ id: created.list.id, name: "Database fallback" }],
+      });
+    } finally {
+      (globalThis as any).tables.UserList = originalUserList;
+      (globalThis as any).tables.UserListEntry = originalUserListEntry;
+    }
   });
 });
 /* eslint-enable jsdoc/require-jsdoc, sonarjs/no-duplicate-string -- Compact resource fixture test. */
