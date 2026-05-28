@@ -61,6 +61,15 @@ fi
 say "Seeding fixture…"
 bun run seed
 
+# Populate the AdvisorSearchIndex token table so the rewritten q-path in
+# /PublicAdvisors and /Search can resolve names without falling back to a
+# full-table scan. Production deploys run this same script as a post-deploy
+# step (see docs/fabric-runbook.md §6); we run it here so the e2e gate
+# exercises the same shape the deployed dev cluster will. Idempotent — safe
+# to re-run.
+say "Backfilling AdvisorSearchIndex tokens…"
+bun run backfill:search-index
+
 say "Starting dev server on :$DEV_PORT (web shell + resource proxy)…"
 PORT="$DEV_PORT" node dist/scripts/dev_server.js >/tmp/e2e-devserver.log 2>&1 &
 DEV_PID=$!

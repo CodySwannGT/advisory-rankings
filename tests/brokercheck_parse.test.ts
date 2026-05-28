@@ -63,6 +63,20 @@ class StubREST {
     this.writes.push([table, { ...record }]);
     return true;
   }
+
+  deletes: Array<[string, string]> = [];
+
+  /**
+   * Records a row delete without calling Harper.
+   * @param table - Destination table name.
+   * @param id - Primary key the loader wanted to delete.
+   * @returns True to mirror successful REST deletes.
+   */
+  async delete(table: string, id: string) {
+    this.writeCount++;
+    this.deletes.push([table, id]);
+    return true;
+  }
 }
 
 describe("BrokerCheck parser", () => {

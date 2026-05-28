@@ -9,6 +9,7 @@ export const DEV_SERVER_TABLES = [
   "Branch",
   "BranchAssignment",
   "Advisor",
+  "AdvisorSearchIndex",
   "Education",
   "Designation",
   "License",

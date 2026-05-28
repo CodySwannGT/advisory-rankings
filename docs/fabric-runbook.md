@@ -450,6 +450,67 @@ helpers near the top of `src/harper/resources.ts`. Unit tests for cursor walks
 live at `tests/resources_pagination.test.ts` — run `bun run test` before
 pushing a change to those helpers.
 
+### Shared TypeScript helpers under `harper-app/lib/`
+The build (`src/build/build.ts`) mirrors `dist/lib/` into
+`harper-app/lib/` and rewrites parent-dir imports in the copied harper
+resources (`from "../lib/..."` → `from "./lib/..."`). This keeps the
+deployed component self-contained: Node ESM resolves the file's *real*
+path (not the Fabric symlink), so a literal `../lib/` would resolve to
+`<repo-root>/lib/` and the component would fail to load with
+`ERR_MODULE_NOT_FOUND` on every reload.
+
+The current consumer is `harper-app/resource-advisor-token-query.js`
+(it shares `splitQueryTokens` / `normalizeQueryToken` with the
+write-side `bun run backfill:search-index`), but any future harper
+resource that needs a `src/lib/` helper will follow the same path
+automatically — no per-file build wiring required.
+
+`harper-app/lib/` is generated and gitignored. If you add a new
+`from "../lib/..."` import to a `src/harper/*.ts` file, run
+`bun run build` once to verify the matching `harper-app/lib/<file>.js`
+appears, and confirm `bun run test:e2e` boots Harper without an
+ERR_MODULE_NOT_FOUND in `~/.harperdb/log/hdb.log`. The
+`tests/build_harper_lib_imports.test.ts` regression test walks
+`dist/harper/*.js`, finds every `from "../lib/..."`, and fails if any
+target file is missing from `dist/lib/` — so the next time a
+resource grows a new shared-lib import that the build forgets to
+ship, CI catches it before deploy.
+
+### `tables.X.search({ conditions: [], sort })` is rejected by Harper
+
+- **Symptom.** `/Feed?limit=10` (and any other Article query that
+  applied no category filter) crashed with
+  `Invalid value for attribute publishedDate: 'undefined'` thrown from
+  Harper's `autoCast` layer.
+- **Root cause.** `tables.X.search({ conditions, sort, limit, offset })`
+  with `conditions === []` requires the planner to seed the index
+  cursor before applying `sort`. With no condition value to cast, the
+  cast layer falls over on the *sort* attribute (here
+  `publishedDate`). Confirmed by removing `sort` — the empty-conditions
+  call succeeds; confirmed again by adding any indexed condition — the
+  sorted call succeeds.
+- **Fix.** When the route has no real filter (the "all" category in
+  `feedArticlePage`, `src/harper/resource-directory-search-queries.ts`),
+  emit a sentinel condition that matches every row via the existing
+  `@indexed` btree on the sort attribute:
+  `{ attribute: "publishedDate", comparator: "greater_than", value: "1970-01-01" }`.
+  Every real `Article` has a `publishedDate` after the epoch, so the
+  sentinel never narrows the result set; it just gives Harper a btree
+  range to seed the sorted scan from.
+- **Tempting alternatives that don't work.**
+  - *Drop the `sort` clause and re-sort in process.* Unorders the
+    `/Feed` and breaks the "newest first" contract. Also loses the
+    Harper-side limit pushdown, defeating the whole point of this
+    issue.
+  - *Switch to raw SQL (`SELECT … ORDER BY publishedDate DESC LIMIT`).*
+    Bypasses the btree path we deliberately rely on (`publishedDate`
+    is `@indexed`) and gives up the same index seeding that the
+    sentinel condition unlocks; the SQL planner exhibits the same
+    failure mode for empty `WHERE`.
+  - *Use SQL `count(*)` to estimate `total`.* Masks the same constraint
+    elsewhere and produces a count that disagrees with the indexed
+    path used to fetch the page rows.
+
 ### Component dependencies
 Edit the root `package.json` and deploy through the GitHub Actions /
 `bun run deploy` path. The current package includes local tooling

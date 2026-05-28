@@ -1,3 +1,7 @@
+import {
+  createRestAdvisorSearchIndexHandle,
+  reindexAdvisorTokens,
+} from "./advisor-search-index.js";
 import { canonicalFirmName } from "./firm-identity.js";
 import { uid } from "./ids.js";
 import type { Resolver } from "./brokercheck-load.js";
@@ -77,9 +81,12 @@ export async function loadIndividual(
     crd,
     opts.resolver
   );
-  return opts.write === false
-    ? individualDryRunCounts(rows)
-    : await writeIndividualRows(opts.rest, rows);
+  if (opts.write === false) return individualDryRunCounts(rows);
+  const written = await writeIndividualRows(opts.rest, rows);
+  await reindexAdvisorTokens(createRestAdvisorSearchIndexHandle(opts.rest), [
+    stringValue(rows.advisorRow.id),
+  ]);
+  return written;
 }
 
 /**

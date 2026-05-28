@@ -222,6 +222,28 @@ preferred, first, and last names by case-insensitive substring;
 `finra_crd` is present; `firm` matches the current firm id or canonical firm
 name.
 
+### 4.1a `AdvisorSearchIndex`
+
+Inverted token index used by `/PublicAdvisors?q=` and `/Search?kind=advisor`
+to convert substring queries into bounded `starts_with` lookups on an
+`@indexed` `token` column. One row per `(advisor_id, token, kind)` tuple;
+`kind` is one of `name | firstName | lastName | preferredName | alias` and
+disambiguates the relevance tier. Rows are maintained by the loader-side
+write hook (`reindexAdvisorTokens`, see `src/lib/advisor-search-index.ts`)
+and a one-time backfill (`bun run backfill:search-index`); the row id is a
+uuidv5 of `ASI:advisorId:kind:token` so reindexing the same advisor row
+produces the same id (idempotent upsert).
+
+| Field | Type |
+|---|---|
+| `id` | uuidv5 of `ASI:advisor_id:kind:token` |
+| `advisor_id` | id, `@indexed` |
+| `token` | str, `@indexed` (normalized lowercased ASCII-folded fragment) |
+| `kind` | str, `@indexed` (`name`, `firstName`, `lastName`, `preferredName`, `alias`) |
+
+> **Ops:** populated by the loader-side reindex hook
+> + `bun run backfill:search-index`.
+
 ### 4.2 `Education`
 
 | Field | Type |
