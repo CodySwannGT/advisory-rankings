@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "AdvisorBook" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - combobox "Search advisors, firms, teams" [ref=e6]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link "Home" [ref=e9] [cursor=pointer]:
+          - /url: /
+        - link "Firms" [ref=e10] [cursor=pointer]:
+          - /url: /firms
+        - link "Recruiting" [ref=e11] [cursor=pointer]:
+          - /url: /recruiting
+        - link "Rankings" [ref=e12] [cursor=pointer]:
+          - /url: /rankings
+        - link "Advisors" [ref=e13] [cursor=pointer]:
+          - /url: /advisors
+        - link "Teams" [ref=e14] [cursor=pointer]:
+          - /url: /teams
+      - link "Sign in" [ref=e16] [cursor=pointer]:
+        - /url: /login.html
+  - generic [ref=e17]:
+    - heading "AdvisorBook feed" [level=1] [ref=e18]
+    - complementary [ref=e19]:
+      - generic [ref=e21]:
+        - heading "Browse" [level=3] [ref=e22]
+        - generic [ref=e23]:
+          - link "🏠 Home" [ref=e24] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e25]:
+              - generic [ref=e26]: 🏠
+              - generic [ref=e28]: Home
+          - link "🏢 Firms" [ref=e29] [cursor=pointer]:
+            - /url: /firms
+            - generic [ref=e30]:
+              - generic [ref=e31]: 🏢
+              - generic [ref=e33]: Firms
+          - link "↔ Recruiting" [ref=e34] [cursor=pointer]:
+            - /url: /recruiting
+            - generic [ref=e35]:
+              - generic [ref=e36]: ↔
+              - generic [ref=e38]: Recruiting
+          - link "# Rankings" [ref=e39] [cursor=pointer]:
+            - /url: /rankings
+            - generic [ref=e40]:
+              - generic [ref=e41]: "#"
+              - generic [ref=e43]: Rankings
+          - link "👤 Advisors" [ref=e44] [cursor=pointer]:
+            - /url: /advisors
+            - generic [ref=e45]:
+              - generic [ref=e46]: 👤
+              - generic [ref=e48]: Advisors
+          - link "🤝 Teams" [ref=e49] [cursor=pointer]:
+            - /url: /teams
+            - generic [ref=e50]:
+              - generic [ref=e51]: 🤝
+              - generic [ref=e53]: Teams
+          - link "⚖️ Compliance" [ref=e54] [cursor=pointer]:
+            - /url: /regulatory
+            - generic [ref=e55]:
+              - generic [ref=e56]: ⚖️
+              - generic [ref=e58]: Compliance
+      - generic [ref=e60]:
+        - heading "Recent transitions" [level=3] [ref=e61]
+        - generic [ref=e63]:
+          - generic [ref=e64]: →
+          - generic [ref=e65]:
+            - generic [ref=e66]: Summit Team
+            - generic [ref=e68]: Old Firm → New Firm · $1.0M
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - heading "Feed filters" [level=2] [ref=e71]
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e75]: Mode
+              - combobox "Mode" [ref=e76]:
+                - option "All posts" [selected]
+                - option "Event-backed"
+                - option "Recruiting moves"
+                - option "Compliance disclosures"
+            - generic [ref=e77]:
+              - generic [ref=e78]: Category
+              - combobox "Category" [ref=e79]:
+                - option "All categories" [selected]
+                - option "Compliance"
+                - option "Firm Bio"
+                - option "Public Web Research"
+            - button "Clear" [disabled] [ref=e80]
+          - generic [ref=e81]: Showing 3 of 3 all posts.
+      - article [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: EX
+          - generic [ref=e85]:
+            - generic [ref=e86]: Example · AdvisorBook
+            - generic [ref=e87]: 1w ago · Firm Bio
+        - heading "Recruiting team moves to new firm" [level=2] [ref=e88]:
+          - link "Recruiting team moves to new firm" [ref=e89] [cursor=pointer]:
+            - /url: /articles/recruiting-team-moves-to-new-firm-a1
+        - generic [ref=e90]: Recruiting team moves to new firm summary
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - link "Old Firm" [ref=e94] [cursor=pointer]:
+                - /url: /firms/old-firm-firm-a
+              - generic [ref=e95]: →
+              - link "New Firm" [ref=e96] [cursor=pointer]:
+                - /url: /firms/new-firm-firm-b
+            - generic [ref=e97]: team
+            - generic [ref=e98]: Summit Team
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - strong [ref=e101]: $1.0M
+              - text: AUM moved
+            - generic [ref=e102]:
+              - strong [ref=e103]: $100K
+              - text: T-12 production
+            - generic [ref=e104]:
+              - strong [ref=e105]: "3"
+              - text: advisors moved
+            - generic [ref=e106]:
+              - strong [ref=e107]: May 20, 2026
+              - text: move date
+        - generic [ref=e108]:
+          - link "View details" [ref=e109] [cursor=pointer]:
+            - /url: /articles/recruiting-team-moves-to-new-firm-a1
+          - link "Example original →" [ref=e110] [cursor=pointer]:
+            - /url: https://example.com/a1
+      - article [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]: EX
+          - generic [ref=e114]:
+            - generic [ref=e115]: Example · AdvisorBook
+            - generic [ref=e116]: 1w ago · Compliance
+        - heading "Compliance disclosure update" [level=2] [ref=e117]:
+          - link "Compliance disclosure update" [ref=e118] [cursor=pointer]:
+            - /url: /articles/compliance-disclosure-update-a2
+        - generic [ref=e119]: Compliance disclosure update summary
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]: Customer Dispute
+            - generic [ref=e123]: FINRA / NY
+            - generic [ref=e124]: Resolved
+            - link "Jane Doe" [ref=e125] [cursor=pointer]:
+              - /url: /advisors/jane-doe-advisor-1
+          - generic [ref=e126]: "\"Customer alleged unsuitable recommendation.\""
+        - generic [ref=e127]:
+          - link "View details" [ref=e128] [cursor=pointer]:
+            - /url: /articles/compliance-disclosure-update-a2
+          - link "Example original →" [ref=e129] [cursor=pointer]:
+            - /url: https://example.com/a2
+      - article [ref=e130]:
+        - generic [ref=e131]:
+          - generic [ref=e132]: EX
+          - generic [ref=e133]:
+            - generic [ref=e134]: Example · AdvisorBook
+            - generic [ref=e135]: 1w ago · Public Web Research
+        - heading "Public web research note" [level=2] [ref=e136]:
+          - link "Public web research note" [ref=e137] [cursor=pointer]:
+            - /url: /articles/public-web-research-note-a3
+        - generic [ref=e138]: Public web research note summary
+        - generic [ref=e139]:
+          - link "View details" [ref=e140] [cursor=pointer]:
+            - /url: /articles/public-web-research-note-a3
+          - link "Example original →" [ref=e141] [cursor=pointer]:
+            - /url: https://example.com/a3
+    - complementary [ref=e142]:
+      - heading "Trending firms" [level=3] [ref=e145]
+      - generic [ref=e147]:
+        - heading "Recent compliance events" [level=3] [ref=e148]
+        - link "⚠ Jane Doe FINRA · Customer Dispute" [ref=e150] [cursor=pointer]:
+          - /url: /advisors/jane-doe-advisor-1
+          - generic [ref=e151]:
+            - generic [ref=e152]: ⚠
+            - generic [ref=e153]:
+              - generic [ref=e154]: Jane Doe
+              - generic [ref=e155]: FINRA · Customer Dispute
+  - contentinfo [ref=e156]:
+    - text: Sourced from AdvisorHub, FINRA BrokerCheck & firm bios · running on Harper ·
+    - link "source" [ref=e157] [cursor=pointer]:
+      - /url: https://github.com/CodySwannGT/advisory-rankings
+    - text: v0.1.180

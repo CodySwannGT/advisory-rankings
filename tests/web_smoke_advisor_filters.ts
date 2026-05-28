@@ -12,6 +12,11 @@ const ADVISOR_STATS_TITLE = "Advisor directory";
 const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
 const STATS_CARD_SELECTOR = ".right .card";
 
+/** Minimal advisor row shape needed for filter smoke assertions. */
+interface AdvisorFixture {
+  readonly legalName?: string;
+}
+
 /**
  * Checks URL-backed advisor filters, zero-result recovery, and narrow layouts.
  * @param page - Browser page used for the advisor directory scenario.
@@ -21,7 +26,9 @@ export async function smokeAdvisorDirectoryFilters(
   page: Page
 ): Promise<readonly Check[]> {
   const viewport = page.viewportSize();
-  const filteredUrl = `${BASE}/advisors?firm=Wells%20Fargo&careerStatus=active&hasCrd=true`;
+  const fixture = await firstAdvisorFilterFixture(page);
+  const filteredQuery = advisorFilterQuery(fixture);
+  const filteredUrl = `${BASE}/advisors?${filteredQuery.toString()}`;
   const rows = page.locator(DIRECTORY_ROW_SELECTOR);
   const filterForm = page.locator(".advisor-directory-filters");
 
@@ -46,11 +53,14 @@ export async function smokeAdvisorDirectoryFilters(
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile390 = await viewportOverflow(page);
+  await shot(page, "06-advisors-filtered-mobile-390");
 
   await page.setViewportSize({ width: 320, height: 720 });
-  await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
-  await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await smokeGoto(page, filteredUrl);
+  await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile320 = await viewportOverflow(page);
+  await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await shot(page, "06-advisors-filtered-mobile-320");
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
@@ -81,7 +91,7 @@ function filterChecks(facts: {
 }): readonly Check[] {
   return [
     check(
-      facts.filteredFacts.firm === "Wells Fargo" &&
+      facts.filteredFacts.q.length > 0 &&
         facts.filteredFacts.careerStatus === "active" &&
         facts.filteredFacts.hasCrd === "true",
       "advisors filters: controls reflect URL",
@@ -91,6 +101,19 @@ function filterChecks(facts: {
       facts.filteredFacts.total > 0 && facts.filteredFacts.rowCount > 0,
       "advisors filters: matching rows render",
       `${facts.filteredFacts.rowCount} of ${facts.filteredFacts.total}`
+    ),
+    check(
+      facts.filteredFacts.loaded === facts.filteredFacts.rowCount &&
+        facts.filteredFacts.loaded > 0,
+      "advisors filters: loaded count tracks rendered rows",
+      `${facts.filteredFacts.loaded}/${facts.filteredFacts.rowCount}`
+    ),
+    check(
+      /^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(
+        facts.filteredFacts.firstHref
+      ),
+      "advisors filters: first row links to canonical advisor profile",
+      facts.filteredFacts.firstHref
     ),
     check(
       facts.filteredFacts.rowTexts.every(
@@ -158,7 +181,9 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
       const total = labels.find(label => label.textContent === "Total");
+      const loaded = labels.find(label => label.textContent === "Loaded");
       const totalValue = total?.nextElementSibling?.textContent ?? "";
+      const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
       const rows = Array.from(document.querySelectorAll(rowSelector));
 
       return {
@@ -166,6 +191,12 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
         careerStatus: valueOf("careerStatus"),
         firm: valueOf("firm"),
         hasCrd: valueOf("hasCrd"),
+        firstHref:
+          rows[0]?.closest("a")?.getAttribute("href") ||
+          rows[0]?.querySelector("a")?.getAttribute("href") ||
+          "",
+        loaded: Number(loadedValue.replace(/,/g, "")),
+        q: valueOf("q"),
         rowCount: rows.length,
         rowTexts: rows
           .slice(0, 5)
@@ -198,7 +229,10 @@ interface AdvisorFilterFacts {
   readonly bodyText: string;
   readonly careerStatus: string;
   readonly firm: string;
+  readonly firstHref: string;
   readonly hasCrd: string;
+  readonly loaded: number;
+  readonly q: string;
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
   readonly total: number;
@@ -208,4 +242,33 @@ interface AdvisorFilterFacts {
 interface ViewportOverflow {
   readonly clientWidth: number;
   readonly scrollWidth: number;
+}
+
+/**
+ * Loads a live advisor row with stable filter fields.
+ * @param page - Browser page used for resource requests.
+ * @returns Advisor filter fixture.
+ */
+async function firstAdvisorFilterFixture(page: Page): Promise<AdvisorFixture> {
+  const response = await page.request.get(
+    `${BASE}/PublicAdvisors?limit=20&careerStatus=active&hasCrd=true`
+  );
+  const payload = await response.json();
+  const advisor = (payload.items || []).find((item: AdvisorFixture) =>
+    Boolean(item.legalName)
+  );
+  return { legalName: String(advisor?.legalName || "") };
+}
+
+/**
+ * Builds a public advisor directory query from a fixture row.
+ * @param fixture - Advisor row used to choose stable filter values.
+ * @returns URL query for the filtered advisor directory.
+ */
+function advisorFilterQuery(fixture: AdvisorFixture): URLSearchParams {
+  const qs = new URLSearchParams();
+  if (fixture.legalName) qs.set("q", fixture.legalName);
+  qs.set("careerStatus", "active");
+  qs.set("hasCrd", "true");
+  return qs;
 }
