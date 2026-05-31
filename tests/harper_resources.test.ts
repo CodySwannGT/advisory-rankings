@@ -2284,6 +2284,46 @@ describe("Harper directory and search resources", () => {
     });
   });
 
+  it("returns title-cased multi-word firm and team prefixes", async () => {
+    const morganStanley = "Morgan Stanley";
+    const wellsFargoAdvisors = "Wells Fargo Advisors";
+    const wellsTeam = "Wells Fargo Advisors - GM Building";
+    setRows("Firm", [
+      { id: "firm-morgan", name: morganStanley, hqCity: "New York" },
+      { id: "firm-wells", name: wellsFargoAdvisors, hqCity: "St. Louis" },
+    ]);
+    setRows("FirmAlias", []);
+    setRows("Advisor", [
+      { id: "advisor-stanley", firstName: "Clyde", lastName: "Stanley" },
+    ]);
+    setRows("Team", [
+      {
+        id: "team-wells",
+        name: wellsTeam,
+        currentFirmId: "firm-wells",
+      },
+    ]);
+    setRows("EmploymentHistory", []);
+
+    const morgan = await new (resources as any).Search().get(
+      routeTarget("", { q: "Morgan Stanley", limit: "5" })
+    );
+    const wells = await new (resources as any).Search().get(
+      routeTarget("", { q: "Wells Fargo Advisors", limit: "5" })
+    );
+
+    expect(morgan.items[0]).toMatchObject({
+      kind: "firm",
+      name: morganStanley,
+    });
+    expect(wells.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "firm", name: wellsFargoAdvisors }),
+        expect.objectContaining({ kind: "team", name: wellsTeam }),
+      ])
+    );
+  });
+
   it("handles optional aliases, team firm misses, and capped search results", async () => {
     setRows("FirmAlias", []);
     setRows("Team", [
