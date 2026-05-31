@@ -35,6 +35,7 @@ import {
   smokeNotFoundRecovery,
   smokeTeam,
   smokeAdvisor,
+  smokeWatchlists,
 } from "./web_smoke_scenarios.js";
 import {
   smokeGlobalSearch,
@@ -334,6 +335,7 @@ async function runScenarios(
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
     ...(await smokeCompliance(page)),
+    ...(await smokeWatchlists(page)),
     ...(await smokeDirectories(page)),
     ...(await smokePublicPageHeadings(page)),
     ...(await smokeNotFoundRecovery(page)),

@@ -320,6 +320,7 @@ export {
   smokeArticle,
   smokeCompliance,
   smokeDirectories,
+  smokeWatchlists,
 } from "./web_smoke_secondary.js";
 export { smokeNotFoundRecovery } from "./web_smoke_not_found.js";
 export { smokeInvalidDetailRecovery } from "./web_smoke_invalid_detail.js";
