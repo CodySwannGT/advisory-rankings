@@ -15,8 +15,8 @@
    See docs/design-system.md.
    ─────────────────────────────────────────────────────────────── */
 
-@import url("./design-system/tokens.css?v=20260521-media");
-@import url("./design-system/components.css?v=20260521-media");
+@import url("./design-system/tokens.css");
+@import url("./design-system/components.css");
 
 * {
   box-sizing: border-box;
