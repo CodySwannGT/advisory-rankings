@@ -59,6 +59,10 @@ import type {
 
 const FEED_PAGE_SIZE = 20;
 
+const feedPopstate: Readonly<
+  Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
+> = { reload: null as (() => void) | null, listenerInstalled: false };
+
 /** Feed payload returned by the `/Feed` resource. */
 interface FeedPayload {
   readonly items?: readonly FeedItem[];
@@ -136,7 +140,20 @@ function renderFeed(
   };
 
   renderCurrentState();
-  window.addEventListener("popstate", reloadFeed);
+  installFeedPopstateReload(reloadFeed);
+}
+
+/**
+ * Installs or refreshes the singleton feed history reload handler.
+ * @param reloadFeed - Reloads the feed resource for the current URL mode.
+ */
+function installFeedPopstateReload(reloadFeed: () => void): void {
+  Object.assign(feedPopstate, { reload: reloadFeed });
+  if (feedPopstate.listenerInstalled) return;
+  window.addEventListener("popstate", () => {
+    feedPopstate.reload?.();
+  });
+  Object.assign(feedPopstate, { listenerInstalled: true });
 }
 
 /**
