@@ -2306,10 +2306,10 @@ describe("Harper directory and search resources", () => {
     setRows("EmploymentHistory", []);
 
     const morgan = await new (resources as any).Search().get(
-      routeTarget("", { q: "Morgan Stanley", limit: "5" })
+      routeTarget("", { q: "morgan stanley", limit: "5" })
     );
     const wells = await new (resources as any).Search().get(
-      routeTarget("", { q: "Wells Fargo Advisors", limit: "5" })
+      routeTarget("", { q: "wells fargo advisors", limit: "5" })
     );
 
     expect(morgan.items[0]).toMatchObject({

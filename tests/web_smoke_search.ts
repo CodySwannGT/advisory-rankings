@@ -189,25 +189,16 @@ async function smokeMultiWordFirmSearchChecks(
   input: Locator,
   results: Locator
 ): Promise<readonly Check[]> {
-  await input.fill("Morgan Stanley");
-  await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await input.fill("morgan stanley");
+  await waitForFirstSearchRow(page, /Morgan Stanley/i);
   const morganFirstRow = results.first();
   const morganFirstKind = normalizeSearchKind(
     (await morganFirstRow.locator(".gs-kind").textContent()) ?? ""
   );
   const morganFirstText = ((await morganFirstRow.textContent()) ?? "").trim();
 
-  await input.fill("Wells Fargo Advisors");
-  await page.waitForFunction(
-    ({ emptySelector, rowSelector }) =>
-      Boolean(document.querySelector(rowSelector)) ||
-      Boolean(document.querySelector(emptySelector)),
-    {
-      emptySelector: SEARCH_EMPTY_SELECTOR,
-      rowSelector: SEARCH_RESULT_ROWS_SELECTOR,
-    },
-    { timeout: DEPLOYED_DATA_TIMEOUT }
-  );
+  await input.fill("wells fargo advisors");
+  await waitForSearchRowContaining(page, /Wells Fargo/i);
   const wellsRows = await results.count();
   const wellsText = (await results.allTextContents()).join(" | ");
   const wellsKinds = await searchKinds(results);
@@ -232,6 +223,42 @@ async function smokeMultiWordFirmSearchChecks(
       wellsText
     ),
   ];
+}
+
+async function waitForFirstSearchRow(
+  page: Page,
+  expectedText: RegExp
+): Promise<void> {
+  await page.waitForFunction(
+    ({ rowSelector, expectedSource, expectedFlags }) =>
+      new RegExp(expectedSource, expectedFlags).test(
+        document.querySelector(rowSelector)?.textContent ?? ""
+      ),
+    {
+      expectedFlags: expectedText.flags,
+      expectedSource: expectedText.source,
+      rowSelector: SEARCH_RESULT_ROWS_SELECTOR,
+    },
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
+}
+
+async function waitForSearchRowContaining(
+  page: Page,
+  expectedText: RegExp
+): Promise<void> {
+  await page.waitForFunction(
+    ({ expectedFlags, expectedSource, rowSelector }) =>
+      [...document.querySelectorAll(rowSelector)].some(row =>
+        new RegExp(expectedSource, expectedFlags).test(row.textContent ?? "")
+      ),
+    {
+      expectedFlags: expectedText.flags,
+      expectedSource: expectedText.source,
+      rowSelector: SEARCH_RESULT_ROWS_SELECTOR,
+    },
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
 }
 
 /**
