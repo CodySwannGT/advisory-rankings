@@ -23,6 +23,10 @@ import { smokeFirmTeamDirectoryFilters } from "./web_smoke_directory_filters.js"
 import { revealFeedCard } from "./web_smoke_feed_pagination.js";
 
 const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
+const WATCHLIST_SIGN_IN_COPY =
+  "Sign in to create and manage private watchlists";
+const WATCHLIST_SIGN_IN_LINK_SELECTOR =
+  '.watchlist-signin-link[href="/login.html"]';
 
 /**
  * Finds an article with extracted provenance and checks the detail page.
@@ -120,6 +124,52 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     check(
       (await loadError.count()) === 0,
       "regulatory: no compliance load error"
+    ),
+  ];
+}
+
+/**
+ * Checks the public Watchlists route for the anonymous sign-in gate.
+ * @param page - Browser page used for the scenario.
+ * @returns Smoke assertions for the Watchlists page.
+ */
+export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
+  await smokeGoto(page, `${BASE}/watchlists`);
+  await smokeWaitForSelector(page, WATCHLIST_SIGN_IN_LINK_SELECTOR);
+  await shot(page, "06-watchlists");
+  const overflow = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  const signInHref = await page
+    .locator(WATCHLIST_SIGN_IN_LINK_SELECTOR)
+    .first()
+    .getAttribute("href");
+
+  return [
+    check(
+      new URL(page.url()).pathname === "/watchlists",
+      "watchlists: clean URL"
+    ),
+    check(
+      await page
+        .getByRole("heading", { level: 1, name: "Watchlists" })
+        .isVisible(),
+      "watchlists: heading visible"
+    ),
+    check(
+      await page.getByText(WATCHLIST_SIGN_IN_COPY).isVisible(),
+      "watchlists: anonymous sign-in guidance visible"
+    ),
+    check(
+      signInHref === "/login.html",
+      "watchlists: sign-in action points to login",
+      signInHref ?? "missing href"
+    ),
+    check(
+      overflow.scrollWidth <= overflow.clientWidth,
+      "watchlists: no horizontal overflow",
+      `scrollWidth ${overflow.scrollWidth}, clientWidth ${overflow.clientWidth}`
     ),
   ];
 }
