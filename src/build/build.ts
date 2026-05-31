@@ -1,12 +1,9 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const WEB_ASSET_VERSION = "20260521-media";
 const HARPER_WEB_DIR = "harper-app/web";
 const HARPER_APP_DIR = "harper-app";
 const PACKAGE_JSON = "package.json";
-const JS_IMPORT_RE =
-  /(\bfrom\s+["']|\bimport\s*\(\s*["']|\bimport\s+["'])(\.{1,2}\/[^"']+\.js)(["'])/g;
 
 /** Minimal package fields needed for generated browser metadata. */
 interface PackageManifest {
@@ -14,7 +11,7 @@ interface PackageManifest {
 }
 
 /**
- * Copies generated browser modules and adds cache-busting import versions.
+ * Copies generated browser modules into Harper's static web root.
  * @returns Promise that resolves after generated web files are deploy-ready.
  */
 async function copyGeneratedWeb(): Promise<void> {
@@ -24,7 +21,6 @@ async function copyGeneratedWeb(): Promise<void> {
     recursive: true,
     filter: source => source.endsWith(".js") || !source.includes("."),
   });
-  await versionGeneratedWebModules(HARPER_WEB_DIR);
 }
 
 /**
@@ -41,28 +37,6 @@ async function writeGeneratedVersionModule(): Promise<void> {
     join("dist/web", "version.js"),
     `export const APP_VERSION = ${JSON.stringify(version)};\n`
   );
-}
-
-/**
- * Rewrites relative JavaScript imports so browsers pick up fresh deploy assets.
- * @param dir - Directory to process recursively.
- * @returns Promise that resolves after all nested modules are rewritten.
- */
-async function versionGeneratedWebModules(dir: string): Promise<void> {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await versionGeneratedWebModules(path);
-      continue;
-    }
-    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
-    const source = await readFile(path, "utf8");
-    const versioned = source.replace(JS_IMPORT_RE, (match, prefix, specifier, suffix) => {
-      if (specifier.includes("?")) return match;
-      return `${prefix}${specifier}?v=${WEB_ASSET_VERSION}${suffix}`;
-    });
-    if (versioned !== source) await writeFile(path, versioned);
-  }
 }
 
 /**

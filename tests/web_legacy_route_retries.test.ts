@@ -151,7 +151,7 @@ describe("legacy directory and compliance route retries", () => {
           .getByRole("button", {
             name: routeCase.paginated ? "Load more" : "Retry",
           })
-          .click();
+          .dispatchEvent("click");
         await page.getByText(routeCase.successText).first().waitFor({
           timeout: QUICK_TIMEOUT,
         });

@@ -396,6 +396,15 @@ re-reads files on reload; no special handling.
 > asset 404'd until the glob was changed and the component
 > redeployed.
 
+> **Static query-string caveat — symptom: deployed pages stay blank.**
+> Harper/Fabric may return the JavaScript or CSS body while still
+> reporting `404` when the asset is requested with a cache-busting
+> query string such as `/index.js?v=...`. Browsers reject failed
+> module-script responses, so the HTML shell title updates but the SPA
+> never renders. Keep web shell, CSS import, and generated module
+> specifiers query-free (`/index.js`, `/app.css`, `./app.js`) unless the
+> static handler is proven to return `200` for query-string asset URLs.
+
 ### Custom JS resources (`resources.js`)
 Edit `src/harper/resources.ts`, run `bun run build`, then deploy the
 generated `harper-app/resources.js`. After
