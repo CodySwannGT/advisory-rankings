@@ -1,13 +1,14 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-05-26
+updated: 2026-05-31
 related:
   - ../architecture/project-architecture.md
 sources:
   - ../sources/git/2026-05-23-advisory-rankings-git.md
   - ../sources/git/2026-05-25-advisory-rankings-git.md
   - ../sources/git/2026-05-26-advisory-rankings-git.md
+  - ../sources/git/2026-05-31-advisory-rankings-git.md
 ---
 
 # Git history
@@ -31,6 +32,11 @@ commits since the 2026-05-25 cursor, bringing the branch total to 363 commits, a
 merged PR metadata through #310, "Fix mobile drawer tab order." Source:
 wiki/sources/git/2026-05-26-advisory-rankings-git.md.
 
+The 2026-05-31 git ingest ran at HEAD `f10fd534a20d5556952e4b725e892e894bf54c4a`. It added 47
+commits since the 2026-05-26 cursor and refreshed recent merged PR metadata through #786,
+"fix: match multi-word firm search prefixes." Source:
+wiki/sources/git/2026-05-31-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -42,10 +48,15 @@ wiki/sources/git/2026-05-26-advisory-rankings-git.md.
   hardening, advisor evidence panels, feed/search filters, and clean regulatory routes.
 - Continued Lisa package upgrades, including the move from the 2.62.x wiki setup to 2.98.1 on
   2026-05-26.
+- Watchlist table discovery, AdvisorSearchIndex-backed pagination, watchlist/rating evidence,
+  feed-mode reload stabilization, event-backed feed filtering, and multi-word firm search coverage.
+- Smoke-test and deployment gate hardening for watchlists, search timeouts, route recovery,
+  high-signal filters, sanction pills, and invalid legacy detail routes.
 
 ## Use
 
 Use this page as the wiki's current high-level project-history landing page. For exact commit lists,
 consult the source notes. Sources: wiki/sources/git/2026-05-23-advisory-rankings-git.md and
 wiki/sources/git/2026-05-25-advisory-rankings-git.md, and
-wiki/sources/git/2026-05-26-advisory-rankings-git.md.
+wiki/sources/git/2026-05-26-advisory-rankings-git.md, and
+wiki/sources/git/2026-05-31-advisory-rankings-git.md.
