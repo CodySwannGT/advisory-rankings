@@ -66,6 +66,59 @@ export function check(condition: boolean, label: string, detail = ""): Check {
 }
 
 /**
+ * Verifies a rendered profile exposes one semantic page-level heading.
+ * @param page - Browser page rendering a firm, advisor, or team profile.
+ * @param label - Scenario label for smoke output.
+ * @param expectedText - Expected profile heading text.
+ * @returns Smoke assertions for the profile heading contract.
+ */
+export async function profileHeadingChecks(
+  page: Page,
+  label: string,
+  expectedText: RegExp
+): Promise<readonly Check[]> {
+  const heading = await page.evaluate(() => {
+    const h1s = [...document.querySelectorAll("h1")];
+    const firstH1 = h1s[0];
+    const lowerHeadingsAfterTitle = [...document.querySelectorAll("h2, h3")]
+      .filter(node =>
+        firstH1
+          ? Boolean(
+              firstH1.compareDocumentPosition(node) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+            )
+          : false
+      )
+      .map(node => node.textContent?.trim())
+      .filter(Boolean);
+
+    return {
+      h1Count: h1s.length,
+      h1Text: firstH1?.textContent?.trim() ?? "",
+      lowerHeadingCount: lowerHeadingsAfterTitle.length,
+    };
+  });
+
+  return [
+    check(
+      heading.h1Count === 1,
+      `${label}: exactly one page-level h1`,
+      `found ${heading.h1Count}`
+    ),
+    check(
+      expectedText.test(heading.h1Text),
+      `${label}: h1 matches profile name`,
+      heading.h1Text
+    ),
+    check(
+      heading.lowerHeadingCount > 0,
+      `${label}: section headings remain below h1`,
+      `found ${heading.lowerHeadingCount}`
+    ),
+  ];
+}
+
+/**
  * Navigates with retries for transient post-deploy connection resets.
  * @param page - Browser page to navigate.
  * @param url - Absolute URL to open.

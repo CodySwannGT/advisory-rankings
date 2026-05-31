@@ -12,6 +12,7 @@ import {
   check,
   cleanProfilePath,
   isLocalDev,
+  profileHeadingChecks,
   shot,
   smokeGoto,
   smokeWaitForSelector,
@@ -164,6 +165,7 @@ const firmProfileChecks = async (
     ),
     "firm.html: Wells Fargo header"
   ),
+  ...(await profileHeadingChecks(page, "firm.html", /Wells Fargo/)),
   check(
     (await page.locator(CARD_TITLE_SELECTOR).allTextContents()).some(title =>
       /Current advisors/i.test(title)
@@ -225,6 +227,7 @@ export async function smokeAdvisor(
       ),
       "advisor.html: Cairnes header"
     ),
+    ...(await profileHeadingChecks(page, "advisor.html", /Cairnes/)),
     check(
       (await page.locator(".timeline .step").count()) >= 3,
       "advisor.html: career timeline has at least three steps"
