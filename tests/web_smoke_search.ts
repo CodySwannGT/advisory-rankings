@@ -28,12 +28,14 @@ const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
 const SEARCH_COUNT_HINT_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-more`;
 const ACTIVE_SEARCH_RESULT_SELECTOR = ".gs-item-active";
 
-/** Budget for the /Search?kind=firm request triggered by clicking the Firms
+/**
+ * Budget for the /Search?kind=firm request triggered by clicking the Firms
  *  toggle. The request queues behind the homepage /Feed and the prior
  *  kind=all /Search under the dev cluster's serialized concurrency, so under
  *  GHA-runner network conditions it can exceed the standard DEPLOYED_DATA_TIMEOUT
  *  budget (60s). Use 2x that budget specifically for this waiter; multiple
- *  Release-and-Deploy runs have failed precisely here on the 60s budget. */
+ *  Release-and-Deploy runs have failed precisely here on the 60s budget.
+ */
 const SEARCH_KIND_QUEUE_TIMEOUT = DEPLOYED_DATA_TIMEOUT * 2;
 
 /**
@@ -42,18 +44,16 @@ const SEARCH_KIND_QUEUE_TIMEOUT = DEPLOYED_DATA_TIMEOUT * 2;
  * @returns Smoke assertions for global search.
  */
 export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
-  const input = page.locator("#global-search");
-  const namedInput = page.getByRole("combobox", {
-    name: "Search advisors, firms, teams",
-  });
-  const results = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
-
-  await smokeGoto(page, `${BASE}/`);
-  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
-  const namedInputCount = await namedInput.count();
+  const { input, namedInputCount, results } =
+    await openSearchWithWellsQuery(page);
+  await shot(page, "02-global-search");
+  const multiWordFirmChecks = await smokeMultiWordFirmSearchChecks(
+    page,
+    input,
+    results
+  );
   await input.fill("wells");
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  await shot(page, "02-global-search");
   const kindMode = await selectFirmSearchKind(page, results);
 
   const firstResult = results.first();
@@ -96,6 +96,7 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
       supportedKinds >= 1,
       "global search: advisor, firm, or team result renders"
     ),
+    ...multiWordFirmChecks,
     check(
       kindMode.firmModePressed === "true",
       "global search: kind mode toggle reflects selected mode"
@@ -151,6 +152,87 @@ const normalizeSearchKind = (value: string): SearchKind | null =>
         : null;
 
 const pluralSearchKind = (kind: SearchKind): string => `${kind}s`;
+
+/**
+ * Opens the homepage and primes global search with the baseline query.
+ * @param page - Browser page used for the scenario.
+ * @returns Search input, row locator, and accessible-name evidence.
+ */
+async function openSearchWithWellsQuery(page: Page): Promise<{
+  readonly input: Locator;
+  readonly namedInputCount: number;
+  readonly results: Locator;
+}> {
+  const input = page.locator("#global-search");
+  const namedInput = page.getByRole("combobox", {
+    name: "Search advisors, firms, teams",
+  });
+  const results = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
+
+  await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  await input.fill("wells");
+  await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  return { input, namedInputCount: await namedInput.count(), results };
+}
+
+/**
+ * Exercises multi-token firm-name queries that previously regressed to
+ * surname-only advisor matches or empty suggestions.
+ * @param page - Browser page used for the scenario.
+ * @param input - Global search input.
+ * @param results - Search result rows rendered by the dropdown.
+ * @returns Smoke assertions for multi-word firm search ranking.
+ */
+async function smokeMultiWordFirmSearchChecks(
+  page: Page,
+  input: Locator,
+  results: Locator
+): Promise<readonly Check[]> {
+  await input.fill("Morgan Stanley");
+  await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const morganFirstRow = results.first();
+  const morganFirstKind = normalizeSearchKind(
+    (await morganFirstRow.locator(".gs-kind").textContent()) ?? ""
+  );
+  const morganFirstText = ((await morganFirstRow.textContent()) ?? "").trim();
+
+  await input.fill("Wells Fargo Advisors");
+  await page.waitForFunction(
+    ({ emptySelector, rowSelector }) =>
+      Boolean(document.querySelector(rowSelector)) ||
+      Boolean(document.querySelector(emptySelector)),
+    {
+      emptySelector: SEARCH_EMPTY_SELECTOR,
+      rowSelector: SEARCH_RESULT_ROWS_SELECTOR,
+    },
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
+  const wellsRows = await results.count();
+  const wellsText = (await results.allTextContents()).join(" | ");
+  const wellsKinds = await searchKinds(results);
+  const wellsHasMatchingFirmOrTeam =
+    /Wells Fargo/i.test(wellsText) &&
+    wellsKinds.some(kind => kind === "firm" || kind === "team");
+
+  return [
+    check(
+      morganFirstKind === "firm" && /Morgan Stanley/i.test(morganFirstText),
+      "global search: Morgan Stanley ranks a matching Firm first",
+      morganFirstText
+    ),
+    check(
+      wellsRows > 0,
+      "global search: Wells Fargo Advisors returns visible suggestions",
+      `rows ${wellsRows}`
+    ),
+    check(
+      wellsHasMatchingFirmOrTeam,
+      "global search: Wells Fargo Advisors includes matching firm or team",
+      wellsText
+    ),
+  ];
+}
 
 /**
  * Switches to firm mode and captures request, row, and count-hint evidence.
