@@ -50,6 +50,9 @@ export const DEFAULT_FEED_MODE: FeedMode = "all";
 
 export const FEED_MODE_ALIASES: ReadonlyMap<string, FeedMode> = new Map([
   ["event-backed", "event"],
+  ["recruiting", "moves"],
+  ["recruiting-moves", "moves"],
+  ["compliance-disclosures", "compliance"],
 ]);
 
 export const FEED_MODES: readonly FeedModeOption[] = [

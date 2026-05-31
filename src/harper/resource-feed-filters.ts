@@ -6,6 +6,7 @@ const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 
 const FEED_MODE_ALIASES = new Map<string, string>([
   ["event", EVENT_BACKED_MODE],
+  ["recruiting", RECRUITING_MOVES_MODE],
   ["moves", RECRUITING_MOVES_MODE],
   ["compliance", COMPLIANCE_DISCLOSURES_MODE],
 ]);

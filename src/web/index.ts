@@ -25,10 +25,13 @@ import {
 import { clear, el } from "./design-system/index.js";
 import { addToWatchlistControl } from "./add-to-watchlist.js";
 import {
+  DEFAULT_FEED_MODE,
+  FEED_MODE_PARAM,
   feedCategories,
   feedFilterCard,
   filterEmptyState,
   filterFeedItems,
+  normalizeFeedFilters,
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
@@ -56,6 +59,10 @@ import type {
 
 const FEED_PAGE_SIZE = 20;
 
+const feedPopstate: Readonly<
+  Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
+> = { reload: null as (() => void) | null, listenerInstalled: false };
+
 /** Feed payload returned by the `/Feed` resource. */
 interface FeedPayload {
   readonly items?: readonly FeedItem[];
@@ -74,9 +81,9 @@ MountThreeColumnPage({
       clear(right);
       center.append(SkeletonCardC(), SkeletonCardC());
 
-      (api as unknown as (path: string) => Promise<FeedPayload>)("/Feed")
+      (api as unknown as (path: string) => Promise<FeedPayload>)(feedApiPath())
         .then((payload: FeedPayload) => {
-          renderFeed({ left, center, right }, payload.items ?? []);
+          renderFeed({ left, center, right }, payload.items ?? [], loadFeed);
         })
         .catch((err: unknown) => {
           console.error("Feed route failed to load", err);
@@ -101,10 +108,12 @@ MountThreeColumnPage({
  * Renders the feed and re-renders it when browser history restores filter state.
  * @param layout - Page columns used by the feed.
  * @param items - Full feed payload.
+ * @param reloadFeed - Reloads the feed resource for the current URL mode.
  */
 function renderFeed(
   layout: ThreeColumnLayout,
-  items: readonly FeedItem[]
+  items: readonly FeedItem[],
+  reloadFeed: () => void
 ): void {
   const categories = feedCategories(items);
   const renderCurrentState = (visibleLimit: number = FEED_PAGE_SIZE): void => {
@@ -120,7 +129,7 @@ function renderFeed(
       total: filteredItems.length,
       onChange: (nextFilters: FeedFilterValues) => {
         writeFeedFilters(nextFilters);
-        renderCurrentState(FEED_PAGE_SIZE);
+        reloadFeed();
       },
       onLoadMore: () => {
         renderCurrentState(visibleLimit + FEED_PAGE_SIZE);
@@ -131,7 +140,35 @@ function renderFeed(
   };
 
   renderCurrentState();
-  window.addEventListener("popstate", () => renderCurrentState());
+  installFeedPopstateReload(reloadFeed);
+}
+
+/**
+ * Installs or refreshes the singleton feed history reload handler.
+ * @param reloadFeed - Reloads the feed resource for the current URL mode.
+ */
+function installFeedPopstateReload(reloadFeed: () => void): void {
+  Object.assign(feedPopstate, { reload: reloadFeed });
+  if (feedPopstate.listenerInstalled) return;
+  window.addEventListener("popstate", () => {
+    feedPopstate.reload?.();
+  });
+  Object.assign(feedPopstate, { listenerInstalled: true });
+}
+
+/**
+ * Builds the feed resource path for the active URL signal mode.
+ * Category filtering stays client-side so category facets can be derived from
+ * the current mode payload, but mode filtering must happen server-side because
+ * event-backed rows may sit outside the unfiltered first page.
+ * @returns Feed API path with a canonical mode query when needed.
+ */
+function feedApiPath(): string {
+  const filters = normalizeFeedFilters({
+    mode: new URLSearchParams(location.search).get(FEED_MODE_PARAM),
+  });
+  if (filters.mode === DEFAULT_FEED_MODE) return "/Feed";
+  return `/Feed?${new URLSearchParams({ mode: filters.mode }).toString()}`;
 }
 
 /**

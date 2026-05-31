@@ -30,6 +30,15 @@ export type {
   FeedMode,
   FilterEmptyState,
 } from "./feed-filters-types.js";
+export {
+  DEFAULT_FEED_MODE,
+  FEED_MODE_PARAM,
+  normalizeFeedFilters,
+} from "./feed-filters-types.js";
+
+const feedCategoryState: Readonly<Record<"seen", readonly string[]>> = {
+  seen: [],
+};
 
 /**
  * Builds the GET-style feed filter controls.
@@ -149,9 +158,11 @@ export function feedCategories(items: readonly FeedItem[]): readonly string[] {
       (category): category is string =>
         typeof category === "string" && category.length > 0
     );
-  return [...new Set(categories)].sort((a, b) =>
-    categoryLabel(a).localeCompare(categoryLabel(b))
-  );
+  const nextCategories = [
+    ...new Set([...feedCategoryState.seen, ...categories]),
+  ].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
+  Object.assign(feedCategoryState, { seen: nextCategories });
+  return nextCategories;
 }
 
 /**
