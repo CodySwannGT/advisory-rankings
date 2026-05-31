@@ -4,6 +4,7 @@ import {
   PROFILE_HEADING_SELECTOR,
   check,
   cleanProfilePath,
+  profileHeadingChecks,
   shot,
   smokeGoto,
   smokeWaitForSelector,
@@ -41,6 +42,7 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
       ),
       "team.html: Taylor header"
     ),
+    ...(await profileHeadingChecks(page, "team.html", /Taylor/)),
     check(
       (await page
         .locator(".card")

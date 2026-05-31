@@ -587,6 +587,11 @@ describe("detail async states", () => {
         .filter({ hasText: EVIDENCE_FRESHNESS })
         .first();
       await desktopEvidence.waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await page.locator("h1").count()).toBe(1);
+      expect(await page.getByRole("heading", { level: 1 }).textContent()).toBe(
+        ADVISOR_NAME
+      );
+      expect(await lowerHeadingCountAfterFirstH1(page)).toBeGreaterThan(0);
       expect(
         await desktopEvidence
           .locator(".tag")
@@ -1021,6 +1026,19 @@ async function routeAdvisorEvidence(page: Page) {
   await page.route("**/AdvisorProfile/*", async route => {
     const id = route.request().url().split("/").pop() || "advisor-loaded";
     await route.fulfill({ json: advisorEvidenceProfile(id) });
+  });
+}
+
+async function lowerHeadingCountAfterFirstH1(page: Page): Promise<number> {
+  return await page.evaluate(() => {
+    const h1 = document.querySelector("h1");
+    if (!h1) return 0;
+    return [...document.querySelectorAll("h2, h3")].filter(
+      node =>
+        (h1.compareDocumentPosition(node) &
+          Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+    ).length;
   });
 }
 
