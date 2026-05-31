@@ -267,8 +267,8 @@ export async function advisorDirectoryPage(
   });
 }
 
-const titleCase = (value: string): string =>
-  value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1);
+const titleCaseWords = (value: string): string =>
+  value.replace(/\S+/gu, word => word.charAt(0).toUpperCase() + word.slice(1));
 
 const prefixSearchOne = async <T>(
   searchable: SearchableTable<T>,
@@ -289,10 +289,11 @@ const prefixSearchOne = async <T>(
 // already lowercased by the resource entry point, but the indexed
 // values (`Firm.name`, `Team.name`) are stored with their original
 // display casing. Issue parallel range scans for the lowercased and
-// title-cased prefix so a query like `"stone"` still matches a
-// "Stone Group" team without a separate normalized-name column. The
-// alternative — a write-path migration to add `nameLower @indexed` —
-// is out of scope for #721.
+// word-title-cased prefix so queries like `"stone"` and
+// `"morgan stanley"` still match "Stone Group" and "Morgan Stanley"
+// without a separate normalized-name column. The alternative - a
+// write-path migration to add `nameLower @indexed` - is out of scope
+// for #721.
 const prefixSearch = async <T extends IdentifiedRow>(
   table: unknown,
   attribute: string,
@@ -301,7 +302,7 @@ const prefixSearch = async <T extends IdentifiedRow>(
 ): Promise<readonly T[]> => {
   const searchable = table as SearchableTable<T>;
   const lower = value;
-  const title = titleCase(value);
+  const title = titleCaseWords(value);
   if (lower === title)
     return prefixSearchOne<T>(searchable, attribute, lower, cap);
   const [a, b] = await Promise.all([
