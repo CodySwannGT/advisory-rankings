@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import type { RouteTarget } from "../types/harper-resource.js";
+import type { ArticleRow } from "../types/harper-schema.js";
 
 import {
   detailShellResponse,
@@ -132,23 +133,10 @@ export class Feed extends Resource {
     const filters = parseFeedFilters(target);
     const { cursor, limit } = parsePagination(target);
     const offset = decodeOffsetCursor(cursor);
-    const { items: articles, total: categoryTotal } = await feedArticlePage(
-      filters.category,
-      limit,
-      offset
-    );
-    const db = await loadFeedDbForArticles(articles);
-    const pageItems: readonly FeedItem[] = articles.map(article =>
-      feedItem(article, db)
-    );
-    const modeItems = pageItems.filter(item =>
-      matchesFeedMode(item, filters.mode)
-    );
-    const filteredItems = modeItems;
-    const hasMore = offset + articles.length < categoryTotal;
-    const nextCursor = hasMore
-      ? encodeOffsetCursor(offset + articles.length)
-      : null;
+    const page = await loadFeedPage(filters, limit, offset);
+    const filteredItems = page.items;
+    const hasMore = page.nextOffset < page.categoryTotal;
+    const nextCursor = hasMore ? encodeOffsetCursor(page.nextOffset) : null;
     return {
       generatedAt: new Date().toISOString(),
       count: filteredItems.length,
@@ -156,8 +144,8 @@ export class Feed extends Resource {
       summary: {
         returned: filteredItems.length,
         total: filteredItems.length,
-        modeTotal: modeItems.length,
-        categoryTotal,
+        modeTotal: filteredItems.length,
+        categoryTotal: page.categoryTotal,
       },
       emptyState: feedEmptyState(filteredItems, filters),
       items: filteredItems,
@@ -165,6 +153,112 @@ export class Feed extends Resource {
       hasMore,
     };
   }
+}
+
+/** Raw-offset page state after feed-item hydration and mode filtering. */
+interface LoadedFeedPage {
+  readonly categoryTotal: number;
+  readonly items: readonly FeedItem[];
+  readonly nextOffset: number;
+}
+
+/**
+ * Loads a feed page after event-card-backed mode filtering. Signal modes cannot
+ * be pushed into Harper search conditions because they depend on hydrated
+ * mention rows, so filtered requests scan raw article pages until the response
+ * contains `limit` matching rows or the category is exhausted.
+ * @param filters - Normalized feed filters.
+ * @param limit - Maximum matching feed rows to return.
+ * @param offset - Raw article offset decoded from the cursor.
+ * @returns Matching feed rows plus the next raw article offset.
+ */
+async function loadFeedPage(
+  filters: ReturnType<typeof parseFeedFilters>,
+  limit: number,
+  offset: number
+): Promise<LoadedFeedPage> {
+  const articles = await feedArticlePage(filters.category, limit, offset);
+  if (filters.mode === "all") {
+    const items = await hydrateFeedItems(articles.items);
+    return {
+      categoryTotal: articles.total,
+      items,
+      nextOffset: offset + articles.items.length,
+    };
+  }
+  return loadModeFilteredFeedPage(filters, limit, offset, articles);
+}
+
+/**
+ * Collects mode-filtered feed items across raw article pages.
+ * @param filters - Normalized feed filters.
+ * @param limit - Maximum matching feed rows to return.
+ * @param offset - Raw article offset for the first page.
+ * @param firstPage - Already-loaded first raw article page.
+ * @returns Matching feed rows plus the next raw article offset.
+ */
+async function loadModeFilteredFeedPage(
+  filters: ReturnType<typeof parseFeedFilters>,
+  limit: number,
+  offset: number,
+  firstPage: Awaited<ReturnType<typeof feedArticlePage>>
+): Promise<LoadedFeedPage> {
+  return collectModeFilteredFeedItems(filters, limit, firstPage, offset, []);
+}
+
+/**
+ * Recursively scans raw article pages until the filtered page is full.
+ * @param filters - Normalized feed filters.
+ * @param limit - Maximum matching feed rows to return.
+ * @param page - Current raw article page.
+ * @param offset - Raw offset for the current page.
+ * @param matches - Matching items collected so far.
+ * @returns Matching feed rows plus the next raw article offset.
+ */
+async function collectModeFilteredFeedItems(
+  filters: ReturnType<typeof parseFeedFilters>,
+  limit: number,
+  page: Awaited<ReturnType<typeof feedArticlePage>>,
+  offset: number,
+  matches: readonly FeedItem[]
+): Promise<LoadedFeedPage> {
+  const items = await hydrateFeedItems(page.items);
+  const nextMatches = [
+    ...matches,
+    ...items.filter(item => matchesFeedMode(item, filters.mode)),
+  ];
+  const nextOffset = offset + page.items.length;
+  if (
+    nextMatches.length >= limit ||
+    nextOffset >= page.total ||
+    page.items.length === 0
+  ) {
+    return {
+      categoryTotal: page.total,
+      items: nextMatches.slice(0, limit),
+      nextOffset,
+    };
+  }
+  const nextPage = await feedArticlePage(filters.category, limit, nextOffset);
+  return collectModeFilteredFeedItems(
+    filters,
+    limit,
+    nextPage,
+    nextOffset,
+    nextMatches
+  );
+}
+
+/**
+ * Hydrates raw article rows into public feed cards.
+ * @param articles - Raw article rows.
+ * @returns Feed cards with mentions and event cards populated.
+ */
+async function hydrateFeedItems(
+  articles: readonly ArticleRow[]
+): Promise<readonly FeedItem[]> {
+  const db = await loadFeedDbForArticles(articles);
+  return articles.map(article => feedItem(article, db));
 }
 
 /** Single article detail resource. */

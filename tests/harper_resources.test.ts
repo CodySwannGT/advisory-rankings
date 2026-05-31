@@ -1581,7 +1581,7 @@ describe("Harper resource endpoints", () => {
         id: "article-c",
         headline: "Market roundup",
         slug: "market-roundup",
-        publishedDate: "2025-01-01",
+        publishedDate: "2025-03-01",
         category: "unknown",
       },
     ]);
@@ -1595,8 +1595,14 @@ describe("Harper resource endpoints", () => {
     const browserMoves = await new (resources as any).Feed().get(
       routeTarget("", { mode: "moves" })
     );
+    const browserRecruiting = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "recruiting" })
+    );
     const browserCompliance = await new (resources as any).Feed().get(
       routeTarget("", { mode: "compliance" })
+    );
+    const firstEventBacked = await new (resources as any).Feed().get(
+      routeTarget("", { mode: "event", limit: "1" })
     );
     const compliance = await new (resources as any).Feed().get(
       routeTarget("", {
@@ -1651,6 +1657,20 @@ describe("Harper resource endpoints", () => {
           ],
         }),
       ],
+    });
+    expect(browserRecruiting).toMatchObject({
+      count: 1,
+      filters: { mode: "recruiting-moves", category: "all" },
+    });
+    expect(firstEventBacked).toMatchObject({
+      count: 1,
+      filters: { mode: EVENT_BACKED_MODE, category: "all" },
+      items: [
+        expect.objectContaining({
+          article: expect.objectContaining({ id: "article-a" }),
+        }),
+      ],
+      hasMore: true,
     });
     expect(browserCompliance).toMatchObject({
       count: 1,

@@ -30,6 +30,11 @@ export type {
   FeedMode,
   FilterEmptyState,
 } from "./feed-filters-types.js";
+export {
+  DEFAULT_FEED_MODE,
+  FEED_MODE_PARAM,
+  normalizeFeedFilters,
+} from "./feed-filters-types.js";
 
 /**
  * Builds the GET-style feed filter controls.
