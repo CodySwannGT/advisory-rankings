@@ -317,8 +317,17 @@ export async function startStaticServer(): Promise<Server> {
       response.writeHead(200, { "Content-Type": contentType(resolvedPath) });
       response.end(file);
     } catch {
-      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end("Not found");
+      try {
+        const fallbackPath = resolveStaticPath(`${filePath}.html`);
+        const file = await readFile(fallbackPath);
+        response.writeHead(200, { "Content-Type": contentType(fallbackPath) });
+        response.end(file);
+      } catch {
+        response.writeHead(404, {
+          "Content-Type": "text/plain; charset=utf-8",
+        });
+        response.end("Not found");
+      }
     }
   });
   await new Promise<void>((resolveListen, rejectListen) => {

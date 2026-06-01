@@ -152,6 +152,46 @@ browserDescribe("watchlist management UI (#228)", () => {
     await page.close();
   });
 
+  it("starts a URL-backed comparison from selected watchlist advisors", async () => {
+    const page = await browser.newPage();
+    await routeAuth(page, true);
+    await page.route("**/AdvisorComparison?**", async route => {
+      await route.fulfill({ json: comparisonPayload(["adv-a", "adv-b"]) });
+    });
+    await routeWatchlists(page, () => undefined, [
+      {
+        id: "list-1",
+        name: LIST_NAME,
+        entries: [
+          { id: "e1", listId: "list-1", advisorId: "adv-a", rank: 1, note: "" },
+          { id: "e2", listId: "list-1", advisorId: "adv-b", rank: 2, note: "" },
+          { id: "e3", listId: "list-1", advisorId: "adv-c", rank: 3, note: "" },
+        ],
+      },
+    ]);
+
+    await page.goto(`${baseUrl}/watchlists.html`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    const button = page.locator(".watchlist-compare-button");
+    await button.waitFor({ timeout: QUICK_TIMEOUT });
+    expect(await button.isDisabled()).toBe(true);
+    await page.locator('.watchlist-compare-select[value="adv-a"]').check();
+    await page.locator('.watchlist-compare-select[value="adv-b"]').check();
+    expect(await button.isEnabled()).toBe(true);
+
+    await Promise.all([
+      page.waitForURL(/\/compare\?ids=adv-a,adv-b$/u),
+      button.click(),
+    ]);
+
+    expect(new URL(page.url()).searchParams.get("ids")).toBe("adv-a,adv-b");
+    await page.locator(".comparison-table").waitFor({ timeout: QUICK_TIMEOUT });
+    await captureViewports(page, "issue-812-watchlist-seed-comparison");
+    await page.close();
+  });
+
   it("adds an advisor to a watchlist from the feed discovery surface", async () => {
     const page = await browser.newPage();
     const posts: CapturedPost[] = [];
@@ -181,3 +221,61 @@ browserDescribe("watchlist management UI (#228)", () => {
     await page.close();
   });
 });
+
+/**
+ * Builds the minimal comparison payload needed by the route under test.
+ * @param ids - Advisor ids selected from the watchlist.
+ * @returns AdvisorComparison-like route payload.
+ */
+function comparisonPayload(ids: readonly string[]): unknown {
+  return {
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    ids,
+    selection: {
+      requestedIds: ids,
+      duplicateIds: [],
+      missingIds: [],
+      includedIds: ids,
+      min: 2,
+      max: 4,
+      truncated: false,
+      status: "ready",
+    },
+    items: ids.map((id, index) => comparisonItem(id, index)),
+  };
+}
+
+/**
+ * Builds one found advisor comparison row for the mocked resource.
+ * @param id - Advisor id.
+ * @param index - Display index.
+ * @returns AdvisorComparison found item.
+ */
+function comparisonItem(id: string, index: number): unknown {
+  return {
+    id,
+    status: "found",
+    displayName: `Advisor ${index + 1}`,
+    identity: {
+      careerStatus: "active",
+      yearsExperience: 10 + index,
+    },
+    firm: { name: `Firm ${index + 1}` },
+    regulatory: {
+      disclosureCount: index,
+      registrationApplications: [],
+      brokerCheckSnapshot: null,
+    },
+    career: [{ roleTitle: "Advisor", firm: { name: `Firm ${index + 1}` } }],
+    rankings: [],
+    articles: [],
+    dataConfidence: {
+      confidenceSummary: { hasData: true, total: 3 },
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-31T00:00:00.000Z",
+      },
+    },
+    attribution: { researchSources: [] },
+  };
+}

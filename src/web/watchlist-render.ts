@@ -5,6 +5,7 @@
 // back through the typed adapter surface in `watchlist-types.ts`.
 
 import type { MeEnvelope } from "./app.js";
+import { watchlistComparisonControls } from "./watchlist-comparison.js";
 import {
   addEntryBody,
   canMutate,
@@ -142,6 +143,7 @@ function listCard(
   ctx: WatchlistRenderContext,
   list: WatchlistView
 ): HTMLElement {
+  const compareState = watchlistComparisonControls(list.id);
   const rows =
     list.entries.length === 0
       ? [
@@ -152,10 +154,17 @@ function listCard(
           ),
         ]
       : list.entries.map(entry => entryRow(ctx, list, entry));
+  const body = elC(
+    "div",
+    { class: "watchlist-body" },
+    compareState.container,
+    elC("div", { class: "watchlist-entries" }, ...rows)
+  );
+  body.addEventListener("change", compareState.refresh);
   return SectionCardC({
     title: list.name,
     attrs: { class: "watchlist-card", "data-list-id": list.id },
-    body: elC("div", { class: "watchlist-entries" }, ...rows),
+    body,
   });
 }
 
@@ -180,6 +189,12 @@ function entryRow(
   return elC(
     "div",
     { class: "watchlist-firm-row", "data-advisor-id": entry.advisorId },
+    elC("input", {
+      class: "watchlist-compare-select",
+      type: "checkbox",
+      value: entry.advisorId,
+      "aria-label": `Select ${entry.advisorId} for comparison`,
+    }),
     elC("span", { class: "watchlist-rank" }, String(entry.rank ?? "")),
     elC(
       "a",
