@@ -1,8 +1,23 @@
+import type { FeedItem } from "../harper/resource-feed-types.js";
+import { api } from "./app.js";
 import {
   DEFAULT_FEED_MODE,
   FEED_MODE_PARAM,
   normalizeFeedFilters,
 } from "./feed-filters.js";
+
+/** Feed payload returned by the `/Feed` resource. */
+export interface FeedPayload {
+  readonly items?: readonly FeedItem[];
+  readonly nextCursor?: string | null;
+  readonly hasMore?: boolean;
+}
+
+/** Server-side pagination cursor state for the feed. */
+export interface FeedCursor {
+  readonly cursor: string | null;
+  readonly hasMore: boolean;
+}
 
 const feedPopstate: Readonly<
   Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
@@ -23,12 +38,43 @@ export function installFeedPopstateReload(reloadFeed: () => void): void {
 
 /**
  * Builds the feed resource path for the current URL filters.
- * @returns Feed API path with the mode query when needed.
+ * @param cursor - Opaque server cursor for the next page, when paginating.
+ * @returns Feed API path with the mode query and cursor when needed.
  */
-export function feedApiPath(): string {
+export function feedApiPath(cursor?: string | null): string {
   const filters = normalizeFeedFilters({
     mode: new URLSearchParams(location.search).get(FEED_MODE_PARAM),
   });
-  if (filters.mode === DEFAULT_FEED_MODE) return "/Feed";
-  return `/Feed?${new URLSearchParams({ mode: filters.mode }).toString()}`;
+  const params = new URLSearchParams();
+  if (filters.mode !== DEFAULT_FEED_MODE) params.set("mode", filters.mode);
+  if (cursor) params.set("cursor", cursor);
+  const query = params.toString();
+  return query ? `/Feed?${query}` : "/Feed";
+}
+
+/**
+ * Maps a feed payload to the cursor state for fetching its next page.
+ * @param payload - Feed payload returned by the `/Feed` resource.
+ * @returns Pagination cursor state.
+ */
+export function feedCursorFrom(payload: FeedPayload): FeedCursor {
+  return {
+    cursor: payload.nextCursor ?? null,
+    hasMore: payload.hasMore ?? false,
+  };
+}
+
+/**
+ * Fetches the next server page of feed items and hands the caller the new
+ * items plus the advanced cursor state.
+ * @param cursor - Opaque cursor returned by the previous feed response.
+ * @param onPage - Receives the next page's items and cursor state.
+ */
+export function fetchNextFeedPage(
+  cursor: string,
+  onPage: (items: readonly FeedItem[], next: FeedCursor) => void
+): void {
+  void (api as unknown as (path: string) => Promise<FeedPayload>)(
+    feedApiPath(cursor)
+  ).then(payload => onPage(payload.items ?? [], feedCursorFrom(payload)));
 }
