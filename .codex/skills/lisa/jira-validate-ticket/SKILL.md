@@ -119,7 +119,7 @@ Category values are drawn from this fixed set:
 
 #### S3 — Description has all three audiences
 
-Description text must include all of these sections (case-insensitive `h2.` headings):
+Description text must include all of these sections. For proposed specs, detect case-insensitive Markdown/wiki headings (`##` or `h2.`). For live JIRA tickets, extract section headings from ADF `heading` nodes first and fail if the description is one literal Markdown/wiki paragraph instead of structured ADF heading nodes:
 - `Context / Business Value` — stakeholder-facing
 - `Technical Approach` — developer-facing
 - `Acceptance Criteria` — coding-assistant-facing
@@ -152,7 +152,7 @@ When `issue_type ∉ {Bug, Epic}`, `parent_key` must be set. (Validity of the ke
 
 #### S8 — Target Backend Environment
 
-When `runtime_behavior_change = true`, description must contain `h2. Target Backend Environment` with one of `dev`, `staging`, `prod`. Skipped for doc-only / config-only / type-only / Epic.
+When `runtime_behavior_change = true`, description must contain a `Target Backend Environment` section (`h2.` / `##` in proposed text, or an ADF heading in live JIRA) with one of `dev`, `staging`, `prod`. Skipped for doc-only / config-only / type-only / Epic.
 
 #### S9 — Sign-in Required
 
@@ -162,15 +162,15 @@ If the spec doesn't set `authenticated_surface`, infer it: scan the description 
 
 #### S10 — Repository section, single-repo scope
 
-When `issue_type ∈ {Bug, Task, Sub-task, Improvement}`, description must contain `h2. Repository` naming exactly one repo. Multiple repos OR cross-repo references in AC: FAIL with recommendation `"Split into per-repo work units under a shared parent Story (see lisa:task-decomposition step 1.5)"`.
+When `issue_type ∈ {Bug, Task, Sub-task, Improvement}` — or a **build-ready childless Story/Spike** (a claimable leaf per `leaf-only-lifecycle`) — description must contain a `Repository` section (`h2.` / `##` in proposed text, or an ADF heading in live JIRA) naming exactly one repo. Multiple repos OR cross-repo references in AC: FAIL with recommendation `"Split into per-repo work units under a shared parent Story (see lisa:task-decomposition step 1.5)"`.
 
-Story / Epic / Spike: skipped (may span repos — these are coordination containers, not work units).
+An **Epic**, or a **Story/Spike that still holds child work** (or is not build-ready): skipped (may span repos — coordination containers, not claimable leaf work units).
 
 This gate is `product_relevant: false` because cross-repo work units are not a product question — they are a decomposition error. Callers (`lisa:notion-to-tracker`, `lisa:confluence-to-tracker`, `lisa:linear-to-tracker`, `lisa:github-to-tracker`) MUST pre-split cross-repo work into per-repo work units during the decomposition phase per `lisa:task-decomposition` step 1.5; an S10 failure here indicates the agent skipped that step and must auto-split + revalidate before writing, not surface a clarifying comment to product.
 
 #### S11 — Validation Journey present
 
-When `runtime_behavior_change = true`, description must contain `h2. Validation Journey`. Skipped for doc-only / config-only / type-only / Epic.
+When `runtime_behavior_change = true`, description must contain a `Validation Journey` section (`h2.` / `##` in proposed text, or an ADF heading in live JIRA). Skipped for doc-only / config-only / type-only / Epic.
 
 The caller controls the strictness by passing `journey_followup: "auto"` or `journey_followup: "none"` in the spec:
 - `auto` (default): if the section is absent, return `FAIL` with remediation `"Invoke lisa:jira-add-journey to append the section after create"`. Callers like `lisa:jira-write-ticket` know to chain `lisa:jira-add-journey` automatically, so this counts as a fixable failure they can resolve in-line — they re-run validation after appending.
@@ -200,7 +200,7 @@ When `issue_type ∈ {Bug, Task, Sub-task, Improvement}` AND `runtime_behavior_c
 
 FAIL when the Validation Journey is present but declares zero `[EVIDENCE: name]` markers, or when any marker name is empty, duplicated, or not kebab-case. A behavior-changing work unit SHOULD declare both a success marker and an error/edge marker; a journey with only one marker passes but the remediation should recommend adding the error/edge case.
 
-This gate depends on S11. It is `N/A` for Epic / Story / Spike (coordination containers, not work units) and for leaf units with `runtime_behavior_change = false` (doc-only / config-only / type-only). If S11 fails because the Validation Journey is absent, S14 also FAILs (there is no manifest to bind) with remediation pointing back to `lisa:jira-add-journey`.
+This gate depends on S11. It is `N/A` for containers — an **Epic**, or any item with open child work (coordination containers, not work units) — and for leaf units with `runtime_behavior_change = false` (doc-only / config-only / type-only). If S11 fails because the Validation Journey is absent, S14 also FAILs (there is no manifest to bind) with remediation pointing back to `lisa:jira-add-journey`.
 
 #### S15 — Leaf-only build-ready
 
@@ -212,20 +212,19 @@ Enforces the build-side of the vendor-neutral `leaf-only-lifecycle` rule: **only
 
 Apply this decision and FAIL the two invariant-violating cases:
 
-1. **Container with child work + build-ready** — `issue_type ∈ {Epic, Story, Spike}` OR child work is present (any type that has children), AND build-ready. FAIL. A parent organizes work; it is never claimed and implemented directly. Its lifecycle state rolls up from its children.
-2. **Childless container-type + build-ready** — `issue_type ∈ {Epic, Story, Spike}` with **no** child work, AND build-ready. Still FAIL: these types are coordination containers by design, and an empty one is an incomplete decomposition, not an implementable unit (the childless-parent exception in `leaf-only-lifecycle` does **not** promote an Epic/Story/Spike to build-ready).
+1. **Container with child work + build-ready** — child work is present (any type that has open children), AND build-ready. FAIL. A parent organizes work; it is never claimed and implemented directly. Its lifecycle state rolls up from its children.
+2. **Childless Epic + build-ready** — `issue_type = Epic` with **no** child work, AND build-ready. Still FAIL: an Epic is a pure rollup container by design, and a childless one is an incomplete decomposition or a mis-applied role, not an implementable unit. (A childless Story or Spike is **not** failed here — the childless-parent exception in `leaf-only-lifecycle` promotes every childless non-Epic type to a build-ready leaf.)
 
-PASS (the childless-parent exception) when the ticket is build-ready and is a **leaf work unit**: `issue_type ∈ {Bug, Task, Sub-task, Improvement}` AND has **no** child work. A flat Task or Bug with no sub-tasks is a valid build-ready leaf and must not be stranded.
+PASS (the childless-parent exception) when the ticket is build-ready and is a **leaf work unit**: it has **no** open child work and `issue_type ≠ Epic` (i.e. `Bug, Task, Sub-task, Improvement`, or a childless `Story` / `Spike`). A flat Task/Bug, or a childless Story/Spike with no sub-tasks, is a valid build-ready leaf and must not be stranded.
 
 | issue_type | has child work | build-ready | S15 |
 |---|---|---|---|
-| Bug / Task / Sub-task / Improvement | no | yes | **PASS** (leaf) |
-| Bug / Task / Sub-task / Improvement | yes | yes | **FAIL** (structurally a container) |
-| Epic / Story / Spike | yes | yes | **FAIL** (container with children) |
-| Epic / Story / Spike | no | yes | **FAIL** (childless container-type, exception does not apply) |
+| Bug / Task / Sub-task / Improvement / Story / Spike | no | yes | **PASS** (leaf) |
+| any type | yes | yes | **FAIL** (structurally a container) |
+| Epic | no | yes | **FAIL** (childless Epic — pure rollup container, exception does not apply) |
 | any | any | no | **N/A** (not build-ready) |
 
-Remediation: `"Build-ready (status:ready) is leaf-only per leaf-only-lifecycle. Move status:ready off this container onto its leaf children (or, for a childless Epic/Story/Spike, decompose it into leaf children or reclassify it to a leaf type); a parent's lifecycle state rolls up from its children and is never set to ready directly."`
+Remediation: `"Build-ready (status:ready) is leaf-only per leaf-only-lifecycle. Move status:ready off this container onto its leaf children (or, for a childless Epic, decompose it into leaf children or reclassify it to a leaf type); a parent's lifecycle state rolls up from its children and is never set to ready directly."`
 
 `product_relevant: false` — a build-ready container is a lifecycle/decomposition error for the caller to repair, not a product question.
 
@@ -249,7 +248,7 @@ Use the same project-issue-type-metadata lookup from F1 (via `lisa:atlassian-acc
 
 ## Execution
 
-1. Parse `$ARGUMENTS`. If it's a ticket key, fetch the ticket via `lisa:atlassian-access` `operation: read-ticket` and derive the spec from the fetched fields — including `build_ready` (label set contains `status:ready`) and `child_refs` (sub-tasks plus `is blocked by` parentage, resolved as in `lisa:jira-read-ticket`) so S15 can classify the ticket. Otherwise parse the YAML spec.
+1. Parse `$ARGUMENTS`. If it's a ticket key, fetch the ticket via `lisa:atlassian-access` `operation: read-ticket` and derive the spec from the fetched fields — including `build_ready` (label set contains `status:ready`) and `child_refs` (sub-tasks plus `is blocked by` parentage, resolved as in `lisa:jira-read-ticket`) so S15 can classify the ticket. When the fetched description is ADF, walk the document tree and extract section headings from ADF `heading` nodes, then collect the text between heading nodes for section-specific gates. If the fetched description is a single paragraph containing literal Markdown/wiki heading markers, treat that as a formatting failure rather than accepting substring matches. Otherwise parse the YAML spec.
 2. If any feasibility gate will run, invoke `lisa:atlassian-access` `operation: list-sites` once to confirm the configured site is reachable (it enforces connection match against `.lisa.config.json`).
 3. Run every Specification gate in order. Collect PASS / FAIL / N/A with a one-line reason.
 4. Unless the caller passed `--spec-only` (dry-run), run every Feasibility gate. Collect results.

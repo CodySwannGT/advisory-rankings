@@ -50,17 +50,16 @@
             "statusMessage": "Checking shell command policy"
           }
         ]
-      }
-    ],
-    "Stop": [
+      },
       {
-        "matcher": "",
+        "matcher": "Edit|Write|apply_patch",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.codex/hooks/lisa/notify-ntfy.sh\"",
+            "command": "bash \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.codex/hooks/lisa/block-suppress-directives.sh\"",
             "_lisaManaged": true,
-            "_lisaId": "notify-ntfy"
+            "_lisaId": "block-suppress-directives",
+            "statusMessage": "Checking for error-suppression directives"
           }
         ]
       }

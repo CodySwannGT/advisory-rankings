@@ -16,7 +16,12 @@ create them; invoke the runtime's automation tool with the spec below.
 - **Codex** → create Codex **automations** via the native automations mechanism (prefer the
   `automation_update` tool over hand-writing `~/.codex/automations/<id>/automation.toml`; the TOML is
   only its backing store). Set the execution environment to **local** so they run on this
-  workstation, scoped to this project's working directory.
+  workstation. Scope them to a durable project automation checkout, not a transient task worktree:
+  use `${CODEX_HOME:-~/.codex}/worktrees/<project>-automation-main` when available, create or refresh
+  that checkout from the project's `origin` remote if needed, and verify `git -C <cwd> rev-parse
+  --is-inside-work-tree --is-bare-repository` reports `true` then `false` before saving the
+  automation. Do not point recurring automations at hashed scratch worktrees or a checkout whose Git
+  metadata is broken.
 - **Claude** → use **`/schedule`** to create local recurring routines, one per automation below.
 - **Other runtimes** → use the runtime's native recurring-task mechanism. If the runtime has none,
   state that scheduling is unavailable and stop.
@@ -25,7 +30,10 @@ create them; invoke the runtime's automation tool with the spec below.
 
 - `auto-start-prds` (default **false**) — passed as `prd_ready` to the **exploratory-prds**
   automation. `true` → ideated PRDs are created `prd-ready` (auto-picked-up by PRD intake); `false` →
-  created as drafts for human review.
+  created as drafts for human review. When `true`, `/lisa:project-ideation` still checks the configured
+  PRD queue before writing: existing `prd-ready`, `prd-in-review`, `prd-blocked`, unresolved
+  `prd-ticketed`, or unresolved source-reader pressure can intentionally turn the automation cycle into
+  a blocked/idle outcome instead of creating another ready PRD.
 - `auto-start-tickets` (default **false**) — passed as `ready` to the **exploratory-bugs**
   automation. `true` → filed bug/usability tickets are created build-ready (auto-picked-up by ticket
   intake); `false` → created in the backlog for human triage.
@@ -37,6 +45,11 @@ affect **only** the two exploratory automations.
 
 Each automation runs **one cycle** of a Lisa command and respects that command's confirmation policy
 (never ask before running; exit cleanly when the queue is idle; report the cycle summary).
+Before running the Lisa command, each automation must sync its checkout: fetch the default remote
+branch and rebase the current automation branch onto it (for the common GitHub case, `origin/main`).
+If the checkout is already on the default branch, fast-forward/rebase it to the remote default. If
+the rebase has conflicts or the working tree is dirty in a way the automation did not create, abort
+the rebase, leave queue state unchanged, and report the blocker instead of running on stale code.
 
 | Automation | Command it runs | Cadence |
 |---|---|---|
@@ -49,6 +62,12 @@ Each automation runs **one cycle** of a Lisa command and respects that command's
 For a Codex `rrule`: every 60 min → `FREQ=HOURLY;INTERVAL=1`; every 10 min →
 `FREQ=MINUTELY;INTERVAL=10`; once a day → `FREQ=DAILY;INTERVAL=1`.
 
+**Exploratory PRD pressure gate.** `auto-start-prds=true` means "create PRDs in the ready PRD
+lifecycle when the PRD queue has capacity," not "always create a new ready PRD." The
+`exploratory-prds` automation uses the same PRD source queue and pressure roles reported by
+`/lisa:queue-status`; if pressure exists, the cycle should report the blocking role/ref and the
+smallest next action, usually `/lisa:intake <PRD queue>`, without invoking research or writing a PRD.
+
 **Queue resolution.** Resolve the intake/repair queue from `.lisa.config.json` — `source` for the
 PRD queue, `tracker` for the build queue (for the common GitHub case these are `github
 intake_mode=prd` and `github intake_mode=build`, matching how the existing Lisa intake automations
@@ -56,10 +75,10 @@ are written).
 
 **Naming + scope (so teardown is precise).** Name each automation with the stable prefix
 `lisa-auto-<project>-` (e.g. `lisa-auto-<project>-intake-tickets`), where `<project>` identifies this
-repo, and scope each to this project's working directory. This lets `/tear-down-automations` find and
-remove exactly this set and never touch other projects' automations or non-Lisa ones. Use a project
-identifier stable across runs and distinct from other repos (don't rely on a bare repo basename when
-it could collide; qualify it, e.g. with the owner).
+repo, and scope each Codex automation to the durable project automation checkout described above.
+This lets `/tear-down-automations` find and remove exactly this set and never touch other projects'
+automations or non-Lisa ones. Use a project identifier stable across runs and distinct from other
+repos (don't rely on a bare repo basename when it could collide; qualify it, e.g. with the owner).
 
 **Idempotent.** Re-running this skill updates the existing `lisa-auto-<project>-*` automations in
 place (same names) rather than creating duplicates.
@@ -71,6 +90,8 @@ place (same names) rather than creating duplicates.
   automation and note it — do not invent a command that doesn't exist.
 - If the runtime has no native scheduler, or the intake queues can't be resolved from config, stop
   and report what's missing rather than guessing.
+- For Codex, if the durable checkout cannot be created, fetched, or verified as a non-bare Git work
+  tree, stop and report the checkout problem instead of creating automations that will fail later.
 
 ## Report
 

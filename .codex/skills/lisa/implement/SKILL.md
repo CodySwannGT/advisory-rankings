@@ -21,7 +21,12 @@ If no team creation or subagent delegation tool is available, explicitly state t
 
 Until the team is established, the first Codex teammate has been spawned, or the no-team fallback has been declared, do NOT call any of: `Agent`, `TaskCreate`, `Skill` (including `lisa:tracker-read`, `lisa:jira-read-ticket`, `lisa:github-read-issue`), MCP tools (Atlassian / Linear / GitHub / Notion), `Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`. Reading the ticket, exploring the code, fetching context — every one of those is a task for the team you are about to create, not for the lead session before orchestration exists. Doing them inline is the exact bypass path that produces a 1-agent ad-hoc fix instead of a real team flow.
 
-If you ARE already inside an agent team (e.g., a teammate invoked this skill via the Skill tool, or `lisa:intake` is running this skill per Ready ticket), do NOT create a second team — many harnesses reject double-creates. Continue within the existing team. The team lead created the team; teammates inherit it.
+If you ARE already inside an agent team (e.g., a teammate invoked this skill via the Skill tool, or `lisa:intake` is running this skill per Ready ticket), do NOT create a second team — many harnesses reject double-creates — and do NOT collapse the nested flow into a single inline worker. A nested team-first flow must still bring in the specialists it requires by adding them to the existing team, not by doing the work itself:
+
+- **Claude:** teams are flat and only the lead can add named teammates, so do NOT call `Agent` with a `name` from a teammate (the harness rejects it: *"Teammates cannot spawn other teammates — the team roster is flat"*). Send the team lead a message naming the specialist teammate(s) this flow needs, their task assignments, and completion criteria, then coordinate through the shared task list until they finish. An anonymous subagent (`Agent` with `name` omitted) is permitted only for bounded one-shot work whose result returns directly to you — it is not a substitute for the required lifecycle specialists.
+- **Codex:** do NOT call `TeamCreate`. If the lead/root agent is addressable (you were given its id/handle), send it a request to `multi_agent_v1.spawn_agent` the specialist agent(s), including each agent's prompt, ownership, and expected result. If no lead handle exists but `spawn_agent` is available to you, spawn only the bounded specialist agent(s) this flow needs, `wait_agent` for their results, and relay those results upward to the parent/lead.
+
+Treat the first successful lead-spawn request (or, on the Codex fallback, the first specialist spawn) as preserving team orchestration. Never satisfy a team-first lifecycle flow by doing all the work inline.
 
 ## Resolve the input (first task assigned to the team)
 
@@ -66,6 +71,7 @@ When the request came from a tracker work item, preserve its native identifier f
 - Capture `tracker_provider` and `work_item_ref` from the resolved input before creating or reusing a branch. Examples: `github` + `CodySwannGT/lisa#614`, `linear` + `ENG-123`, `jira` + `ENG-123`.
 - If a new branch is needed and the provider can link branches by identifier, include the identifier in the branch name before the human-readable slug. Linear and JIRA integrations commonly link from branch names; GitHub issue linkage is PR-body driven, but including the issue number in the branch name is still useful. Keep branch names URL-safe, for example `codex/ENG-123-add-checkout-copy` or `codex/614-add-checkout-copy`.
 - Pass the work-item ref and target branch to `lisa:git-submit-pr` when opening or updating the PR, for example `work_item_ref=CodySwannGT/lisa#614 target_branch=<base resolved from the ticket's environment above>` (not hardcoded `main`). The PR workflow owns provider-specific body text and must decide whether to use a closing keyword or a non-closing reference.
+- After `lisa:git-submit-pr` returns a PR URL, ensure the reverse backlink is present on the source work item by running `lisa:tracker-sync <work_item_ref> pr-ready pr_url=<url> tracker_provider=<provider>`. The sync path must prefer native provider linkage and fall back to one managed `[lisa-pr-link]` comment when native linkage is unavailable or cannot be verified.
 - If the provider has no native branch or PR development-linkage surface, continue without linkage and mention that the provider was skipped.
 
 Using the general-purpose agent in Team Lead session, Determine which flow applies:
@@ -91,7 +97,14 @@ IF it is a Fix (bug), execute the Reproduce sub-flow FIRST:
    1. Write a simple API client and call the offending API
    2. Start the server on localhost and use the Playwright CLI or Chrome DevTools
 
-Using the general-purpose agent in Team Lead session, determine how you will know that the task is fully complete
+Using the general-purpose agent in Team Lead session, determine how you will know that the task is fully complete. Write this as an **effective completion condition** — one an independent verifier could confirm from observed output alone, not from your assertion that it works. A strong condition has:
+
+- **One measurable end state** — a status code, an exit code, a row count, an observable UI state, an empty queue. Not "it looks right" or "the code is correct".
+- **A stated proof command that surfaces the evidence** — exactly how the running system is exercised so the result is observable (e.g. `curl … returns 200 with {…}`, "the Playwright run reaches the dashboard", "`SELECT … ` returns the new row"). Quality gates (test/typecheck/lint) do NOT count — they are prerequisites.
+- **Constraints that must hold** — anything that must not change on the way there (e.g. "no other endpoint's response changes", "no migration is dropped").
+
+This condition is the contract the Verify flow proves and records in the verification verdict (below); it is what the completion gate checks before the flow may stop.
+
 1. Examples
    1. Direct deploy the changes to dev and then Write a simple API client and call the offending API
    2. Start the server on localhost and then Use the Playwright CLI or Chrome DevTools
@@ -111,8 +124,8 @@ Every task MUST include this JSON metadata block. Do NOT omit `skills` (use `[]`
   "learnings": ["..."],
   "verification": {
     "type": "ui-recording|api-test|cli-test|database-check|manual-check|documentation",
-    "command": "the proof command — must run the actual system (NOT test/typecheck/lint, those are quality gates)",
-    "expected": "what success looks like — observable system behavior"
+    "command": "the proof command — must run the actual system and surface its result in the transcript (NOT test/typecheck/lint, those are quality gates). Phrase it so an independent verifier sees the evidence, e.g. `curl -s localhost:3000/health` not `check that health works`",
+    "expected": "the single measurable end state that proves success — observable system behavior (status code, response body, row count, UI state), not a subjective judgement"
   }
 }
 ```
@@ -126,15 +139,32 @@ Before shutting down the team, execute the Verify flow:
 
 1. Run quality gates: lint, typecheck, tests — all must pass. These are prerequisites, NOT verification.
 2. `verification-specialist`: verify locally by running the actual system and observing results (empirical proof that the change works). This is the real verification step.
+2a. **Record the verification verdict** — the independent, machine-readable proof that gates completion. The `verification-specialist` writes `${CLAUDE_PROJECT_DIR:-.}/.lisa/verification-status.json` with one entry per acceptance criterion, each carrying the proof command's observed evidence:
+
+    ```json
+    {
+      "plan": "<plan-name>",
+      "status": "pass | fail | blocked | in_progress",
+      "criteria": [
+        { "task": "<task id or title>", "criterion": "<the completion condition>", "status": "pass | fail", "evidence": "<the proof command run and the observed result>" }
+      ],
+      "updated_at": "<ISO8601 UTC>"
+    }
+    ```
+
+    Set `status: "pass"` only when every criterion is `pass` with real evidence (output from running the system, not a claim). The verdict must be judged by an agent that did NOT implement the change (the `verification-specialist`), never self-certified by the implementer. This is runtime scratch — it is gitignored and MUST NOT be committed (treat it like the secrets exclusion in the commit step).
+
+    On Claude, the `enforce-verification-gate.sh` Stop hook reads this file and **will not let the flow stop** until it shows a terminal, all-`pass` verdict — carrying over the non-bypassable completion gate of the `/goal` primitive, but checked deterministically against real evidence rather than by a transcript-only evaluator model. If you must stop before completion (a readiness gate failed, a blocker was found, a dependency is unresolved), write the verdict with `status: "blocked"` and the reason: that records the outcome and releases the gate instead of leaving it to spin. Other harnesses fall back to this prose obligation.
 3. Write e2e test encoding the verification
 4. Record Implement usage on the originating work artifact via `lisa:usage-accounting` so the work item (or other implementation-owned artifact) gains a direct `implement` usage entry in the canonical `## Lisa Usage` section. If the parent / child graph is already known, prefer `record_and_rollup` so ancestor totals refresh in the same write; otherwise still write the direct entry, and if runtime usage is unavailable, use `source: unavailable` with nullable token/cost fields instead of skipping the row.
 5. Commit ALL outstanding changes in logical batches on the branch (minus sensitive data/information) — not just changes made by the agent team. This includes pre-existing uncommitted changes that were on the branch before the plan started. Do NOT filter commits to only "task-related" files. If it shows up in git status, it gets committed (unless it contains secrets).
 6. Push the changes - if any pre-push hook blocks you, create a task for the agent team to fix the error/problem whether it was pre-existing or not
 7. Open a pull request with auto-merge on via `lisa:git-submit-pr`, targeting the **base branch resolved from the ticket's environment** (`target_branch=<base>`, per the branch step above), and including the work-item ref when one exists so the PR can be linked natively to the source issue.
+7a. Confirm two-way linkage before treating PR submission as complete: the PR body/title/branch must reference the work item, and the work item must have either a verified native PR link or a single managed `[lisa-pr-link]` fallback comment from `lisa:tracker-sync`.
 8. PR Watch Loop: Monitor the PR using `git-submit-pr`'s drive-to-merge behavior. Create a task for the agent team to resolve any code review comments by either implementing the suggestions or commenting why they should not be implemented and close the comment. Fix any failing checks and repush. If the PR is `BEHIND`, blocked by stale review state, or cannot enable auto-merge, follow the harness-agnostic `git-submit-pr` re-sync, review-gate, and direct-merge fallback loop until the PR is actually merged or a blocking failure is surfaced.
-9. Merge the PR
+9. Merge the PR, then refresh the ticket-side backlink with `lisa:tracker-sync <work_item_ref> pr-merged pr_url=<url> merge_sha=<sha> tracker_provider=<provider>` when a work item exists.
 10. Monitor the deploy action that triggers automatically from the successful merge
 11. If deploy fails, create a task for the agent team to fix the failure, open a new PR and then go back to step 7
-12. Remote verification: `verification-specialist` verifies in target environment (same checks as local verification, but on remote)
+12. Remote verification: `verification-specialist` verifies in target environment (same checks as local verification, but on remote), and refreshes the verdict (step 2a) to reflect the remote result.
 13. `ops-specialist`: post-deploy health check, monitor for errors in first minutes
-14. If remote verification fails, create a task for the agent team to find out why it failed, fix it and return to step 5 (repeat until you get all the way through)
+14. If remote verification fails, create a task for the agent team to find out why it failed, fix it and return to step 5. **Bound this loop**: after a small number of full fix→deploy→reverify cycles without reaching a passing remote verdict (treat ~3 as the ceiling unless the work item states otherwise), stop retrying — file a build-ready fix ticket, write the verdict with `status: "blocked"` and the diagnosis, and move the work item to blocked rather than looping indefinitely. The completion gate releases on a `blocked` verdict, so the flow ends with a recorded outcome instead of a silent spin or a self-declared success.
