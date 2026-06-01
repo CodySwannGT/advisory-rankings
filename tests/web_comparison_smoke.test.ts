@@ -41,6 +41,7 @@ interface ComparisonPayload {
 }
 
 interface ComparisonItem {
+  readonly articles?: readonly unknown[];
   readonly attribution?: Readonly<Record<string, unknown>>;
   readonly career?: readonly unknown[];
   readonly dataConfidence?: Readonly<Record<string, unknown>>;
@@ -155,6 +156,19 @@ browserDescribe(
 );
 
 /**
+ * Fetches a backend resource, asserting a successful response before the body
+ * is parsed so a failed request surfaces as a clean assertion rather than a
+ * parse error.
+ * @param url - Backend resource URL.
+ * @returns Parsed JSON payload.
+ */
+async function fetchOkJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  expect(response.ok).toBe(true);
+  return (await response.json()) as T;
+}
+
+/**
  * Finds two real feed advisor IDs whose comparison payload includes a
  * BrokerCheck snapshot, proving the UI can render required source attribution.
  * @returns Advisor IDs suitable for a comparison route.
@@ -162,8 +176,7 @@ browserDescribe(
 async function comparisonIdsWithBrokerCheck(): Promise<{
   readonly ids: readonly string[];
 }> {
-  const feedResponse = await fetch(`${DEV_BACKEND}/Feed`);
-  const feed = (await feedResponse.json()) as FeedPayload;
+  const feed = await fetchOkJson<FeedPayload>(`${DEV_BACKEND}/Feed`);
   const ids = [
     ...new Set(
       (feed.items ?? [])
@@ -172,7 +185,6 @@ async function comparisonIdsWithBrokerCheck(): Promise<{
         .filter((id): id is string => Boolean(id))
     ),
   ];
-  expect(feedResponse.ok).toBe(true);
 
   for (const pair of adjacentPairs(ids)) {
     const payload = await comparisonPayload(pair);
