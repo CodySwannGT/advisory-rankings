@@ -27,6 +27,7 @@ import {
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
+import { privateOverlayMount } from "./compare-private-overlay.js";
 
 /**
  *
@@ -142,7 +143,8 @@ function renderComparison(
       title: "Due diligence evidence",
       body: comparisonTable(payload.items),
       attrs: { class: "comparison-card" },
-    })
+    }),
+    privateOverlayMount(payload.items)
   );
 }
 

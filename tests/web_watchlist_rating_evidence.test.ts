@@ -14,7 +14,9 @@ import {
   RATING_ROUTE,
   routeAdvisor,
   routeAuth,
+  routeComparison,
   routeRating,
+  routeWatchlists,
   SHOTS,
   startStaticServer,
   WATCHLISTS_ROUTE,
@@ -29,6 +31,8 @@ const browserDescribe =
 
 const NOTE_RETAIN_FOR_REVIEW = "retain for review";
 const REVIEW_TEXT_STRONG_FIT = "Strong fit for recruiting follow-up.";
+const COMPARE_PRIVATE_NOTE = "priority retention call";
+const COMPARISON_PRIVATE_SELECTOR = ".comparison-private";
 
 let baseUrl = "";
 
@@ -143,6 +147,65 @@ browserDescribe("watchlist and rating evidence (#232)", () => {
       await page.close();
     }
   });
+
+  it("renders comparison private overlay only for signed-in owners", async () => {
+    const page = await browser.newPage();
+    try {
+      await routeAuth(page, true);
+      await routeComparison(page);
+      await routeWatchlists(page, () => undefined, comparisonLists());
+      await routeComparisonRatings(page);
+
+      await page.goto(
+        `${baseUrl}/compare.html?ids=${ADVISOR_ID},advisor-watch-2`,
+        {
+          waitUntil: "domcontentloaded",
+        }
+      );
+
+      await page
+        .locator(COMPARISON_PRIVATE_SELECTOR)
+        .getByText(COMPARE_PRIVATE_NOTE)
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator(COMPARISON_PRIVATE_SELECTOR)
+        .getByText("Overall")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator(COMPARISON_PRIVATE_SELECTOR)
+        .getByText(REVIEW_TEXT_STRONG_FIT)
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await captureViewports(page, "issue-813-private-overlay-auth");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("hides comparison private overlay when signed out", async () => {
+    const page = await browser.newPage();
+    try {
+      const privateRequests: string[] = [];
+      await routeAuth(page, false);
+      await routeComparison(page);
+      await routePrivateRequestTracker(page, privateRequests);
+
+      await page.goto(
+        `${baseUrl}/compare.html?ids=${ADVISOR_ID},advisor-watch-2`,
+        {
+          waitUntil: "domcontentloaded",
+        }
+      );
+      await page.locator(".comparison-table").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      expect(await page.locator(COMPARISON_PRIVATE_SELECTOR).count()).toBe(0);
+      expect(privateRequests).toHaveLength(0);
+      await captureViewports(page, "issue-813-private-overlay-signed-out");
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 function mutableLists(): ListFixture[] {
@@ -161,6 +224,61 @@ function mutableLists(): ListFixture[] {
       ],
     },
   ];
+}
+
+function comparisonLists(): ListFixture[] {
+  return [
+    {
+      id: "list-compare",
+      name: LIST_NAME,
+      entries: [
+        {
+          id: "entry-compare",
+          listId: "list-compare",
+          advisorId: ADVISOR_ID,
+          rank: 1,
+          note: COMPARE_PRIVATE_NOTE,
+        },
+      ],
+    },
+  ];
+}
+
+async function routeComparisonRatings(page: Page): Promise<void> {
+  await page.route(RATING_ROUTE, async route => {
+    const advisorId = new URL(route.request().url()).pathname
+      .split("/")
+      .filter(Boolean)
+      .at(-1);
+    await route.fulfill({
+      json: {
+        authenticated: true,
+        rating:
+          advisorId === ADVISOR_ID
+            ? {
+                advisorId: ADVISOR_ID,
+                ratingInt: 5,
+                responsiveness: 4,
+                reviewText: REVIEW_TEXT_STRONG_FIT,
+              }
+            : null,
+      },
+    });
+  });
+}
+
+async function routePrivateRequestTracker(
+  page: Page,
+  requests: string[]
+): Promise<void> {
+  await page.route(WATCHLISTS_ROUTE, async route => {
+    requests.push(route.request().url());
+    await route.fulfill({ json: { authenticated: false, lists: [] } });
+  });
+  await page.route(RATING_ROUTE, async route => {
+    requests.push(route.request().url());
+    await route.fulfill({ json: { authenticated: false, rating: null } });
+  });
 }
 
 async function createWatchlist(page: Page): Promise<void> {
@@ -235,11 +353,11 @@ async function persistRankAndNote(
   );
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () =>
+    expectedNote =>
       document.querySelector<HTMLInputElement>(
         '.watchlist-firm-row[data-advisor-id="advisor-b"] input[name="note"]'
-      )?.value === NOTE_RETAIN_FOR_REVIEW,
-    undefined,
+      )?.value === expectedNote,
+    NOTE_RETAIN_FOR_REVIEW,
     { timeout: QUICK_TIMEOUT }
   );
 }
@@ -268,14 +386,14 @@ async function persistRating(
     waitUntil: "domcontentloaded",
   });
   await page.waitForFunction(
-    () =>
+    expectedReview =>
       document.querySelector<HTMLInputElement>(
         '.private-rating-form input[name="ratingInt"]'
       )?.value === "5" &&
       document.querySelector<HTMLTextAreaElement>(
         '.private-rating-form textarea[name="reviewText"]'
-      )?.value === REVIEW_TEXT_STRONG_FIT,
-    undefined,
+      )?.value === expectedReview,
+    REVIEW_TEXT_STRONG_FIT,
     { timeout: QUICK_TIMEOUT }
   );
 }
