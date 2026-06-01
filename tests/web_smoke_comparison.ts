@@ -13,6 +13,8 @@ import {
 
 const COMPARISON_TABLE_SELECTOR = ".comparison-table";
 const COMPARISON_ROW_SELECTOR = ".comparison-table tbody tr";
+const BROKERCHECK_ATTRIBUTION_SELECTOR = ".comparison-source-attribution";
+const BROKERCHECK_ATTRIBUTION_TEXT = "FINRA BrokerCheck";
 const DESKTOP_SHOT = "comparison-ui-desktop";
 const MOBILE_SHOT = "comparison-ui-mobile";
 
@@ -83,6 +85,11 @@ export async function smokeComparison(
       "compare: desktop renders neutral missing states",
       `states ${desktop.neutralMissingStates}`
     ),
+    check(
+      desktop.brokerCheckAttributionCount >= 1,
+      "compare: desktop renders BrokerCheck attribution",
+      `attributions ${desktop.brokerCheckAttributionCount}`
+    ),
     ...(await closeWithChecks(mobileContext, [
       check(
         mobile.scrollWidth <= mobile.clientWidth,
@@ -98,6 +105,11 @@ export async function smokeComparison(
         mobile.rowCount >= 6,
         "compare: mobile renders all diligence sections",
         `rows ${mobile.rowCount}`
+      ),
+      check(
+        mobile.brokerCheckAttributionCount >= 1,
+        "compare: mobile renders BrokerCheck attribution",
+        `attributions ${mobile.brokerCheckAttributionCount}`
       ),
     ])),
   ];
@@ -129,10 +141,14 @@ async function feedAdvisorIds(page: Page): Promise<readonly string[]> {
  */
 async function comparisonMetrics(page: Page) {
   return await page.evaluate(
-    ({ tableSelector, rowSelector }) => {
+    ({ attributionSelector, attributionText, tableSelector, rowSelector }) => {
       const table = document.querySelector(tableSelector);
       return {
         h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
+        brokerCheckAttributionCount: [
+          ...document.querySelectorAll(attributionSelector),
+        ].filter(element => element.textContent?.includes(attributionText))
+          .length,
         rowCount: document.querySelectorAll(rowSelector).length,
         neutralMissingStates:
           document.body.textContent?.match(/No .* evidence available/g)
@@ -144,6 +160,8 @@ async function comparisonMetrics(page: Page) {
       };
     },
     {
+      attributionSelector: BROKERCHECK_ATTRIBUTION_SELECTOR,
+      attributionText: BROKERCHECK_ATTRIBUTION_TEXT,
       tableSelector: COMPARISON_TABLE_SELECTOR,
       rowSelector: COMPARISON_ROW_SELECTOR,
     }
