@@ -47,6 +47,7 @@ import { smokeRecruiting } from "./web_smoke_recruiting.js";
 import { smokeRankings } from "./web_smoke_rankings.js";
 import { smokePublicPageHeadings } from "./web_smoke_headings.js";
 import { smokeHighSignalEvidence } from "./web_smoke_high_signal_evidence.js";
+import { smokeComparison } from "./web_smoke_comparison.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -329,6 +330,7 @@ async function runScenarios(
     ...(await smokeFeed(page)),
     ...(await smokeRecruiting(page)),
     ...(await smokeRankings(page, browser, extraHTTPHeaders)),
+    ...(await smokeComparison(page, browser, extraHTTPHeaders)),
     ...(await smokeGlobalSearch(page)),
     ...(await smokeGlobalSearchMobile(browser, extraHTTPHeaders)),
     ...(await smokeFirmAndAdvisor(page)),

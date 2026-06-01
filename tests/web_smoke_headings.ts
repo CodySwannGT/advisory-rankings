@@ -62,6 +62,12 @@ const HEADING_ROUTES: readonly HeadingRoute[] = [
     readySelector: ".event-card.disclosure",
     title: "Compliance events",
   },
+  {
+    label: "compare",
+    path: "/compare?ids=advisor-a,advisor-b",
+    readySelector: ".comparison-table",
+    title: "Advisor comparison",
+  },
 ];
 
 /**

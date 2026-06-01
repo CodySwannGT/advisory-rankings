@@ -1769,6 +1769,89 @@ body.drawer-open .nav .nav-scrim {
   font-weight: 500;
 }
 
+.comparison-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ab-space-3);
+  margin: 0 0 var(--ab-space-4);
+}
+
+.comparison-status p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.comparison-card .card-body {
+  padding: 0;
+}
+
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: var(--ab-space-4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.comparison-table thead th {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.comparison-table tbody th {
+  width: 180px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.comparison-table td {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.comparison-name,
+.comparison-firm {
+  display: block;
+}
+
+.comparison-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.comparison-firm {
+  margin-top: var(--ab-space-1);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .comparison-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comparison-table {
+    min-width: 640px;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: var(--ab-space-3);
+  }
+}
+
 footer.site-footer {
   text-align: center;
   color: var(--text-muted);
