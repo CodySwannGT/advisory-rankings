@@ -332,6 +332,25 @@ type Disclosure @table @export {
   updatedAt: Date @updatedTime
 }
 
+type RegulatoryDiscrepancy @table @export {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  fieldName: String! @indexed
+  advisorHubSourceType: String @indexed
+  advisorHubSourceRef: String
+  advisorHubValue: String
+  brokerCheckSourceType: String @indexed
+  brokerCheckSourceRef: String
+  brokerCheckValue: String
+  sourceMetadata: String
+  severity: String! @indexed
+  status: String! @indexed
+  reviewerNote: String
+  reviewedAt: Date
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
 type DisclosureCluster @table @export {
   id: ID @primaryKey
   rootEventDescription: String

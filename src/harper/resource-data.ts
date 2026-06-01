@@ -23,6 +23,7 @@ import type {
   OutsideBusinessActivityRow,
   RankingEntryRow,
   RankingRow,
+  RegulatoryDiscrepancyRow,
   RecruitingDealQuoteRow,
   RegistrationApplicationRow,
   SanctionRow,
@@ -51,6 +52,7 @@ export const RESOURCE_TABLE_SPECS = [
   ["transitions", "TransitionEvent"],
   ["deals", "RecruitingDealQuote"],
   ["disclosures", "Disclosure"],
+  ["regulatoryDiscrepancies", "RegulatoryDiscrepancy", true],
   ["sanctions", "Sanction"],
   ["obas", "OutsideBusinessActivity"],
   ["clusters", "DisclosureCluster"],
@@ -95,6 +97,7 @@ export interface ResourceTableRows {
   readonly transitions: readonly TransitionEventRow[];
   readonly deals: readonly RecruitingDealQuoteRow[];
   readonly disclosures: readonly DisclosureRow[];
+  readonly regulatoryDiscrepancies: readonly RegulatoryDiscrepancyRow[];
   readonly sanctions: readonly SanctionRow[];
   readonly obas: readonly OutsideBusinessActivityRow[];
   readonly clusters: readonly DisclosureClusterRow[];
@@ -265,6 +268,9 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
     transitions: at<TransitionEventRow>("transitions"),
     deals: at<RecruitingDealQuoteRow>("deals"),
     disclosures: at<DisclosureRow>("disclosures"),
+    regulatoryDiscrepancies: at<RegulatoryDiscrepancyRow>(
+      "regulatoryDiscrepancies"
+    ),
     sanctions: at<SanctionRow>("sanctions"),
     obas: at<OutsideBusinessActivityRow>("obas"),
     clusters: at<DisclosureClusterRow>("clusters"),

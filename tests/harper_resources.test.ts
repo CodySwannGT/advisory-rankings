@@ -174,6 +174,7 @@ const table = (name: string) => ({
   OutsideBusinessActivity: table("OutsideBusinessActivity"),
   Ranking: table("Ranking"),
   RankingEntry: table("RankingEntry"),
+  RegulatoryDiscrepancy: table("RegulatoryDiscrepancy"),
   AdvisorResearchCheck: table("AdvisorResearchCheck"),
   RecruitingDealQuote: table("RecruitingDealQuote"),
   RegistrationApplication: table("RegistrationApplication"),
