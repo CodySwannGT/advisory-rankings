@@ -17,6 +17,7 @@ import {
 } from "./molecules.js";
 import { ChipRow, EntityList, ScrollableTable } from "./organisms-core.js";
 import { formatInlineLabel } from "./organisms-search.js";
+import type { SanctionPillBits } from "./molecules.js";
 import type { DesignSystemComponent } from "./organisms-events-types.js";
 
 /**
@@ -28,7 +29,7 @@ import type { DesignSystemComponent } from "./organisms-events-types.js";
 interface ProducerAdapters {
   readonly PostHeader: DesignSystemComponent;
   readonly EntityRow: DesignSystemComponent;
-  readonly SanctionPill: DesignSystemComponent;
+  readonly SanctionPill: (bits: SanctionPillBits) => HTMLElement;
   readonly DealStrip: DesignSystemComponent;
   readonly EventStat: DesignSystemComponent;
   readonly FirmArrow: DesignSystemComponent;

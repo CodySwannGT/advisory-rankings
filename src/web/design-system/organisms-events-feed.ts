@@ -188,7 +188,7 @@ function sanctionBits(
   sanction: SanctionRow,
   humanize: Humanize,
   fmtMoney: FmtMoney | undefined
-): Readonly<Record<string, unknown>> {
+): readonly string[] {
   const fmt = fmtMoney ?? defaultFmtMoney;
   const bits: ReadonlyArray<string | null | undefined> = [
     humanize(sanction.sanctionType),
@@ -196,7 +196,7 @@ function sanctionBits(
     sanction.durationMonths != null ? `${sanction.durationMonths}mo` : null,
     sanction.jurisdiction ? `(${sanction.jurisdiction})` : null,
   ];
-  return { bits: bits.filter((bit): bit is string => bit != null) };
+  return bits.filter((bit): bit is string => bit != null);
 }
 
 // ─── FeedPostCard ─────────────────────────────────────────────
