@@ -20,11 +20,16 @@ cannot verify yourself is noise — demote it honestly.
 - **`prd_ready=true|false`** (default **false**) — the PRD-lifecycle state for the PRDs this run
   creates. `false` → created in the source's **draft** state for human review. `true` → created
   **prd-ready** so the PRD side of `lisa:intake` auto-claims them. Passed straight through to
-  `lisa:research` (which maps it to `lisa:prd-source-write`'s `initial_role`).
+  `lisa:research` (which maps it to `lisa:prd-source-write`'s `initial_role`) only after the PRD queue
+  pressure gate allows auto-ready writes.
 - **`max_prds=<n>|all`** (default **1**) — how many build-ready ideas become PRDs this run. Default
   creates **one** PRD (the single top-ranked idea), because `lisa:research` is a heavy full flow.
   `max_prds=3` creates the top three; `max_prds=all` creates one per build-ready idea. Discovery
   Spikes and Rejected ideas are never turned into PRDs regardless of `max_prds`.
+- **`fixture=<path>`** (optional, verification-only) — a deterministic host-project fixture used
+  for idempotency verification. When present, read the fixture before ranking and honor its declared
+  single persona, single idea, existing-fit anchor, and expected dedupe marker. Do not use this
+  parameter for normal ideation runs.
 
 ## When to use
 
@@ -143,6 +148,53 @@ Rank Practical Ideas by **persona value, feasibility, verification clarity, and 
 select the creation set by `max_prds` (default **1** → the single top-ranked idea; `<n>` → top n;
 `all` → every Practical Idea). Spikes and Rejected ideas are reported but never selected.
 
+## Step 5.5 — Block auto-ready writes when the PRD queue has pressure
+
+This step runs **only** when `prd_ready=true`. A draft run (`prd_ready=false`) skips this gate and
+continues to Step 6, because draft PRDs do not create immediate PRD-intake pickup pressure.
+
+Before invoking `lisa:research` for any selected idea, inspect the configured PRD source queue with
+the same PRD reader contract used by `/lisa:queue-status` and evaluate it with
+`evaluatePrdQueuePressure` from `plugins/lisa/scripts/queue-status-prd-readers.mjs` (source:
+`plugins/src/base/scripts/queue-status-prd-readers.mjs`). Resolve the queue from `.lisa.config.json`
+the same way `lisa:intake` resolves the PRD side, and pass the matching queue argument in the
+blocked outcome (for example, `github intake_mode=prd`).
+
+Queue pressure is any unresolved PRD lifecycle work that would make another auto-ready PRD compete
+with existing intake work. Treat at least these roles as pressure when the helper reports them:
+`prd-ready`, `prd-in-review`, `prd-blocked`, unresolved `prd-ticketed`, and source-reader failures or
+misconfiguration snapshots. `prd-shipped` / `prd-verified` terminal history is not pressure unless the
+reader helper explicitly reports it as unresolved.
+
+If the helper returns `allowed: false`, stop before any `lisa:research`, `lisa:prd-source-write`, or
+vendor PRD writer invocation. Emit **PRDs Created** as a blocked outcome, not as an empty success or a
+silent idle run. The blocked outcome must include:
+
+- `source` and `tracker` from `.lisa.config.json`;
+- the decisive PRD lifecycle `role`;
+- the blocking PRD item `ref` and `url`, when the snapshot supplies them;
+- the smallest next action, preferring the helper's `nextStep` and otherwise using
+  `/lisa:intake <PRD queue>`;
+- a clear statement that no research or PRD source write was invoked.
+
+Use this output shape so recurring automations can surface a useful next step without digging through
+debug logs:
+
+```text
+## PRDs Created
+
+Blocked: PRD queue pressure prevents auto-ready creation.
+- source: <source>
+- tracker: <tracker>
+- role: <decisive role>
+- item: <ref or "unavailable"> <url when available>
+- next action: <helper nextStep or /lisa:intake <PRD queue>>
+- write invoked: no
+```
+
+If the helper returns `allowed: true`, continue to Step 6 normally and keep the existing draft/ready
+creation behavior unchanged.
+
 ## Step 6 — Create a PRD per selected idea (via lisa:research)
 
 For each idea in the creation set, invoke `/lisa:research` with:
@@ -151,11 +203,37 @@ For each idea in the creation set, invoke `/lisa:research` with:
   grounding and the empirical verification plan),
 - `prd_ready` (this run's flag — `lisa:research` maps it to draft vs prd-ready),
 - a stable **dedupe marker** (see below) so a re-run references the existing PRD instead of creating
-  a duplicate.
+  a duplicate,
+- a structured `ideation_ledger_payload` handoff containing the selected marker, automation id and
+  memory path when available, persona names, persona evidence references, rejected overlap
+  candidates, repo identity, `prd_ready`, selected idea title/key, and the expected empirical
+  verification artifact. This payload is the only ideation-run metadata channel between
+  `project-ideation`, `research`, `prd-source-write`, and the vendor writer; keep GitHub-specific
+  rendering out of this skill.
 
 `lisa:research` synthesizes the PRD and creates it in the configured source via
 `lisa:prd-source-write`. `project-ideation` never writes to the source directly — it delegates, so
 the PRD source stays switchable per project. Capture each returned PRD ref / URL / role / outcome.
+
+### Optional Codex automation memory
+
+When the run has a Codex automation id or memory path, maintain a concise local advisory ledger after
+the PRD source write returns. Resolve the memory path in this order:
+
+1. explicit `memory_file=<path>` or `automation_memory=<path>` argument, when supplied;
+2. `$CODEX_AUTOMATION_MEMORY`, when set;
+3. `$CODEX_HOME/automations/<automation_id>/memory.md`, when `automation_id=<id>` or
+   `$CODEX_AUTOMATION_ID` is available.
+
+Create the parent directory and `memory.md` if missing. Write one concise run entry keyed by the
+dedupe marker and run timestamp. The entry must include the marker, PRD URL/ref, outcome
+(`created | reused | updated | blocked`), lifecycle role (`draft | ready | blocked` or the returned
+source role), and `source_agreement` (`github-source-wins`, `memory-created`, `memory-updated`, or
+`memory-missing-runtime`). If memory says one thing but the PRD source search finds a matching open
+PRD, GitHub/source truth wins: reuse the source PRD and update memory rather than creating a
+duplicate. Keep memory advisory only; never use it to override lifecycle labels, source marker
+matches, or the PRD source writer's returned role. Do not store secrets, tokens, full PRD bodies, or
+private source excerpts in memory.
 
 ### Dedupe marker (stable, never title-based)
 
@@ -232,3 +310,6 @@ Use the markdown examples in `examples/` as shape references for the idea report
   requirements.
 - `unavailable-data-rejection.md` — naming missing private/paid/unavailable sources when demoting.
 - `evidence-card-format.md` — the required evidence fields every Practical Idea card must carry.
+- `idempotency-verification-harness.md` — deterministic fixture and script procedure proving that
+  repeated `prd_ready=true` ideation keeps the open GitHub marker count at one, including the
+  missing-memory rerun variant.

@@ -1,6 +1,6 @@
 ---
 name: lisa-exploratory-qa
-description: "Run a Playwright-backed exploratory QA pass: audit the app like a human, find user-noticeable bugs, usability issues, and gaps in automated test coverage, and file each finding as a tracked work item via lisa:tracker-write. The optional ready flag marks bug/suggestion tickets build-ready (auto-picked-up by lisa:intake) or leaves them in the backlog for human triage (default); missing-test tickets are always build-ready."
+description: "Run a first-time-user exploratory QA walkthrough: experience the app like a brand-new human user, clicking through to find anything confusing, broken, or hard to understand (human-facing jargon, contextless extracted data, machine-style labels, slow or unclear loads, late meaningful content, cramped or cut-off UI, inconsistent UX, awkward scroll behavior) across all breakpoints, and file each finding (bug or usability issue) as a tracked work item via lisa:tracker-write. The optional ready flag marks tickets build-ready (auto-picked-up by lisa:intake) or leaves them in the backlog for human triage (default). For gaps in the automated Playwright suite, use e2e-coverage-gaps instead."
 ---
 ## Lisa Command Compatibility
 
@@ -10,4 +10,4 @@ description: "Run a Playwright-backed exploratory QA pass: audit the app like a 
 - Claude argument hint: `[target-url | env] [ready=true|false]`
 - Claude allowed tools: `Skill`. Codex tool access is governed by the active Codex runtime and project policy.
 
-Use the /lisa-rails:exploratory-qa skill to run a human-style exploratory QA pass informed by the existing Playwright suite, then file every finding (bugs, usability issues, missing Playwright tests) as a tracked work item via lisa:tracker-write — bug/suggestion tickets build-ready or in triage per the ready flag (default: triage), missing-test tickets always build-ready. Use the user's surrounding request as this command's arguments.
+Use the /lisa-rails:exploratory-qa skill to experience the app like a brand-new first-time user — landing cold on the home page and clicking through to find anything confusing, broken, or hard to understand across all breakpoints — and file each finding (bugs, usability/clarity issues) as a tracked work item via lisa:tracker-write, build-ready or in triage per the ready flag (default: triage). For automated Playwright coverage gaps, use /lisa-rails:e2e-coverage-gaps. Use the user's surrounding request as this command's arguments.

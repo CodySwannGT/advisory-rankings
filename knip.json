@@ -18,8 +18,6 @@
     "harper-app/web/**/*.js"
   ],
   "ignoreIssues": {
-    "src/types/advisor-profile.ts": ["types"],
-    "src/types/harper-resource.ts": ["types"],
     "src/types/harper-schema.ts": ["types"]
   },
   "ignoreDependencies": ["@types/node", "@vitest/coverage-v8"],

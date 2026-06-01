@@ -31,6 +31,7 @@ This skill **suggests** transitions but does not auto-transition the native Line
 
 - `<IDENTIFIER>` is the Linear Issue identifier (e.g. `ENG-123`). If not provided, the skill searches the active plan file for a linked Linear Issue.
 - `<milestone>` is one of `plan-created`, `implementation-in-progress`, `pr-ready`, `pr-merged`.
+- Optional tokens include `pr_url=<url>` for the live pull request and `merge_sha=<sha>` once merged.
 
 ## Phase 1 — Resolve Issue
 
@@ -66,6 +67,16 @@ Next: implementation begins. Suggested status: **Todo** (label: `status:ready`).
 
 Call `mcp__linear-server__save_comment({issueId: <id>, body: <comment>})`.
 
+## Phase 3b — Ensure PR Backlink
+
+When `$ARGUMENTS` includes `pr_url=<url>` for `pr-ready` or `pr-merged`, ensure the Linear Issue has a durable ticket -> PR link:
+
+1. Prefer Linear's native GitHub attachment / pull request link when the integration has attached the PR through the branch name, PR title, or PR body issue identifier. Verify by re-reading the Issue and its attachments / relations where the Linear access layer exposes them.
+2. If native linkage is unavailable, unconfigured, cross-system, or cannot be verified, create or update a single managed Linear comment containing the PR URL. The comment must start with `[lisa-pr-link]` and include the milestone (`pr-ready` or `pr-merged`) and merge SHA when available.
+3. Keep the fallback idempotent: read existing comments where the access layer exposes them, find the `[lisa-pr-link]` comment for the same PR URL, and update/skip it instead of appending duplicates. If comment update is unavailable, skip when an identical managed comment already exists and otherwise add exactly one replacement comment with the stable marker.
+
+The PR branch/title/body identifier is the PR -> Linear side. This phase is the required Linear -> PR side.
+
 ## Phase 4 — Update Status Label (when caller requests)
 
 If the caller passes `--update-label`, update the `status:*` label set via `mcp__linear-server__save_issue`:
@@ -87,21 +98,22 @@ When the caller passes `--rollup`, this skill **derives a parent/container's `st
 
 **Resolve the child set the same way `lisa:linear-read-issue` does** — `mcp__linear-server__list_issues({project: <id>})` for a Project's Issues, or `mcp__linear-server__get_issue` per child for an Issue's sub-Issues (via `parentId`). Capture each child's `status:*` label. If the item has **no** children it is a leaf — rollup is N/A; behave as a normal milestone sync.
 
-**Evaluate the required children in priority order and take the first match** (canonical roles from `config-resolution`; Linear label map is `status:blocked`, `status:in-progress`, `status:code-review`, `status:done`):
+**Evaluate the required children over the env ladder `in-progress < dev < staging < production` (the ordered keys of the Linear env-keyed `done` map, e.g. `status:on-dev < status:on-stg < status:done`) and take the first match** (canonical roles from `config-resolution`; Linear label map is `status:blocked`, `status:in-progress`, `status:code-review`, env-keyed `done`):
 
 | If among the required child leaves… | Derived parent role | Linear label |
 |---|---|---|
 | any child carries `status:blocked` | `blocked` | `status:blocked` |
-| else any child carries `status:in-progress` **or** `status:code-review` | `claimed` | `status:in-progress` |
-| else **all** required children carry `status:done` | `done` | the configured terminal `done` label |
+| else **every** required child has shipped to some env (each at a `done`-map label, e.g. `status:on-dev`/`status:on-stg`/`status:done`) | `done[min-env]` | the **least-advanced** env label among them (all `status:on-stg` → `status:on-stg`; mixed dev+staging → `status:on-dev`; all production → `status:done`) |
+| else any child has **started** (`status:in-progress` / `status:code-review`, or shipped to an env while a sibling has not) | `claimed` | `status:in-progress` |
 | else (children exist, none started) | — | unchanged — parent keeps its non-ready container label |
 
 - **Blocked dominates** — one blocked child surfaces `status:blocked` on the parent even while siblings progress.
+- **Least-advanced env wins** — the parent reaches an env only when every required child has reached at least that env; it never sits ahead of its laggard child. Native completion (moving the workflow `state` to Done) fires only when the resolved env is the production `status:done`, never at `status:on-dev`/`status:on-stg`.
 - **"Required" children only** — won't-do / optional (e.g. `Canceled`) children do not hold the parent open.
-- **Recursive** — a Project reaches `status:done` only when its Issues have themselves rolled up to `status:done`. Evaluate bottom-up.
+- **Recursive** — a Project reaches an env only when its Issues have themselves rolled up to at least that env. Evaluate bottom-up.
 - **Never set the parent to `status:ready`** — `ready` is leaf-only. Rollup only moves the parent between non-ready container labels.
 
-**Single-environment collapse (this repo).** The terminal `done` resolves via the env-keyed `done` logic in `config-resolution`. In this repo `deploy.branches` declares only `production: main`, so `done` collapses to the single `status:done` label and the lifecycle is `status:ready → status:in-progress → status:code-review → status:done` with **no** dev/staging promotion hops; the rollup never resolves a dev or staging `done`. Multi-environment projects keep the env-keyed map.
+**Single-environment collapse (this repo).** The env rungs resolve via the env-keyed `done` logic in `config-resolution`. In this repo `deploy.branches` declares only `production: main`, so `done` collapses to the single `status:done` label, the only env rung is production, and the lifecycle is `status:ready → status:in-progress → status:code-review → status:done` with **no** dev/staging promotion hops; the rollup never resolves a dev or staging `done`. Multi-environment projects keep the env-keyed map and roll a parent up to intermediate env labels (`status:on-dev`/`status:on-stg`).
 
 **Apply the derived label** via `mcp__linear-server__save_issue` (Project or Issue), removing the parent's existing `status:*` and adding the derived one so exactly one `status:*` label remains. Post an idempotent rollup comment naming the derived state and the child tally. The native Linear `state` is **not** auto-transitioned — only the `status:*` label, mirroring the `--update-label` rule. **Safe default:** if the derived terminal cannot be resolved (ambiguous required-set or unresolvable env `done`), do not guess — post the derived suggestion as a comment and leave the parent's label untouched.
 
@@ -112,3 +124,4 @@ When the caller passes `--rollup`, this skill **derives a parent/container's `st
 - Never post empty or minimal comments — if a milestone has no meaningful content, skip the post.
 - Do not delete prior milestone comments. They are the audit trail.
 - If `save_comment` fails, retry once. If it fails again, surface the error.
+- Pull request backlinks are mandatory when `pr_url=<url>` is present: native first, managed-comment fallback, never silently dropped.
