@@ -188,6 +188,23 @@ browserDescribe("watchlist management UI (#228)", () => {
 
     expect(new URL(page.url()).searchParams.get("ids")).toBe("adv-a,adv-b");
     await page.locator(".comparison-table").waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .locator(".comparison-source-attribution")
+      .getByText(/FINRA BrokerCheck/iu)
+      .first()
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    expect(
+      await page
+        .locator(
+          '.comparison-source-attribution a[href*="brokercheck.finra.org/terms"]'
+        )
+        .count()
+    ).toBe(2);
+    expect(
+      await page
+        .getByText("No BrokerCheck snapshot loaded for this advisor.")
+        .count()
+    ).toBe(2);
     await captureViewports(page, "issue-812-watchlist-seed-comparison");
     await page.close();
   });
@@ -264,7 +281,15 @@ function comparisonItem(id: string, index: number): unknown {
     regulatory: {
       disclosureCount: index,
       registrationApplications: [],
-      brokerCheckSnapshot: null,
+      brokerCheckSnapshot:
+        index === 0
+          ? {
+              subjectCrd: "12345",
+              fetchedAt: "2026-05-02T12:00:00.000Z",
+              disclosureCount: 1,
+              employmentCount: 2,
+            }
+          : null,
     },
     career: [{ roleTitle: "Advisor", firm: { name: `Firm ${index + 1}` } }],
     rankings: [],
