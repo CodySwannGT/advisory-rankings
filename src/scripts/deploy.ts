@@ -506,7 +506,18 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
 async function deployAndRestart(studio: StudioSession): Promise<boolean> {
   const result = await deployComponent(studio);
   if (result.status !== 200) return false;
-  if ((await restartDeployedService(studio)) !== 200) return false;
+  // The explicit Studio restart is best-effort: deploy_component already
+  // restarts the runtime (restart: true), and verifyRuntimeFreshness is the
+  // real correctness guard. Fabric returns 500 for the cluster-level `restart`
+  // op, so a non-200 here must not abort before the direct public-node
+  // fallback — that fallback is what updates the node smoke tests actually hit
+  // when replication is disconnected.
+  const restartStatus = await restartDeployedService(studio);
+  if (restartStatus !== 200) {
+    console.warn(
+      `  Studio restart returned ${restartStatus}; deploy_component already restarted the runtime, continuing`
+    );
+  }
   if (!hasReplicationFailures(result)) return true;
 
   console.warn(
