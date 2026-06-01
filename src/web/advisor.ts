@@ -28,6 +28,7 @@ import {
 } from "./design-system/index.js";
 import { privateRatingCard } from "./advisor-rating.js";
 import { addToWatchlistCard } from "./add-to-watchlist.js";
+import { compareEntryAction } from "./compare-entry.js";
 import {
   DetailNotFoundCard,
   PartialFailureCard,
@@ -298,6 +299,7 @@ function advisorCenterSections(
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
   return [
+    compareAdvisorCard(d.advisor.id),
     addToWatchlistCard(d.advisor.id),
     privateRatingCard(d.advisor.id),
     mobileEvidenceProfileSections(d),
@@ -341,6 +343,23 @@ function advisorCenterSections(
     }),
     PartialFailureCard("Coverage", d.articles),
   ];
+}
+
+/**
+ * Builds the public comparison entry point for this advisor.
+ * @param advisorId - Advisor id to add to `/compare?ids=...`.
+ * @returns Compare action card.
+ */
+function compareAdvisorCard(advisorId: string): HTMLElement {
+  return SectionCardComponent({
+    title: "Compare advisor",
+    attrs: { class: "compare-entry-card" },
+    body: compareEntryAction({
+      advisorId,
+      label: "Add to comparison",
+      className: "compare-entry-button--profile",
+    }),
+  });
 }
 
 /**

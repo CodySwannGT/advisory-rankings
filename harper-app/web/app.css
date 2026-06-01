@@ -1585,6 +1585,37 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-status {
   padding-top: 2px;
 }
+.compare-entry-card .card-body,
+.compare-entry-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.compare-entry-action {
+  min-width: 0;
+}
+.compare-entry-button {
+  white-space: nowrap;
+}
+.compare-entry-status {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.advisor-directory-row {
+  align-items: center;
+}
+.directory-row-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.directory-row-link:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
 .watchlist-body,
 .watchlist-entries {
   display: grid;
