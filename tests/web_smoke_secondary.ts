@@ -184,7 +184,7 @@ export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
  * @returns Article detail path, or an empty string if no provenance exists.
  */
 async function findArticleWithProvenance(page: Page): Promise<string> {
-  await smokeGoto(page, `${BASE}/`);
+  await smokeGoto(page, `${BASE}/?mode=event`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await revealFeedCard(page, TAYLOR_GROUP_TEXT);
   return (

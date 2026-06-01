@@ -52,6 +52,8 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const paginationChecks = await smokeFeedPagination(page);
+  await smokeGoto(page, `${BASE}/?mode=event`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await revealFeedCard(page, TAYLOR_GROUP_TEXT);
   await revealFeedSelector(page, DISCLOSURE_CARD_SELECTOR);
   await taylorCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -135,7 +137,7 @@ export async function smokeFirm(
     .filter({ hasText: "Cairnes" })
     .first();
 
-  await smokeGoto(page, `${BASE}/`);
+  await smokeGoto(page, `${BASE}/?mode=event`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await revealFeedCard(page, TAYLOR_GROUP_TEXT);
   await wellsChip.click();

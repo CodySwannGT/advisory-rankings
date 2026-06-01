@@ -18,7 +18,7 @@ import { revealFeedCard } from "./web_smoke_feed_pagination.js";
  * @returns Smoke assertions for the team profile.
  */
 export async function smokeTeam(page: Page): Promise<readonly Check[]> {
-  await smokeGoto(page, `${BASE}/`);
+  await smokeGoto(page, `${BASE}/?mode=event`);
   await smokeWaitForSelector(page, "article.card .post-headline");
   await revealFeedCard(page, "Taylor");
   await smokeWaitForSelector(page, ".chip.team");

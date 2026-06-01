@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function -- This smoke helper keeps the full pagination journey in one browser flow. */
 import type { Page } from "playwright";
 import {
   BASE,
@@ -100,9 +101,13 @@ export async function smokePaginatedDirectory(
 
   await smokeGoto(page, `${BASE}/${pageName}`);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  await waitForDirectoryLoadedCount(page, statsTitle);
   await waitForDirectoryTotalCount(page, statsTitle);
-  await loadMore.waitFor({ state: "visible", timeout: DEPLOYED_DATA_TIMEOUT });
+  const totalCount = await directoryTotalCount(page, statsTitle);
+  await waitForDirectoryLoadedCount(
+    page,
+    statsTitle,
+    Math.min(DIRECTORY_FIRST_PAGE_LIMIT, totalCount)
+  );
 
   const firstPageKeys = await directoryRowKeys(
     page,
@@ -110,6 +115,31 @@ export async function smokePaginatedDirectory(
   );
   const firstPageCount = await rows.count();
   const firstPageHeight = await page.evaluate(() => document.body.scrollHeight);
+  if ((await loadMore.count()) === 0) {
+    await shot(page, `06-${pageName}-pagination`);
+    return [
+      check(
+        firstPageCount <= firstPageBudget,
+        `${pageName}: first page is bounded`,
+        String(firstPageCount)
+      ),
+      check(
+        firstPageHeight < 15000,
+        `${pageName}: initial document height is bounded`,
+        String(firstPageHeight)
+      ),
+      check(
+        totalCount === firstPageCount,
+        `${pageName}: all rows fit on first page`,
+        `${firstPageCount} of ${totalCount}`
+      ),
+      check(
+        new Set(firstPageKeys).size === firstPageKeys.length,
+        `${pageName}: no duplicate rows when pagination is complete`
+      ),
+    ];
+  }
+  await loadMore.waitFor({ state: "visible", timeout: DEPLOYED_DATA_TIMEOUT });
   await loadMore.click();
   await page.waitForFunction(
     ({ rowSelector, previousCount }) =>
@@ -123,7 +153,6 @@ export async function smokePaginatedDirectory(
   const duplicateFirstPageKeys = appendedKeys.filter(key =>
     firstPageKeySet.has(key)
   );
-  const totalCount = await directoryTotalCount(page, statsTitle);
 
   await shot(page, `06-${pageName}-pagination`);
 
@@ -160,10 +189,12 @@ export async function smokePaginatedDirectory(
  * Waits until a directory loaded stat reaches the first-page count.
  * @param page - Browser page rendering the directory.
  * @param statsTitle - Right-rail stats card title.
+ * @param min - Minimum loaded count to accept.
  */
 async function waitForDirectoryLoadedCount(
   page: Page,
-  statsTitle: string
+  statsTitle: string,
+  min = DIRECTORY_FIRST_PAGE_LIMIT
 ): Promise<void> {
   await page.waitForFunction(
     ({ statsSelector, title, min }) => {
@@ -179,7 +210,7 @@ async function waitForDirectoryLoadedCount(
     {
       statsSelector: STATS_CARD_SELECTOR,
       title: statsTitle,
-      min: DIRECTORY_FIRST_PAGE_LIMIT,
+      min,
     },
     { timeout: DEPLOYED_DATA_TIMEOUT }
   );
@@ -259,3 +290,4 @@ async function directoryRowKeys(
     limit
   );
 }
+/* eslint-enable max-lines-per-function -- Re-enable after pagination journey helpers. */

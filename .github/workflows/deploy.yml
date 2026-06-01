@@ -129,12 +129,18 @@ jobs:
       - name: Build and deploy harper-app to Fabric
         run: bun run deploy
 
+      - name: Seed public smoke fixture
+        env:
+          HDB_TARGET_URL: ${{ env.HARPER_CLUSTER_URL }}
+        run: bun run seed:rest
+
       - name: Install Playwright Chromium browser
         run: bunx playwright install --with-deps chromium
 
       - name: Smoke-test the deployed UI
         env:
           BASE_URL: ${{ env.HARPER_CLUSTER_URL }}
+          SMOKE_SCOPE: core
         run: bun run smoke
 
       - name: Upload smoke screenshots on failure

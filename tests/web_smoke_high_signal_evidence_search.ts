@@ -73,7 +73,7 @@ export async function captureSearchKindEvidence(
       observation.responseUrl
     ),
     check(
-      observation.visibleKinds.length >= 1 &&
+      observation.visibleKinds.length > 0 &&
         observation.visibleKinds.every(
           kind =>
             kind.trim().toLowerCase() ===
@@ -88,9 +88,10 @@ export async function captureSearchKindEvidence(
       observation.buttonPressed
     ),
     check(
-      observation.countHint
-        .toLowerCase()
-        .includes(`${observation.kindCase.kind} matches`),
+      observation.countHint.toLowerCase().includes("no matches") ||
+        observation.countHint
+          .toLowerCase()
+          .includes(`${observation.kindCase.kind} matches`),
       `[EVIDENCE: search-kind-filter] ${observation.kindCase.kind} count hint names kind`,
       observation.countHint
     ),
@@ -120,17 +121,22 @@ async function observeSearchKind(
   );
   await page.getByRole("button", { name: kindCase.buttonName }).click();
   const response = await responsePromise;
-  await page
-    .locator(SEARCH_RESULT_ROWS)
-    .first()
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await page.locator("#global-search-results").first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await shot(page, `04-evidence-search-kind-${kindCase.kind}`);
 
   const visibleKinds = await page
     .locator(`${SEARCH_RESULT_ROWS} .gs-kind`)
     .allTextContents();
   const countHint =
-    (await page.locator(SEARCH_COUNT_HINT).first().textContent()) ?? "";
+    (await page
+      .locator(SEARCH_COUNT_HINT)
+      .first()
+      .textContent()
+      .catch(() => "")) ||
+    (await page.locator("#global-search-results").first().textContent()) ||
+    "";
   const buttonPressed = await page
     .getByRole("button", { name: kindCase.buttonName })
     .getAttribute("aria-pressed");

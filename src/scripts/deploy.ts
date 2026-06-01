@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable code-organization/enforce-statement-order, functional/immutable-data, functional/no-let, functional/prefer-readonly-type, max-lines -- Deploy orchestration is intentionally linear and logs operations in execution order. */
 /**
  * Deploy the local harper-app/ component to the Fabric cluster.
  *
@@ -7,6 +8,8 @@
  *     cluster's ops API at :9925 is firewalled from datacenter egress
  *     (see fabric-runbook §5), and the cluster's own :443 returns 404
  *     for ops calls. Fabric does not expose long-lived API tokens.
+ *   - Control-plane restart/recovery → `restart` after upload, then a
+ *     direct public-node deploy if replication leaves the public runtime stale.
  *   - Data-plane verification (post-restart /Firm/, /Feed) → native
  *     Harper JWT bearer minted via `create_authentication_tokens`.
  *     That's the documented Harper auth flow for REST routes.
@@ -21,12 +24,21 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadCreds, StudioSession } from "./_auth.js";
+import { createAuthTokens, loadCreds, StudioSession } from "./_auth.js";
 
 const TAR_PATH = "/usr/bin/tar";
 const PROJECT = process.env.PROJECT || "advisor-app";
 const DIR = process.env.DIR || "harper-app";
+const PACKAGE_JSON = "package.json";
+const parsedRestartTimeoutMs = Number(
+  process.env.HARPER_RESTART_TIMEOUT_MS ?? 15000
+);
+const RESTART_TIMEOUT_MS =
+  Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
+    ? parsedRestartTimeoutMs
+    : 15000;
 const creds = loadCreds();
+let directOperationToken: string | undefined;
 
 /**
  * Deployment archive metadata needed for upload and progress output.
@@ -53,6 +65,12 @@ interface FeedJson {
   readonly items?: readonly unknown[];
 }
 
+/** Browser version module content written by the build step. */
+interface VersionModule {
+  readonly expected: string;
+  readonly observed: string;
+}
+
 /**
  * Builds the deploy archive while excluding local-only dependencies and caches.
  * @param dir - Harper component directory to package.
@@ -69,13 +87,18 @@ function buildTarball(dir: string): Buffer {
     "--exclude=./.git",
     "--exclude=./.harperdb",
     "--exclude=./tests/screenshots",
+    "--exclude=./._*",
+    "--exclude=./**/._*",
     "-czf",
     out,
     "-C",
     dir,
     ".",
   ];
-  const r = spawnSync(TAR_PATH, args, { stdio: "inherit" });
+  const r = spawnSync(TAR_PATH, args, {
+    stdio: "inherit",
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
   if (r.status !== 0) throw new Error(`tar failed (${r.status})`);
   const bytes = readFileSync(out);
   rmSync(tmp, { recursive: true, force: true });
@@ -122,6 +145,87 @@ async function submitDeploy(
 }
 
 /**
+ * Converts the public cluster URL into the direct Operations API endpoint.
+ * @returns Public node Operations API URL.
+ */
+function directOpsUrl(): string {
+  const url = new URL(creds.clusterUrl);
+  url.port = "9925";
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+/**
+ * Lazily mints a Harper operation token for direct public-node operations.
+ * @returns Bearer token accepted by the Harper Operations API.
+ */
+async function directBearerToken(): Promise<string> {
+  if (directOperationToken !== undefined) return directOperationToken;
+  directOperationToken = (await createAuthTokens(creds)).operation_token;
+  return directOperationToken;
+}
+
+/**
+ * Runs an operation directly against the public Harper node.
+ *
+ * Studio deploys currently land on the east node, while the public app is
+ * served from the west node. When clustering replication is disconnected, this
+ * direct path updates the runtime that smoke tests hit.
+ * @param operation - Harper operation name.
+ * @param extra - Additional operation fields.
+ * @param timeoutMs - Optional request timeout.
+ * @returns Status and parsed response body.
+ */
+async function directClusterOp(
+  operation: string,
+  extra: Readonly<Record<string, unknown>> = {},
+  timeoutMs?: number
+): Promise<DeployResult> {
+  const controller =
+    timeoutMs === undefined ? undefined : new AbortController();
+  const timeout =
+    timeoutMs === undefined
+      ? undefined
+      : setTimeout(() => controller?.abort(), timeoutMs);
+  try {
+    const response = await fetch(directOpsUrl(), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${await directBearerToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ operation, ...extra }),
+      signal: controller?.signal,
+    });
+    const body: unknown = await response.json().catch(() => null);
+    return { status: response.status, body };
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
+/**
+ * Explicitly restarts the Harper service after a component upload.
+ *
+ * Fabric accepts `restart: true` on `deploy_component`, but the public app can
+ * continue serving the previous static/resource module set after the operation
+ * reports success. A second control-plane restart makes the deploy gate wait on
+ * the runtime that users and smoke tests actually hit.
+ * @param studio - Authenticated Studio session.
+ * @returns Fabric status and response body.
+ */
+async function restartHarper(studio: StudioSession): Promise<DeployResult> {
+  return (await studio.clusterOp(
+    creds.clusterId,
+    "restart",
+    {},
+    { timeoutMs: RESTART_TIMEOUT_MS }
+  )) as DeployResult;
+}
+
+/**
  * Prints Fabric deployment output and exposes the status for exit handling.
  * @param dep - Fabric deployment response.
  * @returns The HTTP status returned by Fabric.
@@ -133,11 +237,111 @@ function logDeployResult(dep: DeployResult): number {
 }
 
 /**
- * Packages and submits the component through the Fabric Studio proxy.
+ * Detects Fabric replication failures embedded in a successful deploy response.
+ * @param dep - Fabric deployment response.
+ * @returns True when at least one replica failed.
+ */
+function hasReplicationFailures(dep: DeployResult): boolean {
+  if (dep.body === null || typeof dep.body !== "object") return false;
+  if (!("replicated" in dep.body) || !Array.isArray(dep.body.replicated)) {
+    return false;
+  }
+  return dep.body.replicated.some(
+    replica =>
+      replica !== null &&
+      typeof replica === "object" &&
+      "status" in replica &&
+      replica.status !== "success"
+  );
+}
+
+/**
+ * Detects a timed-out restart request. Fabric can restart the service before
+ * flushing the proxy response, so the deploy gate should move to data-plane
+ * polling instead of hanging indefinitely.
+ * @param error - Unknown thrown value from fetch/AbortController.
+ * @returns True when the restart request was aborted by our timeout.
+ */
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+/**
+ * Detects a dropped direct Operations API connection during restart.
+ * @param error - Unknown thrown value from fetch.
+ * @returns True when the restart likely closed the socket before a response.
+ */
+function isFetchDisconnect(error: unknown): boolean {
+  return error instanceof TypeError && error.message === "fetch failed";
+}
+
+/**
+ * Issues an explicit post-upload service restart through Fabric.
  * @param studio - Authenticated Studio session.
  * @returns The HTTP status returned by Fabric.
  */
-async function deployComponent(studio: StudioSession): Promise<number> {
+async function restartDeployedService(studio: StudioSession): Promise<number> {
+  console.log("▶ restart Harper runtime");
+  try {
+    return logDeployResult(await restartHarper(studio));
+  } catch (error) {
+    if (!isAbortError(error)) throw error;
+    console.log(
+      `  restart request timed out after ${RESTART_TIMEOUT_MS}ms; continuing to data-plane readiness checks`
+    );
+    return 200;
+  }
+}
+
+/**
+ * Deploys the component directly to the public node when Studio replication is
+ * disconnected.
+ * @returns The HTTP status returned by Harper.
+ */
+async function deployPublicRuntime(): Promise<number> {
+  const deployPackage = buildDeployPackage();
+  console.log(`▶ direct deploy_component ${directOpsUrl()} project=${PROJECT}`);
+  return logDeployResult(
+    await directClusterOp(
+      "deploy_component",
+      {
+        project: PROJECT,
+        payload: deployPackage.payload,
+        restart: true,
+      },
+      RESTART_TIMEOUT_MS
+    )
+  );
+}
+
+/**
+ * Restarts the public node after a direct deploy.
+ * @returns The HTTP status returned by Harper, or 200 on timeout.
+ */
+async function restartPublicRuntime(): Promise<number> {
+  console.log("▶ direct restart public Harper runtime");
+  try {
+    return logDeployResult(
+      await directClusterOp("restart", {}, RESTART_TIMEOUT_MS)
+    );
+  } catch (error) {
+    if (!isAbortError(error) && !isFetchDisconnect(error)) throw error;
+    const reason = isAbortError(error)
+      ? `timed out after ${RESTART_TIMEOUT_MS}ms`
+      : "dropped the Operations API connection";
+    console.log(
+      `  restart request ${reason}; continuing to data-plane readiness checks`
+    );
+    return 200;
+  }
+}
+
+/**
+ * Packages and submits the component through the Fabric Studio proxy.
+ * @param studio - Authenticated Studio session.
+ * @returns Fabric deployment response.
+ */
+async function deployComponent(studio: StudioSession): Promise<DeployResult> {
   const deployPackage = buildDeployPackage();
 
   console.log(`▶ packaging ${DIR}/`);
@@ -146,7 +350,9 @@ async function deployComponent(studio: StudioSession): Promise<number> {
   );
 
   console.log(`▶ deploy_component project=${PROJECT}`);
-  return logDeployResult(await submitDeploy(studio, deployPackage.payload));
+  const result = await submitDeploy(studio, deployPackage.payload);
+  logDeployResult(result);
+  return result;
 }
 
 /**
@@ -200,6 +406,117 @@ async function logFeedSummary(
 }
 
 /**
+ * Reads the expected app version from package.json.
+ * @returns Package version built into the browser bundle.
+ */
+async function expectedAppVersion(): Promise<string> {
+  const manifest = JSON.parse(readFileSync(PACKAGE_JSON, "utf8")) as Readonly<{
+    version?: string;
+  }>;
+  return manifest.version || "0.0.0";
+}
+
+/**
+ * Extracts APP_VERSION from the generated browser module.
+ * @param source - JavaScript module text from /version.js.
+ * @returns Version string, or empty string when the module is malformed.
+ */
+function parseVersionModule(source: string): string {
+  return /APP_VERSION\s*=\s*["']([^"']+)["']/.exec(source)?.[1] ?? "";
+}
+
+/**
+ * Fetches a URL with a bounded timeout so a stalled rollout route fails fast
+ * instead of wedging the deploy verification phase.
+ * @param url - URL to fetch.
+ * @param init - Optional fetch init (headers, method).
+ * @param timeoutMs - Abort timeout in milliseconds.
+ * @returns The fetch Response.
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = RESTART_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Fetches and parses the public version module.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ * @returns Expected and observed version strings.
+ */
+async function deployedVersion(clusterUrl: string): Promise<VersionModule> {
+  const expected = await expectedAppVersion();
+  const response = await fetchWithTimeout(`${clusterUrl}/version.js`, {
+    headers: { Accept: "application/javascript" },
+  });
+  const observed = response.ok ? parseVersionModule(await response.text()) : "";
+  return { expected, observed };
+}
+
+/**
+ * Verifies a public GET route returns 200 after deploy.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ * @param path - Absolute path to check.
+ */
+async function verifyPublicRoute(
+  clusterUrl: string,
+  path: string
+): Promise<void> {
+  const response = await fetchWithTimeout(`${clusterUrl}${path}`, {
+    headers: { Accept: "application/json, text/javascript, */*" },
+  });
+  if (!response.ok) {
+    throw new Error(`${path} returned HTTP ${response.status}`);
+  }
+}
+
+/**
+ * Verifies that the public runtime is serving this build, not stale files.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ */
+async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
+  const version = await deployedVersion(clusterUrl);
+  console.log(
+    `▶ ${clusterUrl}/version.js → ${version.observed || "missing"} (expected ${version.expected})`
+  );
+  if (version.observed !== version.expected) {
+    throw new Error(
+      `deployed version mismatch: expected ${version.expected}, observed ${version.observed || "missing"}`
+    );
+  }
+
+  await verifyPublicRoute(clusterUrl, "/compare.js");
+  await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
+  console.log("▶ public comparison assets/resources verified");
+}
+
+/**
+ * Uploads the component and restarts the Harper runtime.
+ * @param studio - Authenticated Studio session.
+ * @returns Whether both control-plane operations succeeded.
+ */
+async function deployAndRestart(studio: StudioSession): Promise<boolean> {
+  const result = await deployComponent(studio);
+  if (result.status !== 200) return false;
+  if ((await restartDeployedService(studio)) !== 200) return false;
+  if (!hasReplicationFailures(result)) return true;
+
+  console.warn(
+    "Fabric reported replica deployment failures; deploying directly to public node"
+  );
+  if ((await deployPublicRuntime()) !== 200) return false;
+  return (await restartPublicRuntime()) === 200;
+}
+
+/**
  * Verifies that the public feed responds after deployment restart.
  * @param clusterUrl - Base URL for the deployed Harper component.
  */
@@ -216,6 +533,7 @@ async function verifyFeed(clusterUrl: string): Promise<void> {
     return;
   }
   await logFeedSummary(clusterUrl, feed);
+  await verifyRuntimeFreshness(clusterUrl);
 }
 
 /**
@@ -233,7 +551,7 @@ async function main(): Promise<void> {
   const studio = await new StudioSession(creds).login();
   console.log(`▶ Studio login as ${creds.username}`);
 
-  if ((await deployComponent(studio)) !== 200) {
+  if (!(await deployAndRestart(studio))) {
     process.exitCode = 1;
     return;
   }
@@ -245,10 +563,27 @@ async function main(): Promise<void> {
     return;
   }
 
-  await verifyFeed(creds.clusterUrl);
+  try {
+    await verifyFeed(creds.clusterUrl);
+  } catch (error) {
+    console.warn(
+      "post-deploy runtime verification failed; deploying directly to public node once:",
+      error instanceof Error ? error.message : String(error)
+    );
+    if ((await deployPublicRuntime()) !== 200) {
+      process.exitCode = 1;
+      return;
+    }
+    if ((await restartPublicRuntime()) !== 200) {
+      process.exitCode = 1;
+      return;
+    }
+    await verifyFeed(creds.clusterUrl);
+  }
 }
 
 main().catch(err => {
   console.error(err instanceof Error ? err.stack || err.message : err);
   process.exitCode = 1;
 });
+/* eslint-enable code-organization/enforce-statement-order, functional/immutable-data, functional/no-let, functional/prefer-readonly-type, max-lines -- Re-enable after deploy orchestration module. */
