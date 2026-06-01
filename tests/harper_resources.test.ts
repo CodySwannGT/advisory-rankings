@@ -182,6 +182,7 @@ const table = (name: string) => ({
   TeamMembership: table("TeamMembership"),
   TeamMetricSnapshot: table("TeamMetricSnapshot"),
   TransitionEvent: table("TransitionEvent"),
+  UserRating: table("UserRating"),
 };
 
 const resources = await import("../src/harper/resources.js");
@@ -588,6 +589,7 @@ const baseRows = () => {
       nextCheckAfter: "2026-06-01T00:00:00Z",
     },
   ]);
+  setRows("UserRating", []);
 };
 
 beforeEach(() => {
@@ -1095,6 +1097,70 @@ describe("Harper feed and profile builders", () => {
       "ranking-entry-beta",
       "ranking-entry-missing-rank",
     ]);
+  });
+
+  it("normalizes empty and alternate AdvisorComparison id inputs", async () => {
+    await expect(
+      new (resources as any).AdvisorComparison().get(routeTarget(""))
+    ).resolves.toMatchObject({
+      selection: {
+        status: "empty_selection",
+        requestedIds: [],
+        normalizedIds: [],
+        duplicateIds: [],
+        cappedIds: [],
+        missingIds: [],
+        min: 2,
+        max: 4,
+        truncated: false,
+      },
+      count: 0,
+      ids: [],
+      items: [],
+    });
+
+    await expect(
+      new (resources as any).AdvisorComparison().get(
+        routeTarget("", { advisorIds: "advisor-a, advisor-b" })
+      )
+    ).resolves.toMatchObject({
+      selection: {
+        status: "ready",
+        requestedIds: ["advisor-a", "advisor-b"],
+        normalizedIds: ["advisor-a", "advisor-b"],
+        cappedIds: ["advisor-a", "advisor-b"],
+        missingIds: [],
+      },
+      count: 2,
+      ids: ["advisor-a", "advisor-b"],
+    });
+  });
+
+  it("does not leak private rating overlays into AdvisorComparison payloads", async () => {
+    setRows("UserRating", [
+      {
+        id: "rating-private",
+        userId: "user-a",
+        advisorId: "advisor-a",
+        ratingInt: 5,
+        reviewText: "private client note",
+      },
+    ]);
+
+    const endpoint = new (resources as any).AdvisorComparison() as any;
+    endpoint.user = { username: "user-a" };
+    const comparison = await endpoint.get(
+      routeTarget("", { ids: "advisor-a,advisor-b" })
+    );
+
+    expect(comparison.items[0]).toMatchObject({
+      id: "advisor-a",
+      attribution: {
+        brokerCheck: expect.objectContaining({ subjectCrd: "12345" }),
+      },
+    });
+    expect(JSON.stringify(comparison)).not.toContain("private client note");
+    expect(JSON.stringify(comparison)).not.toContain("ratingInt");
   });
 
   it("labels missing firm due-diligence source states explicitly", async () => {
