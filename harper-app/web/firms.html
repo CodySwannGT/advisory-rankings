@@ -89,6 +89,7 @@
                         const qs = directoryQuery(filters, cursor);
                         return api(`/PublicFirms?${qs.toString()}`);
                       },
+                      firstPageLoadingLabel: "Loading firms…",
                       renderRow: f => {
                         loaded.add(f.id);
                         updateStats();

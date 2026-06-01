@@ -17,6 +17,7 @@ import {
   topFirmsCard,
 } from "./rankings-sections.js";
 import { coverageWorkbenchCard } from "./rankings-coverage.js";
+import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 import type {
   RankingExplorerEntry,
   RankingExplorerFilters,
@@ -88,13 +89,21 @@ mountThreeColumnPage({
  * @param right - Right rail column.
  */
 function loadRankings(center: HTMLElement, right: HTMLElement): void {
+  const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
+    container: center,
+    title: "Loading rankings",
+    body: "Still fetching ranking coverage and rows. Retry if this takes longer than expected.",
+    onRetry: () => loadRankings(center, right),
+  });
   api<RankingsExplorerPayload>(`/RankingsExplorer${resourceQuery()}`)
     .then(data => {
+      stopLoadingFeedback();
       clear(center);
       clear(right);
       renderRankings(data, center, right);
     })
     .catch((error: unknown) => {
+      stopLoadingFeedback();
       clear(center);
       center.appendChild(
         EmptyCard({

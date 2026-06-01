@@ -83,6 +83,7 @@
                         const qs = directoryQuery(filters, cursor);
                         return api(`/PublicTeams?${qs.toString()}`);
                       },
+                      firstPageLoadingLabel: "Loading teams…",
                       renderRow: t => {
                         loaded.add(t.id);
                         updateStats();

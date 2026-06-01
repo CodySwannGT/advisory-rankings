@@ -24,6 +24,7 @@ import {
   type RecruitingMarketResponse,
   type ThreeColumnLayout,
 } from "./recruiting-types.js";
+import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 
 const FIRM_FILTER_FIELDS = ["firm", "firmId"] as const;
 const SINGLE_VALUE_FILTER_FIELDS = ["state", "year", "direction"] as const;
@@ -55,13 +56,21 @@ MountThreeColumnPage({
  * @param right - Right rail column.
  */
 function loadRecruiting(center: HTMLElement, right: HTMLElement): void {
+  const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
+    container: center,
+    title: "Loading recruiting activity",
+    body: "Still fetching market activity and recent moves. Retry if this takes longer than expected.",
+    onRetry: () => loadRecruiting(center, right),
+  });
   apiC(`/RecruitingMarket${resourceQuery()}`)
     .then((data: unknown) => {
+      stopLoadingFeedback();
       clearC(center);
       clearC(right);
       renderRecruiting(data as RecruitingMarketResponse, center, right);
     })
     .catch((error: unknown) => {
+      stopLoadingFeedback();
       clearC(center);
       center.appendChild(
         EmptyCardC({

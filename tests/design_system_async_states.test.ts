@@ -150,6 +150,68 @@ browserDescribe("design-system generated async states", () => {
     });
     await page.close();
   });
+
+  it("adds route-specific delayed loading feedback with retry", async () => {
+    const page = await browser.newPage();
+
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.addScriptTag({
+      type: "module",
+      content: `
+        import { showDelayedRouteLoadingFeedback } from "/route-loading.js";
+
+        let retryCount = 0;
+        const host = document.createElement("main");
+        host.append(document.createElement("div"));
+        document.body.append(host);
+
+        const cleanup = showDelayedRouteLoadingFeedback({
+          container: host,
+          title: "Loading rankings",
+          body: "Still fetching ranking coverage and rows.",
+          actionLabel: "Retry",
+          onRetry: () => {
+            retryCount += 1;
+          },
+          delayMs: 10,
+        });
+
+        setTimeout(() => {
+          host.querySelector("button")?.dispatchEvent(new MouseEvent("click"));
+          window.__routeLoadingResult = {
+            title: host.querySelector(".card-title")?.textContent,
+            body: host.querySelector(".ab-empty")?.textContent,
+            buttonText: host.querySelector("button")?.textContent,
+            retryCount,
+            noticeCountBeforeCleanup: host.querySelectorAll(".route-loading-feedback").length,
+          };
+          cleanup();
+          window.__routeLoadingCleanupCount = host.querySelectorAll(".route-loading-feedback").length;
+        }, 30);
+      `,
+    });
+    await page.waitForFunction(() => "__routeLoadingCleanupCount" in window);
+    const result = await page.evaluate(
+      () =>
+        (window as typeof window & { __routeLoadingResult: unknown })
+          .__routeLoadingResult
+    );
+    const cleanupCount = await page.evaluate(
+      () =>
+        (window as typeof window & { __routeLoadingCleanupCount: number })
+          .__routeLoadingCleanupCount
+    );
+
+    expect(result).toEqual({
+      title: "Loading rankings",
+      body: "Still fetching ranking coverage and rows.",
+      buttonText: "Retry",
+      retryCount: 1,
+      noticeCountBeforeCleanup: 1,
+    });
+    expect(cleanupCount).toBe(0);
+    await page.close();
+  });
 });
 
 /**
