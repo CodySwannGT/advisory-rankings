@@ -8,10 +8,14 @@ import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import type {
   AdvisorComparisonAssertion,
   AdvisorComparisonAttribution,
+  AdvisorComparisonDataConfidence,
   AdvisorComparisonItem,
+  AdvisorComparisonNotFoundItem,
   AdvisorComparisonPayload,
   AdvisorComparisonRanking,
+  AdvisorComparisonRegulatory,
   AdvisorComparisonResearchSource,
+  AdvisorComparisonSelection,
 } from "../types/advisor-comparison.js";
 import type {
   AdvisorResearchCheckRow,
@@ -25,6 +29,12 @@ const MAX_ADVISOR_COUNT = 4;
 interface ComparisonTarget {
   readonly get?: (name: string) => unknown;
   readonly getAll?: (name: string) => readonly unknown[];
+}
+
+/** De-duplicated comparison ids and duplicate markers. */
+interface DedupedComparisonIds {
+  readonly normalizedIds: ReadonlyArray<string>;
+  readonly duplicateIds: ReadonlyArray<string>;
 }
 
 /** Public two-to-four advisor comparison resource. */
@@ -45,21 +55,25 @@ export class AdvisorComparison extends Resource {
   async get(
     target?: RouteTarget
   ): Promise<AdvisorComparisonPayload | RouteError> {
-    const ids = comparisonIds(target);
-    const countError = validateAdvisorCount(ids);
-    if (countError) return countError;
-
+    const selection = comparisonSelection(target);
     const db = await loadAll();
-    const advisors = ids.map(id => resolveAdvisor(db, id));
-    const missing = ids.find((_, index) => !advisors[index]);
-    if (missing) return { error: "not found", id: missing };
+    const advisors = selection.cappedIds.map(id => ({
+      id,
+      advisor: resolveAdvisor(db, id),
+    }));
 
     return {
       generatedAt: new Date().toISOString(),
+      selection: {
+        ...selection,
+        missingIds: advisors.filter(row => !row.advisor).map(row => row.id),
+      },
       count: advisors.length,
-      ids: advisors.map(advisor => advisor?.id ?? ""),
-      items: advisors.map(advisor =>
-        comparisonItem(db, advisorProfilePayload(db, advisor!))
+      ids: advisors.map(row => row.advisor?.id ?? row.id),
+      items: advisors.map(row =>
+        row.advisor
+          ? comparisonItem(db, advisorProfilePayload(db, row.advisor))
+          : notFoundComparisonItem(row.id)
       ),
     };
   }
@@ -68,16 +82,68 @@ export class AdvisorComparison extends Resource {
 /**
  * Reads comparison advisor IDs from `ids`, `advisorIds`, repeated `id`, or path.
  * @param target - Harper route target.
- * @returns De-duplicated advisor identifiers in request order.
+ * @returns Advisor identifiers in request order.
  */
-function comparisonIds(target: RouteTarget | undefined): readonly string[] {
+function requestedComparisonIds(
+  target: RouteTarget | undefined
+): readonly string[] {
   const values = [
     ...paramValues(target, "ids"),
     ...paramValues(target, "advisorIds"),
     ...paramValues(target, "id"),
   ];
   const rawIds = values.length ? values : [normalizeId(target)];
-  return [...new Set(rawIds.flatMap(splitIds).filter(Boolean))];
+  return rawIds.flatMap(splitIds).filter(Boolean);
+}
+
+/**
+ * Builds a stable comparison selection summary from raw request IDs.
+ * @param target - Harper route target.
+ * @returns Normalized and capped comparison selection metadata.
+ */
+function comparisonSelection(
+  target: RouteTarget | undefined
+): AdvisorComparisonSelection {
+  const requestedIds = requestedComparisonIds(target);
+  const { normalizedIds, duplicateIds } = dedupeIds(requestedIds);
+  const cappedIds = normalizedIds.slice(0, MAX_ADVISOR_COUNT);
+  return {
+    status: selectionStatus(normalizedIds.length),
+    requestedIds,
+    normalizedIds,
+    duplicateIds,
+    cappedIds,
+    missingIds: [],
+    min: MIN_ADVISOR_COUNT,
+    max: MAX_ADVISOR_COUNT,
+    truncated: normalizedIds.length > MAX_ADVISOR_COUNT,
+  };
+}
+
+/**
+ * De-duplicates IDs without changing the order users supplied.
+ * @param ids - Raw requested IDs.
+ * @returns Unique IDs and duplicate IDs in first duplicate encounter order.
+ */
+function dedupeIds(ids: readonly string[]): DedupedComparisonIds {
+  const normalizedIds = [...new Set(ids)];
+  const duplicateIds = [
+    ...new Set(ids.filter((id, index) => ids.indexOf(id) !== index)),
+  ];
+
+  return { normalizedIds, duplicateIds };
+}
+
+/**
+ * Classifies the selection count without turning recoverable states into errors.
+ * @param count - Unique requested ID count.
+ * @returns Selection status for the response payload.
+ */
+function selectionStatus(count: number): AdvisorComparisonSelection["status"] {
+  if (count === 0) return "empty_selection";
+  if (count < MIN_ADVISOR_COUNT) return "under_limit";
+  if (count > MAX_ADVISOR_COUNT) return "over_limit";
+  return "ready";
 }
 
 /**
@@ -111,29 +177,6 @@ function splitIds(value: string): readonly string[] {
 }
 
 /**
- * Validates the comparison's bounded advisor count.
- * @param ids - Normalized requested advisor ids.
- * @returns Route-style error, or null when count is supported.
- */
-function validateAdvisorCount(ids: readonly string[]): RouteError | null {
-  if (ids.length < MIN_ADVISOR_COUNT) {
-    return {
-      error: "at least two advisor ids required",
-      items: [],
-      nextCursor: null,
-    };
-  }
-  if (ids.length > MAX_ADVISOR_COUNT) {
-    return {
-      error: "at most four advisor ids supported",
-      items: [],
-      nextCursor: null,
-    };
-  }
-  return null;
-}
-
-/**
  * Builds one normalized advisor column from existing profile primitives.
  * @param db - Preloaded resource index.
  * @param profile - Existing advisor profile payload.
@@ -145,6 +188,8 @@ function comparisonItem(
 ): AdvisorComparisonItem {
   const advisorId = profile.advisor.id;
   return {
+    status: "found",
+    id: advisorId,
     identity: profile.advisor,
     displayName: profile.displayName,
     firm: currentFirm(profile),
@@ -162,6 +207,81 @@ function comparisonItem(
       confidenceSummary: profile.confidenceSummary,
     },
     attribution: attribution(db, profile),
+  };
+}
+
+/**
+ * Builds a neutral placeholder for an unresolved comparison ID.
+ * @param id - Requested advisor ID that did not resolve.
+ * @returns Not-found comparison item.
+ */
+function notFoundComparisonItem(id: string): AdvisorComparisonNotFoundItem {
+  return {
+    status: "not_found",
+    id,
+    identity: null,
+    displayName: id,
+    firm: null,
+    regulatory: emptyRegulatory(),
+    career: [],
+    rankings: [],
+    articles: [],
+    dataConfidence: emptyDataConfidence(),
+    attribution: emptyAttribution(),
+  };
+}
+
+/**
+ * Builds an empty regulatory block for unresolved advisors.
+ * @returns Empty regulatory evidence.
+ */
+function emptyRegulatory(): AdvisorComparisonRegulatory {
+  return {
+    brokerCheckSnapshot: null,
+    disclosures: [],
+    disclosureCount: 0,
+    registrationApplications: [],
+  };
+}
+
+/**
+ * Builds an empty confidence block for unresolved advisors.
+ * @returns Empty confidence signals.
+ */
+function emptyDataConfidence(): AdvisorComparisonDataConfidence {
+  return {
+    evidenceFreshness: {
+      hasData: false,
+      lastCheckedAt: null,
+      nearestNextCheckAfter: null,
+      statusCounts: { success: 0, no_new_data: 0, ambiguous: 0, failed: 0 },
+      sourceTypeCoverage: {
+        web_research: 0,
+        firm_bio: 0,
+        rankings: 0,
+        press: 0,
+      },
+    },
+    confidenceSummary: {
+      hasData: false,
+      asserted: 0,
+      inferred: 0,
+      derived: 0,
+      total: 0,
+    },
+  };
+}
+
+/**
+ * Builds an empty attribution block for unresolved advisors.
+ * @returns Empty source attribution.
+ */
+function emptyAttribution(): AdvisorComparisonAttribution {
+  return {
+    brokerCheck: null,
+    articles: [],
+    assertions: [],
+    researchSources: [],
   };
 }
 
