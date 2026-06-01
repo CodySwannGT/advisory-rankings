@@ -933,10 +933,23 @@ describe("Harper feed and profile builders", () => {
 
     expect(new (resources as any).AdvisorComparison().allowRead()).toBe(true);
     expect(comparison).toMatchObject({
+      selection: {
+        status: "ready",
+        requestedIds: ["advisor-a", "advisor-b"],
+        normalizedIds: ["advisor-a", "advisor-b"],
+        duplicateIds: [],
+        cappedIds: ["advisor-a", "advisor-b"],
+        missingIds: [],
+        min: 2,
+        max: 4,
+        truncated: false,
+      },
       count: 2,
       ids: ["advisor-a", "advisor-b"],
       items: [
         {
+          status: "found",
+          id: "advisor-a",
           identity: { id: "advisor-a", legalName: AVERY_STONE_NAME },
           displayName: AVERY_STONE_NAME,
           firm: expect.objectContaining({ id: "firm-a" }),
@@ -1007,6 +1020,8 @@ describe("Harper feed and profile builders", () => {
           },
         },
         {
+          status: "found",
+          id: "advisor-b",
           identity: { id: "advisor-b", legalName: BLAKE_YOUNG_NAME },
           firm: expect.objectContaining({ id: "firm-a" }),
           regulatory: {
@@ -1063,6 +1078,15 @@ describe("Harper feed and profile builders", () => {
     );
 
     expect(comparison.ids).toEqual(["advisor-a", "advisor-b"]);
+    expect(comparison.selection).toMatchObject({
+      status: "ready",
+      requestedIds: ["advisor-a", "advisor-b"],
+      normalizedIds: ["advisor-a", "advisor-b"],
+      duplicateIds: [],
+      cappedIds: ["advisor-a", "advisor-b"],
+      missingIds: [],
+      truncated: false,
+    });
     expect(
       comparison.items[0].rankings.map((row: any) => row.entry.id)
     ).toEqual([
@@ -2356,26 +2380,103 @@ describe("Harper resource endpoints", () => {
       new (resources as any).AdvisorComparison().get(
         routeTarget("", { ids: "advisor-a" })
       )
-    ).resolves.toEqual({
-      error: "at least two advisor ids required",
-      items: [],
-      nextCursor: null,
+    ).resolves.toMatchObject({
+      selection: {
+        status: "under_limit",
+        requestedIds: ["advisor-a"],
+        normalizedIds: ["advisor-a"],
+        cappedIds: ["advisor-a"],
+        missingIds: [],
+        truncated: false,
+      },
+      count: 1,
+      ids: ["advisor-a"],
+      items: [{ status: "found", id: "advisor-a" }],
+    });
+    const missingComparison = await new (
+      resources as any
+    ).AdvisorComparison().get(routeTarget("", { ids: "advisor-a,unknown" }));
+    expect(missingComparison).toMatchObject({
+      selection: {
+        status: "ready",
+        requestedIds: ["advisor-a", "unknown"],
+        normalizedIds: ["advisor-a", "unknown"],
+        duplicateIds: [],
+        cappedIds: ["advisor-a", "unknown"],
+        missingIds: ["unknown"],
+        truncated: false,
+      },
+      count: 2,
+      ids: ["advisor-a", "unknown"],
+      items: [
+        { status: "found", id: "advisor-a" },
+        {
+          status: "not_found",
+          id: "unknown",
+          identity: null,
+          displayName: "unknown",
+          firm: null,
+          regulatory: {
+            brokerCheckSnapshot: null,
+            disclosures: [],
+            disclosureCount: 0,
+            registrationApplications: [],
+          },
+          career: [],
+          rankings: [],
+          articles: [],
+          attribution: {
+            brokerCheck: null,
+            articles: [],
+            assertions: [],
+            researchSources: [],
+          },
+        },
+      ],
     });
     await expect(
       new (resources as any).AdvisorComparison().get(
-        routeTarget("", { ids: "advisor-a,unknown" })
+        routeTarget("", { ids: "advisor-a,advisor-a,unknown,advisor-b" })
       )
-    ).resolves.toEqual({ error: "not found", id: "unknown" });
+    ).resolves.toMatchObject({
+      selection: {
+        status: "ready",
+        requestedIds: ["advisor-a", "advisor-a", "unknown", "advisor-b"],
+        normalizedIds: ["advisor-a", "unknown", "advisor-b"],
+        duplicateIds: ["advisor-a"],
+        cappedIds: ["advisor-a", "unknown", "advisor-b"],
+        missingIds: ["unknown"],
+      },
+      ids: ["advisor-a", "unknown", "advisor-b"],
+    });
     await expect(
       new (resources as any).AdvisorComparison().get(
         routeTarget("", {
           ids: "advisor-a,advisor-b,advisor-c,advisor-d,advisor-e",
         })
       )
-    ).resolves.toEqual({
-      error: "at most four advisor ids supported",
-      items: [],
-      nextCursor: null,
+    ).resolves.toMatchObject({
+      selection: {
+        status: "over_limit",
+        requestedIds: [
+          "advisor-a",
+          "advisor-b",
+          "advisor-c",
+          "advisor-d",
+          "advisor-e",
+        ],
+        normalizedIds: [
+          "advisor-a",
+          "advisor-b",
+          "advisor-c",
+          "advisor-d",
+          "advisor-e",
+        ],
+        cappedIds: ["advisor-a", "advisor-b", "advisor-c", "advisor-d"],
+        truncated: true,
+      },
+      count: 4,
+      ids: ["advisor-a", "advisor-b", "advisor-c", "advisor-d"],
     });
     await expect(
       new (resources as any).FirmAdvisors().get("")
