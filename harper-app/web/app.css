@@ -1585,6 +1585,67 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-status {
   padding-top: 2px;
 }
+.compare-entry-card .card-body,
+.compare-entry-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.compare-entry-action {
+  min-width: 0;
+}
+.compare-entry-button {
+  white-space: nowrap;
+}
+.compare-entry-status {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.advisor-directory-row {
+  align-items: center;
+}
+.directory-row-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.directory-row-link:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+.watchlist-body,
+.watchlist-entries {
+  display: grid;
+  gap: 10px;
+}
+.watchlist-card .watchlist-firm-row {
+  grid-template-columns: 20px 32px minmax(140px, 1fr) minmax(120px, 1fr) repeat(
+      4,
+      auto
+    );
+  align-items: center;
+}
+.watchlist-compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.watchlist-compare-button {
+  width: auto;
+}
+.watchlist-compare-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.watchlist-compare-select {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
 .watchlist-generated {
   margin: 0;
   color: var(--text-muted);
@@ -1607,6 +1668,16 @@ body.drawer-open .nav .nav-scrim {
 }
 
 @media (max-width: 700px) {
+  .watchlist-card .watchlist-firm-row {
+    grid-template-columns: 20px 32px minmax(0, 1fr);
+  }
+  .watchlist-card .watchlist-firm-row input[name="note"],
+  .watchlist-card .watchlist-firm-row .watchlist-save-note,
+  .watchlist-card .watchlist-firm-row .watchlist-remove-button,
+  .watchlist-card .watchlist-firm-row .watchlist-status {
+    grid-column: 1 / -1;
+  }
+
   .recruiting-stat-grid,
   .rankings-stat-grid,
   .rankings-coverage-summary,
@@ -1820,6 +1891,29 @@ body.drawer-open .nav .nav-scrim {
   line-height: 1.45;
 }
 
+.comparison-cell {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+
+.comparison-cell-value {
+  color: var(--text);
+}
+
+.comparison-missing,
+.comparison-brokercheck-missing {
+  color: var(--text-muted);
+}
+
+.comparison-brokercheck-missing {
+  font-size: 12px;
+}
+
+.comparison-source-attribution {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .comparison-name,
 .comparison-firm {
   display: block;
@@ -1914,6 +2008,27 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text);
   font-weight: 700;
   text-align: right;
+}
+
+.comparison-column-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ab-space-1);
+  margin-top: var(--ab-space-2);
+}
+
+.comparison-control {
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.comparison-control[disabled] {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 @media (max-width: 700px) {

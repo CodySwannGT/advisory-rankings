@@ -33,6 +33,7 @@
         clear,
         el,
       } from "/design-system/index.js";
+      import { compareEntryAction } from "/compare-entry.js";
 
       const PAGE_SIZE = "50";
 
@@ -98,13 +99,14 @@
                       ? pref
                       : `${pref} ${last}`.trim()
                     : a.legalName || last || a.id;
+                  const href = entityPath("advisor", { ...a, name });
                   const row = EntityRow({
                     avatar: Avatar({
                       initials: initials(name),
                       imageUrl: a.headshotUrl,
                       alt: name,
                     }),
-                    name,
+                    name: el("a", { href, class: "directory-row-link" }, name),
                     sub: [
                       humanize(a.careerStatus),
                       a.yearsExperience ? `${a.yearsExperience}y` : null,
@@ -112,7 +114,12 @@
                     ]
                       .filter(Boolean)
                       .join(" · "),
-                    href: entityPath("advisor", { ...a, name }),
+                    tail: compareEntryAction({
+                      advisorId: a.id,
+                      label: "Compare",
+                      className: "compare-entry-button--directory",
+                    }),
+                    attrs: { class: "advisor-directory-row" },
                   });
                   loaded += 1;
                   setStat("Loaded", loaded);
