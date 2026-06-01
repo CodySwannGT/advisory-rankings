@@ -30,9 +30,13 @@ const TAR_PATH = "/usr/bin/tar";
 const PROJECT = process.env.PROJECT || "advisor-app";
 const DIR = process.env.DIR || "harper-app";
 const PACKAGE_JSON = "package.json";
-const RESTART_TIMEOUT_MS = Number(
+const parsedRestartTimeoutMs = Number(
   process.env.HARPER_RESTART_TIMEOUT_MS ?? 15000
 );
+const RESTART_TIMEOUT_MS =
+  Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
+    ? parsedRestartTimeoutMs
+    : 15000;
 const creds = loadCreds();
 let directOperationToken: string | undefined;
 
@@ -298,11 +302,15 @@ async function deployPublicRuntime(): Promise<number> {
   const deployPackage = buildDeployPackage();
   console.log(`▶ direct deploy_component ${directOpsUrl()} project=${PROJECT}`);
   return logDeployResult(
-    await directClusterOp("deploy_component", {
-      project: PROJECT,
-      payload: deployPackage.payload,
-      restart: true,
-    })
+    await directClusterOp(
+      "deploy_component",
+      {
+        project: PROJECT,
+        payload: deployPackage.payload,
+        restart: true,
+      },
+      RESTART_TIMEOUT_MS
+    )
   );
 }
 
@@ -418,13 +426,35 @@ function parseVersionModule(source: string): string {
 }
 
 /**
+ * Fetches a URL with a bounded timeout so a stalled rollout route fails fast
+ * instead of wedging the deploy verification phase.
+ * @param url - URL to fetch.
+ * @param init - Optional fetch init (headers, method).
+ * @param timeoutMs - Abort timeout in milliseconds.
+ * @returns The fetch Response.
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = RESTART_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
  * Fetches and parses the public version module.
  * @param clusterUrl - Base URL for the deployed Harper component.
  * @returns Expected and observed version strings.
  */
 async function deployedVersion(clusterUrl: string): Promise<VersionModule> {
   const expected = await expectedAppVersion();
-  const response = await fetch(`${clusterUrl}/version.js`, {
+  const response = await fetchWithTimeout(`${clusterUrl}/version.js`, {
     headers: { Accept: "application/javascript" },
   });
   const observed = response.ok ? parseVersionModule(await response.text()) : "";
@@ -440,7 +470,7 @@ async function verifyPublicRoute(
   clusterUrl: string,
   path: string
 ): Promise<void> {
-  const response = await fetch(`${clusterUrl}${path}`, {
+  const response = await fetchWithTimeout(`${clusterUrl}${path}`, {
     headers: { Accept: "application/json, text/javascript, */*" },
   });
   if (!response.ok) {

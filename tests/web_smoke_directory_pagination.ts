@@ -101,8 +101,13 @@ export async function smokePaginatedDirectory(
 
   await smokeGoto(page, `${BASE}/${pageName}`);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  await waitForDirectoryLoadedCount(page, statsTitle, 1);
   await waitForDirectoryTotalCount(page, statsTitle);
+  const totalCount = await directoryTotalCount(page, statsTitle);
+  await waitForDirectoryLoadedCount(
+    page,
+    statsTitle,
+    Math.min(DIRECTORY_FIRST_PAGE_LIMIT, totalCount)
+  );
 
   const firstPageKeys = await directoryRowKeys(
     page,
@@ -110,7 +115,6 @@ export async function smokePaginatedDirectory(
   );
   const firstPageCount = await rows.count();
   const firstPageHeight = await page.evaluate(() => document.body.scrollHeight);
-  const totalCount = await directoryTotalCount(page, statsTitle);
   if ((await loadMore.count()) === 0) {
     await shot(page, `06-${pageName}-pagination`);
     return [
@@ -129,7 +133,10 @@ export async function smokePaginatedDirectory(
         `${pageName}: all rows fit on first page`,
         `${firstPageCount} of ${totalCount}`
       ),
-      check(true, `${pageName}: no duplicate rows when pagination is complete`),
+      check(
+        new Set(firstPageKeys).size === firstPageKeys.length,
+        `${pageName}: no duplicate rows when pagination is complete`
+      ),
     ];
   }
   await loadMore.waitFor({ state: "visible", timeout: DEPLOYED_DATA_TIMEOUT });

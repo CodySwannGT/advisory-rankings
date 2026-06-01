@@ -23,6 +23,24 @@ interface FirmRow {
 }
 
 /**
+ * Fetches a directory payload, failing fast when the response is not ok
+ * instead of parsing an error body as directory JSON.
+ * @param page - Browser page used for request context.
+ * @param url - Directory resource URL to fetch.
+ * @returns The parsed directory payload.
+ */
+async function readDirectoryPayload<T>(
+  page: Page,
+  url: string
+): Promise<DirectoryPayload<T>> {
+  const response = await page.request.get(url);
+  if (!response.ok()) {
+    throw new Error(`directory request failed: ${response.status()} ${url}`);
+  }
+  return (await response.json()) as DirectoryPayload<T>;
+}
+
+/**
  * Checks URL-backed advisor filters, zero-result recovery, and narrow layouts.
  * @param page - Browser page used for the advisor directory scenario.
  * @returns Smoke assertions for advisor filter controls.
@@ -121,8 +139,10 @@ async function discoverFirmCandidatePage(
 ): Promise<readonly string[]> {
   const params = new URLSearchParams({ limit: "100" });
   if (cursor) params.set("cursor", cursor);
-  const response = await page.request.get(`${BASE}/PublicFirms?${params}`);
-  const payload = (await response.json()) as DirectoryPayload<FirmRow>;
+  const payload = await readDirectoryPayload<FirmRow>(
+    page,
+    `${BASE}/PublicFirms?${params}`
+  );
   const nextNames = [
     ...names,
     ...(payload.items ?? []).map(firm => firm.name ?? "").filter(Boolean),
@@ -146,8 +166,7 @@ async function firstFirmWithActiveAdvisors(
     const url = `${BASE}/PublicAdvisors?firm=${encodeURIComponent(
       firm
     )}&careerStatus=active&limit=1`;
-    const response = await page.request.get(url);
-    const payload = (await response.json()) as DirectoryPayload<unknown>;
+    const payload = await readDirectoryPayload<unknown>(page, url);
     if ((payload.total ?? 0) > 0) return firm;
   }
   return "";

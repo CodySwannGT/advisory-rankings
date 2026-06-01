@@ -665,10 +665,9 @@ Output on success — restart finishes in ~2 s and `/Feed` is back up:
   body:   {"message":"Successfully deployed: advisor-app, restarting Harper", …}
 ▶ restart Harper runtime
   status: 200
-▶ waiting for https://…/Firm/ to respond …
+▶ waiting for https://…/Feed to respond …
   back up after 2s
-▶ https://…/Feed → HTTP 200
-  count=2, items=2
+▶ https://…/Feed → HTTP 200, count=2, items=2
 ▶ https://…/version.js → 0.1.x (expected 0.1.x)
 ▶ public comparison assets/resources verified
 ```

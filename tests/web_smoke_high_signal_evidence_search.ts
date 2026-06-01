@@ -73,11 +73,12 @@ export async function captureSearchKindEvidence(
       observation.responseUrl
     ),
     check(
-      observation.visibleKinds.every(
-        kind =>
-          kind.trim().toLowerCase() ===
-          observation.kindCase.rowKindLabel.toLowerCase()
-      ),
+      observation.visibleKinds.length > 0 &&
+        observation.visibleKinds.every(
+          kind =>
+            kind.trim().toLowerCase() ===
+            observation.kindCase.rowKindLabel.toLowerCase()
+        ),
       `[EVIDENCE: search-kind-filter] ${observation.kindCase.kind} mode renders only ${observation.kindCase.kind} rows`,
       observation.visibleKinds.join(",")
     ),
