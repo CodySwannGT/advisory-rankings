@@ -18,14 +18,22 @@ export const SHOTS = resolve("tests/screenshots");
 export const QUICK_TIMEOUT = 5_000;
 /** Advisor used across the watchlist UI fixtures. */
 export const ADVISOR_ID = "advisor-watch-1";
+/** Second advisor used across comparison fixtures. */
+const SECOND_ADVISOR_ID = "advisor-watch-2";
 /** Advisor display name used across the fixtures. */
 const ADVISOR_NAME = "Avery Stone";
+/** Second advisor display name used across comparison fixtures. */
+const SECOND_ADVISOR_NAME = "Blake Carter";
+/** Primary fixture firm name used across profile and comparison payloads. */
+const EXAMPLE_WEALTH = "Example Wealth";
 /** Watchlist name used across the fixtures. */
 export const LIST_NAME = "Top targets";
 /** UserWatchlists resource route glob. */
 export const WATCHLISTS_ROUTE = "**/UserWatchlists";
 /** AdvisorRating resource route glob. */
 export const RATING_ROUTE = "**/AdvisorRating/**";
+/** AdvisorComparison resource route glob. */
+const COMPARISON_ROUTE = "**/AdvisorComparison**";
 
 const ME_ROUTE = "**/Me";
 
@@ -87,6 +95,18 @@ export async function routeAdvisor(
   if (!includeRating) return;
   await page.route(RATING_ROUTE, async route => {
     await route.fulfill({ json: { authenticated: true, rating: null } });
+  });
+}
+
+/**
+ * Routes the AdvisorComparison resource to a deterministic two-advisor payload.
+ * @param page - Playwright page under test.
+ */
+export async function routeComparison(page: Page): Promise<void> {
+  await page.route(COMPARISON_ROUTE, async route => {
+    await route.fulfill({
+      json: comparisonPayload([ADVISOR_ID, SECOND_ADVISOR_ID]),
+    });
   });
 }
 
@@ -266,7 +286,7 @@ function advisorProfile(id: string): unknown {
     career: [
       {
         roleTitle: "Advisor",
-        firm: { id: "firm-a", name: "Example Wealth", short: "Example WM" },
+        firm: { id: "firm-a", name: EXAMPLE_WEALTH, short: "Example WM" },
         branch: { id: "branch-a", name: "Atlanta", city: "Atlanta" },
         startDate: "2020-01-01",
         endDate: null,
@@ -300,6 +320,91 @@ function advisorProfile(id: string): unknown {
       inferred: 1,
       derived: 1,
       total: 4,
+    },
+  };
+}
+
+/**
+ * Builds a minimal AdvisorComparison payload sufficient to render the compare page.
+ * @param ids - Compared advisor ids.
+ * @returns AdvisorComparison resource payload.
+ */
+function comparisonPayload(ids: readonly string[]): unknown {
+  return {
+    generatedAt: "2026-05-31T12:00:00.000Z",
+    selection: {
+      status: "ready",
+      requestedIds: ids,
+      normalizedIds: ids,
+      duplicateIds: [],
+      cappedIds: ids,
+      missingIds: [],
+      min: 2,
+      max: 4,
+      truncated: false,
+    },
+    count: ids.length,
+    ids,
+    items: ids.map(comparisonItem),
+  };
+}
+
+/**
+ * Builds one found AdvisorComparison item for test rendering.
+ * @param id - Advisor id.
+ * @returns Found comparison item payload.
+ */
+function comparisonItem(id: string): unknown {
+  const isPrimary = id === ADVISOR_ID;
+  const displayName = isPrimary ? ADVISOR_NAME : SECOND_ADVISOR_NAME;
+  return {
+    status: "found",
+    id,
+    identity: {
+      id,
+      legalName: displayName,
+      preferredName: displayName,
+      careerStatus: "active",
+      yearsExperience: isPrimary ? 12 : 9,
+    },
+    displayName,
+    firm: {
+      id: isPrimary ? "firm-a" : "firm-b",
+      name: isPrimary ? EXAMPLE_WEALTH : "Summit Advisory",
+      short: isPrimary ? "Example WM" : "Summit",
+    },
+    regulatory: {
+      brokerCheckSnapshot: { subjectCrd: isPrimary ? "12345" : "98765" },
+      disclosures: [],
+      disclosureCount: 0,
+      registrationApplications: [],
+    },
+    career: [
+      {
+        roleTitle: "Advisor",
+        firm: { name: isPrimary ? EXAMPLE_WEALTH : "Summit Advisory" },
+      },
+    ],
+    rankings: [],
+    articles: [],
+    dataConfidence: {
+      evidenceFreshness: {
+        hasData: true,
+        lastCheckedAt: "2026-05-25T12:00:00Z",
+      },
+      confidenceSummary: {
+        hasData: true,
+        asserted: 2,
+        inferred: 1,
+        derived: 1,
+        total: 4,
+      },
+    },
+    attribution: {
+      brokerCheck: null,
+      articles: [],
+      assertions: [],
+      researchSources: [],
     },
   };
 }

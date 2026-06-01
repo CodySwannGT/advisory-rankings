@@ -1930,6 +1930,86 @@ body.drawer-open .nav .nav-scrim {
   font-size: 13px;
 }
 
+.comparison-private {
+  margin-top: var(--ab-space-5);
+}
+
+.comparison-private-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--ab-space-4);
+}
+
+.comparison-private-card {
+  display: grid;
+  gap: var(--ab-space-3);
+  padding: var(--ab-space-4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.comparison-private-card h3,
+.comparison-private-card h4,
+.comparison-private-card p {
+  margin: 0;
+}
+
+.comparison-private-card h3 {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.comparison-private-card h4 {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.comparison-private-block {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+
+.comparison-private-note,
+.comparison-private-review {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.comparison-private-note {
+  display: grid;
+  gap: var(--ab-space-1);
+  font-weight: 700;
+}
+
+.comparison-private-note span {
+  font-weight: 500;
+}
+
+.comparison-private-metrics {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: var(--ab-space-2) var(--ab-space-3);
+  margin: 0;
+}
+
+.comparison-private-metrics dt,
+.comparison-private-metrics dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.comparison-private-metrics dt {
+  color: var(--text-muted);
+}
+
+.comparison-private-metrics dd {
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+
 .comparison-column-controls {
   display: flex;
   align-items: center;

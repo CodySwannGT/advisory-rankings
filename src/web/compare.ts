@@ -28,6 +28,7 @@ import {
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
+import { privateOverlayMount } from "./compare-private-overlay.js";
 import {
   comparisonColumnHeader,
   moveComparisonItem,
@@ -169,7 +170,8 @@ function renderComparison(
         firmName,
       }),
       attrs: { class: "comparison-card" },
-    })
+    }),
+    privateOverlayMount(payload.items)
   );
 }
 
