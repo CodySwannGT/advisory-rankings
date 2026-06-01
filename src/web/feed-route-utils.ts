@@ -69,12 +69,17 @@ export function feedCursorFrom(payload: FeedPayload): FeedCursor {
  * items plus the advanced cursor state.
  * @param cursor - Opaque cursor returned by the previous feed response.
  * @param onPage - Receives the next page's items and cursor state.
+ * @param onError - Receives a rejection so the caller can recover (e.g. keep
+ *   the "Load more" control so the user can retry a transient failure).
  */
 export function fetchNextFeedPage(
   cursor: string,
-  onPage: (items: readonly FeedItem[], next: FeedCursor) => void
+  onPage: (items: readonly FeedItem[], next: FeedCursor) => void,
+  onError: (error: unknown) => void
 ): void {
   void (api as unknown as (path: string) => Promise<FeedPayload>)(
     feedApiPath(cursor)
-  ).then(payload => onPage(payload.items ?? [], feedCursorFrom(payload)));
+  )
+    .then(payload => onPage(payload.items ?? [], feedCursorFrom(payload)))
+    .catch(onError);
 }

@@ -116,12 +116,12 @@ function renderFeed(
   page: FeedCursor,
   reloadFeed: () => void
 ): void {
-  const categories = feedCategories(items);
   const renderCurrentState = (
     loadedItems: readonly FeedItem[],
     cursor: FeedCursor,
     visibleLimit: number = FEED_PAGE_SIZE
   ): void => {
+    const categories = feedCategories(loadedItems);
     const filters = readFeedFilters(categories);
     const filteredItems = filterFeedItems(loadedItems, filters);
     const visibleItems = filteredItems.slice(0, visibleLimit);
@@ -143,8 +143,16 @@ function renderFeed(
           renderCurrentState(loadedItems, cursor, nextLimit);
           return;
         }
-        fetchNextFeedPage(cursor.cursor, (more, next) =>
-          renderCurrentState([...loadedItems, ...more], next, nextLimit)
+        fetchNextFeedPage(
+          cursor.cursor,
+          (more, next) =>
+            renderCurrentState([...loadedItems, ...more], next, nextLimit),
+          (error: unknown) => {
+            // Keep the loaded set and "Load more" control so the user can
+            // retry a transient page fetch instead of dead-ending the feed.
+            console.error("Feed: load-more page fetch failed", error);
+            renderCurrentState(loadedItems, cursor, visibleLimit);
+          }
         );
       },
     });
