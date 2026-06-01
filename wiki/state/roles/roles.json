@@ -1,13 +1,13 @@
 {
   "connector": "roles",
   "profile": "project",
-  "lastSuccessfulRunAt": "2026-05-31T13:01:15Z",
+  "lastSuccessfulRunAt": "2026-06-01T16:03:34.226Z",
   "cursor": {
     "roles": 0,
     "pages": 0,
-    "lastIngest": "2026-05-31"
+    "lastIngest": "2026-06-01"
   },
-  "sourceNotes": ["wiki/sources/roles/2026-05-31-roles.md"],
+  "sourceNotes": ["wiki/sources/roles/2026-06-01-roles.md"],
   "synthesisPages": [],
   "schemaVersion": "1.0.0"
 }
