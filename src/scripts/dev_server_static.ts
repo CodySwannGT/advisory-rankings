@@ -30,6 +30,7 @@ const STATIC_EXACT_PATHS: ReadonlyMap<string, string> = new Map([
   ["/recruiting", "/recruiting.html"],
   ["/rankings", "/rankings.html"],
   ["/regulatory", "/regulatory.html"],
+  ["/compare", "/compare.html"],
   ["/advisors", "/advisors.html"],
   ["/teams", "/teams.html"],
 ]);
@@ -43,7 +44,6 @@ const STATIC_PREFIX_PATHS: readonly (readonly [string, string])[] = [
 
 /**
  * Chooses cache headers for static assets served by the local dev server.
- *
  * @param extension - Requested file extension (with leading dot).
  * @returns Cache-Control header value.
  */
@@ -55,7 +55,6 @@ function staticCacheControl(extension: string): string {
 
 /**
  * Maps pretty routes to their generated static HTML files.
- *
  * @param path - Request pathname.
  * @returns Static file path under `harper-app/web`.
  */
@@ -73,7 +72,6 @@ function staticPath(path: string): string {
  * Returns 403 for traversal attempts that escape the web root, and 404
  * for any read or stat failure (intentionally opaque — we don't want the
  * dev server to leak filesystem layout).
- *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  */
