@@ -9,6 +9,11 @@ describe("feedCategoryLabel", () => {
     expect(feedCategoryLabel("firm_bio")).toBe("Firm profile updates");
   });
 
+  it("uses human-facing copy for uncategorized fallback categories", () => {
+    expect(feedCategoryLabel("unknown")).toBe("Uncategorized");
+    expect(feedCategoryLabel("")).toBe("Uncategorized");
+  });
+
   it("keeps unknown machine values readable without changing the value contract", () => {
     expect(feedCategoryLabel("future_signal_bucket")).toBe(
       "Future Signal Bucket"

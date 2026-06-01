@@ -8,6 +8,7 @@ const FEED_CATEGORY_LABELS: Readonly<Record<string, string>> = {
   press: "Firm news",
   public_web_research: "Advisor research",
   rankings: "Rankings updates",
+  unknown: "Uncategorized",
   web_research: "Advisor research",
 };
 

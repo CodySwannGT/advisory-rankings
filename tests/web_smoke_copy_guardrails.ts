@@ -22,6 +22,7 @@ const EXPECTED_BROWSE_LABELS = [
 const RAW_IDENTIFIER_PATTERN = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 const PUBLIC_WEB_RESEARCH_OPTION_MISSING =
   "public_web_research option not present";
+const UNCATEGORIZED_OPTION_MISSING = "unknown option not present";
 
 /**
  * Checks feed copy and browse labels on the public home route.
@@ -62,6 +63,24 @@ export async function feedCopyGuardrailChecks(
         categoryCopy.urlCategory === "public_web_research",
       "/ feed copy: category filter keeps machine URL value",
       categoryCopy.urlCategory || PUBLIC_WEB_RESEARCH_OPTION_MISSING
+    ),
+    check(
+      categoryCopy.unknownOptionLabel === null ||
+        categoryCopy.unknownOptionLabel === "Uncategorized",
+      "/ feed copy: unknown category option is reader-facing",
+      categoryCopy.unknownOptionLabel || UNCATEGORIZED_OPTION_MISSING
+    ),
+    check(
+      categoryCopy.unknownSummary === null ||
+        categoryCopy.unknownSummary.includes("Uncategorized"),
+      "/ feed copy: unknown category summary is reader-facing",
+      categoryCopy.unknownSummary || UNCATEGORIZED_OPTION_MISSING
+    ),
+    check(
+      categoryCopy.unknownUrlCategory === null ||
+        categoryCopy.unknownUrlCategory === "unknown",
+      "/ feed copy: unknown category keeps machine URL value",
+      categoryCopy.unknownUrlCategory || UNCATEGORIZED_OPTION_MISSING
     ),
     ...(await browseLabelChecks(page, "/ feed")),
     copyGuardFixtureCheck(),
@@ -233,16 +252,46 @@ async function visibleFeedCategoryCopy(page: Page): Promise<{
   readonly optionLabel: string | null;
   readonly summary: string | null;
   readonly urlCategory: string | null;
+  readonly unknownOptionLabel: string | null;
+  readonly unknownSummary: string | null;
+  readonly unknownUrlCategory: string | null;
 }> {
-  const option = page.locator(
-    'form.feed-filters select[name="category"] option[value="public_web_research"]'
+  const categorySelect = page.locator(
+    'form.feed-filters select[name="category"]'
   );
-  if ((await option.count()) === 0) {
-    return { optionLabel: null, summary: null, urlCategory: null };
+  const option = categorySelect.locator('option[value="public_web_research"]');
+  const categoryCopy = {
+    optionLabel: null,
+    summary: null,
+    urlCategory: null,
+  } as const;
+  const publicWebResearchCopy =
+    (await option.count()) > 0
+      ? {
+          optionLabel: (await option.textContent())?.trim() || "",
+          summary: await page.locator(".feed-filter-summary").textContent(),
+          urlCategory: new URL(page.url()).searchParams.get("category"),
+        }
+      : categoryCopy;
+  const unknownOption = categorySelect.locator('option[value="unknown"]');
+  if ((await unknownOption.count()) === 0) {
+    return {
+      ...publicWebResearchCopy,
+      unknownOptionLabel: null,
+      unknownSummary: null,
+      unknownUrlCategory: null,
+    };
   }
+
+  await categorySelect.selectOption("unknown");
+  await page.waitForURL(url => url.searchParams.get("category") === "unknown", {
+    timeout: QUICK_UI_TIMEOUT,
+  });
+
   return {
-    optionLabel: (await option.textContent())?.trim() || "",
-    summary: await page.locator(".feed-filter-summary").textContent(),
-    urlCategory: new URL(page.url()).searchParams.get("category"),
+    ...publicWebResearchCopy,
+    unknownOptionLabel: (await unknownOption.textContent())?.trim() || "",
+    unknownSummary: await page.locator(".feed-filter-summary").textContent(),
+    unknownUrlCategory: new URL(page.url()).searchParams.get("category"),
   };
 }
