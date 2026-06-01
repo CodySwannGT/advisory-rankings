@@ -1,12 +1,5 @@
-// Home feed page — list of FeedPostCards plus left/right rail rollups.
-//
-// All UI components come from the design system. Page-level glue:
-// fetch /Feed → render the three rails. See docs/design-system.md
-// before adding any new visual element here.
-
 import type {
   FeedItem,
-  FeedEventCard,
   TransitionEventCard,
   DisclosureEventCard,
   TransitionSubject,
@@ -24,17 +17,17 @@ import {
 } from "./app.js";
 import { clear, el } from "./design-system/index.js";
 import { addToWatchlistControl } from "./add-to-watchlist.js";
+import { runDelayedRouteRequest } from "./route-loading.js";
 import {
-  DEFAULT_FEED_MODE,
-  FEED_MODE_PARAM,
   feedCategories,
   feedFilterCard,
   filterEmptyState,
   filterFeedItems,
-  normalizeFeedFilters,
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
+import { isDisclosureCard, isTransitionCard } from "./feed-event-guards.js";
+import { feedApiPath, installFeedPopstateReload } from "./feed-route-utils.js";
 import {
   AvatarC,
   AsyncStateNoticeC,
@@ -59,10 +52,6 @@ import type {
 
 const FEED_PAGE_SIZE = 20;
 
-const feedPopstate: Readonly<
-  Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
-> = { reload: null as (() => void) | null, listenerInstalled: false };
-
 /** Feed payload returned by the `/Feed` resource. */
 interface FeedPayload {
   readonly items?: readonly FeedItem[];
@@ -80,12 +69,19 @@ MountThreeColumnPage({
       clear(center);
       clear(right);
       center.append(SkeletonCardC(), SkeletonCardC());
-
-      (api as unknown as (path: string) => Promise<FeedPayload>)(feedApiPath())
-        .then((payload: FeedPayload) => {
+      runDelayedRouteRequest({
+        container: center,
+        title: "Loading feed",
+        body: "Still fetching AdvisorBook activity. Retry if this takes longer than expected.",
+        onRetry: loadFeed,
+        request: () =>
+          (api as unknown as (path: string) => Promise<FeedPayload>)(
+            feedApiPath()
+          ),
+        onSuccess: (payload: FeedPayload) => {
           renderFeed({ left, center, right }, payload.items ?? [], loadFeed);
-        })
-        .catch((err: unknown) => {
+        },
+        onError: (err: unknown) => {
           console.error("Feed route failed to load", err);
           clear(center);
           center.appendChild(
@@ -97,7 +93,8 @@ MountThreeColumnPage({
               onAction: loadFeed,
             })
           );
-        });
+        },
+      });
     };
 
     loadFeed();
@@ -141,34 +138,6 @@ function renderFeed(
 
   renderCurrentState();
   installFeedPopstateReload(reloadFeed);
-}
-
-/**
- * Installs or refreshes the singleton feed history reload handler.
- * @param reloadFeed - Reloads the feed resource for the current URL mode.
- */
-function installFeedPopstateReload(reloadFeed: () => void): void {
-  Object.assign(feedPopstate, { reload: reloadFeed });
-  if (feedPopstate.listenerInstalled) return;
-  window.addEventListener("popstate", () => {
-    feedPopstate.reload?.();
-  });
-  Object.assign(feedPopstate, { listenerInstalled: true });
-}
-
-/**
- * Builds the feed resource path for the active URL signal mode.
- * Category filtering stays client-side so category facets can be derived from
- * the current mode payload, but mode filtering must happen server-side because
- * event-backed rows may sit outside the unfiltered first page.
- * @returns Feed API path with a canonical mode query when needed.
- */
-function feedApiPath(): string {
-  const filters = normalizeFeedFilters({
-    mode: new URLSearchParams(location.search).get(FEED_MODE_PARAM),
-  });
-  if (filters.mode === DEFAULT_FEED_MODE) return "/Feed";
-  return `/Feed?${new URLSearchParams({ mode: filters.mode }).toString()}`;
 }
 
 /**
@@ -369,22 +338,4 @@ function trendingFirms(items: readonly FeedItem[]): readonly TrendingFirmRow[] {
     .slice()
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
-}
-
-/**
- * Narrows a feed event card to the transition variant.
- * @param card - Either kind of feed event card.
- * @returns Whether the card is a transition card.
- */
-function isTransitionCard(card: FeedEventCard): card is TransitionEventCard {
-  return card.kind === "transition";
-}
-
-/**
- * Narrows a feed event card to the disclosure variant.
- * @param card - Either kind of feed event card.
- * @returns Whether the card is a disclosure card.
- */
-function isDisclosureCard(card: FeedEventCard): card is DisclosureEventCard {
-  return card.kind === "disclosure";
 }

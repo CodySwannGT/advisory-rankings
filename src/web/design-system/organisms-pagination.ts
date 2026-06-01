@@ -22,6 +22,7 @@ export interface PaginatedOptions<TItem> {
   ) => Promise<PaginatedPage<TItem>> | PaginatedPage<TItem>;
   readonly renderRow: (item: TItem) => Node;
   readonly empty?: string | null;
+  readonly firstPageLoadingLabel?: string;
   readonly onTotal?: (total: number) => void;
 }
 
@@ -108,17 +109,27 @@ class PaginationState {
  * @param options.fetchPage - Function that returns `{ items, nextCursor, total? }`.
  * @param options.renderRow - Renderer for each returned item.
  * @param options.empty - Text shown when the first page is empty.
+ * @param options.firstPageLoadingLabel - Route-specific first-page loading copy.
  * @param options.onTotal - Optional callback for first-page total counts.
  * @returns A single DOM node ready to place inside a section body.
  */
 export function Paginated<TItem>(
   options: PaginatedOptions<TItem>
 ): HTMLElement {
-  const { fetchPage, renderRow, empty, onTotal } = options;
+  const { fetchPage, renderRow, empty, firstPageLoadingLabel, onTotal } =
+    options;
   const view = createPaginationView();
   const state = new PaginationState();
   const loadNext = (): Promise<void> =>
-    loadNextPage({ view, state, fetchPage, renderRow, empty, onTotal });
+    loadNextPage({
+      view,
+      state,
+      fetchPage,
+      renderRow,
+      empty,
+      firstPageLoadingLabel,
+      onTotal,
+    });
 
   view.loadMoreBtn.addEventListener("click", () => {
     void loadNext();
@@ -172,6 +183,7 @@ interface LoadNextPageArgs<TItem> {
   readonly fetchPage: PaginatedOptions<TItem>["fetchPage"];
   readonly renderRow: PaginatedOptions<TItem>["renderRow"];
   readonly empty: PaginatedOptions<TItem>["empty"];
+  readonly firstPageLoadingLabel: PaginatedOptions<TItem>["firstPageLoadingLabel"];
   readonly onTotal: PaginatedOptions<TItem>["onTotal"];
 }
 
@@ -183,10 +195,18 @@ interface LoadNextPageArgs<TItem> {
 async function loadNextPage<TItem>(
   args: LoadNextPageArgs<TItem>
 ): Promise<void> {
-  const { view, state, fetchPage, renderRow, empty, onTotal } = args;
+  const {
+    view,
+    state,
+    fetchPage,
+    renderRow,
+    empty,
+    firstPageLoadingLabel,
+    onTotal,
+  } = args;
   if (state.get("loading") || state.get("done")) return;
   state.set("loading", true);
-  setLoading(view, state.get("firstPage"));
+  setLoading(view, state.get("firstPage"), firstPageLoadingLabel);
   try {
     const response = await requestPage(fetchPage, state.get("cursor"));
     const items = response.items ?? [];
@@ -288,11 +308,18 @@ function completePagination(
  * Shows loading copy without mutating DOM text properties directly.
  * @param view - Pagination DOM nodes.
  * @param firstPage - Whether this is the initial request.
+ * @param firstPageLoadingLabel - Optional route-specific initial loading copy.
  */
-function setLoading(view: PaginationView, firstPage: boolean): void {
+function setLoading(
+  view: PaginationView,
+  firstPage: boolean,
+  firstPageLoadingLabel?: string
+): void {
+  const loadingLabel =
+    firstPage && firstPageLoadingLabel ? firstPageLoadingLabel : "Loading…";
   view.loadMoreBtn.toggleAttribute("disabled", true);
-  view.loadMoreBtn.replaceChildren(firstPage ? "Loading…" : "Loading more…");
-  view.status.replaceChildren("Loading…");
+  view.loadMoreBtn.replaceChildren(firstPage ? loadingLabel : "Loading more…");
+  view.status.replaceChildren(loadingLabel);
 }
 
 /**

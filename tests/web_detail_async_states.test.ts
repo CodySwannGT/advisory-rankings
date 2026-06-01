@@ -21,6 +21,7 @@ const EVIDENCE_FRESHNESS = "Evidence freshness";
 const EXAMPLE_WEALTH_SHORT = "Example Wealth";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
+const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -1048,7 +1049,7 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
       evidenceFreshness: {
         hasData: true,
         lastCheckedAt: "2026-05-25T12:00:00Z",
-        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        nearestNextCheckAfter: FUTURE_CHECK_TIMESTAMP,
         statusCounts: {
           success: 2,
           no_new_data: 1,
@@ -1074,7 +1075,7 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
       evidenceFreshness: {
         hasData: true,
         lastCheckedAt: "2026-05-25T12:00:00Z",
-        nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+        nearestNextCheckAfter: FUTURE_CHECK_TIMESTAMP,
         statusCounts: {
           success: 1,
           no_new_data: 0,
