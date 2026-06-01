@@ -1860,6 +1860,29 @@ body.drawer-open .nav .nav-scrim {
   line-height: 1.45;
 }
 
+.comparison-cell {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+
+.comparison-cell-value {
+  color: var(--text);
+}
+
+.comparison-missing,
+.comparison-brokercheck-missing {
+  color: var(--text-muted);
+}
+
+.comparison-brokercheck-missing {
+  font-size: 12px;
+}
+
+.comparison-source-attribution {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .comparison-name,
 .comparison-firm {
   display: block;
