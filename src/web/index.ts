@@ -9,7 +9,6 @@ import {
   refreshMe,
   logout,
   search,
-  fmts,
   fmtMoney,
   humanize,
   initials,
@@ -20,23 +19,25 @@ import { addToWatchlistControl } from "./add-to-watchlist.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import {
   feedCategories,
-  feedFilterCard,
-  filterEmptyState,
   filterFeedItems,
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
 import { isDisclosureCard, isTransitionCard } from "./feed-event-guards.js";
-import { feedApiPath, installFeedPopstateReload } from "./feed-route-utils.js";
+import {
+  feedApiPath,
+  feedCursorFrom,
+  fetchNextFeedPage,
+  installFeedPopstateReload,
+} from "./feed-route-utils.js";
+import type { FeedCursor, FeedPayload } from "./feed-route-utils.js";
+import { renderCenter } from "./feed-center.js";
 import {
   AvatarC,
   AsyncStateNoticeC,
   BrowseCardC,
-  ButtonC,
-  EmptyCardC,
   EntityListC,
   EntityRowC,
-  FeedPostCardC,
   HeadingC,
   MountThreeColumnPage,
   RollupCardC,
@@ -45,17 +46,11 @@ import {
 } from "./index-types.js";
 import type {
   FeedFilterValues,
-  FeedRenderState,
   ThreeColumnLayout,
   TrendingFirmRow,
 } from "./index-types.js";
 
 const FEED_PAGE_SIZE = 20;
-
-/** Feed payload returned by the `/Feed` resource. */
-interface FeedPayload {
-  readonly items?: readonly FeedItem[];
-}
 
 MountThreeColumnPage({
   active: "home",
@@ -79,7 +74,12 @@ MountThreeColumnPage({
             feedApiPath()
           ),
         onSuccess: (payload: FeedPayload) => {
-          renderFeed({ left, center, right }, payload.items ?? [], loadFeed);
+          renderFeed(
+            { left, center, right },
+            payload.items ?? [],
+            feedCursorFrom(payload),
+            loadFeed
+          );
         },
         onError: (err: unknown) => {
           console.error("Feed route failed to load", err);
@@ -102,83 +102,66 @@ MountThreeColumnPage({
 });
 
 /**
- * Renders the feed and re-renders it when browser history restores filter state.
+ * Renders the feed and re-renders it when browser history restores filter
+ * state. "Load more" reveals loaded items first, then fetches the next server
+ * page via cursor when exhausted (else the feed caps at the first page).
  * @param layout - Page columns used by the feed.
- * @param items - Full feed payload.
+ * @param items - First page of feed items already loaded.
+ * @param page - Server pagination cursor for subsequent pages.
  * @param reloadFeed - Reloads the feed resource for the current URL mode.
  */
 function renderFeed(
   layout: ThreeColumnLayout,
   items: readonly FeedItem[],
+  page: FeedCursor,
   reloadFeed: () => void
 ): void {
-  const categories = feedCategories(items);
-  const renderCurrentState = (visibleLimit: number = FEED_PAGE_SIZE): void => {
+  const renderCurrentState = (
+    loadedItems: readonly FeedItem[],
+    cursor: FeedCursor,
+    visibleLimit: number = FEED_PAGE_SIZE
+  ): void => {
+    const categories = feedCategories(loadedItems);
     const filters = readFeedFilters(categories);
-    const filteredItems = filterFeedItems(items, filters);
+    const filteredItems = filterFeedItems(loadedItems, filters);
     const visibleItems = filteredItems.slice(0, visibleLimit);
+    const moreLoadedToReveal = visibleItems.length < filteredItems.length;
 
     renderCenter(layout.center, visibleItems, {
       categories,
       count: visibleItems.length,
       filters,
-      hasMore: visibleItems.length < filteredItems.length,
+      hasMore: moreLoadedToReveal || cursor.hasMore,
       total: filteredItems.length,
       onChange: (nextFilters: FeedFilterValues) => {
         writeFeedFilters(nextFilters);
         reloadFeed();
       },
       onLoadMore: () => {
-        renderCurrentState(visibleLimit + FEED_PAGE_SIZE);
+        const nextLimit = visibleLimit + FEED_PAGE_SIZE;
+        if (moreLoadedToReveal || !cursor.hasMore || !cursor.cursor) {
+          renderCurrentState(loadedItems, cursor, nextLimit);
+          return;
+        }
+        fetchNextFeedPage(
+          cursor.cursor,
+          (more, next) =>
+            renderCurrentState([...loadedItems, ...more], next, nextLimit),
+          (error: unknown) => {
+            // Keep the loaded set and "Load more" control so the user can
+            // retry a transient page fetch instead of dead-ending the feed.
+            console.error("Feed: load-more page fetch failed", error);
+            renderCurrentState(loadedItems, cursor, visibleLimit);
+          }
+        );
       },
     });
     renderLeft(layout.left, visibleItems);
     renderRight(layout.right, visibleItems);
   };
 
-  renderCurrentState();
+  renderCurrentState(items, page);
   installFeedPopstateReload(reloadFeed);
-}
-
-/**
- * Renders center into the page.
- * @param root - DOM root node.
- * @param items - Items to render.
- * @param state - Current filter state and callbacks.
- */
-function renderCenter(
-  root: HTMLElement,
-  items: readonly FeedItem[],
-  state: FeedRenderState
-): void {
-  clear(root);
-  root.appendChild(feedFilterCard(state));
-  if (!items.length) {
-    const empty = state.filters.active
-      ? filterEmptyState(state.filters)
-      : {
-          title: "No articles yet",
-          body: "Once the ingest crawler runs, articles appear here.",
-        };
-    root.appendChild(
-      EmptyCardC({
-        title: empty.title,
-        body: empty.body,
-      })
-    );
-    return;
-  }
-  for (const item of items) root.appendChild(FeedPostCardC(item, fmts));
-  if (state.hasMore) {
-    root.appendChild(
-      ButtonC({
-        variant: "neutral",
-        onClick: state.onLoadMore,
-        children: "Load more posts",
-        attrs: { class: "feed-load-more" },
-      })
-    );
-  }
 }
 
 /**
