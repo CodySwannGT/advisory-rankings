@@ -79,7 +79,9 @@ export function privateOverlayMount(
   items: ReadonlyArray<AdvisorComparisonItem>
 ): HTMLElement {
   const mount = el("div", { class: "comparison-private-mount" });
-  void loadPrivateOverlay(mount, items);
+  loadPrivateOverlay(mount, items).catch((error: unknown) => {
+    console.error("Private comparison overlay failed to load", error);
+  });
   return mount;
 }
 
