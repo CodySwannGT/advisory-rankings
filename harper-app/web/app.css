@@ -1585,6 +1585,36 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-status {
   padding-top: 2px;
 }
+.watchlist-body,
+.watchlist-entries {
+  display: grid;
+  gap: 10px;
+}
+.watchlist-card .watchlist-firm-row {
+  grid-template-columns: 20px 32px minmax(140px, 1fr) minmax(120px, 1fr) repeat(
+      4,
+      auto
+    );
+  align-items: center;
+}
+.watchlist-compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.watchlist-compare-button {
+  width: auto;
+}
+.watchlist-compare-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.watchlist-compare-select {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
 .watchlist-generated {
   margin: 0;
   color: var(--text-muted);
@@ -1607,6 +1637,16 @@ body.drawer-open .nav .nav-scrim {
 }
 
 @media (max-width: 700px) {
+  .watchlist-card .watchlist-firm-row {
+    grid-template-columns: 20px 32px minmax(0, 1fr);
+  }
+  .watchlist-card .watchlist-firm-row input[name="note"],
+  .watchlist-card .watchlist-firm-row .watchlist-save-note,
+  .watchlist-card .watchlist-firm-row .watchlist-remove-button,
+  .watchlist-card .watchlist-firm-row .watchlist-status {
+    grid-column: 1 / -1;
+  }
+
   .recruiting-stat-grid,
   .rankings-stat-grid,
   .rankings-coverage-summary,
