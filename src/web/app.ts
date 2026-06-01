@@ -351,7 +351,7 @@ export function canonicalizeArticleRoute(
 function replaceWithCanonicalPath(path: string): void {
   if (!path || path === "#" || !globalThis.history?.replaceState) return;
   if (location.pathname === path && !location.search) return;
-  history.replaceState(null, "", path);
+  history.replaceState(null, "", `${path}${location.search}`);
 }
 
 // ─── mountPage — convenience shim around the template ─────────
