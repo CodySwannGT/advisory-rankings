@@ -22,6 +22,7 @@ export const DEV_SERVER_TABLES = [
   "TransitionEvent",
   "RecruitingDealQuote",
   "Disclosure",
+  "RegulatoryDiscrepancy",
   "DisclosureCluster",
   "Sanction",
   "OutsideBusinessActivity",

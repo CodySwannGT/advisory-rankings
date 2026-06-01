@@ -435,6 +435,24 @@
       "status": "pending"
     }
   ],
+  "RegulatoryDiscrepancy": [
+    {
+      "advisorHubSourceRef": "d05d38ef-c389-535e-bddf-3adb16bbb43e",
+      "advisorHubSourceType": "advisorhub_article",
+      "advisorHubValue": "25000",
+      "advisorId": "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+      "brokerCheckSourceRef": "crd:e7d2de73-9605-5ad2-9113-274c57dba1ce:docket:2023079356701",
+      "brokerCheckSourceType": "brokercheck",
+      "brokerCheckValue": "2500",
+      "fieldName": "fineAmount",
+      "id": "79bf7598-d6ff-5e01-9988-9b91bd16b229",
+      "reviewerNote": "Fixture records the known Cairnes fine mismatch between AdvisorHub extraction and BrokerCheck.",
+      "reviewedAt": "2026-06-01",
+      "severity": "high",
+      "sourceMetadata": "{\"regulator\":\"FINRA\",\"docketNumber\":\"2023079356701\",\"advisorHubDisclosureId\":\"5fc6b643-bac7-5141-8326-5d27d136a0b4\"}",
+      "status": "open"
+    }
+  ],
   "DisclosureCluster": [
     {
       "id": "2cc86dc2-3e69-5d95-bc39-773d606805a7",

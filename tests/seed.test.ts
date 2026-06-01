@@ -8,8 +8,8 @@ describe("seed data", () => {
       (sum, rows) => sum + (rows as unknown[]).length,
       0
     );
-    expect(tables).toHaveLength(28);
-    expect(total).toBe(118);
+    expect(tables).toHaveLength(29);
+    expect(total).toBe(119);
     expect(seedData.Firm).toHaveLength(10);
     expect(seedData.FirmAlias).toHaveLength(1);
     expect(seedData.FirmMergeAudit).toHaveLength(1);
@@ -17,6 +17,7 @@ describe("seed data", () => {
     expect(seedData.Article).toHaveLength(2);
     expect(seedData.Ranking).toHaveLength(2);
     expect(seedData.RankingEntry).toHaveLength(3);
+    expect(seedData.RegulatoryDiscrepancy).toHaveLength(1);
     expect(seedData.Firm.some(firm => firm.name === "Morgan Stanley")).toBe(
       true
     );
@@ -25,6 +26,23 @@ describe("seed data", () => {
         firm => firm.name === "Morgan Stanley Wealth Management"
       )
     ).toBe(false);
+  });
+
+  describe("regulatory discrepancy fixtures (issue #851)", () => {
+    it("preserves both source values and review provenance", () => {
+      expect(seedData.RegulatoryDiscrepancy).toContainEqual(
+        expect.objectContaining({
+          advisorId: "e7d2de73-9605-5ad2-9113-274c57dba1ce",
+          advisorHubSourceType: "advisorhub_article",
+          advisorHubValue: "25000",
+          brokerCheckSourceType: "brokercheck",
+          brokerCheckValue: "2500",
+          fieldName: "fineAmount",
+          severity: "high",
+          status: "open",
+        })
+      );
+    });
   });
 
   describe("advisor evidence fixtures (PRD #256 / issue #683)", () => {

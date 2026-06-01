@@ -352,6 +352,26 @@ export interface DisclosureRow {
   readonly updatedAt?: HarperDate;
 }
 
+/** Regulatory discrepancy row. */
+export interface RegulatoryDiscrepancyRow {
+  readonly id: string;
+  readonly advisorId: string;
+  readonly fieldName: string;
+  readonly advisorHubSourceType?: string;
+  readonly advisorHubSourceRef?: string;
+  readonly advisorHubValue?: string;
+  readonly brokerCheckSourceType?: string;
+  readonly brokerCheckSourceRef?: string;
+  readonly brokerCheckValue?: string;
+  readonly sourceMetadata?: string;
+  readonly severity: string;
+  readonly status: string;
+  readonly reviewerNote?: string;
+  readonly reviewedAt?: HarperDate;
+  readonly createdAt?: HarperDate;
+  readonly updatedAt?: HarperDate;
+}
+
 /** Disclosure cluster row. */
 export interface DisclosureClusterRow {
   readonly id: string;

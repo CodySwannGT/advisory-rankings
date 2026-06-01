@@ -503,6 +503,27 @@ Time-series version of the metric fields on `Team`. One row per assertion.
 | `source_type?` | enum (`brokercheck`, `advisorhub_article`, ...) | provenance — see §6.1 |
 | `source_ref?` | str | snapshot or article ID — see §6.1 |
 
+### 4.14a `RegulatoryDiscrepancy`
+
+Stores source-to-source regulatory mismatches that need review without
+overwriting either source assertion. BrokerCheck remains the
+regulator-of-record, while AdvisorHub extracted facts stay visible as
+public source assertions until reviewed.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id`, `advisor_id` | id | |
+| `field_name` | str | Compared field, e.g. `fineAmount`, `suspensionMonths`, `status`. |
+| `advisorhub_source_type?` / `advisorhub_source_ref?` | enum / str | Usually `advisorhub_article` plus the `Article.id` or disclosure/assertion id. |
+| `advisorhub_value?` | str | Literal normalized value from AdvisorHub extraction. |
+| `brokercheck_source_type?` / `brokercheck_source_ref?` | enum / str | Usually `brokercheck` plus CRD, snapshot, docket, or disclosure reference. |
+| `brokercheck_value?` | str | Literal normalized value from BrokerCheck. |
+| `source_metadata?` | json | Regulator, docket, matched disclosure ids, or other detector context. |
+| `severity` | enum (`low`, `medium`, `high`, `critical`) | Detector-assigned review priority. |
+| `status` | enum (`open`, `acknowledged`, `resolved`, `dismissed`) | Review queue state. |
+| `reviewer_note?` | text | Human review note or detector rationale. |
+| `reviewed_at?` | datetime | Set when a human or verification process reviews the discrepancy. |
+
 ### 4.15 `Sanction`
 
 Multiple sanctions per disclosure (a single AWC may impose fine + suspension + censure).
