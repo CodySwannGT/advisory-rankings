@@ -24,7 +24,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAuthTokens, loadCreds, StudioSession } from "./_auth.js";
+import { loadCreds, StudioSession } from "./_auth.js";
 
 const TAR_PATH = "/usr/bin/tar";
 const PROJECT = process.env.PROJECT || "advisor-app";
@@ -38,7 +38,6 @@ const RESTART_TIMEOUT_MS =
     ? parsedRestartTimeoutMs
     : 15000;
 const creds = loadCreds();
-let directOperationToken: string | undefined;
 
 /**
  * Deployment archive metadata needed for upload and progress output.
@@ -158,13 +157,19 @@ function directOpsUrl(): string {
 }
 
 /**
- * Lazily mints a Harper operation token for direct public-node operations.
- * @returns Bearer token accepted by the Harper Operations API.
+ * Builds the Basic auth header for the public node's Operations API.
+ *
+ * The direct path authenticates with the admin username/password against the
+ * node's :9925 Operations API directly. Minting a JWT through the Studio proxy
+ * (`create_authentication_tokens`) fails on this Fabric cluster with
+ * "Instance domain socket does not exist", so Basic auth is used instead.
+ * @returns A `Basic <base64>` Authorization header value.
  */
-async function directBearerToken(): Promise<string> {
-  if (directOperationToken !== undefined) return directOperationToken;
-  directOperationToken = (await createAuthTokens(creds)).operation_token;
-  return directOperationToken;
+function directAuthHeader(): string {
+  const encoded = Buffer.from(`${creds.username}:${creds.password}`).toString(
+    "base64"
+  );
+  return `Basic ${encoded}`;
 }
 
 /**
@@ -193,7 +198,7 @@ async function directClusterOp(
     const response = await fetch(directOpsUrl(), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${await directBearerToken()}`,
+        Authorization: directAuthHeader(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ operation, ...extra }),
