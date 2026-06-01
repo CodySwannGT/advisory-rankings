@@ -612,7 +612,7 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `src/scripts/deploy.ts` | control + data | session cookie for `deploy_component`, then JWT for the post-restart `/Firm/`,`/Feed` checks |
+| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Harper JWT for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/compare.js`, and `/AdvisorComparison` |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
 
@@ -624,10 +624,17 @@ are repo secrets, the workflow mints a fresh JWT per run, and the
 
 `bun run deploy` runs `bun run build`, then `src/scripts/deploy.ts`
 packages `harper-app/` into a tarball, base64-
-encodes it, logs into Studio over `:443`, and POSTs `deploy_component`
-through Studio's operations proxy. Same effect as the CLI below, but
-works from datacenter networks where `:9925` is firewalled (this
-sandbox, every cloud CI runner I've tried).
+encodes it, logs into Studio over `:443`, POSTs `deploy_component`
+through Studio's operations proxy, and follows with an explicit bounded
+`restart`. The extra restart is intentional: Fabric can accept updated
+component files while the public app still serves the previous
+static/resource module set. The restart request is timed out locally so a
+service restart cannot leave CI waiting on a dropped proxy response. When
+Fabric reports a replica failure, or when the data-plane freshness check
+still sees the previous bundle, the script mints a Harper JWT and deploys
+directly to the public node's `:9925` Operations API once. Same effect as
+the CLI below, while keeping the Studio path as the primary path for
+environments where direct ops are blocked.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
@@ -656,10 +663,14 @@ Output on success — restart finishes in ~2 s and `/Feed` is back up:
 ▶ deploy_component project=advisor-app
   status: 200
   body:   {"message":"Successfully deployed: advisor-app, restarting Harper", …}
+▶ restart Harper runtime
+  status: 200
 ▶ waiting for https://…/Firm/ to respond …
   back up after 2s
 ▶ https://…/Feed → HTTP 200
   count=2, items=2
+▶ https://…/version.js → 0.1.x (expected 0.1.x)
+▶ public comparison assets/resources verified
 ```
 
 #### Deploy log
@@ -701,9 +712,15 @@ fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
 `.github/workflows/deploy.yml` follows Lisa's release-and-deploy shape:
 determine the target environment, bump `package.json`, commit/tag the
 release with `[skip ci]`, then check out the released branch and run
-`bun install` -> `bun run deploy` -> `bunx playwright install --with-deps chromium`
--> Playwright smoke (`bun run smoke`, backed by `tests/web_smoke.ts`)
-against the live cluster URL. Required repo secrets:
+`bun install` -> `bun run deploy` -> `HDB_TARGET_URL=$HARPER_CLUSTER_URL bun run seed:rest`
+-> `bunx playwright install --with-deps chromium` -> Playwright smoke
+(`SMOKE_SCOPE=core bun run smoke`, backed by `tests/web_smoke.ts`) against
+the live cluster URL. The REST seed step keeps the public smoke fixture
+present on the served node when Fabric clustering replication is
+disconnected. Release deploys use the core scope so the workflow verifies
+the live app/feed/search path without depending on longer evidence
+journeys whose assertions vary with live dataset shape. Required repo
+secrets:
 
 | Secret | Source |
 |---|---|

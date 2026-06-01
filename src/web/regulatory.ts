@@ -47,7 +47,7 @@ const api = rawApi as unknown as (path: string) => Promise<FeedPayload>;
 function loadCompliance(center: HTMLElement, right: HTMLElement): void {
   clear(center);
   clear(right);
-  api("/Feed")
+  api("/Feed?mode=compliance-disclosures&limit=100")
     .then(payload => {
       renderCompliance(disclosureEvents(payload.items ?? []), center, right);
     })

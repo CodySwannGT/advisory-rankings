@@ -54,6 +54,11 @@ export interface StudioClusterOpResponse {
   readonly body: unknown;
 }
 
+/** Request options for Studio cluster operations. */
+export interface StudioClusterOpOptions {
+  readonly timeoutMs?: number;
+}
+
 /**
  * JWT pair returned by the Harper `create_authentication_tokens`
  * operation. `operation_token` is the bearer used for data-plane REST
@@ -311,22 +316,35 @@ export class StudioSession {
    * @param clusterId - Harper Fabric cluster id.
    * @param operation - Operation name to run.
    * @param extra - Additional operation parameters.
+   * @param options - Optional request controls such as timeout.
    * @returns Status and parsed JSON response body.
    */
   public async clusterOp(
     clusterId: string,
     operation: string,
-    extra: Readonly<Record<string, unknown>> = {}
+    extra: Readonly<Record<string, unknown>> = {},
+    options: StudioClusterOpOptions = {}
   ): Promise<StudioClusterOpResponse> {
-    const response = await this._fetch(
-      `${this.studioUrl}/Cluster/${clusterId}/operation/`,
-      {
-        method: "POST",
-        body: JSON.stringify({ operation, ...extra }),
-      }
-    );
-    const body: unknown = await response.json().catch(() => null);
-    return { status: response.status, body };
+    const controller =
+      options.timeoutMs === undefined ? undefined : new AbortController();
+    const timeout =
+      options.timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => controller?.abort(), options.timeoutMs);
+    try {
+      const response = await this._fetch(
+        `${this.studioUrl}/Cluster/${clusterId}/operation/`,
+        {
+          method: "POST",
+          body: JSON.stringify({ operation, ...extra }),
+          signal: controller?.signal,
+        }
+      );
+      const body: unknown = await response.json().catch(() => null);
+      return { status: response.status, body };
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
   }
 }
 

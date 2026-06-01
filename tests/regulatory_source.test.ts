@@ -31,7 +31,9 @@ describe("regulatory source-built page", () => {
   it("keeps compliance behavior in TypeScript source", async () => {
     const source = await readFile("src/web/regulatory.ts", "utf8");
 
-    expect(source).toContain('api("/Feed")');
+    expect(source).toContain(
+      'api("/Feed?mode=compliance-disclosures&limit=100")'
+    );
     expect(source).toContain("DisclosureEventCard");
     expect(source).toContain("Could not load compliance events");
   });
