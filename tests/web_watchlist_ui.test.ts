@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import type { Server } from "node:http";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -26,6 +26,9 @@ const browserDescribe =
   existsSync(chromium.executablePath())
     ? describe.sequential
     : describe.skip;
+const COMPARISON_TABLE_SELECTOR = ".comparison-table";
+const COMPARISON_AFTER_REMOVE = "adv-a,adv-c";
+const COMPARISON_AFTER_REORDER = "adv-c,adv-a";
 
 browserDescribe("watchlist management UI (#228)", () => {
   let browser: Browser;
@@ -187,7 +190,9 @@ browserDescribe("watchlist management UI (#228)", () => {
     ]);
 
     expect(new URL(page.url()).searchParams.get("ids")).toBe("adv-a,adv-b");
-    await page.locator(".comparison-table").waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .locator(COMPARISON_TABLE_SELECTOR)
+      .waitFor({ timeout: QUICK_TIMEOUT });
     await page
       .locator(".comparison-source-attribution")
       .getByText(/FINRA BrokerCheck/iu)
@@ -206,6 +211,56 @@ browserDescribe("watchlist management UI (#228)", () => {
         .count()
     ).toBe(2);
     await captureViewports(page, "issue-812-watchlist-seed-comparison");
+    await page.close();
+  });
+
+  it("removes and reorders comparison columns through the share URL", async () => {
+    const page = await browser.newPage();
+    await routeAuth(page, true);
+    await page.route("**/AdvisorComparison?**", async route => {
+      await route.fulfill({
+        json: comparisonPayload(comparisonIdsFromUrl(route.request().url())),
+      });
+    });
+
+    await page.goto(`${baseUrl}/compare?ids=adv-a,adv-b,adv-c`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await page.locator(COMPARISON_TABLE_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await comparisonColumnIds(page)).toEqual([
+      "adv-a",
+      "adv-b",
+      "adv-c",
+    ]);
+
+    await page.getByRole("button", { name: "Remove Advisor 2" }).click();
+    expect(new URL(page.url()).searchParams.get("ids")).toBe(
+      COMPARISON_AFTER_REMOVE
+    );
+    expect(await comparisonColumnIds(page)).toEqual(
+      COMPARISON_AFTER_REMOVE.split(",")
+    );
+
+    await page.getByRole("button", { name: "Move Advisor 3 left" }).click();
+    expect(new URL(page.url()).searchParams.get("ids")).toBe(
+      COMPARISON_AFTER_REORDER
+    );
+    expect(await comparisonColumnIds(page)).toEqual(
+      COMPARISON_AFTER_REORDER.split(",")
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(COMPARISON_TABLE_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await comparisonColumnIds(page)).toEqual(
+      COMPARISON_AFTER_REORDER.split(",")
+    );
+
+    await captureViewports(page, "issue-811-comparison-reorder-url");
     await page.close();
   });
 
@@ -248,15 +303,17 @@ function comparisonPayload(ids: readonly string[]): unknown {
   return {
     generatedAt: "2026-06-01T00:00:00.000Z",
     ids,
+    count: ids.length,
     selection: {
       requestedIds: ids,
+      normalizedIds: ids,
       duplicateIds: [],
       missingIds: [],
-      includedIds: ids,
+      cappedIds: ids,
       min: 2,
       max: 4,
       truncated: false,
-      status: "ready",
+      status: ids.length < 2 ? "under_limit" : "ready",
     },
     items: ids.map((id, index) => comparisonItem(id, index)),
   };
@@ -303,4 +360,31 @@ function comparisonItem(id: string, index: number): unknown {
     },
     attribution: { researchSources: [] },
   };
+}
+
+/**
+ * Reads comma-separated comparison ids from a routed resource URL.
+ * @param url - AdvisorComparison request URL.
+ * @returns Ordered advisor ids.
+ */
+function comparisonIdsFromUrl(url: string): readonly string[] {
+  return (new URL(url).searchParams.get("ids") ?? "")
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Reads the visible comparison advisor column ids from the table headers.
+ * @param page - Browser page rendering the comparison table.
+ * @returns Advisor ids in visible table order.
+ */
+async function comparisonColumnIds(page: Page): Promise<readonly string[]> {
+  return await page
+    .locator(`${COMPARISON_TABLE_SELECTOR} thead th[data-advisor-id]`)
+    .evaluateAll(nodes =>
+      nodes
+        .map(node => node.dataset.advisorId)
+        .filter((id): id is string => Boolean(id))
+    );
 }

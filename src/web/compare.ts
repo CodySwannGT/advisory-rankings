@@ -28,6 +28,12 @@ import {
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
+import {
+  comparisonColumnHeader,
+  moveComparisonItem,
+  updateComparisonSelection,
+  type ComparisonColumnActions,
+} from "./compare-selection.js";
 
 /**
  *
@@ -147,7 +153,21 @@ function renderComparison(
     selectionNotice(payload),
     SectionCardComponent({
       title: "Due diligence evidence",
-      body: comparisonTable(payload.items),
+      body: comparisonTable(payload.items, {
+        remove: id =>
+          updateComparisonSelection(
+            nextPayload => renderComparison(center, nextPayload),
+            payload,
+            payload.items.filter(item => item.id !== id)
+          ),
+        move: (id, direction) =>
+          updateComparisonSelection(
+            nextPayload => renderComparison(center, nextPayload),
+            payload,
+            moveComparisonItem(payload.items, id, direction)
+          ),
+        firmName,
+      }),
       attrs: { class: "comparison-card" },
     })
   );
@@ -210,9 +230,13 @@ function selectionNotice(payload: AdvisorComparisonPayload): HTMLElement {
 /**
  * Builds the evidence table for all compared advisors.
  * @param items - Advisor comparison items.
+ * @param actions - Selection mutation callbacks.
  * @returns Scrollable comparison table wrapper.
  */
-function comparisonTable(items: readonly AdvisorComparisonItem[]): HTMLElement {
+function comparisonTable(
+  items: readonly AdvisorComparisonItem[],
+  actions: ComparisonColumnActions
+): HTMLElement {
   const sections = comparisonSections(items);
   return el(
     "div",
@@ -227,13 +251,8 @@ function comparisonTable(items: readonly AdvisorComparisonItem[]): HTMLElement {
           "tr",
           {},
           el("th", { scope: "col" }, "Evidence"),
-          ...items.map(item =>
-            el(
-              "th",
-              { scope: "col" },
-              el("span", { class: "comparison-name" }, item.displayName),
-              el("span", { class: "comparison-firm" }, firmName(item))
-            )
+          ...items.map((item, index) =>
+            comparisonColumnHeader(item, index, items.length, actions)
           )
         )
       ),
