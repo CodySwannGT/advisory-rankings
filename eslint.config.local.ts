@@ -36,6 +36,7 @@ export default [
       // harper-fabric defaultHarperFabricIgnores.
       "harper-app/resource-*.js",
       "harper-app/resources.js",
+      "harper-app/lib/**/*.js",
     ],
   },
   {

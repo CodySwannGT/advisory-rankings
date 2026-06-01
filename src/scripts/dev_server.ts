@@ -19,6 +19,7 @@
  *   - GET /ArticleView/<id>        → resources.js ArticleView.get(id)
  *   - GET /FirmProfile/<id>        → resources.js FirmProfile.get(id)
  *   - GET /AdvisorProfile/<id>     → resources.js AdvisorProfile.get(id)
+ *   - GET /AdvisorComparison?ids=… → resources.js AdvisorComparison.get()
  *   - GET /TeamProfile/<id>        → resources.js TeamProfile.get(id)
  *   - GET /Search?q=…              → resources.js Search.get()
  *   - GET /RecruitingMarket        → resources.js RecruitingMarket.get()
@@ -58,7 +59,6 @@ import { DEV_SERVER_WEB_ROOT, serveStatic } from "./dev_server_static.js";
 /**
  * Extracts a printable error message without depending on `err` being typed
  * as `Error` — handlers can throw anything, so we narrow defensively.
- *
  * @param err - Thrown value of unknown shape.
  * @returns Best-effort message string.
  */
@@ -69,7 +69,6 @@ function errorMessage(err: unknown): string {
 
 /**
  * Dispatches to the first matching dev-server route.
- *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  * @param url - Parsed request URL.
@@ -89,7 +88,6 @@ async function routeRequest(
 
 /**
  * Routes one HTTP request through auth, resource, table, or static handlers.
- *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  */
@@ -110,7 +108,6 @@ async function handle(
 
 /**
  * Clears the resources import cache before each request when `HOT=1`.
- *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  */

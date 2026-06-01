@@ -37,7 +37,6 @@ type DevRequestTarget = URLSearchParams & {
 
 /**
  * Builds a `DevRequestTarget` from a route id and the parsed query string.
- *
  * @param id - Resource id parsed from the path, or undefined for list routes.
  * @param searchParams - The request's parsed query parameters.
  * @returns Harper-shaped target object.
@@ -76,7 +75,6 @@ interface McpConstructor {
 
 /**
  * Handles the local MCP POST bridge.
- *
  * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  * @param path - Request pathname.
@@ -103,7 +101,7 @@ export async function handleMcpRoute(
 }
 
 const NO_ARG_RESOURCE =
-  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer)$/;
+  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison)$/;
 const PROFILE_RESOURCE =
   /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/;
 
@@ -112,7 +110,6 @@ const PROFILE_RESOURCE =
  * legacy detail data-routes, mirroring `harper-app/detail_shell.js` on the
  * deployed Harper component. The SPA's own `Accept: application/json` data
  * fetches are left to fall through to {@link handleResourceRoute}.
- *
  * @param req - Incoming HTTP request (read for negotiation headers).
  * @param res - HTTP response.
  * @param url - Parsed request URL.
@@ -138,7 +135,6 @@ export async function handleDetailShellRoute(
 
 /**
  * Handles generated Harper resource routes.
- *
  * @param res - HTTP response.
  * @param url - Parsed request URL.
  * @returns Whether the route was handled.
@@ -163,7 +159,6 @@ export async function handleResourceRoute(
 
 /**
  * Executes one generated resource class and writes the JSON result.
- *
  * @param res - HTTP response.
  * @param kind - Resource class name.
  * @param id - Optional resource id.
@@ -190,7 +185,6 @@ async function sendResource(
 
 /**
  * Handles auto-export table list routes (e.g. `/Article/`).
- *
  * @param res - HTTP response.
  * @param path - Request pathname.
  * @returns Whether the route was handled.

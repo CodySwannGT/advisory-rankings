@@ -61,6 +61,7 @@ const DATE_2024_01_01 = "2024-01-01";
 const DATE_2024_04_01 = "2024-04-01";
 const DATE_2025_01_02 = "2025-01-02";
 const DATE_2026_05_25 = "2026-05-25";
+const RESEARCH_B_CHECKED_AT = "2026-05-25T12:00:00Z";
 
 class Resource {
   /**
@@ -581,7 +582,7 @@ const baseRows = () => {
       id: "research-b",
       advisorId: "advisor-a",
       sourceType: "firm_bio",
-      checkedAt: "2026-05-25T12:00:00Z",
+      checkedAt: RESEARCH_B_CHECKED_AT,
       status: "ambiguous",
       sourcesChecked: ["https://example.com/team"],
       nextCheckAfter: "2026-06-01T00:00:00Z",
@@ -923,6 +924,153 @@ describe("Harper feed and profile builders", () => {
     expect(db.byRanking.get("ranking-a")).toMatchObject({
       name: ADVISORS_TO_WATCH_LABEL,
     });
+  });
+
+  it("builds a normalized AdvisorComparison payload for two advisors", async () => {
+    const comparison = await new (resources as any).AdvisorComparison().get(
+      routeTarget("", { ids: "advisor-a,advisor-b" })
+    );
+
+    expect(new (resources as any).AdvisorComparison().allowRead()).toBe(true);
+    expect(comparison).toMatchObject({
+      count: 2,
+      ids: ["advisor-a", "advisor-b"],
+      items: [
+        {
+          identity: { id: "advisor-a", legalName: AVERY_STONE_NAME },
+          displayName: AVERY_STONE_NAME,
+          firm: expect.objectContaining({ id: "firm-a" }),
+          regulatory: {
+            brokerCheckSnapshot: expect.objectContaining({
+              subjectCrd: "12345",
+              disclosureCount: 1,
+            }),
+            disclosureCount: 1,
+            registrationApplications: [
+              expect.objectContaining({ id: "reg-a", firm: expect.anything() }),
+            ],
+          },
+          career: [
+            expect.objectContaining({
+              firm: expect.objectContaining({ id: "firm-a" }),
+              roleTitle: "Partner",
+            }),
+          ],
+          rankings: [
+            {
+              entry: expect.objectContaining({
+                id: RANKING_ENTRY_A_ID,
+                rank: 12,
+                sourceLabel: ADVISORHUB_AW_2025_LABEL,
+              }),
+              ranking: expect.objectContaining({
+                name: ADVISORS_TO_WATCH_LABEL,
+              }),
+            },
+          ],
+          articles: [
+            expect.objectContaining({
+              id: "article-a",
+              url: STONE_JOINS_EXAMPLE_URL,
+            }),
+          ],
+          dataConfidence: {
+            evidenceFreshness: expect.objectContaining({
+              hasData: true,
+              lastCheckedAt: RESEARCH_B_CHECKED_AT,
+            }),
+            confidenceSummary: {
+              hasData: true,
+              asserted: 1,
+              inferred: 1,
+              derived: 1,
+              total: 3,
+            },
+          },
+          attribution: {
+            brokerCheck: expect.objectContaining({
+              subjectCrd: "12345",
+              disclosureCount: 1,
+            }),
+            assertions: [
+              expect.objectContaining({ fieldName: "legalName" }),
+              expect.objectContaining({ fieldName: "roleTitle" }),
+              expect.objectContaining({ fieldName: "careerStatus" }),
+            ],
+            researchSources: [
+              expect.objectContaining({
+                sourceType: "web_research",
+                sourcesChecked: ["https://example.com/avery"],
+              }),
+              expect.objectContaining({ sourceType: "firm_bio" }),
+            ],
+          },
+        },
+        {
+          identity: { id: "advisor-b", legalName: BLAKE_YOUNG_NAME },
+          firm: expect.objectContaining({ id: "firm-a" }),
+          regulatory: {
+            brokerCheckSnapshot: null,
+            disclosureCount: 0,
+          },
+          rankings: [],
+          dataConfidence: {
+            evidenceFreshness: expect.objectContaining({ hasData: false }),
+            confidenceSummary: {
+              hasData: false,
+              asserted: 0,
+              inferred: 0,
+              derived: 0,
+              total: 0,
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it("parses repeated AdvisorComparison ids and sorts ranking entries", async () => {
+    setRows("RankingEntry", [
+      {
+        id: "ranking-entry-missing-rank",
+        rankingId: "ranking-a",
+        subjectAdvisorId: "advisor-a",
+        sourceLabel: "Zulu List",
+      },
+      {
+        id: "ranking-entry-alpha",
+        rankingId: "ranking-a",
+        subjectAdvisorId: "advisor-a",
+        sourceLabel: "Alpha List",
+      },
+      {
+        id: "ranking-entry-ranked",
+        rankingId: "ranking-b",
+        subjectAdvisorId: "advisor-a",
+        sourceLabel: "Middle List",
+        rank: 2,
+      },
+      {
+        id: "ranking-entry-beta",
+        rankingId: "ranking-a",
+        subjectAdvisorId: "advisor-a",
+        sourceLabel: "Alpha List",
+      },
+    ]);
+
+    const comparison = await new (resources as any).AdvisorComparison().get(
+      routeTarget("", { id: ["advisor-a", "advisor-b"] })
+    );
+
+    expect(comparison.ids).toEqual(["advisor-a", "advisor-b"]);
+    expect(
+      comparison.items[0].rankings.map((row: any) => row.entry.id)
+    ).toEqual([
+      "ranking-entry-ranked",
+      "ranking-entry-alpha",
+      "ranking-entry-beta",
+      "ranking-entry-missing-rank",
+    ]);
   });
 
   it("labels missing firm due-diligence source states explicitly", async () => {
@@ -2204,6 +2352,31 @@ describe("Harper resource endpoints", () => {
     await expect(
       new (resources as any).AdvisorProfile().get("unknown")
     ).resolves.toEqual({ error: "not found", id: "unknown" });
+    await expect(
+      new (resources as any).AdvisorComparison().get(
+        routeTarget("", { ids: "advisor-a" })
+      )
+    ).resolves.toEqual({
+      error: "at least two advisor ids required",
+      items: [],
+      nextCursor: null,
+    });
+    await expect(
+      new (resources as any).AdvisorComparison().get(
+        routeTarget("", { ids: "advisor-a,unknown" })
+      )
+    ).resolves.toEqual({ error: "not found", id: "unknown" });
+    await expect(
+      new (resources as any).AdvisorComparison().get(
+        routeTarget("", {
+          ids: "advisor-a,advisor-b,advisor-c,advisor-d,advisor-e",
+        })
+      )
+    ).resolves.toEqual({
+      error: "at most four advisor ids supported",
+      items: [],
+      nextCursor: null,
+    });
     await expect(
       new (resources as any).FirmAdvisors().get("")
     ).resolves.toEqual({

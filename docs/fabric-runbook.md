@@ -582,7 +582,7 @@ Everything else still requires auth.
 | Route | Anonymous | Why |
 |---|---|---|
 | `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
-| `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
+| `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
@@ -1042,6 +1042,7 @@ defined in `src/harper/resources.ts`:
 | `GET /ArticleView/<id>` | `ArticleView` | Same as `/Feed` for one article, plus body + `FieldAssertion` rows. |
 | `GET /FirmProfile/<id>` | `FirmProfile` | Employments → advisors, current vs. past; teams; transitions in / out; branches; disclosures at firm; mention articles. |
 | `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
+| `GET /AdvisorComparison?ids=<id>,<id>` | `AdvisorComparison` | Two-to-four advisor comparison payload with identity, firm, regulatory, career, rankings/articles, data confidence, and attribution sections. |
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
 | `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, state and city activity, source URLs, and Recruiting Market Map rollups. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
