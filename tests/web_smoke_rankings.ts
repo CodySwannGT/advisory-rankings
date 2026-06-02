@@ -15,6 +15,12 @@ import {
 const RANKINGS_TABLE_SELECTOR = ".rankings-table";
 const UNRESOLVED_ROW_NAME = "Jordan Example";
 const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
+const RAW_RANKINGS_LABELS = [
+  "SOURCE BACKED",
+  "MISSING SCALE",
+  "UNRESOLVED ENTITY",
+  "UNRESOLVED FIRM",
+];
 const MOBILE_VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 320, height: 740 },
@@ -62,7 +68,12 @@ export async function smokeRankings(
  */
 async function readLoadedRankings(page: Page) {
   return await page.evaluate(
-    ({ nextGenSourceLabel, rankingsTableSelector, unresolvedRowName }) => ({
+    ({
+      nextGenSourceLabel,
+      rankingsTableSelector,
+      rawRankingsLabels,
+      unresolvedRowName,
+    }) => ({
       hasHeader: document.body.innerText.includes(
         "Interactive Rankings Explorer"
       ),
@@ -74,9 +85,12 @@ async function readLoadedRankings(page: Page) {
       hasGapSample: document.body.innerText.includes(unresolvedRowName),
       hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
       hasLatestLoaded: document.body.innerText.includes("Latest"),
-      hasResolved: document.body.innerText.includes("RESOLVED"),
-      hasSourceBacked: document.body.innerText.includes("SOURCE BACKED"),
-      hasUnavailable: document.body.innerText.includes("UNAVAILABLE"),
+      hasResolved: document.body.innerText.includes("Matched profile"),
+      hasSourceBacked: document.body.innerText.includes("Source confirmed"),
+      hasUnavailable: document.body.innerText.includes("Unavailable"),
+      rawLabels: rawRankingsLabels.filter(label =>
+        document.body.innerText.includes(label)
+      ),
       profileHref: document.querySelector<HTMLAnchorElement>(
         ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
       )?.href,
@@ -88,6 +102,7 @@ async function readLoadedRankings(page: Page) {
     }),
     {
       nextGenSourceLabel: NEXT_GEN_SOURCE_LABEL,
+      rawRankingsLabels: RAW_RANKINGS_LABELS,
       rankingsTableSelector: RANKINGS_TABLE_SELECTOR,
       unresolvedRowName: UNRESOLVED_ROW_NAME,
     }
@@ -126,7 +141,9 @@ async function readUnresolvedRankings(page: Page) {
   return await page.evaluate(
     unresolvedRowName => ({
       hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
-      hasUnresolvedStatus: document.body.innerText.includes("UNRESOLVED"),
+      hasUnresolvedStatus: document.body.innerText.includes(
+        "Advisor or team not matched yet"
+      ),
       hasUnresolvedWorkbench:
         document.body.innerText.includes("Coverage workbench"),
       state: document.querySelector<HTMLInputElement>('input[name="state"]')
@@ -190,6 +207,11 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     check(loaded.hasResolved, "rankings: resolved status is visible"),
     check(loaded.hasSourceBacked, "rankings: source status is visible"),
     check(loaded.hasUnavailable, "rankings: missing score is explicit"),
+    check(
+      loaded.rawLabels.length === 0,
+      "rankings: raw enum-style labels are hidden",
+      loaded.rawLabels.join(", ")
+    ),
     check(
       Boolean(loaded.profileHref),
       "rankings: resolved row links to profile"

@@ -25,6 +25,11 @@ const RECRUITING_OVERFLOW_VIEWPORTS = [
   { name: "desktop", width: 1366, height: 900, tableBudgetPx: 16 },
   { name: "mobile", width: 390, height: 844, tableBudgetPx: 16 },
 ] as const;
+const RAW_RECRUITING_LABELS = [
+  "TRANSITIONEVENT",
+  "ARTICLETRANSITIONEVENTMENTION",
+  "FIRMALIAS",
+];
 
 /** Viewport and overflow budget used by recruiting table smoke checks. */
 type RecruitingViewport = (typeof RECRUITING_OVERFLOW_VIEWPORTS)[number];
@@ -51,6 +56,7 @@ interface LoadedRecruitingState {
   readonly hasRecentMoves: boolean;
   readonly hasSourceStatus: boolean;
   readonly hasTaylorGroup: boolean;
+  readonly rawLabels: readonly string[];
   readonly rowCount: number;
 }
 /** Empty-filter Recruiting route observations. */
@@ -89,14 +95,20 @@ async function readLoadedRecruiting(
 ): Promise<LoadedRecruitingState> {
   await smokeGoto(page, `${BASE}/recruiting`);
   await smokeWaitForSelector(page, ".recruiting-table", QUICK_UI_TIMEOUT);
-  const loaded: LoadedRecruitingState = await page.evaluate(() => ({
-    hasHeader: document.body.innerText.includes("Recruiting Market Map"),
-    hasMomentum: document.body.innerText.includes("Firm momentum"),
-    hasRecentMoves: document.body.innerText.includes("Recent moves"),
-    hasSourceStatus: document.body.innerText.includes("SOURCE BACKED"),
-    hasTaylorGroup: document.body.innerText.includes("The Taylor Group"),
-    rowCount: document.querySelectorAll(".recruiting-table tbody tr").length,
-  }));
+  const loaded: LoadedRecruitingState = await page.evaluate(
+    rawRecruitingLabels => ({
+      hasHeader: document.body.innerText.includes("Recruiting Market Map"),
+      hasMomentum: document.body.innerText.includes("Firm momentum"),
+      hasRecentMoves: document.body.innerText.includes("Recent moves"),
+      hasSourceStatus: document.body.innerText.includes("Source confirmed"),
+      hasTaylorGroup: document.body.innerText.includes("The Taylor Group"),
+      rawLabels: rawRecruitingLabels.filter(label =>
+        document.body.innerText.includes(label)
+      ),
+      rowCount: document.querySelectorAll(".recruiting-table tbody tr").length,
+    }),
+    RAW_RECRUITING_LABELS
+  );
   await shot(page, "10-recruiting-desktop");
   return loaded;
 }
@@ -147,6 +159,11 @@ function recruitingChecks(
       "recruiting: source-backed fixture is visible"
     ),
     check(loaded.hasSourceStatus, "recruiting: source status is visible"),
+    check(
+      loaded.rawLabels.length === 0,
+      "recruiting: raw source table labels are hidden",
+      loaded.rawLabels.join(", ")
+    ),
     ...overflowChecks,
     check(empty.hasEmpty, "recruiting: empty filter explains missing data"),
     check(empty.state === "ZZ", "recruiting: state filter is retained"),
