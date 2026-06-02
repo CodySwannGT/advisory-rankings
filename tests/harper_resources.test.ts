@@ -39,6 +39,12 @@ const TRANSITION_TEAM_ID = "transition-team";
 const TRANSITION_OUT_ID = "transition-out";
 const DISCLOSURE_A_ID = "disclosure-a";
 const REGULATORY_DISCREPANCY_A_ID = "reg-discrepancy-a";
+const REGULATORY_DISCREPANCY_REVIEWED_ID = "reg-discrepancy-public-reviewed";
+const REVIEWED_FINE_AMOUNT = "2500";
+const ADVISORHUB_FINE_AMOUNT = "25000";
+const CAIRNES_BROKERCHECK_SOURCE_REF = "crd:12345:docket:2023079356701";
+const FINE_AMOUNT_FIELD = "fineAmount";
+const BROKERCHECK_REVIEWED_NOTE = "BrokerCheck confirms the lower fine amount.";
 const COVERAGE_UNRESOLVED_MISSING_SCORE_ID =
   "coverage-unresolved-missing-score";
 const COVERAGE_UNRESOLVED_MISSING_MARKET_ID =
@@ -467,13 +473,13 @@ const baseRows = () => {
     {
       id: REGULATORY_DISCREPANCY_A_ID,
       advisorId: "advisor-a",
-      fieldName: "fineAmount",
+      fieldName: FINE_AMOUNT_FIELD,
       advisorHubSourceType: "advisorhub_article",
       advisorHubSourceRef: "article-b",
-      advisorHubValue: "25000",
+      advisorHubValue: ADVISORHUB_FINE_AMOUNT,
       brokerCheckSourceType: "brokercheck",
-      brokerCheckSourceRef: "crd:12345:docket:2023079356701",
-      brokerCheckValue: "2500",
+      brokerCheckSourceRef: CAIRNES_BROKERCHECK_SOURCE_REF,
+      brokerCheckValue: REVIEWED_FINE_AMOUNT,
       sourceMetadata: JSON.stringify({
         regulator: "FINRA",
         docketNumber: "2023079356701",
@@ -1330,7 +1336,7 @@ describe("Harper feed and profile builders", () => {
       {
         id: "reg-disc-b",
         advisorId: "advisor-a",
-        fieldName: "fineAmount",
+        fieldName: FINE_AMOUNT_FIELD,
         advisorHubValue: "20000",
         brokerCheckValue: "2500",
         sourceMetadata: "not-json",
@@ -2006,8 +2012,44 @@ describe("Harper resource endpoints", () => {
     });
   });
 
+  it("surfaces only reviewed regulatory discrepancy notes on advisor profiles", async () => {
+    setRows(REGULATORY_DISCREPANCY_TABLE, [
+      ...(tableRows.get(REGULATORY_DISCREPANCY_TABLE) ?? []),
+      {
+        id: REGULATORY_DISCREPANCY_REVIEWED_ID,
+        advisorId: "advisor-a",
+        fieldName: FINE_AMOUNT_FIELD,
+        advisorHubValue: ADVISORHUB_FINE_AMOUNT,
+        brokerCheckSourceRef: CAIRNES_BROKERCHECK_SOURCE_REF,
+        brokerCheckValue: REVIEWED_FINE_AMOUNT,
+        severity: "high",
+        status: "accepted_brokercheck",
+        reviewerNote: BROKERCHECK_REVIEWED_NOTE,
+        reviewedAt: DATE_2026_05_25,
+      },
+    ]);
+
+    const advisor = await new (resources as any).AdvisorProfile().get(
+      routeTarget(AVERY_STONE_SLUG)
+    );
+
+    expect(advisor.reviewedRegulatoryDiscrepancies).toEqual([
+      expect.objectContaining({
+        id: REGULATORY_DISCREPANCY_REVIEWED_ID,
+        status: "accepted_brokercheck",
+        reviewerNote: BROKERCHECK_REVIEWED_NOTE,
+        reviewedAt: DATE_2026_05_25,
+        brokerCheckValue: REVIEWED_FINE_AMOUNT,
+        advisorHubValue: ADVISORHUB_FINE_AMOUNT,
+      }),
+    ]);
+    expect(
+      JSON.stringify(advisor.reviewedRegulatoryDiscrepancies)
+    ).not.toContain(REGULATORY_DISCREPANCY_A_ID);
+  });
+
   it("persists regulatory discrepancy reviews without mutating source facts", async () => {
-    const reviewerNote = "BrokerCheck confirms the lower fine amount.";
+    const reviewerNote = BROKERCHECK_REVIEWED_NOTE;
     const beforeDisclosures = structuredClone(tableRows.get("Disclosure"));
     const beforeSanctions = structuredClone(tableRows.get("Sanction"));
     const beforeDiscrepancy = structuredClone(
@@ -2033,8 +2075,8 @@ describe("Harper resource endpoints", () => {
         status: "accepted_brokercheck",
         reviewerId: "analyst-a",
         reviewerNote,
-        advisorHubValue: "25000",
-        brokerCheckValue: "2500",
+        advisorHubValue: ADVISORHUB_FINE_AMOUNT,
+        brokerCheckValue: REVIEWED_FINE_AMOUNT,
       },
     });
     expect(response.discrepancy.reviewedAt).toEqual(expect.any(String));

@@ -19,6 +19,7 @@ import type {
   EmploymentHistoryRow,
   OutsideBusinessActivityRow,
   RegistrationApplicationRow,
+  RegulatoryDiscrepancyRow,
   TeamMembershipRow,
 } from "./harper-schema.js";
 
@@ -84,6 +85,19 @@ export interface BrokerCheckSnapshotSlice {
   readonly examCount: number | undefined;
 }
 
+/** Reviewed regulatory discrepancy note surfaced on public profiles. */
+export interface ReviewedRegulatoryDiscrepancyNote {
+  readonly id: RegulatoryDiscrepancyRow["id"];
+  readonly fieldName: RegulatoryDiscrepancyRow["fieldName"];
+  readonly status: RegulatoryDiscrepancyRow["status"];
+  readonly severity: RegulatoryDiscrepancyRow["severity"];
+  readonly reviewerNote: string;
+  readonly reviewedAt: RegulatoryDiscrepancyRow["reviewedAt"];
+  readonly brokerCheckValue: RegulatoryDiscrepancyRow["brokerCheckValue"];
+  readonly advisorHubValue: RegulatoryDiscrepancyRow["advisorHubValue"];
+  readonly brokerCheckSourceRef: RegulatoryDiscrepancyRow["brokerCheckSourceRef"];
+}
+
 /** Research-status keys reported by `advisorEvidenceFreshness`. */
 export type ResearchStatusKey =
   | "success"
@@ -128,6 +142,7 @@ export interface AdvisorProfilePayload extends AdvisorCredentialGroups {
   readonly transitions: readonly unknown[];
   readonly articles: readonly unknown[];
   readonly brokerCheckSnapshot: BrokerCheckSnapshotSlice | null;
+  readonly reviewedRegulatoryDiscrepancies: readonly ReviewedRegulatoryDiscrepancyNote[];
   readonly evidenceFreshness: EvidenceFreshness;
   readonly confidenceSummary: ConfidenceSummary;
 }

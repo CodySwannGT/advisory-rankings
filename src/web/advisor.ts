@@ -47,6 +47,7 @@ import {
   identityCard,
   registrationApplicationsSection,
 } from "./advisor-sections.js";
+import { reviewedDiscrepancyNotesSection } from "./advisor-discrepancy-notes-section.js";
 import {
   advisorEvidenceProfileSections,
   mobileEvidenceProfileSections,
@@ -298,6 +299,7 @@ function advisorCenterSections(
 ): readonly (HTMLElement | null)[] {
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
+  const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [];
   return [
     compareAdvisorCard(d.advisor.id),
     addToWatchlistCard(d.advisor.id),
@@ -319,6 +321,11 @@ function advisorCenterSections(
     PartialFailureCard("Education", d.education),
     disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
     PartialFailureCard("Disclosures", d.disclosures),
+    reviewedDiscrepancyNotesSection(
+      reviewedDiscrepancies,
+      d.brokerCheckSnapshot
+    ),
+    PartialFailureCard("Reviewed discrepancy notes", reviewedDiscrepancies),
     outsideActivitiesSection(
       narrowRows(
         resourceRows(d.outsideBusinessActivities),
