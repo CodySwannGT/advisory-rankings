@@ -2007,8 +2007,14 @@ describe("Harper resource endpoints", () => {
   });
 
   it("persists regulatory discrepancy reviews without mutating source facts", async () => {
+    const reviewerNote = "BrokerCheck confirms the lower fine amount.";
     const beforeDisclosures = structuredClone(tableRows.get("Disclosure"));
     const beforeSanctions = structuredClone(tableRows.get("Sanction"));
+    const beforeDiscrepancy = structuredClone(
+      tableRows
+        .get(REGULATORY_DISCREPANCY_TABLE)
+        ?.find(row => row.id === REGULATORY_DISCREPANCY_A_ID)
+    );
     const endpoint = new (resources as any).RegulatoryDiscrepancyReview();
     endpoint.getCurrentUser = () => ({ id: "analyst-a" });
 
@@ -2016,7 +2022,7 @@ describe("Harper resource endpoints", () => {
       routeTarget(REGULATORY_DISCREPANCY_A_ID),
       {
         status: "accepted_brokercheck",
-        reviewerNote: "BrokerCheck confirms the lower fine amount.",
+        reviewerNote,
       }
     );
 
@@ -2026,12 +2032,21 @@ describe("Harper resource endpoints", () => {
         id: REGULATORY_DISCREPANCY_A_ID,
         status: "accepted_brokercheck",
         reviewerId: "analyst-a",
-        reviewerNote: "BrokerCheck confirms the lower fine amount.",
+        reviewerNote,
         advisorHubValue: "25000",
         brokerCheckValue: "2500",
       },
     });
     expect(response.discrepancy.reviewedAt).toEqual(expect.any(String));
+    expect(response.discrepancy).toMatchObject({
+      advisorHubSourceType: beforeDiscrepancy?.advisorHubSourceType,
+      advisorHubSourceRef: beforeDiscrepancy?.advisorHubSourceRef,
+      advisorHubValue: beforeDiscrepancy?.advisorHubValue,
+      brokerCheckSourceType: beforeDiscrepancy?.brokerCheckSourceType,
+      brokerCheckSourceRef: beforeDiscrepancy?.brokerCheckSourceRef,
+      brokerCheckValue: beforeDiscrepancy?.brokerCheckValue,
+      sourceMetadata: beforeDiscrepancy?.sourceMetadata,
+    });
 
     await expect(
       endpoint.get(routeTarget(REGULATORY_DISCREPANCY_A_ID))
@@ -2044,6 +2059,17 @@ describe("Harper resource endpoints", () => {
     });
     expect(tableRows.get("Disclosure")).toEqual(beforeDisclosures);
     expect(tableRows.get("Sanction")).toEqual(beforeSanctions);
+    expect(
+      tableRows
+        .get(REGULATORY_DISCREPANCY_TABLE)
+        ?.find(row => row.id === REGULATORY_DISCREPANCY_A_ID)
+    ).toEqual({
+      ...beforeDiscrepancy,
+      status: "accepted_brokercheck",
+      reviewerId: "analyst-a",
+      reviewerNote,
+      reviewedAt: expect.any(String),
+    });
   });
 
   it("filters feed responses by signal mode and source category", async () => {
