@@ -520,7 +520,8 @@ public source assertions until reviewed.
 | `brokercheck_value?` | str | Literal normalized value from BrokerCheck. |
 | `source_metadata?` | json | Regulator, docket, matched disclosure ids, or other detector context. |
 | `severity` | enum (`low`, `medium`, `high`, `critical`) | Detector-assigned review priority. |
-| `status` | enum (`open`, `acknowledged`, `resolved`, `dismissed`) | Review queue state. |
+| `status` | enum (`open`, `accepted_brokercheck`, `accepted_advisorhub`, `needs_followup`, `not_a_conflict`) | Review queue state. |
+| `reviewer_id?` | str | Stable reviewer identity from the authenticated Harper user id, email, or username. |
 | `reviewer_note?` | text | Human review note or detector rationale. |
 | `reviewed_at?` | datetime | Set when a human or verification process reviews the discrepancy. |
 

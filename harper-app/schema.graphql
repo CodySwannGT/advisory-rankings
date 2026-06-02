@@ -345,6 +345,7 @@ type RegulatoryDiscrepancy @table @export {
   sourceMetadata: String
   severity: String! @indexed
   status: String! @indexed
+  reviewerId: String @indexed
   reviewerNote: String
   reviewedAt: Date
   createdAt: Date @createdTime
