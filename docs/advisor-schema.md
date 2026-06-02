@@ -532,6 +532,10 @@ advisor, current firm, disclosure, source value, regulator, docket, and
 review-action context while returning an empty authenticated envelope to
 anonymous visitors.
 
+Public advisor profiles may show reviewed discrepancy notes only after
+the row has a non-`open` status, `reviewer_note`, and `reviewed_at`.
+Unresolved `open` rows remain limited to the authenticated analyst queue.
+
 ### 4.15 `Sanction`
 
 Multiple sanctions per disclosure (a single AWC may impose fine + suspension + censure).
