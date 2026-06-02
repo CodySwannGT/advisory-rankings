@@ -1070,7 +1070,7 @@ defined in `src/harper/resources.ts`:
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
 | `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, state and city activity, source URLs, and Recruiting Market Map rollups. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
-| `GET /RegulatoryDiscrepancyQueue` | `RegulatoryDiscrepancyQueue` | Open discrepancy rows joined to advisor, firm, disclosure, source-value, docket, severity, and review-action context for authenticated analyst review. |
+| `GET /RegulatoryDiscrepancyQueue` | `RegulatoryDiscrepancyQueue` | Open discrepancy rows joined to advisor, current firm, disclosure, source value, regulator, docket, and review-action context for authenticated analyst review. |
 | `POST /mcp` | `mcp` | Streamable HTTP JSON-RPC transport for curated read-only AdvisorBook tools and resources. |
 
 The classes in `src/harper/resources.ts` extend Harper's globally-injected

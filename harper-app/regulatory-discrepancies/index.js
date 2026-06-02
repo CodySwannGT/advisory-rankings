@@ -12,10 +12,15 @@ const headers = {
 export default async function regulatoryDiscrepancyRoutes(fastify) {
   const html = {};
   fastify.get("/regulatory/discrepancies", async (_request, reply) => {
-    html.page ||= await readFile(
-      new URL("../web/regulatory-discrepancies.html", import.meta.url),
-      "utf8"
-    );
+    try {
+      html.page ||= await readFile(
+        new URL("../web/regulatory-discrepancies.html", import.meta.url),
+        "utf8"
+      );
+    } catch (error) {
+      console.error("Failed to load regulatory discrepancy shell", error);
+      return reply.code(500).send({ error: "Unable to load page shell" });
+    }
     return reply.headers(headers).send(html.page);
   });
 }

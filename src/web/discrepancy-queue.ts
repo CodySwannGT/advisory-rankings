@@ -74,7 +74,7 @@ function renderQueue(
   }
   center.appendChild(summaryCard(payload));
   center.append(...payload.items.map(discrepancyCard));
-  right.appendChild(statusCard(payload));
+  right.appendChild(severityCard(payload));
   right.appendChild(actionsCard(payload));
 }
 
@@ -161,15 +161,17 @@ function actionList(item: QueueItem): HTMLElement {
 }
 
 /**
- * Builds the status summary rail card.
+ * Builds the severity summary rail card.
  * @param payload - Queue resource payload.
- * @returns Status card.
+ * @returns Severity card.
  */
-function statusCard(payload: RegulatoryDiscrepancyQueueResponse): HTMLElement {
+function severityCard(
+  payload: RegulatoryDiscrepancyQueueResponse
+): HTMLElement {
   return SectionCard({
-    title: "Queue status",
-    body: Object.entries(payload.summary.statuses).map(([status, count]) =>
-      el("p", {}, `${humanize(status)}: ${count}`)
+    title: "Severity mix",
+    body: Object.entries(payload.summary.severities).map(([severity, count]) =>
+      el("p", {}, `${humanize(severity)}: ${count}`)
     ),
   });
 }

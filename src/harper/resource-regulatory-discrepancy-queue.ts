@@ -34,7 +34,7 @@ interface CurrentUser {
 export interface RegulatoryDiscrepancyQueueSummary {
   readonly totalOpen: number;
   readonly highSeverity: number;
-  readonly statuses: Readonly<Record<string, number>>;
+  readonly severities: Readonly<Record<string, number>>;
 }
 
 /** One source-side value shown in the queue. */
@@ -98,7 +98,7 @@ export class RegulatoryDiscrepancyQueue extends Resource {
    */
   async get(): Promise<RegulatoryDiscrepancyQueueResponse> {
     if (!currentUserId(this)) return emptyQueue(false);
-    const db = await loadAll();
+    const db = await loadQueueData();
     const rows = db.regulatoryDiscrepancies
       .filter(row => row.status === OPEN_STATUS)
       .slice()
@@ -123,9 +123,24 @@ function emptyQueue(
   return {
     authenticated,
     generatedAt: new Date().toISOString(),
-    summary: { totalOpen: 0, highSeverity: 0, statuses: {} },
+    summary: { totalOpen: 0, highSeverity: 0, severities: {} },
     items: [],
   };
+}
+
+/**
+ * Loads the joined resource index with an explicit analyst-queue failure.
+ * @returns Loaded resource index.
+ */
+async function loadQueueData(): Promise<ResourceIndex> {
+  try {
+    return await loadAll();
+  } catch (error) {
+    throw new RegulatoryDiscrepancyQueueLoadError(
+      "Failed to load regulatory discrepancy queue data",
+      error
+    );
+  }
 }
 
 /**
@@ -155,7 +170,7 @@ function severityRank(severity: string): number {
 }
 
 /**
- * Counts open queue rows by severity and status.
+ * Counts open queue rows by severity.
  * @param rows - Open discrepancy rows.
  * @returns Queue summary.
  */
@@ -165,11 +180,27 @@ function queueSummary(
   return {
     totalOpen: rows.length,
     highSeverity: rows.filter(row => severityRank(row.severity) >= 3).length,
-    statuses: rows.reduce<Record<string, number>>(
-      (acc, row) => ({ ...acc, [row.status]: (acc[row.status] ?? 0) + 1 }),
+    severities: rows.reduce<Record<string, number>>(
+      (acc, row) => ({
+        ...acc,
+        [row.severity]: (acc[row.severity] ?? 0) + 1,
+      }),
       {}
     ),
   };
+}
+
+/** Error raised when the analyst queue cannot load its backing rows. */
+class RegulatoryDiscrepancyQueueLoadError extends Error {
+  /**
+   * Creates an explicit queue load failure with the original cause attached.
+   * @param message - User-safe failure description.
+   * @param cause - Underlying load failure.
+   */
+  constructor(message: string, cause: unknown) {
+    super(message, { cause });
+    this.name = "RegulatoryDiscrepancyQueueLoadError";
+  }
 }
 
 /**

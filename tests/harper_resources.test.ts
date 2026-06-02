@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokensForAdvisor } from "../src/lib/advisor-tokens.js";
 import { advisorSearchIndexId } from "../src/lib/advisor-search-index.js";
@@ -43,7 +43,6 @@ const COVERAGE_UNRESOLVED_MISSING_SCORE_ID =
   "coverage-unresolved-missing-score";
 const COVERAGE_UNRESOLVED_MISSING_MARKET_ID =
   "coverage-unresolved-missing-market";
-const REGULATORY_DISCREPANCY_A_ID = "reg-disc-a";
 const STONE_JOINS_EXAMPLE_SLUG = "stone-joins-example";
 const SOURCE_BACKED_REASON = "source-backed";
 const UNRESOLVED_ENTITY_REASON = "unresolved-entity";
@@ -58,6 +57,7 @@ const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 const LOADED_STATUS = "loaded";
 const REGULATORY_DISCREPANCY_TABLE = "RegulatoryDiscrepancy";
+const ANALYST_EMAIL = "analyst@example.test";
 const DATE_2018_01_01 = "2018-01-01";
 const DATE_2020_01_01 = "2020-01-01";
 const DATE_2021_01_01 = "2021-01-01";
@@ -498,26 +498,6 @@ const baseRows = () => {
       disclosureId: DISCLOSURE_A_ID,
       sanctionType: "fine",
       amount: 25000,
-    },
-  ]);
-  setRows("RegulatoryDiscrepancy", [
-    {
-      id: REGULATORY_DISCREPANCY_A_ID,
-      advisorId: "advisor-a",
-      fieldName: "fineAmount",
-      advisorHubSourceType: "advisorhub_article",
-      advisorHubSourceRef: "article-a",
-      advisorHubValue: "25000",
-      brokerCheckSourceType: "brokercheck",
-      brokerCheckSourceRef: "crd:advisor-a:docket:awc-a",
-      brokerCheckValue: "2500",
-      sourceMetadata: JSON.stringify({
-        regulator: "FINRA",
-        docketNumber: "awc-a",
-        advisorHubDisclosureId: DISCLOSURE_A_ID,
-      }),
-      severity: "high",
-      status: "open",
     },
   ]);
   setRows("DisclosureCluster", [{ id: "cluster-a" }]);
@@ -1267,7 +1247,7 @@ describe("Harper feed and profile builders", () => {
 
   it("returns authenticated regulatory discrepancy queue rows with source evidence", async () => {
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
-    endpoint.getCurrentUser = () => ({ username: "analyst@example.test" });
+    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
 
     const payload = await endpoint.get();
 
@@ -1276,7 +1256,7 @@ describe("Harper feed and profile builders", () => {
     ).toBe(true);
     expect(payload).toMatchObject({
       authenticated: true,
-      summary: { totalOpen: 1, highSeverity: 1, statuses: { open: 1 } },
+      summary: { totalOpen: 1, highSeverity: 1, severities: { high: 1 } },
       items: [
         {
           id: REGULATORY_DISCREPANCY_A_ID,
@@ -1324,8 +1304,79 @@ describe("Harper feed and profile builders", () => {
 
     expect(payload).toMatchObject({
       authenticated: false,
-      summary: { totalOpen: 0, highSeverity: 0, statuses: {} },
+      summary: { totalOpen: 0, highSeverity: 0, severities: {} },
       items: [],
+    });
+  });
+
+  it("raises an explicit discrepancy queue load error for authenticated analysts", async () => {
+    const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
+    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
+    vi.spyOn(resourceData, "loadAll").mockRejectedValueOnce(
+      new Error("fixture load failed")
+    );
+
+    await expect(endpoint.get()).rejects.toMatchObject({
+      name: "RegulatoryDiscrepancyQueueLoadError",
+      message: "Failed to load regulatory discrepancy queue data",
+    });
+  });
+
+  it("sorts open discrepancy queue rows and tolerates sparse event context", async () => {
+    setRows("EmploymentHistory", [
+      { id: "employment-undated", advisorId: "advisor-a", firmId: "firm-a" },
+    ]);
+    setRows(REGULATORY_DISCREPANCY_TABLE, [
+      {
+        id: "reg-disc-b",
+        advisorId: "advisor-a",
+        fieldName: "fineAmount",
+        advisorHubValue: "20000",
+        brokerCheckValue: "2500",
+        sourceMetadata: "not-json",
+        severity: "high",
+        status: "open",
+        createdAt: DATE_2026_05_25,
+      },
+      {
+        id: "reg-disc-a",
+        advisorId: "advisor-a",
+        fieldName: "fineAmount",
+        advisorHubValue: "25000",
+        brokerCheckValue: "2500",
+        severity: "high",
+        status: "open",
+        createdAt: DATE_2026_05_25,
+      },
+      {
+        id: "reg-disc-low",
+        advisorId: "advisor-a",
+        fieldName: "status",
+        advisorHubValue: "pending",
+        brokerCheckValue: "closed",
+        severity: "low",
+        status: "open",
+      },
+    ]);
+    const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
+    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
+
+    const payload = await endpoint.get();
+
+    expect(payload.summary).toMatchObject({
+      totalOpen: 3,
+      highSeverity: 2,
+      severities: { high: 2, low: 1 },
+    });
+    expect(payload.items.map((item: any) => item.id)).toEqual([
+      "reg-disc-a",
+      "reg-disc-b",
+      "reg-disc-low",
+    ]);
+    expect(payload.items[1].event).toMatchObject({
+      regulator: null,
+      docketNumber: null,
+      disclosureIds: [],
     });
   });
 
