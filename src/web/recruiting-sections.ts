@@ -36,6 +36,12 @@ import {
 export { fmtNumber } from "./recruiting-section-cells.js";
 
 const MISSING_LOCATION = "missing-location";
+const SOURCE_TABLE_LABELS: Record<string, string> = {
+  Article: "Source articles",
+  ArticleTransitionEventMention: "Article move mentions",
+  FirmAlias: "Firm name aliases",
+  TransitionEvent: "Recruiting moves",
+};
 
 /**
  * Builds the firm momentum rankings table.
@@ -231,8 +237,19 @@ export function sourceCard(data: RecruitingMarketResponse): HTMLElement {
       el(
         "div",
         { class: "tag-list" },
-        ...data.provenance.sourceTables.map(name => Tag({ children: name }))
+        ...data.provenance.sourceTables.map(name =>
+          Tag({ children: sourceTableLabel(name) })
+        )
       ),
     ],
   });
+}
+
+/**
+ * Converts source table identifiers into reader-facing provenance labels.
+ * @param name - Source table identifier.
+ * @returns Display label.
+ */
+function sourceTableLabel(name: string): string {
+  return SOURCE_TABLE_LABELS[name] || "Source records";
 }

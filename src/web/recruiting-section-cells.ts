@@ -21,6 +21,12 @@ import type {
 
 const STACKED_CELL_CLASS = "stacked-cell";
 const NO_MATCHING_MOVES = "no-matching-moves";
+const STATUS_LABELS: Record<string, string> = {
+  missing: "Missing value",
+  "missing-location": "Location unavailable",
+  "missing-source": "Source unavailable",
+  "source-backed": "Source confirmed",
+};
 
 /**
  * Minimal firm shape consumed by `firmCell`. Compatible with `FirmChip`,
@@ -308,7 +314,7 @@ export function valueOrMissing(
 export function statusTag(status: string): HTMLElement {
   return Tag({
     kind: status.includes("missing") ? "warn" : "ok",
-    children: humanize(status.replace(/-/g, "_")),
+    children: STATUS_LABELS[status] || humanize(status.replace(/-/g, "_")),
   });
 }
 

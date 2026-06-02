@@ -8,7 +8,7 @@ import type {
   SourceStatusBucket,
 } from "../harper/resource-rankings-explorer-types.js";
 import { el, EmptyText, SectionCard, Tag } from "./design-system/index.js";
-import { fmtNumber } from "./rankings-sections.js";
+import { fmtNumber, statusLabel } from "./rankings-sections.js";
 
 const COVERAGE_BUCKET_LIMIT = 4;
 const GAP_BUCKET_LIMIT = 6;
@@ -271,9 +271,7 @@ function statusTag(status: string): HTMLElement {
         : "default";
   return Tag({
     kind,
-    children: String(status || "unknown")
-      .replaceAll("-", " ")
-      .toUpperCase(),
+    children: statusLabel(String(status || "unknown")),
   });
 }
 

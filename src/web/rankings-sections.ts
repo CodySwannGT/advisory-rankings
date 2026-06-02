@@ -19,6 +19,21 @@ import type {
 } from "../harper/resource-rankings-explorer-types.js";
 
 const STACKED_CELL_CLASS = "stacked-cell";
+const SOURCE_TABLE_LABELS: Record<string, string> = {
+  RankingEntry: "Loaded rows",
+  RankingList: "List definitions",
+  RankingSource: "Public ranking sources",
+};
+const STATUS_LABELS: Record<string, string> = {
+  "missing-market": "Market not matched yet",
+  "missing-scale": "Ranking scale unavailable",
+  "missing-source": "Source unavailable",
+  resolved: "Matched profile",
+  "source-backed": "Source confirmed",
+  unavailable: "Unavailable",
+  "unresolved-entity": "Advisor or team not matched yet",
+  "unresolved-firm": "Firm not matched yet",
+};
 
 /**
  * Top-level fields of the `/RankingsExplorer` payload consumed by the
@@ -113,7 +128,9 @@ export function sourceCard(data: RankingsExplorerData): HTMLElement {
       el(
         "div",
         { class: "tag-list" },
-        ...data.provenance.sourceTables.map(name => Tag({ children: name }))
+        ...data.provenance.sourceTables.map(name =>
+          Tag({ children: sourceTableLabel(name) })
+        )
       ),
     ],
   });
@@ -274,6 +291,7 @@ function numberCell(value: number | null | undefined): DomChild {
  * @returns Tag node.
  */
 function statusTag(status: string | null | undefined): HTMLElement {
+  const value = String(status || "unknown");
   const kind =
     status === "resolved" || status === "source-backed"
       ? "ok"
@@ -282,8 +300,24 @@ function statusTag(status: string | null | undefined): HTMLElement {
         : "default";
   return Tag({
     kind,
-    children: String(status || "unknown")
-      .replaceAll("-", " ")
-      .toUpperCase(),
+    children: statusLabel(value),
   });
+}
+
+/**
+ * Converts source table identifiers into reader-facing provenance labels.
+ * @param name - Source table identifier.
+ * @returns Display label.
+ */
+function sourceTableLabel(name: string): string {
+  return SOURCE_TABLE_LABELS[name] || "Ranking source records";
+}
+
+/**
+ * Converts status tokens into reader-facing labels.
+ * @param status - Source or resolution status token.
+ * @returns Display label.
+ */
+export function statusLabel(status: string): string {
+  return STATUS_LABELS[status] || "Needs review";
 }
