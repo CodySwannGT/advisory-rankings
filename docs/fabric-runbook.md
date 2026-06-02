@@ -735,6 +735,56 @@ If the smoke fails, CI uploads `tests/screenshots/` as a
 build artifact. The workflow also runs on `workflow_dispatch` for
 manual releases/deploys.
 
+### Node topology, replication, and how a deploy reaches the served node
+
+The cluster has two instances: `9w8-…us-east1-b-1` (east) and
+`oju-…us-west1-a-1` (west). The **public app URL is served by the west
+node**, but a Studio `deploy_component` (the `:443` control-plane proxy,
+the only path reachable from CI) lands on **east**. So a deploy only
+reaches the served node if east→west **replication** carries the new
+component.
+
+**The replication cert fix (2026-06-01).** Replication had been failing
+with `Error: self-signed certificate in certificate chain`, leaving the
+served (west) node frozen on stale assets. Root cause: each node presents
+a cert signed by its own `Harper-Certificate-Authority-<node>` for the
+`:9933` replication transport, and neither node trusted the other's CA
+(`replication.enableRootCAs: true` only trusts public roots — east's
+Let's Encrypt cert is trusted, west's self-signed Harper CA is not). Fix
+— cross-add each node's CA to the other's trust store and restart, via
+the Operations API (run from a network with `:9925` access, e.g. local):
+
+```jsonc
+// POST https://<east-host>:9925/  (Basic auth, admin creds)
+{ "operation": "add_certificate",
+  "name": "Harper-Certificate-Authority-oju-us-west1-a-1.<cluster-host>",
+  "certificate": "<west CA PEM from list_certificates on west>",
+  "is_authority": true }
+// then the same with east's CA POSTed to the west host, then
+{ "operation": "restart" }  // on each node
+```
+
+Verify with `{"operation":"cluster_status"}`: the peer connection's
+`database_sockets` for `data` and `system` should report
+`"connected": true`. This trust is stored in each node's cert store and
+survives restarts.
+
+**Why the deploy still reports a replica failure (and why that's OK).**
+`deploy_component` runs with `restart: true`, which restarts the node it
+deployed to (east) mid-push, so its immediate `replicated` array still
+shows the west replica as failed (`WebSocket was closed before the
+connection was established`). The component nonetheless propagates to west
+through the now-healthy **system-database replication** within a few
+seconds. `src/scripts/deploy.ts` therefore does not treat the
+`replicated` array as authoritative: it attempts a direct public-node
+deploy (best-effort — `:9925` is firewalled from CI, so this is a no-op
+there), then **polls `/version.js` on the public URL until it matches the
+freshly built `package.json` version** (`verifyRuntimeFreshness`). The
+deploy passes when the served node reports the new version and fails only
+if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
+exercise the CI-only path (Studio deploy + replication + freshness poll)
+from a local network.
+
 ### Firm source import automation
 
 `.github/workflows/firm-source-imports.yml` is the Codex/GitHub Actions path

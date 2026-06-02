@@ -37,6 +37,8 @@ const RESTART_TIMEOUT_MS =
   Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
     ? parsedRestartTimeoutMs
     : 15000;
+const FRESHNESS_POLL_ATTEMPTS = 12;
+const FRESHNESS_POLL_INTERVAL_MS = 5000;
 const creds = loadCreds();
 
 /**
@@ -488,7 +490,13 @@ async function verifyPublicRoute(
  * @param clusterUrl - Base URL for the deployed Harper component.
  */
 async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
-  const version = await deployedVersion(clusterUrl);
+  // Poll until the public node serves this build. When the direct :9925 path
+  // is unreachable (CI), the freshly deployed component reaches the serving
+  // node via cluster replication, which can lag the deploy by a few seconds.
+  const version = await pollDeployedVersion(
+    clusterUrl,
+    FRESHNESS_POLL_ATTEMPTS
+  );
   console.log(
     `▶ ${clusterUrl}/version.js → ${version.observed || "missing"} (expected ${version.expected})`
   );
@@ -501,6 +509,33 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
   await verifyPublicRoute(clusterUrl, "/compare.js");
   await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
   console.log("▶ public comparison assets/resources verified");
+}
+
+/**
+ * Polls the public version module until it matches the expected build or the
+ * attempt budget is exhausted, giving cluster replication time to propagate
+ * the freshly deployed component to the serving node.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ * @param attempts - Remaining poll attempts.
+ * @returns The last observed expected/observed version pair.
+ */
+async function pollDeployedVersion(
+  clusterUrl: string,
+  attempts: number
+): Promise<VersionModule> {
+  const version = await deployedVersion(clusterUrl).catch(() => ({
+    expected: "",
+    observed: "",
+  }));
+  if (version.observed === version.expected && version.observed !== "") {
+    return version;
+  }
+  if (attempts <= 1) return version;
+  console.log(
+    `  /version.js → ${version.observed || "missing"} (expected ${version.expected}); waiting for replication … (${attempts - 1} left)`
+  );
+  await new Promise(resolve => setTimeout(resolve, FRESHNESS_POLL_INTERVAL_MS));
+  return pollDeployedVersion(clusterUrl, attempts - 1);
 }
 
 /**
@@ -525,11 +560,31 @@ async function deployAndRestart(studio: StudioSession): Promise<boolean> {
   }
   if (!hasReplicationFailures(result)) return true;
 
+  // Replica push failed in the deploy_component response. Try to update the
+  // public node directly — this works from a network that can reach :9925, but
+  // that port is firewalled from datacenter egress (CI), so treat it as
+  // best-effort: if it's unreachable we fall through to the freshness gate,
+  // which waits for cluster replication to propagate the component to the
+  // serving node and fails the deploy only if it never does.
+  if (process.env.SKIP_DIRECT_PUBLIC_DEPLOY === "1") {
+    console.warn(
+      "  SKIP_DIRECT_PUBLIC_DEPLOY=1 — skipping direct public-node deploy; relying on cluster replication + freshness gate (simulates CI)"
+    );
+    return true;
+  }
   console.warn(
-    "Fabric reported replica deployment failures; deploying directly to public node"
+    "Fabric reported replica deployment failures; attempting direct public-node deploy"
   );
-  if ((await deployPublicRuntime()) !== 200) return false;
-  return (await restartPublicRuntime()) === 200;
+  try {
+    if ((await deployPublicRuntime()) === 200) {
+      await restartPublicRuntime();
+    }
+  } catch (error) {
+    console.warn(
+      `  direct public-node deploy unavailable from this network (${String(error)}); relying on cluster replication + freshness gate`
+    );
+  }
+  return true;
 }
 
 /**
