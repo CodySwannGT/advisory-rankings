@@ -37,7 +37,7 @@ const RESTART_TIMEOUT_MS =
   Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
     ? parsedRestartTimeoutMs
     : 15000;
-const FRESHNESS_POLL_ATTEMPTS = 12;
+const FRESHNESS_POLL_ATTEMPTS = 18;
 const FRESHNESS_POLL_INTERVAL_MS = 5000;
 const creds = loadCreds();
 
@@ -70,6 +70,13 @@ interface FeedJson {
 interface VersionModule {
   readonly expected: string;
   readonly observed: string;
+  /**
+   * Whether the served main bundle (`index.js`) byte-matches the locally built
+   * one. `version.js` is tiny and replicates to the serving node first; the
+   * larger bundle lags, so matching it confirms the component fully propagated
+   * (not just the version marker) before smoke runs.
+   */
+  readonly bundleFresh: boolean;
 }
 
 /**
@@ -461,11 +468,30 @@ async function fetchWithTimeout(
  */
 async function deployedVersion(clusterUrl: string): Promise<VersionModule> {
   const expected = await expectedAppVersion();
-  const response = await fetchWithTimeout(`${clusterUrl}/version.js`, {
-    headers: { Accept: "application/javascript" },
-  });
-  const observed = response.ok ? parseVersionModule(await response.text()) : "";
-  return { expected, observed };
+  const [versionResponse, bundleResponse] = await Promise.all([
+    fetchWithTimeout(`${clusterUrl}/version.js`, {
+      headers: { Accept: "application/javascript" },
+    }),
+    fetchWithTimeout(`${clusterUrl}/index.js`, {
+      headers: { Accept: "text/javascript" },
+    }),
+  ]);
+  const observed = versionResponse.ok
+    ? parseVersionModule(await versionResponse.text())
+    : "";
+  const bundleFresh =
+    bundleResponse.ok &&
+    (await bundleResponse.text()) === readFileSync(localBundlePath(), "utf8");
+  return { expected, observed, bundleFresh };
+}
+
+/**
+ * Absolute path to the locally built main browser bundle, used as the
+ * replication-complete marker for freshness verification.
+ * @returns Path to `<DIR>/web/index.js`.
+ */
+function localBundlePath(): string {
+  return join(DIR, "web", "index.js");
 }
 
 /**
@@ -498,11 +524,16 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
     FRESHNESS_POLL_ATTEMPTS
   );
   console.log(
-    `▶ ${clusterUrl}/version.js → ${version.observed || "missing"} (expected ${version.expected})`
+    `▶ ${clusterUrl}/version.js → ${version.observed || "missing"} (expected ${version.expected}); bundle fresh: ${version.bundleFresh}`
   );
   if (version.observed !== version.expected) {
     throw new Error(
       `deployed version mismatch: expected ${version.expected}, observed ${version.observed || "missing"}`
+    );
+  }
+  if (!version.bundleFresh) {
+    throw new Error(
+      "deployed bundle (index.js) does not match this build; cluster replication did not propagate the full component to the serving node in time"
     );
   }
 
@@ -526,13 +557,18 @@ async function pollDeployedVersion(
   const version = await deployedVersion(clusterUrl).catch(() => ({
     expected: "",
     observed: "",
+    bundleFresh: false,
   }));
-  if (version.observed === version.expected && version.observed !== "") {
+  if (
+    version.observed === version.expected &&
+    version.observed !== "" &&
+    version.bundleFresh
+  ) {
     return version;
   }
   if (attempts <= 1) return version;
   console.log(
-    `  /version.js → ${version.observed || "missing"} (expected ${version.expected}); waiting for replication … (${attempts - 1} left)`
+    `  /version.js → ${version.observed || "missing"} (expected ${version.expected}), bundle fresh: ${version.bundleFresh}; waiting for replication … (${attempts - 1} left)`
   );
   await new Promise(resolve => setTimeout(resolve, FRESHNESS_POLL_INTERVAL_MS));
   return pollDeployedVersion(clusterUrl, attempts - 1);
