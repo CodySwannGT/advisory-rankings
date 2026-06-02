@@ -101,7 +101,7 @@ export async function handleMcpRoute(
 }
 
 const NO_ARG_RESOURCE =
-  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison)$/;
+  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue)$/;
 const PROFILE_RESOURCE =
   /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/;
 

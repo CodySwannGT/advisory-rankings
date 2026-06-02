@@ -525,6 +525,13 @@ public source assertions until reviewed.
 | `reviewer_note?` | text | Human review note or detector rationale. |
 | `reviewed_at?` | datetime | Set when a human or verification process reviews the discrepancy. |
 
+Open rows are exposed to authenticated analyst sessions through
+`GET /RegulatoryDiscrepancyQueue` and the
+`/regulatory/discrepancies` queue page. The resource joins each row to
+advisor, current firm, disclosure, source value, regulator, docket, and
+review-action context while returning an empty authenticated envelope to
+anonymous visitors.
+
 ### 4.15 `Sanction`
 
 Multiple sanctions per disclosure (a single AWC may impose fine + suspension + censure).

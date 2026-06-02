@@ -13,6 +13,7 @@ const STONE_JOINS_EXAMPLE_URL =
   "https://www.advisorhub.com/stone-joins-example/";
 const ADVISORHUB_AW_2025_LABEL = "AdvisorHub Advisors to Watch 2025";
 const ADVISORHUB_NEXTGEN_2025_LABEL = "AdvisorHub Next Gen 2025";
+const FINRA_BROKERCHECK_LABEL = "FINRA BrokerCheck";
 const EXAMPLE_WEALTH_MANAGEMENT = "Example Wealth Management";
 const EXAMPLE_WEALTH_LLC = "Example Wealth LLC";
 const EXAMPLE_WEALTH_SHORT_NAME = "Example Wealth";
@@ -37,6 +38,7 @@ const TRANSITION_A_ID = "transition-a";
 const TRANSITION_TEAM_ID = "transition-team";
 const TRANSITION_OUT_ID = "transition-out";
 const DISCLOSURE_A_ID = "disclosure-a";
+const REGULATORY_DISCREPANCY_A_ID = "reg-discrepancy-a";
 const COVERAGE_UNRESOLVED_MISSING_SCORE_ID =
   "coverage-unresolved-missing-score";
 const COVERAGE_UNRESOLVED_MISSING_MARKET_ID =
@@ -54,6 +56,8 @@ const MISSING_T12_REASON = "missing-t12";
 const MISSING_FIRM_REASON = "missing-firm";
 const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
+const LOADED_STATUS = "loaded";
+const REGULATORY_DISCREPANCY_TABLE = "RegulatoryDiscrepancy";
 const DATE_2018_01_01 = "2018-01-01";
 const DATE_2020_01_01 = "2020-01-01";
 const DATE_2021_01_01 = "2021-01-01";
@@ -132,6 +136,7 @@ const matchesAllConditions = (row: any, conditions: readonly any[]): boolean =>
  * yielding them like a real `tables.X.search()` async iterable would.
  * @param name - Test-shim table name.
  * @param query - Harper-shaped query object (conditions/sort/limit/offset).
+ * @yields Rows matching the Harper-style test query.
  */
 async function* iterateMatchingRows(name: string, query: any) {
   const conditions = query?.conditions ?? [];
@@ -193,7 +198,7 @@ const table = (name: string) => ({
   OutsideBusinessActivity: table("OutsideBusinessActivity"),
   Ranking: table("Ranking"),
   RankingEntry: table("RankingEntry"),
-  RegulatoryDiscrepancy: table("RegulatoryDiscrepancy"),
+  RegulatoryDiscrepancy: table(REGULATORY_DISCREPANCY_TABLE),
   AdvisorResearchCheck: table("AdvisorResearchCheck"),
   RecruitingDealQuote: table("RecruitingDealQuote"),
   RegistrationApplication: table("RegistrationApplication"),
@@ -456,6 +461,35 @@ const baseRows = () => {
       regulator: "FINRA",
       dateInitiated: "2022-01-01",
       allegationText: "Unsuitable recommendation",
+    },
+  ]);
+  setRows(REGULATORY_DISCREPANCY_TABLE, [
+    {
+      id: REGULATORY_DISCREPANCY_A_ID,
+      advisorId: "advisor-a",
+      fieldName: "fineAmount",
+      advisorHubSourceType: "advisorhub_article",
+      advisorHubSourceRef: "article-b",
+      advisorHubValue: "25000",
+      brokerCheckSourceType: "brokercheck",
+      brokerCheckSourceRef: "crd:12345:docket:2023079356701",
+      brokerCheckValue: "2500",
+      sourceMetadata: JSON.stringify({
+        regulator: "FINRA",
+        docketNumber: "2023079356701",
+        advisorHubDisclosureId: DISCLOSURE_A_ID,
+      }),
+      severity: "high",
+      status: "open",
+      reviewerNote: "Review known Cairnes fine mismatch.",
+      createdAt: DATE_2026_05_25,
+    },
+    {
+      id: "reg-discrepancy-resolved",
+      advisorId: "advisor-b",
+      fieldName: "status",
+      severity: "medium",
+      status: "resolved",
     },
   ]);
   setRows("Sanction", [
@@ -887,7 +921,7 @@ describe("Harper feed and profile builders", () => {
       firmId: "firm-a",
       modules: {
         recruitingMomentum: {
-          status: "loaded",
+          status: LOADED_STATUS,
           inbound: { count: 2, knownAum: 500_000_000, unknownAumCount: 1 },
           outbound: { count: 1, knownAum: 0, unknownAumCount: 1 },
           netMoveCount: 1,
@@ -897,19 +931,19 @@ describe("Harper feed and profile builders", () => {
             sourceIds: [TRANSITION_TEAM_ID, TRANSITION_A_ID, TRANSITION_OUT_ID],
           },
           freshness: {
-            status: "loaded",
+            status: LOADED_STATUS,
             asOf: DATE_2024_04_01,
           },
         },
         rosterFootprint: {
-          status: "loaded",
+          status: LOADED_STATUS,
           currentAdvisorCount: 1,
           pastAdvisorCount: 1,
           teamCount: 1,
           branchCount: 1,
         },
         rankingPresence: {
-          status: "loaded",
+          status: LOADED_STATUS,
           resolvedCount: 1,
           unresolvedCount: 0,
           topRank: 12,
@@ -919,9 +953,9 @@ describe("Harper feed and profile builders", () => {
           },
         },
         regulatorySnapshot: {
-          status: "loaded",
+          status: LOADED_STATUS,
           source: {
-            sourceName: "FINRA BrokerCheck",
+            sourceName: FINRA_BROKERCHECK_LABEL,
             sourceUrl: "https://brokercheck.finra.org/firm/summary/67890",
             compiledAsOf: DATE_2025_01_02,
           },
@@ -931,7 +965,7 @@ describe("Harper feed and profile builders", () => {
           },
         },
         coverageTimeline: {
-          status: "loaded",
+          status: LOADED_STATUS,
           articleCount: 1,
           provenance: {
             sourceTables: ["Article", "ArticleFirmMention"],
@@ -1224,10 +1258,74 @@ describe("Harper feed and profile builders", () => {
       status: "unavailable",
       note: "No firm BrokerCheck snapshot is loaded for this firm.",
       source: {
-        sourceName: "FINRA BrokerCheck",
+        sourceName: FINRA_BROKERCHECK_LABEL,
         compiledAsOf: null,
       },
       provenance: { sourceTable: "BrokerCheckSnapshot", sourceIds: [] },
+    });
+  });
+
+  it("returns authenticated regulatory discrepancy queue rows with source evidence", async () => {
+    const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
+    endpoint.getCurrentUser = () => ({ username: "analyst@example.test" });
+
+    const payload = await endpoint.get();
+
+    expect(
+      new (resources as any).RegulatoryDiscrepancyQueue().allowRead()
+    ).toBe(true);
+    expect(payload).toMatchObject({
+      authenticated: true,
+      summary: { totalOpen: 1, highSeverity: 1, statuses: { open: 1 } },
+      items: [
+        {
+          id: REGULATORY_DISCREPANCY_A_ID,
+          advisorName: AVERY_STONE_NAME,
+          firmName: EXAMPLE_WEALTH_MANAGEMENT,
+          fieldName: "fineAmount",
+          severity: "high",
+          status: "open",
+          advisorHub: {
+            sourceName: "AdvisorHub",
+            sourceRef: "article-b",
+            value: "25000",
+          },
+          brokerCheck: {
+            sourceName: FINRA_BROKERCHECK_LABEL,
+            sourceRef: "crd:12345:docket:2023079356701",
+            value: "2500",
+          },
+          event: {
+            regulator: "FINRA",
+            docketNumber: "2023079356701",
+            disclosureIds: [DISCLOSURE_A_ID],
+            disclosureStatuses: [],
+          },
+          availableActions: [
+            "accepted_brokercheck",
+            "accepted_advisorhub",
+            "needs_followup",
+            "not_a_conflict",
+          ],
+          provenance: {
+            sourceTable: REGULATORY_DISCREPANCY_TABLE,
+            sourceIds: [REGULATORY_DISCREPANCY_A_ID],
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(payload)).not.toContain("reg-discrepancy-resolved");
+  });
+
+  it("does not expose discrepancy details to signed-out queue visitors", async () => {
+    const payload = await new (
+      resources as any
+    ).RegulatoryDiscrepancyQueue().get();
+
+    expect(payload).toMatchObject({
+      authenticated: false,
+      summary: { totalOpen: 0, highSeverity: 0, statuses: {} },
+      items: [],
     });
   });
 
@@ -1306,7 +1404,7 @@ describe("Harper feed and profile builders", () => {
         },
         growth: {
           value: 76.4,
-          status: "loaded",
+          status: LOADED_STATUS,
         },
       },
       sourceStatus: [
