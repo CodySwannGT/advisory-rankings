@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-05-31
+updated: 2026-06-01
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -9,6 +9,7 @@ sources:
   - ../sources/git/2026-05-25-advisory-rankings-git.md
   - ../sources/git/2026-05-26-advisory-rankings-git.md
   - ../sources/git/2026-05-31-advisory-rankings-git.md
+  - ../sources/git/2026-06-01-advisory-rankings-git.md
 ---
 
 # Git history
@@ -37,6 +38,11 @@ commits since the 2026-05-26 cursor and refreshed recent merged PR metadata thro
 "fix: match multi-word firm search prefixes." Source:
 wiki/sources/git/2026-05-31-advisory-rankings-git.md.
 
+The 2026-06-01 git ingest ran at HEAD `11444ea895b6e8f2df1c660eeca05701436fc8a4`. It added 51
+commits since the 2026-05-31 cursor and refreshed recent merged PR metadata through #858,
+"Add regulatory discrepancy resource shape." Source:
+wiki/sources/git/2026-06-01-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -52,6 +58,11 @@ wiki/sources/git/2026-05-31-advisory-rankings-git.md.
   feed-mode reload stabilization, event-backed feed filtering, and multi-word firm search coverage.
 - Smoke-test and deployment gate hardening for watchlists, search timeouts, route recovery,
   high-signal filters, sanction pills, and invalid legacy detail routes.
+- Advisor comparison expanded from resource tests into route/UI behavior, public entry actions,
+  watchlist seeding, selection controls, BrokerCheck attribution, private overlays, and comparison
+  smoke evidence.
+- Regulatory discrepancy work introduced a dedicated resource shape after the comparison workflow
+  landed.
 
 ## Use
 
@@ -59,4 +70,5 @@ Use this page as the wiki's current high-level project-history landing page. For
 consult the source notes. Sources: wiki/sources/git/2026-05-23-advisory-rankings-git.md and
 wiki/sources/git/2026-05-25-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-26-advisory-rankings-git.md, and
-wiki/sources/git/2026-05-31-advisory-rankings-git.md.
+wiki/sources/git/2026-05-31-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-01-advisory-rankings-git.md.
