@@ -10,6 +10,7 @@ sources:
   - ../sources/git/2026-05-26-advisory-rankings-git.md
   - ../sources/git/2026-05-31-advisory-rankings-git.md
   - ../sources/git/2026-06-01-advisory-rankings-git.md
+  - ../sources/git/2026-06-02-advisory-rankings-git.md
 ---
 
 # Git history
@@ -43,6 +44,11 @@ commits since the 2026-05-31 cursor and refreshed recent merged PR metadata thro
 "Add regulatory discrepancy resource shape." Source:
 wiki/sources/git/2026-06-01-advisory-rankings-git.md.
 
+The 2026-06-02 git ingest ran at HEAD `6e85165c46eb9de504201834ef581c427565c832`. It added 48
+commits since the 2026-06-01 cursor and refreshed recent merged PR metadata through #889,
+"fix: gate deploy freshness on the index.js bundle, not just version.js." Source:
+wiki/sources/git/2026-06-02-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -63,6 +69,13 @@ wiki/sources/git/2026-06-01-advisory-rankings-git.md.
   smoke evidence.
 - Regulatory discrepancy work introduced a dedicated resource shape after the comparison workflow
   landed.
+- Regulatory discrepancy work continued into detection, persisted reviews, review immutability tests,
+  queue rendering, and reviewed-note display on profile pages.
+- Deployment and smoke hardening focused on direct Basic auth, restart tolerance, replication
+  freshness polling, and bundle-freshness gates.
+- Feed and market-page polish addressed uncategorized feed fallback labels, market page source labels,
+  feed Load more pagination, and page-fetch error handling.
+- The 2026-06-01 Lisa package update and wiki ingest PR landed during this window.
 
 ## Use
 
@@ -71,4 +84,5 @@ consult the source notes. Sources: wiki/sources/git/2026-05-23-advisory-rankings
 wiki/sources/git/2026-05-25-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-26-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-31-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-01-advisory-rankings-git.md.
+wiki/sources/git/2026-06-01-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-02-advisory-rankings-git.md.
