@@ -366,6 +366,7 @@ export interface RegulatoryDiscrepancyRow {
   readonly sourceMetadata?: string;
   readonly severity: string;
   readonly status: string;
+  readonly reviewerId?: string;
   readonly reviewerNote?: string;
   readonly reviewedAt?: HarperDate;
   readonly createdAt?: HarperDate;

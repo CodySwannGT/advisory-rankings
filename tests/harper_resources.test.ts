@@ -41,6 +41,7 @@ const COVERAGE_UNRESOLVED_MISSING_SCORE_ID =
   "coverage-unresolved-missing-score";
 const COVERAGE_UNRESOLVED_MISSING_MARKET_ID =
   "coverage-unresolved-missing-market";
+const REGULATORY_DISCREPANCY_A_ID = "reg-disc-a";
 const STONE_JOINS_EXAMPLE_SLUG = "stone-joins-example";
 const SOURCE_BACKED_REASON = "source-backed";
 const UNRESOLVED_ENTITY_REASON = "unresolved-entity";
@@ -143,6 +144,24 @@ async function* iterateMatchingRows(name: string, query: any) {
 }
 
 const table = (name: string) => ({
+  get: async (id: string) =>
+    (tableRows.get(name) ?? []).find(row => row.id === id) ?? null,
+  put: async (row: any) => {
+    const rows = tableRows.get(name) ?? [];
+    const index = rows.findIndex(candidate => candidate.id === row.id);
+    if (index === -1) {
+      tableRows.set(name, [...rows, row]);
+      return;
+    }
+    tableRows.set(name, [
+      ...rows.slice(0, index),
+      row,
+      ...rows.slice(index + 1),
+    ]);
+  },
+  insert: async (row: any) => {
+    await table(name).put(row);
+  },
   // Honor the subset of Harper search semantics the rewritten read
   // paths depend on: equality conditions (default), `starts_with`
   // btree-range, `ne` null-emptiness, `sort`, `limit`, and `offset`.
@@ -440,7 +459,32 @@ const baseRows = () => {
     },
   ]);
   setRows("Sanction", [
-    { id: "sanction-a", disclosureId: DISCLOSURE_A_ID, sanctionType: "fine" },
+    {
+      id: "sanction-a",
+      disclosureId: DISCLOSURE_A_ID,
+      sanctionType: "fine",
+      amount: 25000,
+    },
+  ]);
+  setRows("RegulatoryDiscrepancy", [
+    {
+      id: REGULATORY_DISCREPANCY_A_ID,
+      advisorId: "advisor-a",
+      fieldName: "fineAmount",
+      advisorHubSourceType: "advisorhub_article",
+      advisorHubSourceRef: "article-a",
+      advisorHubValue: "25000",
+      brokerCheckSourceType: "brokercheck",
+      brokerCheckSourceRef: "crd:advisor-a:docket:awc-a",
+      brokerCheckValue: "2500",
+      sourceMetadata: JSON.stringify({
+        regulator: "FINRA",
+        docketNumber: "awc-a",
+        advisorHubDisclosureId: DISCLOSURE_A_ID,
+      }),
+      severity: "high",
+      status: "open",
+    },
   ]);
   setRows("DisclosureCluster", [{ id: "cluster-a" }]);
   setRows("OutsideBusinessActivity", [
@@ -1811,6 +1855,46 @@ describe("Harper resource endpoints", () => {
       currentMembers: [{ advisor: { id: "advisor-a" } }],
       pastMembers: [{ advisor: { id: "advisor-b" } }],
     });
+  });
+
+  it("persists regulatory discrepancy reviews without mutating source facts", async () => {
+    const beforeDisclosures = structuredClone(tableRows.get("Disclosure"));
+    const beforeSanctions = structuredClone(tableRows.get("Sanction"));
+    const endpoint = new (resources as any).RegulatoryDiscrepancyReview();
+    endpoint.getCurrentUser = () => ({ id: "analyst-a" });
+
+    const response = await endpoint.post(
+      routeTarget(REGULATORY_DISCREPANCY_A_ID),
+      {
+        status: "accepted_brokercheck",
+        reviewerNote: "BrokerCheck confirms the lower fine amount.",
+      }
+    );
+
+    expect(response).toMatchObject({
+      authenticated: true,
+      discrepancy: {
+        id: REGULATORY_DISCREPANCY_A_ID,
+        status: "accepted_brokercheck",
+        reviewerId: "analyst-a",
+        reviewerNote: "BrokerCheck confirms the lower fine amount.",
+        advisorHubValue: "25000",
+        brokerCheckValue: "2500",
+      },
+    });
+    expect(response.discrepancy.reviewedAt).toEqual(expect.any(String));
+
+    await expect(
+      endpoint.get(routeTarget(REGULATORY_DISCREPANCY_A_ID))
+    ).resolves.toMatchObject({
+      discrepancy: {
+        id: REGULATORY_DISCREPANCY_A_ID,
+        status: "accepted_brokercheck",
+        reviewerId: "analyst-a",
+      },
+    });
+    expect(tableRows.get("Disclosure")).toEqual(beforeDisclosures);
+    expect(tableRows.get("Sanction")).toEqual(beforeSanctions);
   });
 
   it("filters feed responses by signal mode and source category", async () => {
