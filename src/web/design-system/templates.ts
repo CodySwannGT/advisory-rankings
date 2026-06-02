@@ -136,6 +136,7 @@ function primaryBrowseCard(): HTMLElement {
       { label: "Teams", icon: "🤝", href: "/teams" },
       { label: "Watchlists", icon: "⭐", href: "/watchlists" },
       { label: "Compliance", icon: "⚖️", href: "/regulatory" },
+      { label: "Discrepancies", icon: "!", href: "/regulatory/discrepancies" },
     ],
   });
 }

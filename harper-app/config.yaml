@@ -25,6 +25,7 @@ fastifyRoutes:
     - 'recruiting/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
+    - 'regulatory-discrepancies/index.js'
     - 'compare/index.js'
     - 'watchlists/index.js'
     - 'favicon/index.js'
