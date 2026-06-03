@@ -785,6 +785,41 @@ if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
 exercise the CI-only path (Studio deploy + replication + freshness poll)
 from a local network.
 
+**Secondary indexes do not replicate reliably to the served node
+(2026-06-03).** A subtler layer of the same east→west replication gap:
+*row data* replicates to the west (served) node, but *secondary indexes*
+do not always rebuild there. The symptom is node-specific and silent — on
+the served node a full `tables.X.search({})` scan returns a row, but an
+indexed `tables.X.search({ conditions: [{ attribute: "<indexed-attr>",
+value }] })` for that same row returns **nothing**. Confirmed on the live
+cluster: `/Feed?mode=event` (and `recruiting` / `compliance`) returned 0
+items for every visitor while `/ArticleView/<id>` for a seeded
+transition/disclosure article rendered its full event card — because
+`ArticleView` reads via the full-scan `loadAll()` and `/Feed` (after
+PR #771) read the article→mention join via indexed `articleId` lookups.
+`ArticleFirmMention` happened to work only because the crawler writes it
+heavily enough to keep its index materialized on the served node; the
+sparsely-seeded advisor / team / transition / disclosure mention tables
+did not. Querying the same conditioned search against the **east** node's
+`:9925` Operations API returned the row correctly — proof the defect is the
+served node's index, not the query or the data.
+
+This repeatedly broke the deploy smoke gate (`smokeFeed` waits for an
+event-backed feed headline that never rendered) since ~2026-05-28, the
+date PR #771 swapped `/Feed` off `loadAll()`. Fix: the feed's article→mention
+join (`loadArticleMentions` in `src/harper/resource-feed-page-load.ts`) now
+reads each tiny mention table with a full `search({})` scan and filters by
+the page's `articleId` set in memory, so the join no longer depends on
+served-node secondary-index replication. The large entity tables (Advisor,
+EmploymentHistory, …) are still hydrated by indexed primary-key / id
+lookups — the `id` (primary-key) index does replicate reliably, and those
+tables are too large to scan (the #721/#771 motivation). Regression coverage:
+`tests/feed_stale_secondary_index.test.ts` simulates a served node whose
+`articleId`-conditioned search is empty while its full scan works, and
+asserts the feed join still resolves. **Do not** revert the mention join to
+indexed `search({ conditions })` lookups — that reintroduces the dependency
+and re-breaks the deploy.
+
 ### Firm source import automation
 
 `.github/workflows/firm-source-imports.yml` is the Codex/GitHub Actions path
