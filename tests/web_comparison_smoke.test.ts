@@ -16,6 +16,7 @@ const DEV_BACKEND =
   process.env.COMPARISON_SMOKE_BACKEND ||
   "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const COMPARISON_TABLE_SELECTOR = ".comparison-table";
+const COMPARISON_START_SELECTOR = ".comparison-start";
 const RUN_ENABLED = process.env.RUN_WEB_COMPARISON_SMOKE === "1";
 const browserDescribe =
   RUN_ENABLED && existsSync(chromium.executablePath())
@@ -152,6 +153,56 @@ browserDescribe(
         mobileMetrics.tableClientWidth
       );
     });
+
+    it("guides cold-start visitors who open compare without ids", async () => {
+      const desktop = await browser.newPage({
+        viewport: { width: 1280, height: 900 },
+      });
+      await routeNoSelectionComparison(desktop);
+      await desktop.goto(`${baseUrl}/compare`, {
+        waitUntil: "domcontentloaded",
+      });
+      await desktop.locator(COMPARISON_START_SELECTOR).waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const desktopMetrics = await compareStartMetrics(desktop);
+      await desktop.screenshot({
+        path: join(SHOTS, "issue-893-compare-start-desktop.png"),
+        fullPage: true,
+      });
+      await desktop.close();
+
+      const mobile = await browser.newPage({
+        viewport: { width: 390, height: 844 },
+      });
+      await routeNoSelectionComparison(mobile);
+      await mobile.goto(`${baseUrl}/compare`, {
+        waitUntil: "domcontentloaded",
+      });
+      await mobile.locator(COMPARISON_START_SELECTOR).waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const mobileMetrics = await compareStartMetrics(mobile);
+      await mobile.screenshot({
+        path: join(SHOTS, "issue-893-compare-start-mobile.png"),
+        fullPage: true,
+      });
+      await mobile.close();
+
+      expect(desktopMetrics.heading).toBe("Advisor comparison");
+      expect(desktopMetrics.startTitle).toBe("Choose advisors to compare");
+      expect(desktopMetrics.hasManualUrlInstruction).toBe(false);
+      expect(desktopMetrics.hasBrowseAction).toBe(true);
+      expect(desktopMetrics.hasDirectoryLink).toBe(true);
+      expect(mobileMetrics.hasBrowseAction).toBe(true);
+      expect(mobileMetrics.scrollWidth).toBeLessThanOrEqual(
+        mobileMetrics.clientWidth
+      );
+    });
   }
 );
 
@@ -222,7 +273,37 @@ async function routeDevResources(page: Page): Promise<void> {
     await route.fulfill({ json: { authenticated: false } });
   });
   await page.route("**/Feed", proxyDevResource);
+  await page.route("**/AdvisorComparison", proxyComparisonResource);
   await page.route("**/AdvisorComparison?**", proxyComparisonResource);
+}
+
+/**
+ * Routes the no-selection comparison resource to a deterministic empty payload.
+ * @param page - Browser page under test.
+ */
+async function routeNoSelectionComparison(page: Page): Promise<void> {
+  await page.route("**/Me", async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route("**/AdvisorComparison", async route => {
+    await route.fulfill({
+      json: {
+        generatedAt: new Date().toISOString(),
+        selection: {
+          status: "under_limit",
+          requestedIds: [],
+          normalizedIds: [],
+          duplicateIds: [],
+          cappedIds: [],
+          missingIds: [],
+          min: 2,
+          max: 4,
+          truncated: false,
+        },
+        items: [],
+      },
+    });
+  });
 }
 
 /**
@@ -412,4 +493,31 @@ async function comparisonMetrics(page: Page) {
       tableScrollWidth: table?.scrollWidth ?? 0,
     };
   }, COMPARISON_TABLE_SELECTOR);
+}
+
+/**
+ * Reads the cold-start compare state and page overflow metrics.
+ * @param page - Browser page rendering `/compare` without ids.
+ * @returns Empty-state DOM metrics.
+ */
+async function compareStartMetrics(page: Page) {
+  return await page.evaluate(startSelector => {
+    const start = document.querySelector(startSelector);
+    return {
+      heading: document.querySelector("h1")?.textContent?.trim() ?? "",
+      startTitle:
+        start?.querySelector(".card-title")?.textContent?.trim() ?? "",
+      hasManualUrlInstruction: Boolean(
+        document.body.textContent?.includes("Add two to four advisor ids")
+      ),
+      hasBrowseAction: Boolean(
+        [...document.querySelectorAll("button")].some(button =>
+          button.textContent?.includes("Browse advisors")
+        )
+      ),
+      hasDirectoryLink: Boolean(document.querySelector('a[href="/advisors"]')),
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  }, COMPARISON_START_SELECTOR);
 }
