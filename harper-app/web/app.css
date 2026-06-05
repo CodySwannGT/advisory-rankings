@@ -1852,6 +1852,49 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text-muted);
 }
 
+.comparison-start .card-body {
+  display: grid;
+  gap: var(--ab-space-4);
+}
+
+.comparison-start-copy {
+  max-width: 720px;
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.comparison-start-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ab-space-3);
+}
+
+.comparison-start-button {
+  min-width: 160px;
+}
+
+.comparison-start-link {
+  color: var(--ab-color-brand);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.comparison-start-link:hover {
+  text-decoration: underline;
+}
+
+.comparison-start-steps {
+  display: grid;
+  gap: var(--ab-space-2);
+  margin: 0;
+  padding-left: var(--ab-space-5);
+  color: var(--text);
+  line-height: 1.5;
+}
+
 .comparison-card .card-body {
   padding: 0;
 }
@@ -2035,6 +2078,20 @@ body.drawer-open .nav .nav-scrim {
   .comparison-status {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .comparison-start-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .comparison-start-button,
+  .comparison-start-link {
+    width: 100%;
+  }
+
+  .comparison-start-link {
+    text-align: center;
   }
 
   .comparison-table {

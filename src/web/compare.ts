@@ -19,10 +19,10 @@ import {
   mountFullWidthPage,
   clear,
   el,
-  EmptyCard,
   ProfileHead,
   SectionCard,
   AsyncStateCard,
+  Button,
   Tag,
   SourceAttribution,
 } from "./design-system/index.js";
@@ -41,11 +41,11 @@ import {
  */
 type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
 
-const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
 const ProfileHeadComponent = ProfileHead as unknown as DesignSystemComponent;
 const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
 const AsyncStateCardComponent =
   AsyncStateCard as unknown as DesignSystemComponent;
+const ButtonComponent = Button as unknown as DesignSystemComponent;
 const TagComponent = Tag as unknown as DesignSystemComponent;
 const SourceAttributionComponent =
   SourceAttribution as unknown as DesignSystemComponent;
@@ -140,12 +140,7 @@ function renderComparison(
   clear(center);
 
   if (!payload.items.length) {
-    center.appendChild(
-      EmptyCardComponent({
-        title: "Choose advisors to compare",
-        body: "Add two to four advisor ids to the URL with ?ids=advisor-a,advisor-b.",
-      })
-    );
+    center.appendChild(compareStartCard());
     return;
   }
 
@@ -173,6 +168,50 @@ function renderComparison(
     }),
     privateOverlayMount(payload.items)
   );
+}
+
+/**
+ * Renders a human-usable starting point for cold `/compare` visits.
+ * @returns Compare empty-state section.
+ */
+function compareStartCard(): HTMLElement {
+  return SectionCardComponent({
+    title: "Choose advisors to compare",
+    attrs: { class: "comparison-start" },
+    body: [
+      el(
+        "p",
+        { class: "comparison-start-copy" },
+        "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row."
+      ),
+      el(
+        "div",
+        { class: "comparison-start-actions" },
+        ButtonComponent({
+          variant: "primary",
+          children: "Browse advisors",
+          onClick: () => {
+            window.location.href = "/advisors";
+          },
+          attrs: {
+            class: "comparison-start-button",
+          },
+        }),
+        el(
+          "a",
+          { class: "comparison-start-link", href: "/advisors" },
+          "Open advisor directory"
+        )
+      ),
+      el(
+        "ol",
+        { class: "comparison-start-steps", "aria-label": "Comparison steps" },
+        el("li", {}, "Find an advisor by name, firm, or team."),
+        el("li", {}, "Add two to four advisors to the comparison."),
+        el("li", {}, "Review diligence evidence side by side.")
+      ),
+    ],
+  });
 }
 
 /**
