@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-01
+updated: 2026-06-03
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -11,6 +11,7 @@ sources:
   - ../sources/git/2026-05-31-advisory-rankings-git.md
   - ../sources/git/2026-06-01-advisory-rankings-git.md
   - ../sources/git/2026-06-02-advisory-rankings-git.md
+  - ../sources/git/2026-06-03-advisory-rankings-git.md
 ---
 
 # Git history
@@ -49,6 +50,11 @@ commits since the 2026-06-01 cursor and refreshed recent merged PR metadata thro
 "fix: gate deploy freshness on the index.js bundle, not just version.js." Source:
 wiki/sources/git/2026-06-02-advisory-rankings-git.md.
 
+The 2026-06-03 git ingest ran at HEAD `af31adb8f7d6037e42901fd8bfa4cbebd55a0a80`. It added 3
+commits since the 2026-06-02 cursor and refreshed recent merged PR metadata through #892,
+"docs: ingest latest wiki sources." Source:
+wiki/sources/git/2026-06-03-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -76,6 +82,7 @@ wiki/sources/git/2026-06-02-advisory-rankings-git.md.
 - Feed and market-page polish addressed uncategorized feed fallback labels, market page source labels,
   feed Load more pagination, and page-fetch error handling.
 - The 2026-06-01 Lisa package update and wiki ingest PR landed during this window.
+- The 2026-06-02 wiki ingest PR merged, followed by the 0.1.264 release marker commit.
 
 ## Use
 
@@ -85,4 +92,5 @@ wiki/sources/git/2026-05-25-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-26-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-31-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-01-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-02-advisory-rankings-git.md.
+wiki/sources/git/2026-06-02-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-03-advisory-rankings-git.md.
