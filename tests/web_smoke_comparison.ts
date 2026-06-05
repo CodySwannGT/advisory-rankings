@@ -30,6 +30,18 @@ interface AdvisorChip {
   readonly id?: string;
 }
 
+interface ComparisonMetrics {
+  readonly brokerCheckAttributionCount: number;
+  readonly clientWidth: number;
+  readonly h1Text: string;
+  readonly labeledValueCells: number;
+  readonly neutralMissingStates: number;
+  readonly rowCount: number;
+  readonly scrollWidth: number;
+  readonly tableClientWidth: number;
+  readonly tableScrollWidth: number;
+}
+
 /**
  * Exercises the public advisor comparison route with advisor ids selected from
  * the live Feed payload.
@@ -90,28 +102,47 @@ export async function smokeComparison(
       "compare: desktop renders BrokerCheck attribution",
       `attributions ${desktop.brokerCheckAttributionCount}`
     ),
-    ...(await closeWithChecks(mobileContext, [
-      check(
-        mobile.scrollWidth <= mobile.clientWidth,
-        "compare: mobile page avoids viewport overflow",
-        `${mobile.scrollWidth}/${mobile.clientWidth}`
-      ),
-      check(
-        mobile.tableScrollWidth >= mobile.tableClientWidth,
-        "compare: mobile table remains horizontally scrollable",
-        `${mobile.tableScrollWidth}/${mobile.tableClientWidth}`
-      ),
-      check(
-        mobile.rowCount >= 6,
-        "compare: mobile renders all diligence sections",
-        `rows ${mobile.rowCount}`
-      ),
-      check(
-        mobile.brokerCheckAttributionCount >= 1,
-        "compare: mobile renders BrokerCheck attribution",
-        `attributions ${mobile.brokerCheckAttributionCount}`
-      ),
-    ])),
+    ...(await closeWithChecks(mobileContext, mobileComparisonChecks(mobile))),
+  ];
+}
+
+/**
+ * Builds mobile comparison smoke checks from captured route metrics.
+ * @param mobile - Mobile viewport comparison metrics.
+ * @returns Assertions for mobile overflow and rendered evidence.
+ */
+function mobileComparisonChecks(mobile: ComparisonMetrics): readonly Check[] {
+  return [
+    check(
+      mobile.scrollWidth <= mobile.clientWidth,
+      "compare: mobile page avoids viewport overflow",
+      `${mobile.scrollWidth}/${mobile.clientWidth}`
+    ),
+    check(
+      mobile.tableScrollWidth >= mobile.tableClientWidth,
+      "compare: mobile table remains horizontally scrollable",
+      `${mobile.tableScrollWidth}/${mobile.tableClientWidth}`
+    ),
+    check(
+      mobile.tableScrollWidth <= mobile.tableClientWidth,
+      "compare: mobile evidence table content fits viewport",
+      `${mobile.tableScrollWidth}/${mobile.tableClientWidth}`
+    ),
+    check(
+      mobile.labeledValueCells >= mobile.rowCount,
+      "compare: mobile evidence values include advisor labels",
+      `labels ${mobile.labeledValueCells}/rows ${mobile.rowCount}`
+    ),
+    check(
+      mobile.rowCount >= 6,
+      "compare: mobile renders all diligence sections",
+      `rows ${mobile.rowCount}`
+    ),
+    check(
+      mobile.brokerCheckAttributionCount >= 1,
+      "compare: mobile renders BrokerCheck attribution",
+      `attributions ${mobile.brokerCheckAttributionCount}`
+    ),
   ];
 }
 
@@ -155,6 +186,10 @@ async function comparisonMetrics(page: Page) {
             ?.length ?? 0,
         clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
+        labeledValueCells: [
+          ...document.querySelectorAll(`${tableSelector} tbody td`),
+        ].filter(element => element.getAttribute("data-advisor-label")?.trim())
+          .length,
         tableClientWidth: table?.clientWidth ?? 0,
         tableScrollWidth: table?.scrollWidth ?? 0,
       };
