@@ -47,7 +47,7 @@ describe("SEO route shells", () => {
     };
     const redirects: Array<[number, string]> = [];
     const reply = {
-      redirect: (statusCode: number, path: string) => {
+      redirect: (path: string, statusCode: number) => {
         redirects.push([statusCode, path]);
       },
     };
