@@ -29,6 +29,7 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
     .click();
   await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
   await shot(page, "04-team-taylor-group");
+  const mobileChecks = await smokeTeamMobileDetails(page);
 
   return [
     check(
@@ -56,5 +57,40 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
       (await page.locator(".snap-table tbody tr").count()) >= 2,
       "team.html: metric snapshot rows rendered"
     ),
+    ...mobileChecks,
   ];
+}
+
+/**
+ * Checks team details after the right rail collapses on mobile.
+ * @param page - Browser page already positioned on a team profile.
+ * @returns Smoke assertions for mobile team details.
+ */
+async function smokeTeamMobileDetails(page: Page): Promise<readonly Check[]> {
+  const desktopViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  try {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await smokeWaitForSelector(page, PROFILE_HEADING_SELECTOR);
+    const details = page.locator(".team-mobile-details .card").first();
+    await details.waitFor();
+    await shot(page, "04-team-details-mobile");
+    const detailsText = (await details.textContent()) ?? "";
+
+    return [
+      check(
+        await details.isVisible(),
+        "team.html: mobile Team details section visible"
+      ),
+      check(
+        /Name/.test(detailsText) &&
+          /Firm program/.test(detailsText) &&
+          /Current firm/.test(detailsText),
+        "team.html: mobile Team details include structured facts",
+        detailsText
+      ),
+    ];
+  } finally {
+    if (desktopViewport) await page.setViewportSize(desktopViewport);
+  }
 }
