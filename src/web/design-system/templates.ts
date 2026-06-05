@@ -180,7 +180,7 @@ export function mountFullWidthPage({
 }
 
 // ─── CenteredNarrowLayout ─────────────────────────────────────
-// Single narrow centered column (used by login.html).
+// Single narrow centered column (used by the login shell).
 /**
  * Mounts a narrow centered page shell for forms such as login.
  * @param root0 - value used by this operation.

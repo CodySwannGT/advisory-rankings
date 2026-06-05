@@ -103,7 +103,7 @@ export type WatchlistPostBody =
   | UpdateEntryBody
   | DeleteEntryBody;
 
-const SIGN_IN_HREF = "/login.html";
+const SIGN_IN_HREF = "/login";
 
 /**
  * Builds a create-watchlist request body.

@@ -136,7 +136,7 @@ function renderSignedOutRating(body: HTMLElement): void {
       "a",
       {
         class: "ab-btn ab-btn--neutral private-rating-link",
-        href: "/login.html",
+        href: "/login",
       },
       "Sign in"
     )

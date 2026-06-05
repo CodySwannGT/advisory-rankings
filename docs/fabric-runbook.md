@@ -379,9 +379,10 @@ re-reads files on reload; no special handling.
 > `teams.html`), `recruiting.html`, `rankings.html`, `regulatory.html`,
 > `compare.html`, and `login.html`.
 > Clean routes (`/firms`, `/advisors`, `/teams`, `/recruiting`, `/rankings`, `/regulatory`, `/compare`,
-> `/articles/<slug>-<id>`, and entity
+> `/watchlists`, `/login`, `/articles/<slug>-<id>`, and entity
 > `/<kind>/<slug>-<id>` paths) are Fastify shells that serve those
-> same HTML files. Each page is a thin shell that
+> same HTML files. `/login.html` redirects to `/login` for old bookmarks.
+> Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
 > round-trip of already-joined data. UI components are organized
@@ -1092,7 +1093,7 @@ the same JSON over HTTPS at `/Feed`, `/FirmProfile/<id>`, etc.
 
 `tests/parity_compare.ts` (Playwright) fingerprints both bases on
 the same set of pages — `/`, `/firms`, `/advisors`,
-`/teams`, `/login.html`, plus four profile pages whose IDs
+`/teams`, `/login`, plus four profile pages whose IDs
 are pulled from `/Feed` — and reports any drift in `<title>`,
 navbar logo, count-of-every-meaningful-selector, card title /
 subtitle text, or console errors. Brand swaps (logo
