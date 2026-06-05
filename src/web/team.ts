@@ -17,6 +17,7 @@ import {
   mountThreeColumnPage,
   EmptyCard,
   clear,
+  el,
 } from "./design-system/index.js";
 import {
   DetailNotFoundCard,
@@ -170,11 +171,29 @@ function render(
     PartialFailureCard("Metric history", d.metricSnapshots),
     coverageCard(articles),
     PartialFailureCard("Coverage", d.articles),
+    mobileTeamDetailsCard(t, currentFirm),
   ]);
   appendSections(right, [
     teamDetailsCard(t, currentFirm),
     latestMetricsCard(latest),
   ]);
+}
+
+/**
+ * Renders the shared team details card in the mobile content flow.
+ * @param team - Team profile record.
+ * @param currentFirm - Current firm record when present.
+ * @returns Mobile-only team details wrapper.
+ */
+function mobileTeamDetailsCard(
+  team: TeamProfileResponse["team"],
+  currentFirm: CurrentFirmChip | null
+): HTMLElement {
+  return el(
+    "div",
+    { class: "team-mobile-details" },
+    teamDetailsCard(team, currentFirm)
+  );
 }
 
 /**

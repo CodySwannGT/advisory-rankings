@@ -580,6 +580,10 @@ body.drawer-open .nav .nav-scrim {
 
 /* ── Profile pages ──────────────────────────────────────────── */
 
+.team-mobile-details {
+  display: none;
+}
+
 .profile-cover {
   background: linear-gradient(135deg, #1877f2 0%, #5e9bf5 100%);
   height: 140px;
@@ -995,6 +999,9 @@ body.drawer-open .nav .nav-scrim {
 
 @media (max-width: 800px) {
   .advisor-mobile-evidence {
+    display: block;
+  }
+  .team-mobile-details {
     display: block;
   }
 }
