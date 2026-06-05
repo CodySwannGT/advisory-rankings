@@ -70,7 +70,8 @@ function signInControls(): SignInControls {
   return {
     error: el("div", {
       class: "ab-empty",
-      style: "display:none; color: var(--ab-color-danger); margin-top: 8px;",
+      style:
+        "display:none; color: var(--ab-color-danger); margin-top: 8px; overflow-wrap: anywhere;",
     }),
     submit: Button({
       variant: "primary",
@@ -154,14 +155,37 @@ function setSubmitting(controls: SignInControls, submitting: boolean): void {
  */
 function setError(controls: SignInControls, error: unknown): void {
   const message = error
-    ? isAuthFailure(error)
-      ? "Sign in failed. Check your account access or return to public pages."
+    ? isExpectedCredentialFailure(error)
+      ? "Email or password is incorrect."
       : error instanceof Error
         ? error.message
         : String(error)
     : "";
   Object.assign(controls.error, { textContent: message });
   Object.assign(controls.error.style, { display: message ? "block" : "none" });
+}
+
+/**
+ * Detects authentication failures that should be shown as normal sign-in copy.
+ * @param error - Error thrown by the login request.
+ * @returns Whether the login failure is expected user-facing auth feedback.
+ */
+function isExpectedCredentialFailure(error: unknown): boolean {
+  const message = errorMessage(error);
+  return isAuthFailure(error) || /invalid credentials/iu.test(message);
+}
+
+/**
+ * Normalizes unknown thrown values before classifying login failures.
+ * @param error - Value thrown by the login request.
+ * @returns String message for matching and display fallback.
+ */
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : String(error ?? "");
 }
 
 /**
