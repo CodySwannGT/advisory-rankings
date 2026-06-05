@@ -58,7 +58,10 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const eventFilter = await selectEventBackedMode(page);
-  const emptyCategory = await feedCategoryWithoutMoves(page);
+  const emptyCategory = await feedCategoryWithoutMoves(
+    page,
+    FEED_CATEGORY_SELECT
+  );
   const emptyVisible = emptyCategory
     ? await selectEmptyMoveCategory(page, emptyCategory)
     : true;
@@ -295,29 +298,38 @@ async function allCardsHaveEvents(page: Page): Promise<boolean> {
 }
 
 /**
- * Finds a loaded feed category that should produce an empty recruiting-moves view.
+ * Finds a feed category that produces an empty recruiting-moves view.
+ *
+ * Asks the server directly which `mode=recruiting&category=<opt>` combination
+ * returns zero rows, iterating the real category `<select>` options. An earlier
+ * version sampled only the default `/Feed` page (50 items) and inferred
+ * move-categories from it — but recruiting mode scans every article, so once a
+ * move article fell outside the first 50 the heuristic mislabeled its category
+ * as move-free, picked it, and the "empty" view was non-empty. Querying the
+ * server per candidate category is authoritative regardless of dataset size,
+ * ordering, or category normalization.
  * @param page - Browser page used for the scenario.
- * @returns Category value or empty string when every category has a move.
+ * @param categorySelect - CSS selector for the feed category `<select>`.
+ * @returns Category value with no recruiting moves, or empty string when none.
  */
-async function feedCategoryWithoutMoves(page: Page): Promise<string> {
-  return await page.evaluate(async () => {
-    const data = (await fetch("/Feed").then(response =>
-      response.json()
-    )) as FeedResponse;
-    const items = Array.isArray(data.items) ? data.items : [];
-    const categories = new Set(
-      items.map(item => item.article?.category).filter(Boolean)
-    );
-    const moveCategories = new Set(
-      items
-        .filter(item =>
-          (item.eventCards || []).some(event => event.kind === "transition")
-        )
-        .map(item => item.article?.category)
-        .filter(Boolean)
-    );
-    return (
-      [...categories].find(category => !moveCategories.has(category)) || ""
-    );
-  });
+async function feedCategoryWithoutMoves(
+  page: Page,
+  categorySelect: string
+): Promise<string> {
+  return await page.evaluate(async (selector: string) => {
+    const options = [
+      ...document.querySelectorAll<HTMLOptionElement>(`${selector} option`),
+    ]
+      .map(option => option.value)
+      .filter(value => value && value !== "all");
+    for (const category of options) {
+      const data = (await fetch(
+        `/Feed?mode=recruiting&category=${encodeURIComponent(category)}&limit=1`
+      ).then(response => response.json())) as FeedResponse;
+      if ((Array.isArray(data.items) ? data.items.length : 0) === 0) {
+        return category;
+      }
+    }
+    return "";
+  }, categorySelect);
 }

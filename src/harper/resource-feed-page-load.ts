@@ -1,15 +1,26 @@
 /**
  * Per-page Feed hydration. Builds a `FeedDb` instance for a single
- * page of `Article` rows by issuing indexed mention lookups
- * (`articleId` carries `\@indexed` on all five mention tables) and indexed
- * primary-key hydrations for the entities those mentions touch.
+ * page of `Article` rows.
  *
- * Replaces the previous `loadAll()` full-table scan in `/Feed` so a
- * deep page of the feed no longer materializes the 13k-row Advisor /
- * 90k-row EmploymentHistory tables. See
- * `.claude/scratch/issue-721-architecture.md` §5.3 for the design
- * rationale; per spike §0.1 Q1/Q2 the indexed lookups are btree
- * point/range scans.
+ * The five article→mention join tables are read with a full
+ * `search({})` scan and filtered by the page's `articleId` set in
+ * memory; the large entity tables (Advisor, EmploymentHistory, …) are
+ * still hydrated through indexed primary-key / foreign-key lookups.
+ *
+ * Why the mention tables are scanned rather than queried by their
+ * indexed `articleId` attribute: on the shared Fabric dev cluster, replicated
+ * rows reliably reach the public-serving node (a full `search({})` sees
+ * them) but their secondary indexes do NOT reliably replicate — an indexed
+ * `search({conditions:[{attribute:"articleId",…}]})` against that node
+ * silently returns zero rows even though the row is present. That made the
+ * event-backed / recruiting / disclosure feed modes render empty for every
+ * visitor (and broke the deploy smoke gate) after #771 swapped the feed off
+ * `loadAll()`. The mention tables are tiny join tables (hundreds of rows);
+ * the #721/#771 full-scan concern was the 13k-row Advisor / 90k-row
+ * EmploymentHistory tables, which this module still avoids scanning. Do not
+ * "optimize" these joins back to indexed `search({conditions})` lookups —
+ * that reintroduces the dependency on Fabric secondary-index replication and
+ * re-breaks the deploy. See `docs/fabric-runbook.md` §6.
  */
 import type {
   AdvisorRow,
@@ -29,7 +40,7 @@ import type {
   TransitionEventRow,
 } from "../types/harper-schema.js";
 import type { FeedDb } from "./resource-feed-types.js";
-import { rowsByAttribute } from "./resource-directory-tables.js";
+import { allRows, rowsByAttribute } from "./resource-directory-tables.js";
 import { rowsByIds } from "./resource-directory-search-queries.js";
 
 const distinct = (
@@ -48,6 +59,30 @@ const rowsByIndexed = async <T>(
     values.map(value => rowsByAttribute<T>(table, attribute, value))
   );
   return fetched.flat();
+};
+
+/** Shared shape of the five article→mention join rows: each carries an `articleId`. */
+interface ArticleMentionRow {
+  readonly articleId?: string;
+}
+
+/**
+ * Reads a tiny article→mention join table in full and keeps only the rows
+ * whose `articleId` is on the current page. Index-independent on purpose —
+ * see the module header for why the `articleId` index is not trusted on the
+ * Fabric serving node.
+ * @param table - Harper mention-table handle from the ambient `tables` global.
+ * @param articleIds - Set of article ids in the current feed page.
+ * @returns Mention rows belonging to the page's articles.
+ */
+const mentionsForPage = async <T extends ArticleMentionRow>(
+  table: unknown,
+  articleIds: ReadonlySet<string>
+): Promise<readonly T[]> => {
+  const rows = await allRows<T>(table);
+  return rows.filter(
+    row => row.articleId !== undefined && articleIds.has(row.articleId)
+  );
 };
 
 /**
@@ -94,31 +129,21 @@ interface MentionTables {
 const loadArticleMentions = async (
   articleIds: readonly string[]
 ): Promise<MentionTables> => {
+  const wanted = new Set(articleIds);
   const [mAdv, mFirm, mTeam, mTE, mDisc] = await Promise.all([
-    rowsByIndexed<ArticleAdvisorMentionRow>(
+    mentionsForPage<ArticleAdvisorMentionRow>(
       tables.ArticleAdvisorMention,
-      "articleId",
-      articleIds
+      wanted
     ),
-    rowsByIndexed<ArticleFirmMentionRow>(
-      tables.ArticleFirmMention,
-      "articleId",
-      articleIds
-    ),
-    rowsByIndexed<ArticleTeamMentionRow>(
-      tables.ArticleTeamMention,
-      "articleId",
-      articleIds
-    ),
-    rowsByIndexed<ArticleTransitionEventMentionRow>(
+    mentionsForPage<ArticleFirmMentionRow>(tables.ArticleFirmMention, wanted),
+    mentionsForPage<ArticleTeamMentionRow>(tables.ArticleTeamMention, wanted),
+    mentionsForPage<ArticleTransitionEventMentionRow>(
       tables.ArticleTransitionEventMention,
-      "articleId",
-      articleIds
+      wanted
     ),
-    rowsByIndexed<ArticleDisclosureMentionRow>(
+    mentionsForPage<ArticleDisclosureMentionRow>(
       tables.ArticleDisclosureMention,
-      "articleId",
-      articleIds
+      wanted
     ),
   ]);
   return { mAdv, mFirm, mTeam, mTE, mDisc };
