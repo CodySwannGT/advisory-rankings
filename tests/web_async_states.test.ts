@@ -67,7 +67,7 @@ browserDescribe("web async states", () => {
       });
     });
 
-    await page.goto(`${baseUrl}/login.html`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
     await page.locator('input[name="email"]').fill("user@example.test");
     await page.locator('input[name="password"]').fill("bad-password");
     await page.locator("form").evaluate(form => {
@@ -812,7 +812,7 @@ function resolveStaticPath(urlPath: string): string {
   const relativePath =
     cleanPath === sep || cleanPath === "." || cleanPath === "/"
       ? "index.html"
-      : ["/firms", "/teams", "/regulatory"].includes(cleanPath)
+      : ["/firms", "/teams", "/regulatory", "/login"].includes(cleanPath)
         ? `${cleanPath.slice(1)}.html`
         : cleanPath.replace(/^[/\\]+/, "");
   const candidate = resolve(WEB_ROOT, relativePath);

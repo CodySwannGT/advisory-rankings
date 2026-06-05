@@ -66,7 +66,7 @@ function renderQueue(
         body: "Only authenticated analyst sessions can view source conflict details.",
         actionLabel: "Sign in",
         onAction: () => {
-          location.href = "/login.html";
+          location.href = "/login";
         },
       })
     );

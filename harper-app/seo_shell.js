@@ -29,3 +29,18 @@ export function registerEntityShells(
   fastify.get(basePath, sendDirectory);
   fastify.get(`${basePath}/:slug`, sendProfile);
 }
+
+/**
+ * Register a clean route that serves one static HTML shell.
+ * @param fastify Fastify instance provided by Harper.
+ * @param root0 Route shell file URLs.
+ * @param root0.path Public route path.
+ * @param root0.shellUrl Static HTML shell file URL.
+ */
+export function registerSingleShell(fastify, { path, shellUrl }) {
+  const html = {};
+  fastify.get(path, async (_request, reply) => {
+    html.page ||= await readFile(shellUrl, "utf8");
+    return reply.headers(headers).send(html.page);
+  });
+}

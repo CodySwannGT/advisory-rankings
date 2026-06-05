@@ -142,7 +142,7 @@ describe("auth gating", () => {
 
   it("offers a safe sign-in path without leaking private data", () => {
     const guidance = signInGuidance();
-    expect(guidance.href).toBe("/login.html");
+    expect(guidance.href).toBe("/login");
     expect(guidance.label.toLowerCase()).toContain("sign in");
     expect(guidance.message.toLowerCase()).toContain("sign in");
     // The guidance must never embed list/advisor identifiers.

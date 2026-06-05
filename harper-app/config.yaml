@@ -28,6 +28,7 @@ fastifyRoutes:
     - 'regulatory-discrepancies/index.js'
     - 'compare/index.js'
     - 'watchlists/index.js'
+    - 'login/index.js'
     - 'favicon/index.js'
 
 # AdvisorBook web UI.  Served at the same origin as REST so the

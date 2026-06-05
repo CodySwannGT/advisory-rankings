@@ -203,7 +203,7 @@ function renderSignedInUser({
  */
 function renderSignInLink(meSpot: HTMLElement): void {
   meSpot.appendChild(
-    el("a", { class: "me-action", href: "/login.html" }, "Sign in")
+    el("a", { class: "me-action", href: "/login" }, "Sign in")
   );
 }
 
