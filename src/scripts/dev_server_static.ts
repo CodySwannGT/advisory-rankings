@@ -34,6 +34,7 @@ const STATIC_EXACT_PATHS: ReadonlyMap<string, string> = new Map([
   ["/compare", "/compare.html"],
   ["/advisors", "/advisors.html"],
   ["/teams", "/teams.html"],
+  ["/watchlists", "/watchlists.html"],
 ]);
 
 const STATIC_PREFIX_PATHS: readonly (readonly [string, string])[] = [
