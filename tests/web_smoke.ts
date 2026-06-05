@@ -147,9 +147,17 @@ async function smokeMobile(
       "mobile: drawer reopens after Escape dismissal"
     ),
     check(
-      ["Home", "Firms", "Rankings", "Advisors", "Teams", "Sign in"].every(
-        label => drawerLinkLabels.includes(label)
-      ),
+      [
+        "Home",
+        "Firms",
+        "Recruiting",
+        "Rankings",
+        "Advisors",
+        "Teams",
+        "Watchlists",
+        "Compliance",
+        "Sign in",
+      ].every(label => drawerLinkLabels.includes(label)),
       "mobile: drawer links visible at 390px",
       drawerLinkLabels.join(", ")
     ),

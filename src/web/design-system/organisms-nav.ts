@@ -18,6 +18,24 @@ interface NavbarOptions {
   readonly search?: SearchAdapter;
 }
 
+/** Top-level destination rendered in the desktop nav and mobile drawer. */
+interface NavLink {
+  readonly active: string;
+  readonly href: string;
+  readonly label: string;
+}
+
+const NAV_LINKS: readonly NavLink[] = [
+  { active: "home", href: "/", label: "Home" },
+  { active: "firms", href: "/firms", label: "Firms" },
+  { active: "recruiting", href: "/recruiting", label: "Recruiting" },
+  { active: "rankings", href: "/rankings", label: "Rankings" },
+  { active: "advisors", href: "/advisors", label: "Advisors" },
+  { active: "teams", href: "/teams", label: "Teams" },
+  { active: "watchlists", href: "/watchlists", label: "Watchlists" },
+  { active: "regulatory", href: "/regulatory", label: "Compliance" },
+];
+
 /** Render context for auth controls in the navigation drawer. */
 interface MeRenderContext {
   readonly meSpot: HTMLElement;
@@ -113,22 +131,9 @@ function createMeSpot(): HTMLElement {
  * @returns Link container for desktop and drawer layouts.
  */
 function createLinks(active?: string): HTMLElement {
-  const link = (href: string, label: string): HTMLElement =>
-    el(
-      "a",
-      { href, class: active === label.toLowerCase() ? "active" : null },
-      label
-    );
-  return el(
-    "div",
-    { class: "nav-links" },
-    link("/", "Home"),
-    link("/firms", "Firms"),
-    link("/recruiting", "Recruiting"),
-    link("/rankings", "Rankings"),
-    link("/advisors", "Advisors"),
-    link("/teams", "Teams")
-  );
+  const link = ({ active: activeKey, href, label }: NavLink): HTMLElement =>
+    el("a", { href, class: active === activeKey ? "active" : null }, label);
+  return el("div", { class: "nav-links" }, ...NAV_LINKS.map(link));
 }
 
 /**

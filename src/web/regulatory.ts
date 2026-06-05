@@ -200,7 +200,7 @@ function renderComplianceError(
 }
 
 mountThreeColumnPage({
-  active: "home",
+  active: "regulatory",
   refreshMe,
   logout,
   search,

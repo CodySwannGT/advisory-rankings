@@ -15,6 +15,10 @@ const BURGER_SELECTOR = ".nav-burger";
 const CLOSED_DRAWER_SELECTOR = "body.drawer-open";
 const DESKTOP_NAV_SELECTOR = ".nav-drawer";
 const DRAWER_FIRMS_LINK = '.nav-drawer .nav-links a:has-text("Firms")';
+const DRAWER_WATCHLISTS_LINK =
+  '.nav-drawer .nav-links a:has-text("Watchlists")';
+const DRAWER_COMPLIANCE_LINK =
+  '.nav-drawer .nav-links a:has-text("Compliance")';
 const LEFT_RAIL_SELECTOR = ".layout > .left";
 const RIGHT_RAIL_SELECTOR = ".layout > .right";
 
@@ -232,7 +236,81 @@ async function openedDrawerChecks(
       await page.locator(DRAWER_FIRMS_LINK).isVisible(),
       `breakpoint ${width}px: drawer links are usable`
     ),
+    check(
+      await page.locator(DRAWER_WATCHLISTS_LINK).isVisible(),
+      `breakpoint ${width}px: drawer exposes Watchlists`
+    ),
+    check(
+      await page.locator(DRAWER_COMPLIANCE_LINK).isVisible(),
+      `breakpoint ${width}px: drawer exposes Compliance`
+    ),
+    ...(await activeDrawerRouteChecks(page, burger, width)),
   ];
+}
+
+/**
+ * Checks active mobile nav state on top-level routes missing from the drawer.
+ * @param page - Browser page to inspect.
+ * @param burger - Hamburger button locator.
+ * @param width - Viewport width in CSS pixels.
+ * @returns Route active-state smoke checks.
+ */
+async function activeDrawerRouteChecks(
+  page: Page,
+  burger: Locator,
+  width: number
+): Promise<readonly Check[]> {
+  return [
+    await activeDrawerRouteCheck(
+      page,
+      burger,
+      width,
+      DRAWER_WATCHLISTS_LINK,
+      "**/watchlists",
+      "Watchlists"
+    ),
+    await activeDrawerRouteCheck(
+      page,
+      burger,
+      width,
+      DRAWER_COMPLIANCE_LINK,
+      "**/regulatory",
+      "Compliance"
+    ),
+  ];
+}
+
+/**
+ * Navigates through a drawer link and verifies the selected route is active.
+ * @param page - Browser page to inspect.
+ * @param burger - Hamburger button locator.
+ * @param width - Viewport width in CSS pixels.
+ * @param selector - Drawer link selector.
+ * @param urlPattern - Expected destination URL pattern.
+ * @param label - Human-readable route label.
+ * @returns Active-state smoke check.
+ */
+async function activeDrawerRouteCheck(
+  page: Page,
+  burger: Locator,
+  width: number,
+  selector: string,
+  urlPattern: string,
+  label: string
+): Promise<Check> {
+  await Promise.all([
+    page.waitForURL(urlPattern, { waitUntil: "domcontentloaded" }),
+    page.locator(selector).click(),
+  ]);
+  await burger.click();
+  const active = await page
+    .locator(selector)
+    .evaluate(element => element.classList.contains("active"));
+
+  return check(
+    active,
+    `breakpoint ${width}px: ${label} route marks drawer link active`
+  );
 }
 
 /**
