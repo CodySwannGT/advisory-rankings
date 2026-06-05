@@ -1,7 +1,3 @@
-// Advisor comparison page.
-// Renders the public AdvisorComparison resource as a side-by-side evidence
-// table for shareable /compare?ids=... links.
-
 import type {
   AdvisorComparisonItem,
   AdvisorComparisonPayload,
@@ -36,34 +32,26 @@ import {
   type ComparisonColumnActions,
 } from "./compare-selection.js";
 
-/**
- *
- */
-type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
+/** Design-system component signature normalized at this boundary. */
+type Component = (...args: readonly unknown[]) => HTMLElement;
 
-const ProfileHeadComponent = ProfileHead as unknown as DesignSystemComponent;
-const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
-const AsyncStateCardComponent =
-  AsyncStateCard as unknown as DesignSystemComponent;
-const ButtonComponent = Button as unknown as DesignSystemComponent;
-const TagComponent = Tag as unknown as DesignSystemComponent;
-const SourceAttributionComponent =
-  SourceAttribution as unknown as DesignSystemComponent;
+const ProfileHeadComponent = ProfileHead as unknown as Component;
+const SectionCardComponent = SectionCard as unknown as Component;
+const AsyncStateCardComponent = AsyncStateCard as unknown as Component;
+const ButtonComponent = Button as unknown as Component;
+const TagComponent = Tag as unknown as Component;
+const SourceAttributionComponent = SourceAttribution as unknown as Component;
 
 const BROKERCHECK_SOURCE = "FINRA BrokerCheck";
 const BROKERCHECK_TERMS_URL = "https://brokercheck.finra.org/terms";
 const BROKERCHECK_SECTION_LABELS = new Set(["Regulatory", "Career"]);
 
-/**
- *
- */
+/** Full-width page columns supplied by the design-system shell. */
 interface PageColumns {
   readonly center: HTMLElement;
 }
 
-/**
- *
- */
+/** Browser page title for the advisor comparison route. */
 const PAGE_TITLE = "Advisor comparison";
 
 mountFullWidthPage({
@@ -306,7 +294,11 @@ function comparisonTable(
             {},
             el("th", { scope: "row" }, section.label),
             ...section.values.map((value, index) =>
-              el("td", {}, comparisonCell(section.label, items[index], value))
+              el(
+                "td",
+                { "data-advisor-label": items[index].displayName },
+                comparisonCell(section.label, items[index], value)
+              )
             )
           )
         )

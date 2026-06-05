@@ -152,6 +152,12 @@ browserDescribe(
       expect(mobileMetrics.tableScrollWidth).toBeGreaterThanOrEqual(
         mobileMetrics.tableClientWidth
       );
+      expect(mobileMetrics.tableScrollWidth).toBeLessThanOrEqual(
+        mobileMetrics.tableClientWidth
+      );
+      expect(mobileMetrics.labeledValueCells).toBeGreaterThanOrEqual(
+        mobileMetrics.rows
+      );
     });
 
     it("guides cold-start visitors who open compare without ids", async () => {
@@ -489,6 +495,10 @@ async function comparisonMetrics(page: Page) {
       ).length,
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      labeledValueCells: [
+        ...document.querySelectorAll(`${tableSelector} tbody td`),
+      ].filter(element => element.getAttribute("data-advisor-label")?.trim())
+        .length,
       tableClientWidth: table?.clientWidth ?? 0,
       tableScrollWidth: table?.scrollWidth ?? 0,
     };
