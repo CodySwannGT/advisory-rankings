@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
@@ -9,7 +10,6 @@ const trackedWebShells = [
   "firm.html",
   "firms.html",
   "index.html",
-  "login.html",
   "rankings.html",
   "recruiting.html",
   "regulatory.html",
@@ -40,10 +40,10 @@ describe("regulatory source-built page", () => {
 
   it("keeps Harper static asset URLs query-free", async () => {
     const shellContents = await Promise.all(
-      trackedWebShells.map(async shell => [
-        shell,
-        await readFile(`harper-app/web/${shell}`, "utf8"),
-      ])
+      [
+        ...trackedWebShells.map(shell => `harper-app/web/${shell}`),
+        "harper-app/login/shell.html",
+      ].map(async shell => [shell, await readFile(shell, "utf8")])
     );
     const css = await readFile("harper-app/web/app.css", "utf8");
 
@@ -51,5 +51,10 @@ describe("regulatory source-built page", () => {
       expect(html, shell).not.toContain("?v=");
     }
     expect(css, "app.css").not.toContain("?v=");
+  });
+
+  it("keeps the legacy login.html path available for the redirect route", () => {
+    expect(existsSync("harper-app/web/login.html")).toBe(false);
+    expect(existsSync("harper-app/login/shell.html")).toBe(true);
   });
 });
