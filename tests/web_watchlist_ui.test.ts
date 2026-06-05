@@ -64,7 +64,7 @@ browserDescribe("watchlist management UI (#228)", () => {
     const card = page.locator(".add-watchlist-card");
     const signIn = card.getByRole("link", { name: /sign in/iu });
     await signIn.waitFor({ timeout: QUICK_TIMEOUT });
-    expect(await signIn.getAttribute("href")).toBe("/login.html");
+    expect(await signIn.getAttribute("href")).toBe("/login");
     expect(await card.locator(".add-watchlist-select").count()).toBe(0);
     expect(await page.getByText(LIST_NAME).count()).toBe(0);
 

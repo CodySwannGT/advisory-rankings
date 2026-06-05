@@ -25,8 +25,7 @@ import { revealFeedCard } from "./web_smoke_feed_pagination.js";
 const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
 const WATCHLIST_SIGN_IN_COPY =
   "Sign in to create and manage private watchlists";
-const WATCHLIST_SIGN_IN_LINK_SELECTOR =
-  '.watchlist-signin-link[href="/login.html"]';
+const WATCHLIST_SIGN_IN_LINK_SELECTOR = '.watchlist-signin-link[href="/login"]';
 
 /**
  * Finds an article with extracted provenance and checks the detail page.
@@ -162,7 +161,7 @@ export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
       "watchlists: anonymous sign-in guidance visible"
     ),
     check(
-      signInHref === "/login.html",
+      signInHref === "/login",
       "watchlists: sign-in action points to login",
       signInHref ?? "missing href"
     ),
