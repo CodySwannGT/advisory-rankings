@@ -11,6 +11,6 @@ export default async function loginRoutes(fastify) {
   });
 
   fastify.get("/login.html", async (_request, reply) =>
-    reply.redirect(302, "/login")
+    reply.redirect("/login", 302)
   );
 }
