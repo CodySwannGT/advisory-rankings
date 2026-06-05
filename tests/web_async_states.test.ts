@@ -7,6 +7,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
+const LOGIN_SHELL = resolve("harper-app/login/shell.html");
 const SHOTS = resolve("tests/screenshots");
 const QUICK_TIMEOUT = 4_000;
 const ME_ROUTE = "**/Me";
@@ -809,10 +810,12 @@ function resolveStaticPath(urlPath: string): string {
     /^(\.\.(\/|\\|$))+/,
     ""
   );
+  if (cleanPath === "/login") return LOGIN_SHELL;
+
   const relativePath =
     cleanPath === sep || cleanPath === "." || cleanPath === "/"
       ? "index.html"
-      : ["/firms", "/teams", "/regulatory", "/login"].includes(cleanPath)
+      : ["/firms", "/teams", "/regulatory"].includes(cleanPath)
         ? `${cleanPath.slice(1)}.html`
         : cleanPath.replace(/^[/\\]+/, "");
   const candidate = resolve(WEB_ROOT, relativePath);

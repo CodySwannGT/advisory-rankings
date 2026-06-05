@@ -377,11 +377,12 @@ re-reads files on reload; no special handling.
 > (`index.html` = feed, `firm.html`, `advisor.html`, `team.html`,
 > `article.html`) plus directories (`firms.html` / `advisors.html` /
 > `teams.html`), `recruiting.html`, `rankings.html`, `regulatory.html`,
-> `compare.html`, and `login.html`.
+> and `compare.html`.
 > Clean routes (`/firms`, `/advisors`, `/teams`, `/recruiting`, `/rankings`, `/regulatory`, `/compare`,
 > `/watchlists`, `/login`, `/articles/<slug>-<id>`, and entity
 > `/<kind>/<slug>-<id>` paths) are Fastify shells that serve those
-> same HTML files. `/login.html` redirects to `/login` for old bookmarks.
+> same HTML files. `/login` serves `login/shell.html`, while `/login.html`
+> redirects to `/login` for old bookmarks instead of serving a static file.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
@@ -565,7 +566,7 @@ Endpoints (implemented in `src/harper/resources.ts` and emitted to
 
 Browser flow:
 
-1. `web/login.html` posts `{email, password}` to `/Login`.
+1. The `/login` shell posts `{email, password}` to `/Login`.
 2. Harper sets `Set-Cookie: <domain>-hdb-session=<uuid>; HttpOnly; Secure; SameSite=None; …`.
 3. Subsequent same-origin fetches automatically include it.
 4. The "Sign out" button calls `/Logout`, which clears the server-

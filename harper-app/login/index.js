@@ -7,7 +7,7 @@ import { registerSingleShell } from "../seo_shell.js";
 export default async function loginRoutes(fastify) {
   registerSingleShell(fastify, {
     path: "/login",
-    shellUrl: new URL("../web/login.html", import.meta.url),
+    shellUrl: new URL("./shell.html", import.meta.url),
   });
 
   fastify.get("/login.html", async (_request, reply) =>
