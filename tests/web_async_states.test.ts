@@ -69,19 +69,62 @@ browserDescribe("web async states", () => {
     });
 
     await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
-    await page.locator('input[name="email"]').fill("user@example.test");
+    await page.locator('input[name="email"]').fill("user@example.com");
     await page.locator('input[name="password"]').fill("bad-password");
     await page.locator("form").evaluate(form => {
       (form as HTMLFormElement).requestSubmit();
     });
 
     await page
-      .getByText(/Check your account access or return to public pages/u)
+      .getByText("Email or password is incorrect.")
       .waitFor({ timeout: QUICK_TIMEOUT });
     expect(loginRequested).toBe(true);
     expect(await page.getByText("internal authorization policy").count()).toBe(
       0
     );
+    await page.close();
+  }, 30_000);
+
+  it("shows a user-safe invalid-credentials error without mobile overflow", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+    let loginRequested = false;
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route("**/Login", async route => {
+      loginRequested = true;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          type: "error:StatusError",
+          code: "StatusError",
+          title: "Invalid credentials",
+          status: 500,
+          instance: "/Login",
+        }),
+      });
+    });
+
+    await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
+    await page.locator('input[name="email"]').fill("qa-invalid@example.com");
+    await page.locator('input[name="password"]').fill("bad-password");
+    await page.locator("form").evaluate(form => {
+      (form as HTMLFormElement).requestSubmit();
+    });
+
+    await page
+      .getByText("Email or password is incorrect.")
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    expect(loginRequested).toBe(true);
+    expect(await page.getByText("POST /Login").count()).toBe(0);
+    expect(await page.getByText("StatusError").count()).toBe(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBe(await page.evaluate(() => document.documentElement.clientWidth));
     await page.close();
   }, 30_000);
 
