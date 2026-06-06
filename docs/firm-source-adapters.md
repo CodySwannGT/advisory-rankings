@@ -123,6 +123,8 @@ HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
 HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
   bun run data:coverage
 
+bun run baseline:data-depth
+
 curl -s \
   'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3' \
   | jq '{summary, recentMoves: [.recentMoves[] | {id, fromFirm, toFirm, sourceStatus}]}'

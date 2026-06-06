@@ -1,0 +1,371 @@
+{
+  "capturedAt": "2026-06-06T23:12:43.805Z",
+  "baseUrl": "https://advisory-rankings-de.cody-swann-org.harperfabric.com",
+  "endpoints": [
+    {
+      "name": "recruiting",
+      "path": "/RecruitingMarket?limit=3",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 5594,
+      "summary": {
+        "summary": {
+          "count": 1,
+          "knownAum": 5940000000,
+          "unknownAumCount": 0,
+          "missingT12Count": 0
+        },
+        "recentMoveCount": 1,
+        "marketActivityCount": 1,
+        "firmMomentumCount": 2,
+        "sampleRecentMoves": [
+          {
+            "id": "02763eb8-239f-5160-bde7-5ece39b0671f",
+            "subject": {
+              "kind": "team",
+              "id": "255c0204-86d8-53f7-8d6f-e76482fbf621",
+              "name": "The Taylor Group"
+            },
+            "fromFirm": {
+              "id": "8e106b7e-efcc-5aed-8827-fd0ea645b6df",
+              "kind": "firm",
+              "name": "Morgan Stanley",
+              "short": "Morgan Stanley",
+              "logoUrl": null,
+              "channel": "wirehouse",
+              "hq": "New York, NY",
+              "dissolvedYear": null
+            },
+            "toFirm": {
+              "id": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+              "kind": "firm",
+              "name": "Wells Fargo Advisors",
+              "short": "Wells Fargo Advisors",
+              "logoUrl": null,
+              "channel": "wirehouse",
+              "hq": "St. Louis, MO",
+              "dissolvedYear": null
+            },
+            "sourceStatus": [
+              "source-backed"
+            ],
+            "provenance": {
+              "sourceTable": "TransitionEvent",
+              "sourceIds": [
+                "02763eb8-239f-5160-bde7-5ece39b0671f"
+              ],
+              "articleMentionIds": [
+                "a9c59dbb-4583-51df-a307-36e6d040a87a"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "firms",
+      "path": "/PublicFirms?limit=5",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 1453,
+      "summary": {
+        "total": 1071,
+        "count": null,
+        "itemCount": 5,
+        "nextCursorPresent": true,
+        "sampleItems": [
+          {
+            "name": "&Partners"
+          },
+          {
+            "name": "1717 Capital Management Company",
+            "slug": "1717-capital-management-company"
+          },
+          {
+            "name": "1St Discount Brokerage, Inc.",
+            "slug": "1st-discount-brokerage-inc"
+          }
+        ]
+      }
+    },
+    {
+      "name": "advisors",
+      "path": "/PublicAdvisors?limit=5",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 5281,
+      "summary": {
+        "total": 13544,
+        "count": null,
+        "itemCount": 5,
+        "nextCursorPresent": true,
+        "sampleItems": [
+          {
+            "legalName": "Anupam Johri \"AJ\""
+          },
+          {
+            "legalName": "Caroline Ellner (Laitman)"
+          },
+          {
+            "legalName": "Peng Li (Pam)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feed",
+      "path": "/Feed?limit=5",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 1535,
+      "summary": {
+        "total": null,
+        "count": 5,
+        "itemCount": 5,
+        "nextCursorPresent": true,
+        "sampleItems": [
+          {
+            "id": "e6193c5a-caf7-566b-a622-db50247489d4",
+            "headline": "Adam Fleishman - Morgan Stanley | LinkedIn",
+            "category": "public_web_research",
+            "publishedDate": "2026-06-06T00:00:00.000Z"
+          },
+          {
+            "id": "e1374ce2-c860-50c2-aa4a-4e253189d552",
+            "headline": "Tennessee Valley Wealth Management | Morgan Stanley",
+            "category": "resource",
+            "publishedDate": "2026-06-06T00:00:00.000Z"
+          },
+          {
+            "id": "ced9c72f-d65e-5bdf-9243-be19a4d04acb",
+            "headline": "A Thomas Lies - Morgan Stanley Wealth Management, LLC | LinkedIn",
+            "category": "resource",
+            "publishedDate": "2026-06-06T00:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "coverage",
+      "path": "/RankingsExplorer?limit=10",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 5671,
+      "summary": {
+        "total": null,
+        "count": null,
+        "itemCount": 3,
+        "coverage": {
+          "totalEntries": 3,
+          "buckets": [
+            {
+              "key": "Next Gen:2025",
+              "category": "Next Gen",
+              "year": 2025,
+              "query": "/rankings?category=Next+Gen&year=2025",
+              "total": 2,
+              "resolved": 1,
+              "unresolved": 1,
+              "missingFirm": 1,
+              "missingMarket": 0,
+              "missingScore": 2,
+              "latestLoadedAt": "2026-05-25T00:00:00.000Z",
+              "sourceLabels": [
+                "AdvisorHub Next Gen 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:c-james-taylor",
+                  "label": "James",
+                  "firmText": "Wells Fargo Advisors",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed"
+                  ]
+                },
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+                  "label": "Jordan Example",
+                  "firmText": "Example Independent",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed",
+                    "unresolved-entity",
+                    "unresolved-firm",
+                    "missing-scale"
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "Over $1B:2025",
+              "category": "Over $1B",
+              "year": 2025,
+              "query": "/rankings?category=Over+%241B&year=2025",
+              "total": 1,
+              "resolved": 1,
+              "unresolved": 0,
+              "missingFirm": 0,
+              "missingMarket": 0,
+              "missingScore": 1,
+              "latestLoadedAt": "2026-05-25T00:00:00.000Z",
+              "sourceLabels": [
+                "AdvisorHub Over $1B 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:over-1b:2025:taylor-group",
+                  "label": "The Taylor Group",
+                  "firmText": "Wells Fargo Advisors",
+                  "sourceLabel": "AdvisorHub Over $1B 2025",
+                  "sourceStatus": [
+                    "source-backed"
+                  ]
+                }
+              ]
+            }
+          ],
+          "gapBuckets": [
+            {
+              "status": "source-backed",
+              "count": 3,
+              "query": "/rankings",
+              "sourceLabels": [
+                "AdvisorHub Next Gen 2025",
+                "AdvisorHub Over $1B 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:c-james-taylor",
+                  "label": "James",
+                  "firmText": "Wells Fargo Advisors",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed"
+                  ]
+                },
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+                  "label": "Jordan Example",
+                  "firmText": "Example Independent",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed",
+                    "unresolved-entity",
+                    "unresolved-firm",
+                    "missing-scale"
+                  ]
+                },
+                {
+                  "id": "ranking-entry:advisorhub:over-1b:2025:taylor-group",
+                  "label": "The Taylor Group",
+                  "firmText": "Wells Fargo Advisors",
+                  "sourceLabel": "AdvisorHub Over $1B 2025",
+                  "sourceStatus": [
+                    "source-backed"
+                  ]
+                }
+              ]
+            },
+            {
+              "status": "missing-scale",
+              "count": 1,
+              "query": "/rankings",
+              "sourceLabels": [
+                "AdvisorHub Next Gen 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+                  "label": "Jordan Example",
+                  "firmText": "Example Independent",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed",
+                    "unresolved-entity",
+                    "unresolved-firm",
+                    "missing-scale"
+                  ]
+                }
+              ]
+            },
+            {
+              "status": "unresolved-entity",
+              "count": 1,
+              "query": "/rankings?resolved=unresolved",
+              "sourceLabels": [
+                "AdvisorHub Next Gen 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+                  "label": "Jordan Example",
+                  "firmText": "Example Independent",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed",
+                    "unresolved-entity",
+                    "unresolved-firm",
+                    "missing-scale"
+                  ]
+                }
+              ]
+            },
+            {
+              "status": "unresolved-firm",
+              "count": 1,
+              "query": "/rankings?resolved=unresolved",
+              "sourceLabels": [
+                "AdvisorHub Next Gen 2025"
+              ],
+              "sampleRows": [
+                {
+                  "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+                  "label": "Jordan Example",
+                  "firmText": "Example Independent",
+                  "sourceLabel": "AdvisorHub Next Gen 2025",
+                  "sourceStatus": [
+                    "source-backed",
+                    "unresolved-entity",
+                    "unresolved-firm",
+                    "missing-scale"
+                  ]
+                }
+              ]
+            }
+          ],
+          "emptyState": null
+        },
+        "sampleItems": [
+          {
+            "id": "ranking-entry:advisorhub:over-1b:2025:taylor-group",
+            "firmText": "Wells Fargo Advisors",
+            "sourceStatus": [
+              "source-backed"
+            ],
+            "resolutionStatus": "resolved"
+          },
+          {
+            "id": "ranking-entry:advisorhub:next-gen:2025:c-james-taylor",
+            "firmText": "Wells Fargo Advisors",
+            "sourceStatus": [
+              "source-backed"
+            ],
+            "resolutionStatus": "resolved"
+          },
+          {
+            "id": "ranking-entry:advisorhub:next-gen:2025:unresolved-row",
+            "firmText": "Example Independent",
+            "sourceStatus": [
+              "source-backed",
+              "unresolved-entity",
+              "unresolved-firm",
+              "missing-scale"
+            ],
+            "resolutionStatus": "unresolved"
+          }
+        ]
+      }
+    }
+  ]
+}

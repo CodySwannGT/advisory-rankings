@@ -25,6 +25,8 @@ bun run test          # Vitest suite
 bun run test:cov      # Vitest coverage report
 bun run seed          # load 99 records from the two scraped articles
 bun run verify        # run cross-table SQL queries
+bun run baseline:data-depth
+                     # capture deployed dev public-resource baseline evidence
 bun run scrape:morgan-stanley -- --max-advisors 25
                      # dry-run Morgan Stanley locator import
 bun run scrape:morgan-stanley -- --write --max-advisors 500
@@ -261,6 +263,12 @@ docs/
                                BrokerCheck as a regulator-of-record
                                source alongside AdvisorHub (research,
                                not yet implemented)
+
+evidence/
+  data-depth-baseline.json     deployed dev public-resource baseline for
+                               /RecruitingMarket, /PublicFirms,
+                               /PublicAdvisors, /Feed, and
+                               /RankingsExplorer
 
 harper-app/
   config.yaml                Harper component config (graphqlSchema +
