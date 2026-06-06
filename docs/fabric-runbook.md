@@ -412,6 +412,29 @@ re-reads files on reload; no special handling.
 > specifiers query-free (`/index.js`, `/app.css`, `./app.js`) unless the
 > static handler is proven to return `200` for query-string asset URLs.
 
+> **`/Feed?category=<x>` 500 from date-less Article rows — symptom: deploy
+> smoke times out at `selectEmptyMoveCategory` waiting for "No feed posts
+> match these filters".** Root cause: every Article feed query sorts by
+> `publishedDate`, and Harper throws `SyntaxError: Invalid value for attribute
+> publishedDate: "undefined", expecting Date` as soon as a sorted result set
+> contains a row with a missing `publishedDate` (some ingested rows have one,
+> despite the schema). The unfiltered `"all"` path already guarded against
+> this with an indexed `publishedDate > 1970-01-01` condition (which both
+> satisfies Harper's "needs ≥1 condition" rule and drops the date-less rows
+> before the sort); the category-filtered path used only `category equals <x>`
+> and so 500'd for **every** category. The smoke surfaced it indirectly: its
+> empty-move-category probe read the 500 body (no `items`) as "this category is
+> empty", picked `advisor_moves` (a category that actually has a move), and the
+> empty state never rendered. Fix (`src/harper/resource-directory-search-queries.ts`
+> `feedArticlePage`): apply the `publishedDate > epoch` floor on the category
+> path too — date-less rows are already hidden from the default feed, so
+> hiding them from category views is consistent. Regression test:
+> `tests/feed_category_published_floor.test.ts`. Also hardened the smoke probe
+> (`tests/web_smoke_feed_filters.ts`) to throw on a non-2xx `/Feed` response
+> instead of mis-reading it as an empty category. **Lesson: any feed query
+> that sorts by `publishedDate` must filter date-less rows first; do not assume
+> the schema guarantees the field.**
+
 > **Transient connection-reset resilience — symptom: deploy smoke
 > intermittently fails (e.g. a feed-filter `waitForSelector` times out), and
 > a fresh page load occasionally renders blank / the boot-recovery

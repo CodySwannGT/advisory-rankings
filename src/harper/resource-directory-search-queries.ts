@@ -221,24 +221,29 @@ export async function feedArticlePage(
   limit: number,
   offset: number
 ): Promise<PageAndCount<ArticleRow>> {
-  // Harper's `tables.X.search()` requires at least one condition: an
-  // empty conditions list crashes the autoCast layer with
-  // "Invalid value for attribute publishedDate: 'undefined'" because the
-  // planner tries to seed the index with a missing value. For the
-  // unfiltered "all" category we use an indexed `publishedDate > epoch`
-  // condition which Harper's btree range path handles natively and which
-  // does not exclude any real article (every article has a real
-  // publishedDate per the schema).
+  // Every Article query here sorts by `publishedDate`, and Harper throws
+  // "Invalid value for attribute publishedDate: 'undefined'" the moment the
+  // result set contains a row whose `publishedDate` is missing (some ingested
+  // rows do, despite the schema). An indexed `publishedDate > epoch` condition
+  // both satisfies Harper's "needs at least one condition" rule AND excludes
+  // those date-less rows from the sort, so it is applied on EVERY path — not
+  // just the unfiltered "all" feed. Omitting it on the category-filtered path
+  // is what made `/Feed?category=<x>` 500 for every visitor (and broke the
+  // deploy smoke gate). Date-less rows are already absent from the default
+  // feed, so excluding them from category views too is consistent. See
+  // docs/fabric-runbook.md §6.
+  const publishedFloor: HarperCondition = {
+    attribute: "publishedDate",
+    comparator: "greater_than",
+    value: "1970-01-01",
+  };
   const conditions: readonly HarperCondition[] =
     category === "all"
-      ? [
-          {
-            attribute: "publishedDate",
-            comparator: "greater_than",
-            value: "1970-01-01",
-          },
-        ]
-      : [{ attribute: "category", comparator: "equals", value: category }];
+      ? [publishedFloor]
+      : [
+          publishedFloor,
+          { attribute: "category", comparator: "equals", value: category },
+        ];
   return searchPageAndCount<ArticleRow>(tables.Article, {
     conditions,
     sort: { attribute: "publishedDate", descending: true },

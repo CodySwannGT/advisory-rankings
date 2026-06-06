@@ -323,9 +323,19 @@ async function feedCategoryWithoutMoves(
       .map(option => option.value)
       .filter(value => value && value !== "all");
     for (const category of options) {
-      const data = (await fetch(
+      const response = await fetch(
         `/Feed?mode=recruiting&category=${encodeURIComponent(category)}&limit=1`
-      ).then(response => response.json())) as FeedResponse;
+      );
+      // A non-2xx response is a server failure, NOT an empty category. Treating
+      // it as empty once made the smoke pick a category that actually had moves
+      // (so the empty state never rendered) and mis-attributed a server 500 to
+      // a UI bug. Surface it instead of silently returning a wrong category.
+      if (!response.ok) {
+        throw new Error(
+          `feed category probe: /Feed?mode=recruiting&category=${category} → ${response.status}`
+        );
+      }
+      const data = (await response.json()) as FeedResponse;
       if ((Array.isArray(data.items) ? data.items.length : 0) === 0) {
         return category;
       }
