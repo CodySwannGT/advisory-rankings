@@ -2,7 +2,23 @@ import { resolve } from "node:path";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { createAuthTokens, loadCreds } from "../src/scripts/_auth.js";
 
-export const BASE = process.env.BASE_URL || "http://127.0.0.1:9926";
+const DEFAULT_BASE_URL = "http://127.0.0.1:9926";
+
+/**
+ * Normalizes the smoke target so route template joins do not create double
+ * slashes on deployed Fabric origins.
+ * @param baseUrl - Raw smoke target from the environment.
+ * @returns The base URL without trailing slash characters.
+ */
+export function normalizeSmokeBaseUrl(baseUrl: string): string {
+  return baseUrl.endsWith("/")
+    ? normalizeSmokeBaseUrl(baseUrl.slice(0, -1))
+    : baseUrl;
+}
+
+export const BASE = normalizeSmokeBaseUrl(
+  process.env.BASE_URL || DEFAULT_BASE_URL
+);
 export const SHOTS = resolve("tests/screenshots");
 export const ARTICLE_CARD_SELECTOR = "article.card";
 export const DISCLOSURE_CARD_SELECTOR = ".event-card.disclosure";
