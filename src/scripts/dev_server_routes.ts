@@ -15,6 +15,7 @@ import {
   prefersHtmlDocument,
   type DetailRequestHeaders,
 } from "../harper/detail-shell-negotiation.js";
+import { currentUserFromRequest } from "./dev_server_auth.js";
 import { loadTable } from "./dev_server_ops.js";
 import { loadResources } from "./dev_server_resources.js";
 import { readJsonBody, sendJsonHandled } from "./dev_server_json.js";
@@ -22,6 +23,7 @@ import { DEV_SERVER_TABLES } from "./dev_server_tables.js";
 import { DEV_SERVER_WEB_ROOT } from "./dev_server_static.js";
 
 const TABLES: readonly string[] = [...DEV_SERVER_TABLES];
+const METHOD_NOT_ALLOWED = "method not allowed";
 
 /**
  * Harper-flavored request target: a `URLSearchParams` instance with the
@@ -62,7 +64,10 @@ function makeTarget(
  * the dev server actually invokes.
  */
 interface ResourceConstructor {
-  new (): { get(target: DevRequestTarget): Promise<unknown> };
+  new (): {
+    get?(target: DevRequestTarget): Promise<unknown>;
+    post?(...args: readonly unknown[]): Promise<unknown>;
+  };
 }
 
 /**
@@ -87,7 +92,7 @@ export async function handleMcpRoute(
 ): Promise<boolean> {
   if (path !== "/mcp") return false;
   if (req.method !== "POST")
-    return sendJsonHandled(res, 405, { error: "method not allowed" });
+    return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
   const r = await loadResources({ loadTables: true });
   const mcp = r["mcp"];
   if (typeof mcp !== "function")
@@ -103,7 +108,7 @@ export async function handleMcpRoute(
 const NO_ARG_RESOURCE =
   /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue)$/;
 const PROFILE_RESOURCE =
-  /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors)\/(.+)$/;
+  /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors|RegulatoryDiscrepancyReview)\/(.+)$/;
 
 /**
  * Serves the AdvisorBook HTML shell for browser document navigations to the
@@ -135,20 +140,29 @@ export async function handleDetailShellRoute(
 
 /**
  * Handles generated Harper resource routes.
+ * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  * @param url - Parsed request URL.
  * @returns Whether the route was handled.
  */
 export async function handleResourceRoute(
+  req: IncomingMessage,
   res: ServerResponse,
   url: URL
 ): Promise<boolean> {
   const noArgMatch = NO_ARG_RESOURCE.exec(url.pathname);
   const profileMatch = PROFILE_RESOURCE.exec(url.pathname);
   if (noArgMatch)
-    return await sendResource(res, noArgMatch[1], undefined, url.searchParams);
+    return await sendResource(
+      req,
+      res,
+      noArgMatch[1],
+      undefined,
+      url.searchParams
+    );
   if (profileMatch)
     return await sendResource(
+      req,
       res,
       profileMatch[1],
       decodeURIComponent(profileMatch[2]),
@@ -159,6 +173,7 @@ export async function handleResourceRoute(
 
 /**
  * Executes one generated resource class and writes the JSON result.
+ * @param req - Incoming HTTP request.
  * @param res - HTTP response.
  * @param kind - Resource class name.
  * @param id - Optional resource id.
@@ -166,6 +181,7 @@ export async function handleResourceRoute(
  * @returns True after writing the response.
  */
 async function sendResource(
+  req: IncomingMessage,
   res: ServerResponse,
   kind: string,
   id: string | undefined,
@@ -176,11 +192,36 @@ async function sendResource(
   if (typeof ResourceClass !== "function")
     return sendJsonHandled(res, 500, { error: `unknown resource: ${kind}` });
   const instance = Reflect.construct(ResourceClass as ResourceConstructor, []);
+  installCurrentUser(instance, req);
+  if (req.method === "POST") {
+    if (typeof instance.post !== "function")
+      return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
+    return sendJsonHandled(
+      res,
+      200,
+      await instance.post(makeTarget(id, searchParams), await readJsonBody(req))
+    );
+  }
+  if (req.method !== "GET" && req.method !== "HEAD")
+    return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
+  if (typeof instance.get !== "function")
+    return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
   return sendJsonHandled(
     res,
     200,
     await instance.get(makeTarget(id, searchParams))
   );
+}
+
+/**
+ * Installs a local-session current-user hook on generated resources.
+ * @param instance - Generated resource instance.
+ * @param req - Incoming HTTP request.
+ */
+function installCurrentUser(instance: object, req: IncomingMessage): void {
+  Object.assign(instance, {
+    getCurrentUser: () => currentUserFromRequest(req),
+  });
 }
 
 /**
