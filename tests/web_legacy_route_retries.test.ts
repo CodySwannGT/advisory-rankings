@@ -167,6 +167,36 @@ describe("legacy directory and compliance route retries", () => {
       }
     }
   );
+
+  it("renders root recovery copy when the feed module fails to load", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/index.js", async route => {
+        await route.abort("connectionreset");
+      });
+
+      const response = await page.goto(`${baseUrl}/`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      expect(response?.status()).toBe(200);
+      await page.getByText("AdvisorBook feed").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page
+        .getByText("AdvisorBook could not finish loading this page.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await page.getByRole("button", { name: "Reload" }).count()).toBe(
+        1
+      );
+      expect(
+        await page.evaluate(() => document.body.innerText.trim())
+      ).not.toBe("");
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 /**

@@ -57,6 +57,65 @@ const DRAWER_FIRMS_LINK_SELECTOR = '.nav-drawer .nav-links a:has-text("Firms")';
 const NAV_BURGER_SELECTOR = ".nav-burger";
 const NAV_SEARCH_SELECTOR = ".nav .search";
 const FAVICON_SELECTOR = 'link[rel~="icon"]';
+const ROOT_ATTEMPTS = 3;
+
+interface RootRenderFacts {
+  readonly articleCount: number;
+  readonly bodyLength: number;
+  readonly h1Text: string;
+  readonly hasRecovery: boolean;
+}
+
+/**
+ * Verifies repeated root loads do not settle into a silent empty page.
+ * @param page - Browser page shared by desktop smoke scenarios.
+ * @returns Smoke assertions for root boot resilience.
+ */
+async function smokeRootBootResilience(page: Page): Promise<readonly Check[]> {
+  const results: Check[] = [];
+  for (let attempt = 1; attempt <= ROOT_ATTEMPTS; attempt += 1) {
+    await smokeGoto(page, `${BASE}/`);
+    await page
+      .waitForFunction(
+        () => {
+          const bodyText = document.body.innerText.trim();
+          return (
+            bodyText.length > 0 &&
+            (document.querySelectorAll("article.card").length > 0 ||
+              document.querySelector("h1")?.textContent?.trim() ===
+                "AdvisorBook feed" ||
+              bodyText.includes("could not finish loading this page"))
+          );
+        },
+        undefined,
+        { timeout: QUICK_UI_TIMEOUT }
+      )
+      .catch(() => undefined);
+
+    const facts = await page.evaluate(
+      (): RootRenderFacts => ({
+        articleCount: document.querySelectorAll("article.card").length,
+        bodyLength: document.body.innerText.trim().length,
+        h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
+        hasRecovery: document.body.innerText.includes(
+          "could not finish loading this page"
+        ),
+      })
+    );
+
+    results.push(
+      check(
+        facts.bodyLength > 0 &&
+          (facts.articleCount > 0 ||
+            facts.h1Text === "AdvisorBook feed" ||
+            facts.hasRecovery),
+        `root: attempt ${attempt} renders feed or recovery content`,
+        `body ${facts.bodyLength}, articles ${facts.articleCount}, h1 ${facts.h1Text}`
+      )
+    );
+  }
+  return results;
+}
 
 /**
  * Verifies the public app advertises and serves a favicon.
@@ -328,12 +387,14 @@ async function runScenarios(
   // that the fixture cannot satisfy. The full suite still runs at deploy time.
   if (process.env.SMOKE_SCOPE === "core") {
     return [
+      ...(await smokeRootBootResilience(page)),
       ...(await smokeFavicon(page)),
       ...(await smokeFeed(page)),
       ...(await smokeGlobalSearch(page)),
     ];
   }
   return [
+    ...(await smokeRootBootResilience(page)),
     ...(await smokeFavicon(page)),
     ...(await smokeFeed(page)),
     ...(await smokeRecruiting(page)),
