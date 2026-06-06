@@ -31,7 +31,5 @@ jobs:
   sync:
     if: github.event.pull_request.merged == true
     uses: CodySwannGT/lisa/.github/workflows/reusable-claude-sync-down-branches.yml@main
-    with:
-      chain: '{"main":"staging","staging":"dev"}'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
