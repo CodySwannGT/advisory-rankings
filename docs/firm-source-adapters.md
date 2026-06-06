@@ -102,6 +102,12 @@ with `--write` or the bounded workflow:
 HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
   bun run scrape:merrill -- --query 10022 --max-advisors 5 --json --write
 
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run firm-source:major-imports -- \
+    --max-advisors 5 \
+    --write \
+    --output-dir artifacts/firm-source-imports/<run-id>
+
 gh workflow run firm-source-imports.yml \
   --repo CodySwannGT/advisory-rankings \
   -f write=true \
@@ -134,6 +140,16 @@ curl -s \
 source counts, core field completeness, sparse advisor and firm rankings,
 recruiting coverage totals, and freshness warnings for deployed or local Harper
 data.
+
+`bun run firm-source:major-imports` attempts the production-ready major-firm
+adapter set in bounded mode: Morgan Stanley, Wells Fargo Advisors, Merrill /
+Bank of America, RBC Wealth Management, Raymond James, Edward Jones, Stifel,
+and UBS Wealth Management USA. The command always runs a dry-run pass first.
+When `--write` is present, it follows with a dev write pass and writes
+`summary.json` plus one JSON artifact per adapter under the requested output
+directory. Each adapter artifact preserves the command, stdout/stderr, counts,
+touched counts, sampled normalized rows, and any source or write error so
+blocked public sources remain auditable instead of disappearing from the run.
 
 `/RecruitingMarket` is the public source-depth audit surface for recruiting
 moves: it reports summary totals, firm momentum, market activity, recent moves,

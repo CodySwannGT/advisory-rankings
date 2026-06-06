@@ -75,6 +75,7 @@
     "scrape:merrill": "bun run build && node dist/scripts/scrape_merrill.js",
     "scrape:morgan-stanley": "bun run build && node dist/scripts/scrape_morgan_stanley.js",
     "scrape:wells-fargo": "bun run build && node dist/scripts/scrape_wells_fargo.js",
+    "firm-source:major-imports": "bun run build && node dist/scripts/run_major_firm_imports.js",
     "research:advisors": "bun run build && node dist/scripts/research_advisors.js",
     "backfill:search-index": "bun run build && node dist/scripts/backfill-advisor-search-index.js",
     "reindex:advisor-tokens": "bun run build && node dist/scripts/reindex-advisor-tokens.js",

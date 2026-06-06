@@ -7,3 +7,4 @@ This repository is operated through its Lisa LLM Wiki.
 - Preserved previous README: [wiki/documentation/root-readme.md](wiki/documentation/root-readme.md)
 - Data coverage report: `bun run data:coverage`
 - Data-depth baseline artifact: `bun run baseline:data-depth`
+- Major firm-source import artifacts: `bun run firm-source:major-imports`
