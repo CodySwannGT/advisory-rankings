@@ -11,6 +11,7 @@ import {
   sanctionId,
   uid,
 } from "../lib/ids.js";
+import { articleDates } from "../lib/article-dates.js";
 import {
   canonicalFirmId,
   canonicalFirmName,
@@ -90,8 +91,7 @@ const articleRow = (aid: string, article: Row): Row => ({
   url: article.url,
   slug: article.slug,
   headline: article.headline,
-  publishedDate: article.publishedDate,
-  modifiedDate: article.modifiedDate,
+  ...articleDates(article),
   authors: article.authors ?? [],
   category: article.category ?? "unknown",
   wpCategories: article.wpCategories ?? [],

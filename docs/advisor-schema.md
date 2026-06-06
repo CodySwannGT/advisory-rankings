@@ -639,7 +639,7 @@ Mirror of the AdvisorHub wp-json record.
 | `slug` | str | |
 | `headline` | str | |
 | `dek?` | str | |
-| `published_date` / `modified_date?` | date | |
+| `published_date` / `modified_date?` | date | `published_date` is required for feed sorting. Article loaders keep a valid source `publishedDate` when present; otherwise they derive it from `modifiedDate`, crawler/load timestamps, or the ingest day. `bun run backfill:article-dates` applies the same rule to older rows missing the field. |
 | `authors` | [str] | wp-json exposes `coauthors` array |
 | `category` | enum (`advisor_moves`, `recruiting_wire`, `regulatory`, `arbitration`, `rankings`, `firm_news`, `succession`, `opinion`, `resource`) | Mapped from `wp_categories` |
 | `wp_categories` | [int] | Raw IDs |

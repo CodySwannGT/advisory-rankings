@@ -76,6 +76,7 @@
     "research:advisors": "bun run build && node dist/scripts/research_advisors.js",
     "backfill:search-index": "bun run build && node dist/scripts/backfill-advisor-search-index.js",
     "reindex:advisor-tokens": "bun run build && node dist/scripts/reindex-advisor-tokens.js",
+    "backfill:article-dates": "bun run build && node dist/scripts/backfill_article_published_dates.js",
     "reset": "harperdb stop || true; [ -n \"$HOME\" ] && rm -rf \"$HOME/.harperdb\" && bun run bootstrap && bun run seed && bun run verify",
     "lint": "oxlint && eslint . --quiet",
     "format:check": "prettier --check .",

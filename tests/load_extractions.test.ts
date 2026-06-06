@@ -4,6 +4,19 @@ import { buildRows } from "../src/scripts/load_extractions.js";
 const EXAMPLE_ADVISOR_NAME = "Alex Example";
 
 describe("AdvisorHub extraction loader", () => {
+  it("derives Article.publishedDate from modifiedDate when the source omits it", () => {
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/date-less-profile/",
+        headline: "Date-less profile",
+        modifiedDate: "2026-06-05T18:30:00Z",
+      },
+    });
+
+    expect(rows.Article[0]?.publishedDate).toBe("2026-06-05");
+    expect(rows.Article[0]?.modifiedDate).toBeUndefined();
+  });
+
   it("keeps scraped advisor headshots and firm logos on entity rows", () => {
     const firmName = "Example Wealth";
     const rows = buildRows({
