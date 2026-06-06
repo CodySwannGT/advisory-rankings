@@ -120,10 +120,18 @@ After any write run, verify the loaded data through the public app resources:
 HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
   bun run verify:rest
 
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run data:coverage
+
 curl -s \
   'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3' \
   | jq '{summary, recentMoves: [.recentMoves[] | {id, fromFirm, toFirm, sourceStatus}]}'
 ```
+
+`bun run data:coverage` prints table counts, source assertion and article
+source counts, core field completeness, sparse advisor and firm rankings,
+recruiting coverage totals, and freshness warnings for deployed or local Harper
+data.
 
 `/RecruitingMarket` is the public source-depth audit surface for recruiting
 moves: it reports summary totals, firm momentum, market activity, recent moves,
