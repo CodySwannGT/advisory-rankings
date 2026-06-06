@@ -42,8 +42,11 @@ export function transitionRow(
     deal: deal
       ? {
           upfrontPctT12: deal.upfrontPctT12,
+          totalPctT12: deal.totalPctT12,
+          forgivableLoanTermYears: deal.forgivableLoanTermYears,
           producerTier: deal.producerTier,
           backendMetrics: deal.backendMetrics,
+          clawbackTerms: deal.clawbackTerms,
         }
       : null,
   };

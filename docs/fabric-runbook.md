@@ -1283,7 +1283,7 @@ defined in `src/harper/resources.ts`:
 | `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
 | `GET /AdvisorComparison?ids=<id>,<id>` | `AdvisorComparison` | Two-to-four advisor comparison payload with identity, firm, regulatory, career, rankings/articles, data confidence, and attribution sections. |
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
-| `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, state and city activity, source URLs, and Recruiting Market Map rollups. |
+| `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, recruiting-deal terms, state and city activity, source URLs, and Recruiting Market Map rollups. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
 | `GET /RegulatoryDiscrepancyQueue` | `RegulatoryDiscrepancyQueue` | Open discrepancy rows joined to advisor, current firm, disclosure, source value, regulator, docket, and review-action context for authenticated analyst review. |
 | `POST /mcp` | `mcp` | Streamable HTTP JSON-RPC transport for curated read-only AdvisorBook tools and resources. |

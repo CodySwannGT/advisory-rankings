@@ -40,6 +40,7 @@ export interface MoveProvenance {
   readonly sourceTable: "TransitionEvent";
   readonly sourceIds: readonly string[];
   readonly articleMentionIds: readonly string[];
+  readonly dealQuoteIds: readonly string[];
 }
 
 /**
@@ -129,6 +130,7 @@ export interface PublicMove {
   readonly aumMoved: number | null;
   readonly productionT12: number | null;
   readonly headcountMoved: number | null;
+  readonly deal: TransitionRow["deal"];
   readonly location: MoveLocation;
   readonly article: MoveArticle | null;
   readonly loadedAt: string | null;
@@ -140,6 +142,7 @@ export interface PublicMove {
 export interface RecruitingProvenance {
   readonly sourceTables: readonly [
     "TransitionEvent",
+    "RecruitingDealQuote",
     "ArticleTransitionEventMention",
     "Article",
     "FirmAlias",

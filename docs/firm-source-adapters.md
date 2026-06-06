@@ -137,8 +137,9 @@ data.
 
 `/RecruitingMarket` is the public source-depth audit surface for recruiting
 moves: it reports summary totals, firm momentum, market activity, recent moves,
-article links, source-status flags, and provenance IDs from
-`TransitionEvent`, `ArticleTransitionEventMention`, `Article`, and `FirmAlias`.
+article links, recruiting-deal terms, source-status flags, and provenance IDs
+from `TransitionEvent`, `RecruitingDealQuote`,
+`ArticleTransitionEventMention`, `Article`, and `FirmAlias`.
 `/RankingsExplorer` is the analogous rankings coverage surface; its `coverage`
 payload groups loaded ranking rows and source-status gaps.
 
