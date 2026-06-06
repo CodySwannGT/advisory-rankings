@@ -412,6 +412,41 @@ re-reads files on reload; no special handling.
 > specifiers query-free (`/index.js`, `/app.css`, `./app.js`) unless the
 > static handler is proven to return `200` for query-string asset URLs.
 
+> **Transient connection-reset resilience — symptom: deploy smoke
+> intermittently fails (e.g. a feed-filter `waitForSelector` times out), and
+> a fresh page load occasionally renders blank / the boot-recovery
+> fallback.** Root cause: the shared dev serving node intermittently resets
+> connections (`net::ERR_CONNECTION_RESET`) under the browser's concurrent
+> request bursts. Measured: roughly **1-in-3 fresh page loads** dropped at
+> least one static module/CSS asset (a different asset each time —
+> `design-system/*.js`, `tokens.css`, `watchlist-*.js`, …), which aborts the
+> whole ES-module graph so the SPA never boots and never fetches `/Feed`.
+> `curl` and single requests are stable (no 4xx/5xx); only the ~20-way
+> concurrent module fan-out trips it. The client had no retry anywhere, so a
+> single blip surfaced as a dead-end and broke the gate. Two-part fix:
+>
+> 1. **Boot guard** — an identical, dependency-free inline `<script>` in every
+>    `harper-app/web/*.html` shell (between the `ab-boot-guard:start/end`
+>    markers). If the page is still unbooted (no `.nav` /
+>    `.route-loading-feedback`), it reloads — bounded to 5 attempts per path
+>    via `sessionStorage`, cleared on success — then shows a manual Reload
+>    fallback. Independent reloads recover ~100% of resets (validated 20/20
+>    against the deployed cluster). Keep the snippet byte-identical across
+>    shells.
+> 2. **Resource retry** — `api()` (`src/web/app.ts` →
+>    `src/web/api-retry.ts`) retries **idempotent** (`GET`/`HEAD`) requests a
+>    few times with backoff when `fetch` *throws* (the reset signature).
+>    Returned HTTP error statuses (404, server 503, …) are deliberately
+>    **not** retried, so deterministic failures and the existing manual-retry
+>    UI are unchanged, and mutations never double-apply.
+>
+> Tempting but wrong: cache-busting the failed module via a query string —
+> blocked by the query-string caveat above, and a failed transitive import is
+> cached in the realm's module map, so a plain `import()` retry returns the
+> cached rejection; only a full reload re-fetches. Future hardening: bundle
+> each page entry into one self-contained module so the concurrent fan-out
+> (and thus the per-load reset probability) collapses.
+
 ### Custom JS resources (`resources.js`)
 Edit `src/harper/resources.ts`, run `bun run build`, then deploy the
 generated `harper-app/resources.js`. After

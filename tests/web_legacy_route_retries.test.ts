@@ -8,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const WEB_ROOT = resolve("harper-app/web");
 const SHOTS = resolve("tests/screenshots");
 const QUICK_TIMEOUT = 4_000;
+// Boot recovery may auto-reload several times before booting or falling back.
+const BOOT_TIMEOUT = 25_000;
 const ACME_ADVISORY = "Acme Advisory";
 
 /** Browser retry fixture for one legacy public route. */
@@ -168,7 +170,42 @@ describe("legacy directory and compliance route retries", () => {
     }
   );
 
-  it("renders root recovery copy when the feed module fails to load", async () => {
+  it("auto-recovers when a transient module reset clears on reload", async () => {
+    const page = await browser.newPage();
+    let indexRequests = 0;
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      // Reset the very first /index.js load (the connection-reset signature),
+      // then serve it normally — the boot guard should reload and boot.
+      await page.route("**/index.js", async route => {
+        indexRequests += 1;
+        if (indexRequests === 1) {
+          await route.abort("connectionreset");
+          return;
+        }
+        await route.continue();
+      });
+
+      await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+
+      // The SPA mounts its chrome (nav) before any data fetch, so a visible
+      // nav proves the module graph booted after the auto-reload.
+      await page.locator(".nav").first().waitFor({ timeout: BOOT_TIMEOUT });
+      expect(indexRequests).toBeGreaterThanOrEqual(2);
+      expect(
+        await page
+          .getByText("AdvisorBook could not finish loading this page.")
+          .count()
+      ).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("falls back after exhausting bounded reloads when the module never loads", async () => {
     const page = await browser.newPage();
 
     try {
@@ -181,12 +218,9 @@ describe("legacy directory and compliance route retries", () => {
       });
 
       expect(response?.status()).toBe(200);
-      await page.getByText("AdvisorBook feed").waitFor({
-        timeout: QUICK_TIMEOUT,
-      });
       await page
         .getByText("AdvisorBook could not finish loading this page.")
-        .waitFor({ timeout: QUICK_TIMEOUT });
+        .waitFor({ timeout: BOOT_TIMEOUT });
       expect(await page.getByRole("button", { name: "Reload" }).count()).toBe(
         1
       );
