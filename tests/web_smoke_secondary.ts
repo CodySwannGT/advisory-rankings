@@ -78,6 +78,8 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     .locator(DISCLOSURE_CARD_SELECTOR)
     .filter({ hasText: /FINRA|regulatory/i })
     .first();
+  const complianceNavLink = page.locator('.nav-links a[href="/regulatory"]');
+  const homeNavLink = page.locator('.nav-links a[href="/"]');
   const loadError = page.locator(".ab-empty", {
     hasText: /Could not load compliance events/i,
   });
@@ -97,6 +99,8 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
   await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const legacyResponse = await page.request.get(`${BASE}/regulatory.html`);
+  const complianceNavClass = await complianceNavLink.getAttribute("class");
+  const homeNavClass = await homeNavLink.getAttribute("class");
   await shot(page, "06-compliance");
 
   return [
@@ -110,6 +114,16 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
       String(legacyResponse.status())
     ),
     check(await complianceCard.isVisible(), "regulatory: compliance card"),
+    check(
+      complianceNavClass === "active",
+      "regulatory: compliance nav item active",
+      complianceNavClass ?? "missing class"
+    ),
+    check(
+      homeNavClass !== "active",
+      "regulatory: home nav item inactive",
+      homeNavClass ?? "missing class"
+    ),
     check(
       (await page.locator(DISCLOSURE_CARD_SELECTOR).count()) >= 1,
       "regulatory: disclosure events rendered"
