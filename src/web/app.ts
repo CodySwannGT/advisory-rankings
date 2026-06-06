@@ -23,6 +23,7 @@
 // static component and REST resources both bind to port 9926 by
 // default), so all calls are relative.
 
+import { fetchWithRetry, isRetryableMethod } from "./api-retry.js";
 import { mountThreeColumnPage } from "./design-system/templates.js";
 import {
   entityPath,
@@ -96,11 +97,19 @@ export async function api<T = unknown>(
   path: string,
   init: ApiInit = {}
 ): Promise<T> {
-  const res = await fetch(path, {
-    credentials: "same-origin",
-    ...init,
-    headers: { Accept: "application/json", ...init.headers },
-  });
+  const res = await fetchWithRetry(
+    path,
+    {
+      credentials: "same-origin",
+      ...init,
+      headers: { Accept: "application/json", ...init.headers },
+    },
+    isRetryableMethod(init.method),
+    {
+      fetch: (input, requestInit) => fetch(input, requestInit),
+      sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+    }
+  );
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
