@@ -11,6 +11,7 @@ import {
   categoryLabel,
   getQueryParamFn,
   modeLabelFor,
+  normalizeFeedCategoryValue,
   normalizeFeedFilters,
   toFormString,
 } from "./feed-filters-types.js";
@@ -32,7 +33,9 @@ export type {
 } from "./feed-filters-types.js";
 export {
   DEFAULT_FEED_MODE,
+  FEED_CATEGORY_PARAM,
   FEED_MODE_PARAM,
+  normalizeFeedCategoryValue,
   normalizeFeedFilters,
 } from "./feed-filters-types.js";
 
@@ -153,7 +156,7 @@ export function filterFeedItems(
  */
 export function feedCategories(items: readonly FeedItem[]): readonly string[] {
   const categories = items
-    .map(item => item.article?.category)
+    .map(item => normalizeFeedCategoryValue(item.article?.category))
     .filter(
       (category): category is string =>
         typeof category === "string" && category.length > 0
@@ -294,7 +297,7 @@ function modeMatches(item: FeedItem, mode: FeedMode): boolean {
 function categoryMatches(item: FeedItem, filters: FeedFilters): boolean {
   return (
     !filters.category ||
-    String(item.article?.category ?? "") === filters.category
+    normalizeFeedCategoryValue(item.article?.category) === filters.category
   );
 }
 

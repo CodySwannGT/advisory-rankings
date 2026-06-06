@@ -106,8 +106,21 @@ export function normalizeFeedFilters(filters: RawFeedFilters): FeedFilters {
     : DEFAULT_FEED_MODE;
   return {
     mode,
-    category: String(filters.category ?? "").trim(),
+    category: normalizeFeedCategoryValue(filters.category),
   };
+}
+
+/**
+ * Normalizes feed category names to the server's canonical query value.
+ * @param category - Raw category value from URL, form input, or payload rows.
+ * @returns Canonical category value, or `""` when no filter is active.
+ */
+export function normalizeFeedCategoryValue(category: unknown): string {
+  const normalized = String(category ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/gu, "_");
+  return normalized && normalized !== "all" ? normalized : "";
 }
 
 /**

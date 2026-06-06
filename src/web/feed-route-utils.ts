@@ -2,7 +2,9 @@ import type { FeedItem } from "../harper/resource-feed-types.js";
 import { api } from "./app.js";
 import {
   DEFAULT_FEED_MODE,
+  FEED_CATEGORY_PARAM,
   FEED_MODE_PARAM,
+  normalizeFeedCategoryValue,
   normalizeFeedFilters,
 } from "./feed-filters.js";
 
@@ -44,9 +46,16 @@ export function installFeedPopstateReload(reloadFeed: () => void): void {
 export function feedApiPath(cursor?: string | null): string {
   const filters = normalizeFeedFilters({
     mode: new URLSearchParams(location.search).get(FEED_MODE_PARAM),
+    category: new URLSearchParams(location.search).get(FEED_CATEGORY_PARAM),
   });
   const params = new URLSearchParams();
   if (filters.mode !== DEFAULT_FEED_MODE) params.set("mode", filters.mode);
+  if (filters.category) {
+    params.set(
+      FEED_CATEGORY_PARAM,
+      normalizeFeedCategoryValue(filters.category)
+    );
+  }
   if (cursor) params.set("cursor", cursor);
   const query = params.toString();
   return query ? `/Feed?${query}` : "/Feed";
