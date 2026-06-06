@@ -68,6 +68,12 @@ const HEADING_ROUTES: readonly HeadingRoute[] = [
     readySelector: ".comparison-table",
     title: "Advisor comparison",
   },
+  {
+    label: "login",
+    path: "/login",
+    readySelector: "form",
+    title: "Sign in",
+  },
 ];
 
 /**

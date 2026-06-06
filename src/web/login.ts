@@ -30,6 +30,7 @@ type SignInTextInputAttrs = Readonly<Record<string, string | boolean>>;
 
 mountCenteredNarrowPage({
   active: "home",
+  pageTitle: "Sign in",
   refreshMe,
   search,
   build({ center }: CenteredBuildContext): void {
