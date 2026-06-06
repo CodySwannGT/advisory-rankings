@@ -44,6 +44,7 @@
 | [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-06-06 |
 
 ## Sources
+
 | Source notes | Latest |
 |---|---|
 | [documentation - project docs](sources/documentation/2026-05-23-initial-project-docs.md) | Initial project docs ingest on 2026-05-23 |
