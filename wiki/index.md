@@ -13,7 +13,7 @@
 ## Architecture
 | Page | Summary | Updated |
 |---|---|---|
-| [Project architecture](architecture/project-architecture.md) | Harper/Fabric app structure, generated assets, data flow, and recent git-history themes | 2026-05-23 |
+| [Project architecture](architecture/project-architecture.md) | Harper/Fabric app structure, generated assets, data flow, and recent git-history themes | 2026-06-06 |
 | [Harper Fabric operations](architecture/harper-fabric-operations.md) | Dev deployment topology, operational constraints, and verification surface | 2026-05-23 |
 | [AdvisorBook web UI design system](architecture/web-ui-design-system.md) | Atomic Design layers and UI operating rules | 2026-05-23 |
 
@@ -41,12 +41,13 @@
 ## Projects
 | Page | Summary | Updated |
 |---|---|---|
-| [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-06-03 |
+| [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-06-06 |
 
 ## Sources
+
 | Source notes | Latest |
 |---|---|
 | [documentation - project docs](sources/documentation/2026-05-23-initial-project-docs.md) | Initial project docs ingest on 2026-05-23 |
 | [documentation - AdvisorBook personas](sources/documentation/2026-05-25-advisorbook-personas.md) | Persona seed and app-evidence ingest on 2026-05-25 |
-| [git](sources/git/2026-06-03-advisory-rankings-git.md) | Incremental git history ingest on 2026-06-03 |
-| [roles](sources/roles/2026-06-03-roles.md) | Empty digital-staff roster ingest on 2026-06-03 |
+| [git](sources/git/2026-06-06-advisory-rankings-git.md) | Incremental git history ingest on 2026-06-06 |
+| [roles](sources/roles/2026-06-06-roles.md) | Empty digital-staff roster ingest on 2026-06-06 |

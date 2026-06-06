@@ -1,13 +1,14 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-06-06
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
 sources:
   - ../sources/documentation/2026-05-23-initial-project-docs.md
   - ../sources/git/2026-05-23-advisory-rankings-git.md
+  - ../sources/git/2026-06-06-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -42,3 +43,8 @@ The first git-history ingest captured 135 commits at HEAD
 hardening, Fabric deploy consolidation, search/profile performance and reliability, firm alias
 canonicalization, BrokerCheck enrichment, and AdvisorBook UI polish. Source:
 wiki/sources/git/2026-05-23-advisory-rankings-git.md.
+
+The 2026-06-06 git ingest shows current architecture work focused on login-route correctness, safe
+auth-error rendering, mobile navigation and profile detail behavior, comparison evidence readability,
+and stale serving-node feed-index tolerance. Source:
+wiki/sources/git/2026-06-06-advisory-rankings-git.md.

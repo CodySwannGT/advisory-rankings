@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-03
+updated: 2026-06-06
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -12,6 +12,7 @@ sources:
   - ../sources/git/2026-06-01-advisory-rankings-git.md
   - ../sources/git/2026-06-02-advisory-rankings-git.md
   - ../sources/git/2026-06-03-advisory-rankings-git.md
+  - ../sources/git/2026-06-06-advisory-rankings-git.md
 ---
 
 # Git history
@@ -55,6 +56,11 @@ commits since the 2026-06-02 cursor and refreshed recent merged PR metadata thro
 "docs: ingest latest wiki sources." Source:
 wiki/sources/git/2026-06-03-advisory-rankings-git.md.
 
+The 2026-06-06 git ingest ran at HEAD `ccf4a529c9561a7843185054e9d7e358bb1ecb76`. It added 30
+commits since the 2026-06-03 cursor and refreshed recent merged PR metadata through #913,
+"fix: show safe invalid login errors." Source:
+wiki/sources/git/2026-06-06-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -83,6 +89,10 @@ wiki/sources/git/2026-06-03-advisory-rankings-git.md.
   feed Load more pagination, and page-fetch error handling.
 - The 2026-06-01 Lisa package update and wiki ingest PR landed during this window.
 - The 2026-06-02 wiki ingest PR merged, followed by the 0.1.264 release marker commit.
+- The 2026-06-03 wiki ingest PR merged, followed by compare empty-state guidance, stale feed index
+  hardening, clean login route and redirect fixes, mobile team/profile detail polish, mobile
+  comparison evidence readability, mobile nav core-link exposure, and safer invalid-login error
+  handling.
 
 ## Use
 
@@ -93,4 +103,5 @@ wiki/sources/git/2026-05-26-advisory-rankings-git.md, and
 wiki/sources/git/2026-05-31-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-01-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-02-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-03-advisory-rankings-git.md.
+wiki/sources/git/2026-06-03-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-06-advisory-rankings-git.md.
