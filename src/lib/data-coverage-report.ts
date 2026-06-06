@@ -1,3 +1,8 @@
+import {
+  firmSourceCoverage,
+  type FirmSourceCoverageMetric,
+} from "./data-coverage-firm-source.js";
+
 /**
  *
  */
@@ -51,12 +56,15 @@ export interface CoverageReport {
   readonly counts: Readonly<Record<TableName, number>>;
   readonly sourceCounts: ReadonlyArray<GroupCountRow>;
   readonly articleCategories: ReadonlyArray<GroupCountRow>;
+  readonly firmSourceCoverage: Readonly<
+    Record<FirmSourceCoverageMetric, ReadonlyArray<GroupCountRow>>
+  >;
   readonly completeness: Readonly<Record<string, ReadonlyArray<FieldCoverage>>>;
   readonly sparseAdvisors: ReadonlyArray<SparseRow>;
   readonly sparseFirms: ReadonlyArray<SparseRow>;
   readonly recruitingCoverage: ReadonlyArray<GroupCountRow>;
   readonly freshness: Readonly<
-    Record<"articles" | "transitions", string | null>
+    Record<"articles" | "transitions" | "firmSourceChecks", string | null>
   >;
   readonly warnings: ReadonlyArray<string>;
 }
@@ -84,6 +92,11 @@ export type CoverageQuery = <T extends Readonly<Record<string, unknown>>>(
 const TABLES = [
   "Advisor",
   "Firm",
+  "FirmAlias",
+  "Branch",
+  "Team",
+  "TeamMembership",
+  "Designation",
   "Article",
   "TransitionEvent",
   "ArticleTransitionEventMention",
@@ -110,6 +123,7 @@ export async function buildDataCoverageReport(
   const counts = await tableCounts(query);
   const sources = await safeRows<GroupCountRow>(query, sourceCountSql());
   const categories = await safeRows<GroupCountRow>(query, articleCategorySql());
+  const firmSources = await firmSourceCoverage(query, safeRows);
   const fields = await completeness(query);
   const sparseAdvisors = await safeRows<SparseRow>(query, sparseAdvisorSql());
   const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
@@ -122,11 +136,16 @@ export async function buildDataCoverageReport(
     query,
     "SELECT MAX(moveDate) AS latest FROM data.TransitionEvent"
   );
+  const firmSourceChecks = await latestDate(
+    query,
+    "SELECT MAX(checkedAt) AS latest FROM data.AdvisorResearchCheck"
+  );
   return {
     generatedAt: new Date().toISOString(),
     counts: counts.counts,
     sourceCounts: sources.rows,
     articleCategories: categories.rows,
+    firmSourceCoverage: firmSources.coverage,
     completeness: fields.completeness,
     sparseAdvisors: sparseAdvisors.rows,
     sparseFirms: sparseFirms.rows,
@@ -134,17 +153,20 @@ export async function buildDataCoverageReport(
     freshness: {
       articles: articles.rows[0]?.latest ?? null,
       transitions: transitions.rows[0]?.latest ?? null,
+      firmSourceChecks: firmSourceChecks.rows[0]?.latest ?? null,
     },
     warnings: [
       ...counts.warnings,
       ...sources.warnings,
       ...categories.warnings,
+      ...firmSources.warnings,
       ...fields.warnings,
       ...sparseAdvisors.warnings,
       ...sparseFirms.warnings,
       ...recruiting.warnings,
       ...articles.warnings,
       ...transitions.warnings,
+      ...firmSourceChecks.warnings,
     ],
   };
 }

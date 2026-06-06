@@ -26,6 +26,7 @@ export function renderDataCoverageReport(
     ),
     groupLines("Source assertion counts", report.sourceCounts),
     groupLines("Article source counts", report.articleCategories),
+    firmSourceCoverageLines(report),
     completenessLines(report.completeness),
     sparseLines("Sparse advisor rankings", report.sparseAdvisors),
     sparseLines("Sparse firm rankings", report.sparseFirms),
@@ -43,6 +44,26 @@ const groupLines = (
     title,
     ...rows.map(
       row => `  ${String(row.label ?? "unknown").padEnd(34)} ${row.n}`
+    ),
+  ].join("\n");
+
+const firmSourceCoverageLines = (report: CoverageReport): string =>
+  [
+    "",
+    "Firm-source adapter coverage",
+    groupLines("  Advisors by source", report.firmSourceCoverage.advisors),
+    groupLines("  Branches by source", report.firmSourceCoverage.branches),
+    groupLines(
+      "  Firm aliases by source",
+      report.firmSourceCoverage.firmAliases
+    ),
+    groupLines(
+      "  Research checks by source",
+      report.firmSourceCoverage.researchChecks
+    ),
+    groupLines(
+      "  Source-backed facts by target",
+      report.firmSourceCoverage.sourceBackedFacts
     ),
   ].join("\n");
 
@@ -74,6 +95,7 @@ const warningLines = (report: CoverageReport): string => {
   const warnings = [
     staleWarning("articles", report.freshness.articles),
     staleWarning("transitions", report.freshness.transitions),
+    staleWarning("firm source checks", report.freshness.firmSourceChecks),
     ...report.warnings,
   ].filter((warning): warning is string => Boolean(warning));
   return [
