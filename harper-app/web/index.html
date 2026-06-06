@@ -9,6 +9,33 @@
 	<link rel="stylesheet" href="/app.css" />
 </head>
 <body>
+	<script>
+		(() => {
+			const readySelector = ".nav, .ab-page-title, article.card, .route-loading-feedback";
+			const recover = () => {
+				if (document.querySelector(readySelector)) return;
+				document.body.innerHTML = `
+					<main class="layout" style="max-width: 760px; margin: 48px auto; padding: 0 20px;">
+						<section class="center card">
+							<h1>AdvisorBook feed</h1>
+							<p>AdvisorBook could not finish loading this page.</p>
+							<button type="button" id="feed-reload">Reload</button>
+						</section>
+					</main>`;
+				document.getElementById("feed-reload")?.addEventListener("click", () => {
+					window.location.reload();
+				});
+			};
+			window.addEventListener("error", event => {
+				const target = event.target;
+				if (target instanceof HTMLScriptElement || target instanceof HTMLLinkElement) {
+					recover();
+				}
+			}, true);
+			window.addEventListener("unhandledrejection", recover);
+			window.setTimeout(recover, 4000);
+		})();
+	</script>
 	<script type="module" src="/index.js"></script>
 </body>
 </html>
