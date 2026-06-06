@@ -24,6 +24,11 @@ implemented end-to-end:
 - `tests/brokercheck_web_smoke.ts` — Playwright smoke against the
   deployed cluster verifying every UI promise. 18/18 passing on
   `advisory-rankings-de.cody-swann-org.harperfabric.com`.
+- Article ingestion now guarantees `Article.publishedDate` before
+  writes. If AdvisorHub or extraction payloads omit it, loaders derive
+  it from `modifiedDate`, crawler/load timestamps, or the ingest day;
+  `bun run backfill:article-dates` repairs older Article rows missing
+  the feed sort key.
 
 Live state at ship: 13/17 advisors enriched, 14 BrokerCheckSnapshots,
 6 disclosures sourced from BrokerCheck (the Cairnes set), all firms

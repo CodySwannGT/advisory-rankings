@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as cheerio from "cheerio";
+import { articleDates } from "../lib/article-dates.js";
 import { articleId, firmId, uid } from "../lib/ids.js";
 import { canonicalFirmName } from "../lib/firm-identity.js";
 import { describeTarget, upsert } from "../lib/harper.js";
@@ -133,8 +134,7 @@ function rowsForPost(post: RawWpPost): PostIngestRows {
     url,
     ...(post.slug !== undefined ? { slug: post.slug } : {}),
     headline,
-    publishedDate: String(post.date ?? "").slice(0, 10),
-    modifiedDate: String(post.modified ?? "").slice(0, 10),
+    ...articleDates(post),
     category: "unknown",
   };
   const aliasMatches = FIRM_ALIASES.filter(

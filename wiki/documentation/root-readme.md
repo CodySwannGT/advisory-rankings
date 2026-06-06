@@ -58,6 +58,9 @@ bun run backfill:search-index
                      # one-off backfill of AdvisorSearchIndex from
                      # current Advisor rows (run once per cluster after
                      # the AdvisorSearchIndex table is deployed)
+bun run backfill:article-dates
+                     # one-off repair of Article rows missing
+                     # publishedDate after older ingests
 bun run reindex:advisor-tokens <advisorId>...
                      # targeted reindex of one or more advisors
 
@@ -109,7 +112,8 @@ session cookie for the Fabric control plane. The auth split is in
 `src/scripts/_auth.ts`.
 
 For scripts that write through the Harper operations API (`bun run ingest`,
-`bun run load:extractions`, `bun run scrape:morgan-stanley -- --write`),
+`bun run load:extractions`, `bun run backfill:article-dates`,
+`bun run scrape:morgan-stanley -- --write`),
 `HDB_TARGET_URL` is optional. When unset, the repo defaults to the Fabric
 dev cluster operations URL derived from `HARPER_CLUSTER_URL` (or the
 checked-in dev URL) plus `:9925`. `HDB_ADMIN_USERNAME` and
@@ -303,7 +307,7 @@ src/
                              parser/loader/client helpers
   scripts/                   TypeScript sources for seed, verify,
                              deploy, crawlers, ingest, BrokerCheck,
-                             media backfill, firm alias merges,
+                             media and Article-date backfills, firm alias merges,
                              Morgan Stanley, Merrill, Wells Fargo, RBC,
                              Raymond James, Edward Jones, Stifel, and UBS locator scraping, advisor
                              research queues, token, preview, and dev
