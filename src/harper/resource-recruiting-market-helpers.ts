@@ -79,6 +79,9 @@ function buildRecruitingMove(
       sourceTable: "TransitionEvent",
       sourceIds: [transition.id],
       articleMentionIds: source.mentionIds,
+      dealQuoteIds: transition.recruitingDealId
+        ? [transition.recruitingDealId]
+        : [],
     },
   };
 }
@@ -403,6 +406,7 @@ export function publicMove(move: RecruitingMove): PublicMove {
     aumMoved: move.aumMoved ?? null,
     productionT12: move.productionT12 ?? null,
     headcountMoved: move.headcountMoved ?? null,
+    deal: move.deal,
     location: move.location,
     article: move.article,
     loadedAt: move.loadedAt,
@@ -428,6 +432,24 @@ function sourceStatus(
     move.subject ? null : "unresolved-entity",
     move.aumMoved == null ? "missing-aum" : null,
     move.productionT12 == null ? "missing-t12" : null,
+    ...dealStatus(move),
     branch ? null : "missing-location",
   ].filter(isNonEmptyString);
+}
+
+/**
+ * Builds explicit status codes for recruiting-deal economics.
+ * @param move Feed-shaped transition row.
+ * @returns Missing-deal or per-field missing codes.
+ */
+function dealStatus(move: TransitionRow): readonly (string | null)[] {
+  const deal = move.deal;
+  if (!deal) return ["missing-deal-terms"];
+  return [
+    deal.upfrontPctT12 == null ? "missing-upfront-pct-t12" : null,
+    deal.totalPctT12 == null ? "missing-total-pct-t12" : null,
+    deal.producerTier ? null : "missing-producer-tier",
+    deal.backendMetrics ? null : "missing-backend-metrics",
+    deal.clawbackTerms ? null : "missing-clawback-terms",
+  ];
 }

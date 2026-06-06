@@ -58,6 +58,12 @@ const MISSING_SOURCE_REASON = "missing-source";
 const MISSING_STATE_REASON = "missing-state";
 const MISSING_AUM_REASON = "missing-aum";
 const MISSING_T12_REASON = "missing-t12";
+const MISSING_DEAL_TERMS_REASON = "missing-deal-terms";
+const MISSING_UPFRONT_PCT_T12_REASON = "missing-upfront-pct-t12";
+const MISSING_TOTAL_PCT_T12_REASON = "missing-total-pct-t12";
+const MISSING_PRODUCER_TIER_REASON = "missing-producer-tier";
+const MISSING_BACKEND_METRICS_REASON = "missing-backend-metrics";
+const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
 const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
@@ -456,7 +462,12 @@ const baseRows = () => {
     },
   ]);
   setRows("RecruitingDealQuote", [
-    { id: "deal-a", upfrontPctT12: 180, producerTier: "top" },
+    {
+      id: "deal-a",
+      upfrontPctT12: 180,
+      producerTier: "top",
+      sourceArticleId: "article-a",
+    },
   ]);
   setRows("Disclosure", [
     {
@@ -2356,7 +2367,11 @@ describe("Harper resource endpoints", () => {
         missingT12Count: 2,
       },
       provenance: {
-        sourceTables: expect.arrayContaining(["TransitionEvent", "Article"]),
+        sourceTables: expect.arrayContaining([
+          "TransitionEvent",
+          "RecruitingDealQuote",
+          "Article",
+        ]),
         sourceIds: expect.arrayContaining([
           TRANSITION_A_ID,
           TRANSITION_TEAM_ID,
@@ -2382,6 +2397,7 @@ describe("Harper resource endpoints", () => {
           MISSING_SOURCE_REASON,
           MISSING_AUM_REASON,
           MISSING_T12_REASON,
+          MISSING_DEAL_TERMS_REASON,
         ]),
       }),
       expect.objectContaining({
@@ -2391,6 +2407,7 @@ describe("Harper resource endpoints", () => {
           MISSING_SOURCE_REASON,
           MISSING_AUM_REASON,
           MISSING_T12_REASON,
+          MISSING_DEAL_TERMS_REASON,
         ]),
       }),
       expect.objectContaining({
@@ -2398,7 +2415,23 @@ describe("Harper resource endpoints", () => {
         article: expect.objectContaining({
           url: STONE_JOINS_EXAMPLE_URL,
         }),
-        sourceStatus: [SOURCE_BACKED_REASON],
+        deal: {
+          upfrontPctT12: 180,
+          totalPctT12: undefined,
+          forgivableLoanTermYears: undefined,
+          producerTier: "top",
+          backendMetrics: undefined,
+          clawbackTerms: undefined,
+        },
+        provenance: expect.objectContaining({
+          dealQuoteIds: ["deal-a"],
+        }),
+        sourceStatus: expect.arrayContaining([
+          SOURCE_BACKED_REASON,
+          MISSING_TOTAL_PCT_T12_REASON,
+          MISSING_BACKEND_METRICS_REASON,
+          MISSING_CLAWBACK_TERMS_REASON,
+        ]),
       }),
     ]);
 
@@ -2511,6 +2544,44 @@ describe("Harper resource endpoints", () => {
         ]),
       }),
     ]);
+  });
+
+  it("surfaces complementary recruiting deal term gaps", async () => {
+    setRows("RecruitingDealQuote", [
+      {
+        id: "deal-a",
+        totalPctT12: 225,
+        backendMetrics: "Back-end hurdles disclosed",
+        clawbackTerms: "Five-year note",
+        sourceArticleId: "article-a",
+      },
+    ]);
+
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", { firm: EXAMPLE_WEALTH_LLC, state: "ga", year: "2024" })
+    );
+    const move = market.recentMoves.find(
+      (row: { id: string }) => row.id === TRANSITION_A_ID
+    );
+
+    expect(move).toMatchObject({
+      deal: {
+        totalPctT12: 225,
+        backendMetrics: "Back-end hurdles disclosed",
+        clawbackTerms: "Five-year note",
+      },
+      sourceStatus: expect.arrayContaining([
+        MISSING_UPFRONT_PCT_T12_REASON,
+        MISSING_PRODUCER_TIER_REASON,
+      ]),
+    });
+    expect(move.sourceStatus).not.toEqual(
+      expect.arrayContaining([
+        MISSING_TOTAL_PCT_T12_REASON,
+        MISSING_BACKEND_METRICS_REASON,
+        MISSING_CLAWBACK_TERMS_REASON,
+      ])
+    );
   });
 
   it("normalizes recruiting watchlist inputs deterministically", async () => {

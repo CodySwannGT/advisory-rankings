@@ -116,8 +116,11 @@ export interface TransitionSubject {
 /** Deal slice embedded in transition rows. */
 export interface TransitionDealSlice {
   readonly upfrontPctT12: number | undefined;
+  readonly totalPctT12: number | undefined;
+  readonly forgivableLoanTermYears: number | undefined;
   readonly producerTier: string | undefined;
   readonly backendMetrics: string | undefined;
+  readonly clawbackTerms: string | undefined;
 }
 
 /** Serializable transition row payload. */

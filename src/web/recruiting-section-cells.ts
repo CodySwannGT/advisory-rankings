@@ -23,8 +23,14 @@ const STACKED_CELL_CLASS = "stacked-cell";
 const NO_MATCHING_MOVES = "no-matching-moves";
 const STATUS_LABELS: Record<string, string> = {
   missing: "Missing value",
+  "missing-backend-metrics": "Back-end metrics unavailable",
+  "missing-clawback-terms": "Clawback terms unavailable",
+  "missing-deal-terms": "Deal terms unavailable",
   "missing-location": "Location unavailable",
+  "missing-producer-tier": "Producer tier unavailable",
   "missing-source": "Source unavailable",
+  "missing-total-pct-t12": "Total T-12 unavailable",
+  "missing-upfront-pct-t12": "Upfront T-12 unavailable",
   "source-backed": "Source confirmed",
 };
 
@@ -258,7 +264,8 @@ export function moveCell(row: PublicMove): HTMLElement {
       row.fromFirm?.short || row.fromFirm?.name || "?",
       " -> ",
       row.toFirm?.short || row.toFirm?.name || "?"
-    )
+    ),
+    row.deal ? el("span", {}, dealSummary(row.deal)) : null
   );
 }
 
@@ -327,6 +334,38 @@ function subjectLabel(subject: TransitionSubject | string | null): string {
   if (!subject) return "Unresolved move";
   if (typeof subject === "string") return subject;
   return subject.name || subject.id || "Unresolved move";
+}
+
+/**
+ * Formats loaded recruiting-deal economics for the move cell.
+ * @param deal - Deal fields attached to the recruiting move.
+ * @returns Compact deal summary.
+ */
+function dealSummary(deal: PublicMove["deal"]): string {
+  if (!deal) return "";
+  const parts = [
+    pctPart("upfront", deal.upfrontPctT12),
+    pctPart("total", deal.totalPctT12),
+    deal.producerTier ? `tier: ${humanize(deal.producerTier)}` : null,
+    deal.backendMetrics ?? null,
+    deal.clawbackTerms ?? null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length ? `Deal: ${parts.join(" · ")}` : "Deal terms loaded";
+}
+
+/**
+ * Formats stored decimal or percent-like T-12 deal values.
+ * @param label - Display label for the percentage.
+ * @param value - Stored percentage value.
+ * @returns Formatted value or null when absent.
+ */
+function pctPart(
+  label: string,
+  value: number | null | undefined
+): string | null {
+  if (value == null) return null;
+  const percent = value > 10 ? value : value * 100;
+  return `${percent.toLocaleString()}% ${label}`;
 }
 
 /**

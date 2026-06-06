@@ -73,6 +73,7 @@ export class RecruitingMarket extends Resource {
       provenance: {
         sourceTables: [
           "TransitionEvent",
+          "RecruitingDealQuote",
           "ArticleTransitionEventMention",
           "Article",
           "FirmAlias",
