@@ -48,6 +48,7 @@ import { smokeRankings } from "./web_smoke_rankings.js";
 import { smokePublicPageHeadings } from "./web_smoke_headings.js";
 import { smokeHighSignalEvidence } from "./web_smoke_high_signal_evidence.js";
 import { smokeComparison } from "./web_smoke_comparison.js";
+import { smokeDiscrepancyQueue } from "./web_smoke_discrepancy_queue.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -393,6 +394,12 @@ async function runScenarios(
       ...(await smokeGlobalSearch(page)),
     ];
   }
+  if (process.env.SMOKE_SCOPE === "discrepancy") {
+    return [
+      ...(await smokeRootBootResilience(page)),
+      ...(await smokeDiscrepancyQueue(page)),
+    ];
+  }
   return [
     ...(await smokeRootBootResilience(page)),
     ...(await smokeFavicon(page)),
@@ -403,6 +410,7 @@ async function runScenarios(
     ...(await smokeGlobalSearch(page)),
     ...(await smokeGlobalSearchMobile(browser, extraHTTPHeaders)),
     ...(await smokeFirmAndAdvisor(page)),
+    ...(await smokeDiscrepancyQueue(page)),
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
     ...(await smokeCompliance(page)),

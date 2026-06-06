@@ -19,13 +19,37 @@ import { DEV_SERVER_TABLES } from "./dev_server_tables.js";
 
 const TABLES: readonly string[] = [...DEV_SERVER_TABLES];
 
+/** Minimal Harper-style condition supported by the local table shim. */
+interface TableCondition {
+  readonly attribute?: unknown;
+  readonly comparator?: unknown;
+  readonly value?: unknown;
+}
+
+/** Minimal Harper-style sort clause supported by the local table shim. */
+interface TableSort {
+  readonly attribute?: unknown;
+  readonly descending?: unknown;
+}
+
+/** Minimal Harper-style search query supported by the local table shim. */
+interface TableSearchQuery {
+  readonly conditions?: unknown;
+  readonly limit?: unknown;
+  readonly offset?: unknown;
+  readonly sort?: unknown;
+}
+
 /**
  * The minimal `tables.X` surface that generated resources call. The real
- * `harperdb.Table` interface is much wider; we expose only `search()`
- * because that is the only method `harper-app/resources.js` reaches for.
+ * `harperdb.Table` interface is much wider; we expose the read and upsert
+ * methods needed by local smoke flows.
  */
 interface TableShim {
-  readonly search: () => AsyncIterable<unknown>;
+  readonly get: (id: string) => Promise<unknown | null>;
+  readonly insert: (row: unknown) => Promise<void>;
+  readonly put: (row: unknown) => Promise<void>;
+  readonly search: (query?: TableSearchQuery) => AsyncIterable<unknown>;
 }
 
 /** Map of Harper table name → shim that satisfies `TableShim`. */
@@ -41,6 +65,14 @@ class DevResource {
   /** No-op constructor; the generated subclasses provide all behavior. */
   constructor() {
     // Intentionally empty.
+  }
+
+  /**
+   * Returns no request context for local JSON resource calls.
+   * @returns Null so detail-shell negotiation falls through to JSON payloads.
+   */
+  getContext(): null {
+    return null;
   }
 }
 
@@ -61,30 +93,235 @@ interface ResourcesModule {
  */
 interface ResourceState {
   readonly resources: ResourcesModule | null;
+  readonly tableRows: Readonly<Record<string, readonly unknown[]>> | null;
 }
 
-const resourceState: ResourceState = { resources: null };
+const resourceState: ResourceState = { resources: null, tableRows: null };
 
 /**
  * Pulls every dev-server table into memory and wraps each in the
  * `tables.X.search()` async-iterable shape that resources.js consumes.
- *
  * @returns Map of table-name → shim.
  */
 async function loadTableShim(): Promise<TableShimMap> {
-  const entries = await Promise.all(
-    TABLES.map(async tableName => {
-      const rows = await loadTable(tableName);
-      const shim: TableShim = {
-        search: () =>
-          (async function* () {
-            for (const row of rows) yield row;
-          })(),
-      };
-      return [tableName, shim] as const;
-    })
+  const rows = await loadTableRows();
+  return Object.fromEntries(
+    TABLES.map(tableName => [tableName, tableShim(tableName, rows)] as const)
   );
-  return Object.fromEntries(entries);
+}
+
+/**
+ * Loads and caches table rows for the dev-server process. This keeps POST
+ * mutations visible to subsequent resource reads during one smoke run.
+ * @returns Mutable table-row cache keyed by table name.
+ */
+async function loadTableRows(): Promise<Record<string, readonly unknown[]>> {
+  if (resourceState.tableRows) {
+    return resourceState.tableRows as Record<string, readonly unknown[]>;
+  }
+  const entries = await Promise.all(
+    TABLES.map(
+      async tableName => [tableName, await loadTable(tableName)] as const
+    )
+  );
+  const tableRows = Object.fromEntries(entries);
+  Object.assign(resourceState, { tableRows });
+  return tableRows;
+}
+
+/**
+ * Builds one mutable in-memory table facade.
+ * @param tableName - Harper table name.
+ * @param rowsByTable - Shared process-local row cache.
+ * @returns Table shim used by generated resources.
+ */
+function tableShim(
+  tableName: string,
+  rowsByTable: Record<string, readonly unknown[]>
+): TableShim {
+  return {
+    get: async (id: string) =>
+      rowsFor(tableName, rowsByTable).find(row => rowId(row) === id) ?? null,
+    insert: async (row: unknown) => {
+      await upsertRow(tableName, row, rowsByTable);
+    },
+    put: async (row: unknown) => {
+      await upsertRow(tableName, row, rowsByTable);
+    },
+    search: query =>
+      (async function* () {
+        for (const row of applySearch(rowsFor(tableName, rowsByTable), query)) {
+          yield row;
+        }
+      })(),
+  };
+}
+
+/**
+ * Reads cached rows for one table.
+ * @param tableName - Harper table name.
+ * @param rowsByTable - Shared process-local row cache.
+ * @returns Rows for the table.
+ */
+function rowsFor(
+  tableName: string,
+  rowsByTable: Record<string, readonly unknown[]>
+): readonly unknown[] {
+  return rowsByTable[tableName] ?? [];
+}
+
+/**
+ * Upserts one row by `id` into the process-local cache.
+ * @param tableName - Harper table name.
+ * @param row - Row to persist.
+ * @param rowsByTable - Shared process-local row cache.
+ */
+async function upsertRow(
+  tableName: string,
+  row: unknown,
+  rowsByTable: Record<string, readonly unknown[]>
+): Promise<void> {
+  const id = rowId(row);
+  const rows = rowsFor(tableName, rowsByTable);
+  const index = rows.findIndex(candidate => rowId(candidate) === id);
+  Object.assign(rowsByTable, {
+    [tableName]:
+      index === -1
+        ? [...rows, row]
+        : [...rows.slice(0, index), row, ...rows.slice(index + 1)],
+  });
+}
+
+/**
+ * Applies the subset of Harper search semantics the generated resources use.
+ * @param rows - Candidate table rows.
+ * @param query - Harper-style query object.
+ * @returns Filtered, sorted, and paginated rows.
+ */
+function applySearch(
+  rows: readonly unknown[],
+  query: TableSearchQuery | undefined
+): readonly unknown[] {
+  const conditions = Array.isArray(query?.conditions)
+    ? (query.conditions as readonly TableCondition[])
+    : [];
+  const filtered = rows.filter(row =>
+    conditions.every(condition => matchesCondition(row, condition))
+  );
+  const sorted = applySort(filtered, query?.sort);
+  const offset = numberValue(query?.offset) ?? 0;
+  const limit = numberValue(query?.limit) ?? sorted.length;
+  return sorted.slice(offset, offset + limit);
+}
+
+/**
+ * Applies a Harper-style single-column sort.
+ * @param rows - Rows to sort.
+ * @param sort - Sort clause.
+ * @returns Sorted rows.
+ */
+function applySort(
+  rows: readonly unknown[],
+  sort: unknown
+): readonly unknown[] {
+  if (!sort || typeof sort !== "object") return rows;
+  const attribute = stringValue((sort as TableSort).attribute);
+  if (!attribute) return rows;
+  const direction = (sort as TableSort).descending ? -1 : 1;
+  return [...rows].sort(
+    (left, right) =>
+      direction *
+      compareValues(rowValue(left, attribute), rowValue(right, attribute))
+  );
+}
+
+/**
+ * Checks one Harper-style condition.
+ * @param row - Candidate row.
+ * @param condition - Condition to evaluate.
+ * @returns Whether the row matches.
+ */
+function matchesCondition(row: unknown, condition: TableCondition): boolean {
+  const attribute = stringValue(condition.attribute);
+  if (!attribute) return true;
+  const candidate = rowValue(row, attribute);
+  const target = condition.value;
+  const comparator = stringValue(condition.comparator) ?? "equals";
+  if (comparator === "starts_with") {
+    return (
+      typeof candidate === "string" &&
+      candidate.startsWith(String(condition.value ?? ""))
+    );
+  }
+  if (comparator === "ne" || comparator === "not_equal") {
+    return condition.value === null
+      ? candidate != null
+      : candidate !== condition.value;
+  }
+  if (comparator === "greater_than") {
+    return compareValues(candidate, target) > 0;
+  }
+  if (comparator === "greater_than_equal") {
+    return compareValues(candidate, target) >= 0;
+  }
+  return target === null ? candidate == null : candidate === target;
+}
+
+/**
+ * Compares primitive-ish row values using Harper-like null ordering.
+ * @param left - First value.
+ * @param right - Second value.
+ * @returns Sort order.
+ */
+function compareValues(left: unknown, right: unknown): number {
+  if (left === right) return 0;
+  if (left == null) return -1;
+  if (right == null) return 1;
+  if (typeof left === "number" && typeof right === "number") {
+    return left < right ? -1 : 1;
+  }
+  return String(left).localeCompare(String(right));
+}
+
+/**
+ * Reads a field off an object row.
+ * @param row - Candidate row.
+ * @param attribute - Field name.
+ * @returns Field value.
+ */
+function rowValue(row: unknown, attribute: string): unknown {
+  return row && typeof row === "object"
+    ? Reflect.get(row, attribute)
+    : undefined;
+}
+
+/**
+ * Reads a row id when present.
+ * @param row - Candidate row.
+ * @returns Row id string or undefined.
+ */
+function rowId(row: unknown): string | undefined {
+  return stringValue(rowValue(row, "id"));
+}
+
+/**
+ * Narrows a value to a string.
+ * @param value - Candidate value.
+ * @returns String or undefined.
+ */
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/**
+ * Narrows a value to a finite number.
+ * @param value - Candidate value.
+ * @returns Number or undefined.
+ */
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 /** Narrow view of `globalThis` exposing only the `tables` slot we install. */
@@ -104,7 +341,6 @@ interface GlobalWithResource {
  * implements only the `search()` method the generated resources actually
  * call, so it intentionally does not satisfy the full `harperdb.Table`
  * interface from the ambient `globalThis.tables` typing.
- *
  * @param shim - Table-shim map produced by `loadTableShim`.
  */
 function installTablesShim(shim: TableShimMap): void {
@@ -134,7 +370,6 @@ interface LoadResourcesOptions {
  * Loads `harper-app/resources.js` with the Harper-like globals in place.
  * The module import is memoised; `clearResourcesCache` re-arms it for
  * hot-reload mode.
- *
  * @param opts - Whether to populate the table-shim before importing.
  * @returns The imported resources module.
  */

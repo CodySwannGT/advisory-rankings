@@ -24,6 +24,7 @@
  *   - GET /Search?q=…              → resources.js Search.get()
  *   - GET /RecruitingMarket        → resources.js RecruitingMarket.get()
  *   - GET /RankingsExplorer        → resources.js RankingsExplorer.get()
+ *   - POST /RegulatoryDiscrepancyReview/<id> → resources.js RegulatoryDiscrepancyReview.post()
  *   - POST /mcp                    → resources.js mcp.post(body)
  *   - GET /<TableName>/            → operations-API SQL passthrough
  *
@@ -81,7 +82,7 @@ async function routeRequest(
   if (await handleAuthRoute(req, res, url.pathname)) return;
   if (await handleMcpRoute(req, res, url.pathname)) return;
   if (await handleDetailShellRoute(req, res, url)) return;
-  if (await handleResourceRoute(res, url)) return;
+  if (await handleResourceRoute(req, res, url)) return;
   if (await handleTableRoute(res, url.pathname)) return;
   await serveStatic(req, res);
 }

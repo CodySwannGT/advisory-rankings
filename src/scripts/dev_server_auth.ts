@@ -9,6 +9,12 @@ interface DevSession {
   readonly username: string;
 }
 
+/** Public current-user shape installed on local resource instances. */
+export interface DevCurrentUser {
+  readonly role: "super_user";
+  readonly username: string;
+}
+
 /**
  * Shape of the in-memory session map used by the local dev server.
  */
@@ -117,8 +123,7 @@ function logoutRoute(req: IncomingMessage, res: ServerResponse): boolean {
  * @returns True after writing the response.
  */
 function meRoute(req: IncomingMessage, res: ServerResponse): boolean {
-  const sid = readCookie(req, "dev_sid");
-  const sess = sid ? sessionState.sessions[sid] : null;
+  const sess = currentSession(req);
   return sendJsonHandled(
     res,
     200,
@@ -126,6 +131,28 @@ function meRoute(req: IncomingMessage, res: ServerResponse): boolean {
       ? { authenticated: true, username: sess.username, role: "super_user" }
       : { authenticated: false }
   );
+}
+
+/**
+ * Reads the current local dev user from the request cookie.
+ * @param req - Incoming HTTP request.
+ * @returns Current user or null when signed out.
+ */
+export function currentUserFromRequest(
+  req: IncomingMessage
+): DevCurrentUser | null {
+  const sess = currentSession(req);
+  return sess ? { username: sess.username, role: "super_user" } : null;
+}
+
+/**
+ * Reads the current local session from the request cookie.
+ * @param req - Incoming HTTP request.
+ * @returns Session or null when absent.
+ */
+function currentSession(req: IncomingMessage): DevSession | null {
+  const sid = readCookie(req, "dev_sid");
+  return sid ? (sessionState.sessions[sid] ?? null) : null;
 }
 
 /**
