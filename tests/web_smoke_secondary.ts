@@ -26,6 +26,8 @@ const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
 const WATCHLIST_SIGN_IN_COPY =
   "Sign in to create and manage private watchlists";
 const WATCHLIST_SIGN_IN_LINK_SELECTOR = '.watchlist-signin-link[href="/login"]';
+const hasActiveClass = (className: string | null): boolean =>
+  className?.split(/\s+/).includes("active") ?? false;
 
 /**
  * Finds an article with extracted provenance and checks the detail page.
@@ -78,6 +80,8 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     .locator(DISCLOSURE_CARD_SELECTOR)
     .filter({ hasText: /FINRA|regulatory/i })
     .first();
+  const complianceNavLink = page.locator('.nav-links a[href="/regulatory"]');
+  const homeNavLink = page.locator('.nav-links a[href="/"]');
   const loadError = page.locator(".ab-empty", {
     hasText: /Could not load compliance events/i,
   });
@@ -97,6 +101,8 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
   await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const legacyResponse = await page.request.get(`${BASE}/regulatory.html`);
+  const complianceNavClass = await complianceNavLink.getAttribute("class");
+  const homeNavClass = await homeNavLink.getAttribute("class");
   await shot(page, "06-compliance");
 
   return [
@@ -110,6 +116,16 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
       String(legacyResponse.status())
     ),
     check(await complianceCard.isVisible(), "regulatory: compliance card"),
+    check(
+      hasActiveClass(complianceNavClass),
+      "regulatory: compliance nav item active",
+      complianceNavClass ?? "missing class"
+    ),
+    check(
+      !hasActiveClass(homeNavClass),
+      "regulatory: home nav item inactive",
+      homeNavClass ?? "missing class"
+    ),
     check(
       (await page.locator(DISCLOSURE_CARD_SELECTOR).count()) >= 1,
       "regulatory: disclosure events rendered"
