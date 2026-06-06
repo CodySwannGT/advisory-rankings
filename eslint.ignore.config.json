@@ -31,7 +31,6 @@
     ".maestro",
 
     ".lisabak/**",
-    ".codex/**",
     ".claude/worktrees/**",
     ".claude-active-project/**",
     ".claude-active-plan/**",
@@ -49,6 +48,7 @@
     ".lighthouseci/**",
 
     ".expo/**",
+    ".codex/**",
     ".github/**",
     "public/**",
     ".dead/**",
@@ -80,6 +80,8 @@
     "audit.ignore.config.json",
     "audit.ignore.local.json",
 
-    "amplify/**"
+    "amplify/**",
+
+    "wiki/**"
   ]
 }
