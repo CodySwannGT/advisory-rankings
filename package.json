@@ -51,6 +51,7 @@
     "extract:helper": "bun run build && node dist/scripts/extract_helper.js",
     "ingest": "bun run build && node dist/scripts/ingest.js",
     "load:extractions": "bun run build && node dist/scripts/load_extractions.js",
+    "data:coverage": "bun run build && node dist/scripts/data_coverage_report.js",
     "brokercheck": "bun run build && node dist/scripts/fetch_brokercheck.js",
     "brokercheck:crawl": "bun run build && node dist/scripts/brokercheck_crawl_all.js",
     "smoke:run": "bun tests/web_smoke.ts || (echo '↻ retrying smoke once after a transient failure (dev-cluster spike)' && bun tests/web_smoke.ts)",
