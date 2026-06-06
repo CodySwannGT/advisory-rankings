@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildRows } from "../src/scripts/load_extractions.js";
 
 const EXAMPLE_ADVISOR_NAME = "Alex Example";
+const ALEX_ADVISOR = "Alex Advisor";
+const MORGAN_STANLEY = "Morgan Stanley";
+const WELLS_FARGO = "Wells Fargo Advisors";
+const UBS_WEALTH = "UBS Wealth Management USA";
+const ROCKEFELLER = "Rockefeller Capital";
 
 describe("AdvisorHub extraction loader", () => {
   it("derives Article.publishedDate from modifiedDate when the source omits it", () => {
@@ -63,7 +68,7 @@ describe("AdvisorHub extraction loader", () => {
   });
 
   it("resolves firm aliases for mentions and employment rows", () => {
-    const canonicalName = "Morgan Stanley";
+    const canonicalName = MORGAN_STANLEY;
     const aliasName = "Morgan Stanley Wealth Management";
     const rows = buildRows({
       article: {
@@ -79,7 +84,7 @@ describe("AdvisorHub extraction loader", () => {
       advisors: [
         {
           natural_key: {
-            legal_name: "Alex Advisor",
+            legal_name: ALEX_ADVISOR,
             first_employer: aliasName,
           },
           fields: {
@@ -192,6 +197,120 @@ describe("AdvisorHub extraction loader", () => {
         targetTable: "Article",
         targetId: rows.Article[0].id,
         fieldName: "headline",
+      }),
+    ]);
+  });
+
+  it("loads every extracted recruiting move with article provenance", () => {
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/multi-move-profile/",
+        headline: "Multi move profile",
+      },
+      firms: [
+        { natural_key: { canonical_name: MORGAN_STANLEY } },
+        { natural_key: { canonical_name: WELLS_FARGO } },
+        { natural_key: { canonical_name: UBS_WEALTH } },
+        { natural_key: { canonical_name: ROCKEFELLER } },
+      ],
+      advisors: [
+        {
+          natural_key: {
+            legal_name: ALEX_ADVISOR,
+            first_employer: MORGAN_STANLEY,
+          },
+        },
+        {
+          natural_key: {
+            legal_name: "Blair Broker",
+            first_employer: UBS_WEALTH,
+          },
+        },
+      ],
+      transition_events: [
+        {
+          local_key: "alex-wells",
+          subject_advisor_legal_name: ALEX_ADVISOR,
+          from_firm_canonical_name: MORGAN_STANLEY,
+          to_firm_canonical_name: WELLS_FARGO,
+          fields: {
+            moveDate: "2026-05-01",
+            aumMoved: 6000000000,
+            notes: "Headline move.",
+          },
+        },
+        {
+          local_key: "blair-rockefeller",
+          subject_advisor_legal_name: "Blair Broker",
+          from_firm_canonical_name: UBS_WEALTH,
+          to_firm_canonical_name: ROCKEFELLER,
+          fields: {
+            announcedDate: "2026-05-02",
+            aumMoved: 466000000,
+            notes: "Comparator move mentioned in the article.",
+          },
+        },
+      ],
+    });
+
+    expect(rows.TransitionEvent).toHaveLength(2);
+    expect(rows.ArticleTransitionEventMention).toHaveLength(2);
+    expect(
+      rows.ArticleTransitionEventMention.map(row => row.articleId)
+    ).toEqual([rows.Article[0].id, rows.Article[0].id]);
+    expect(
+      rows.ArticleTransitionEventMention.map(row => row.transitionEventId)
+    ).toEqual(rows.TransitionEvent.map(row => row.id));
+    expect(rows.TransitionEvent).toEqual([
+      expect.objectContaining({
+        fromFirmId: rows.Firm.find(row => row.name === MORGAN_STANLEY)?.id,
+        toFirmId: rows.Firm.find(row => row.name === WELLS_FARGO)?.id,
+        moveDate: "2026-05-01",
+        aumMoved: 6000000000,
+      }),
+      expect.objectContaining({
+        fromFirmId: rows.Firm.find(row => row.name === UBS_WEALTH)?.id,
+        toFirmId: rows.Firm.find(row => row.name === ROCKEFELLER)?.id,
+        announcedDate: "2026-05-02",
+        aumMoved: 466000000,
+      }),
+    ]);
+  });
+
+  it("records provenance for transition mentions missing required fields", () => {
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/skipped-move-profile/",
+        headline: "Skipped move profile",
+      },
+      transitions: [
+        {
+          local_key: "unknown-subject",
+          from_firm_canonical_name: MORGAN_STANLEY,
+          to_firm_canonical_name: WELLS_FARGO,
+        },
+        {
+          local_key: "missing-to",
+          subject_advisor_legal_name: ALEX_ADVISOR,
+          from_firm_canonical_name: MORGAN_STANLEY,
+        },
+      ],
+    });
+
+    expect(rows.TransitionEvent).toHaveLength(0);
+    expect(rows.ArticleTransitionEventMention).toHaveLength(0);
+    expect(rows.FieldAssertion).toEqual([
+      expect.objectContaining({
+        articleId: rows.Article[0].id,
+        targetTable: "TransitionEventExtractionSkip",
+        fieldName: "skipReason",
+        assertedValue: JSON.stringify("missing_subject"),
+      }),
+      expect.objectContaining({
+        articleId: rows.Article[0].id,
+        targetTable: "TransitionEventExtractionSkip",
+        fieldName: "skipReason",
+        assertedValue: JSON.stringify("missing_from_or_to_firm"),
       }),
     ]);
   });

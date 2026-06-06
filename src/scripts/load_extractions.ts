@@ -4,13 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  articleId,
-  disclosureId,
-  employmentHistoryId,
-  sanctionId,
-  uid,
-} from "../lib/ids.js";
+import { articleId, employmentHistoryId, sanctionId, uid } from "../lib/ids.js";
 import { articleDates } from "../lib/article-dates.js";
 import {
   canonicalFirmId,
@@ -34,6 +28,15 @@ import {
   uniqueById,
   type Row,
 } from "./load_extractions_helpers.js";
+import {
+  disclosureIdForLocal,
+  disclosureRows,
+} from "./load_extractions_disclosures.js";
+import {
+  skippedTransitionAssertionRows,
+  transitionIdForLocal,
+  transitionRows,
+} from "./load_extractions_transitions.js";
 
 const EXTRACT_DIR = "research/extractions";
 const LOADED_DIR = join(EXTRACT_DIR, ".loaded");
@@ -52,11 +55,6 @@ const extractionFiles = async (): Promise<ReadonlyArray<string>> => {
     .map(file => join(EXTRACT_DIR, file));
 };
 
-/**
- * Builds Harper rows from one extracted AdvisorHub article payload.
- * @param extraction - Parsed extraction JSON from research/extractions.
- * @returns Rows grouped by Harper table name for idempotent upserts.
- */
 export const buildRows = (extraction: unknown) => {
   const ex = asRecord(extraction);
   const article = asRecord(ex.article);
@@ -67,6 +65,7 @@ export const buildRows = (extraction: unknown) => {
     { FirmAlias: curatedFirmAliasRows().map(row => ({ ...row })) },
     firmRows(ex, context),
     advisorRows(ex, context),
+    transitionRows(ex, context),
     disclosureRows(ex, context),
     employmentRows(ex, context),
     sanctionRows(ex, context),
@@ -129,20 +128,6 @@ const advisorRows = (ex: Row, context: ReturnType<typeof buildContext>) => {
     advisorId: id,
   }));
   return { Advisor: advisors, ArticleAdvisorMention: mentions };
-};
-
-const disclosureRows = (ex: Row, context: ReturnType<typeof buildContext>) => {
-  const disclosures = extractionRows(ex.disclosures).map(disclosure =>
-    disclosureRow(disclosure, context)
-  );
-  return {
-    Disclosure: disclosures,
-    ArticleDisclosureMention: disclosures.map(row => ({
-      id: uid(`adm:${context.aid}:${row.id}`),
-      articleId: context.aid,
-      disclosureId: row.id,
-    })),
-  };
 };
 
 const employmentRows = (ex: Row, context: ReturnType<typeof buildContext>) => ({
@@ -213,26 +198,37 @@ const fieldAssertionRows = (
   ex: Row,
   context: ReturnType<typeof buildContext>
 ) => ({
-  FieldAssertion: extractionRows(ex.field_assertions).flatMap(assertion => {
-    const targetId = fieldAssertionTargetId(ex, context, assertion);
-    const field = stringValue(assertion.field);
-    if (!targetId || !field) return [];
-    return [
-      {
-        id: uid(
-          `fa:${context.aid}:${assertion.target_table}:${field}:${JSON.stringify(assertion.value)}`
-        ),
-        articleId: context.aid,
-        targetTable: assertion.target_table,
-        targetId,
-        fieldName: field,
-        assertedValue: JSON.stringify(assertion.value),
-        quotePhrase: assertion.quote,
-        confidence: assertion.confidence ?? "asserted",
-      },
-    ];
-  }),
+  FieldAssertion: [
+    ...extractionRows(ex.field_assertions).flatMap(assertion =>
+      fieldAssertionRow(ex, context, assertion)
+    ),
+    ...skippedTransitionAssertionRows(ex, context),
+  ],
 });
+
+const fieldAssertionRow = (
+  ex: Row,
+  context: ReturnType<typeof buildContext>,
+  assertion: Row
+): ReadonlyArray<Row> => {
+  const targetId = fieldAssertionTargetId(ex, context, assertion);
+  const field = stringValue(assertion.field);
+  if (!targetId || !field) return [];
+  return [
+    {
+      id: uid(
+        `fa:${context.aid}:${assertion.target_table}:${field}:${JSON.stringify(assertion.value)}`
+      ),
+      articleId: context.aid,
+      targetTable: assertion.target_table,
+      targetId,
+      fieldName: field,
+      assertedValue: JSON.stringify(assertion.value),
+      quotePhrase: assertion.quote,
+      confidence: assertion.confidence ?? "asserted",
+    },
+  ];
+};
 
 const fieldAssertionTargetId = (
   ex: Row,
@@ -248,41 +244,9 @@ const fieldAssertionTargetId = (
   if (targetTable === "Disclosure")
     return disclosureIdForLocal(ex, context, targetRef);
   if (targetTable === "Article") return context.aid;
+  if (targetTable === "TransitionEvent")
+    return transitionIdForLocal(ex, context, targetRef);
   return uid(`fa-target:${targetTable || "unknown"}:${targetRef}`);
-};
-
-const disclosureRow = (
-  disclosure: Row,
-  context: ReturnType<typeof buildContext>
-): Row => {
-  const advisor = advisorLookup(
-    context.advisorPairs,
-    stringValue(disclosure.advisor_legal_name)
-  );
-  const fields = asRecord(disclosure.fields);
-  const naturalKey = asRecord(disclosure.natural_key);
-  return {
-    id: disclosureId(
-      advisor,
-      stringValue(fields.disclosureType ?? naturalKey.disclosure_type),
-      stringValue(fields.dateInitiated ?? fields.dateResolved),
-      stringValue(fields.regulator ?? naturalKey.regulator)
-    ),
-    advisorId: advisor,
-    localKey: disclosure.local_key,
-    ...fields,
-  };
-};
-
-const disclosureIdForLocal = (
-  ex: Row,
-  context: ReturnType<typeof buildContext>,
-  localKey: string
-): string | null => {
-  const disclosure = extractionRows(ex.disclosures).find(
-    row => row.local_key === localKey
-  );
-  return disclosure ? stringValue(disclosureRow(disclosure, context).id) : null;
 };
 
 const loadFile = async (file: string, dryRun: boolean): Promise<void> => {
