@@ -901,6 +901,76 @@ loaded files into `research/extractions/.loaded/`; if a future automation
 creates those files, call `bun run load:extractions` in that extraction-specific
 job rather than in the firm locator matrix.
 
+### Data-depth runbook
+
+Use these paths when an operator needs to prove data depth after an audit,
+source import, AdvisorHub extraction, or deployed verification run.
+
+**Coverage audit surfaces.** The deployed public resources expose the loaded
+source depth without requiring the firewalled operations port:
+
+```bash
+curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3' \
+  | jq '{summary, marketActivity, recentMoves: [.recentMoves[] | {id, subject, fromFirm, toFirm, sourceStatus, provenance}]}'
+
+curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RankingsExplorer?limit=10' \
+  | jq '{coverage, items: [.items[] | {id, label: (.subject.displayName // .id), firmText, sourceStatus}]}'
+```
+
+`/RecruitingMarket` is backed by `src/harper/resource-recruiting-market.ts` and
+reports transition-event depth by firm, market, recent move, source-status flag,
+and provenance ID. `/RankingsExplorer` reports ranking-row coverage buckets and
+source-status gaps. Treat these resource payloads as the first coverage audit
+before opening screenshots or table-level REST.
+
+**Firm source imports.** For local parser proof, run a bounded dry-run against
+one adapter:
+
+```bash
+bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
+```
+
+For a controlled write, either add `--write` to a single adapter or dispatch the
+bounded workflow:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run scrape:merrill -- --query 10022 --max-advisors 5 --json --write
+
+gh workflow run firm-source-imports.yml \
+  --repo CodySwannGT/advisory-rankings \
+  -f write=true \
+  -f max_advisors=25
+```
+
+**AdvisorHub extraction loading.** The extraction loader consumes local JSON
+payloads produced by extraction automation:
+
+```bash
+find research/extractions -maxdepth 1 -name '*.json' -print
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run load:extractions
+```
+
+Loaded files move to `research/extractions/.loaded/`, making re-runs
+idempotent by file lifecycle as well as row IDs.
+
+**Deployed verification.** After any write, run the REST verifier against the
+public cluster URL. It fetches each exported table through `:443` and joins
+client-side, so it works when `:9925` is blocked:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run verify:rest
+```
+
+Then open the corresponding UI slice or run `bun run smoke` when the change is
+UI-facing. For Recruiting Market updates, inspect `/recruiting` and
+`/RecruitingMarket?limit=3`; for ranking coverage, inspect `/rankings` and
+`/RankingsExplorer?limit=10`.
+
 > **Don't drop the `bun install` step — symptom: smoke fails with
 > `Cannot find module '/opt/node22/lib/node_modules/playwright'`.**
 > Root cause: `tests/web_smoke.ts` imports the `playwright` JS

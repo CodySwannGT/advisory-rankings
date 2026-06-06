@@ -95,6 +95,36 @@ Tuesday and Friday at 08:23 UTC, writes bounded imports for all production-ready
 firm source adapters, and uploads per-firm JSON artifacts. Manual dispatch
 defaults to dry-run unless `write=true` is selected.
 
+Data-depth operations use four bounded paths:
+
+```bash
+# Coverage audit through public resources.
+curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3' \
+  | jq '{summary, recentMoves: [.recentMoves[] | {id, sourceStatus, provenance}]}'
+curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RankingsExplorer?limit=10' \
+  | jq '{coverage}'
+
+# Firm-source dry-run or controlled write.
+bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run scrape:merrill -- --query 10022 --max-advisors 5 --json --write
+
+# AdvisorHub extraction load from research/extractions/*.json.
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run load:extractions
+
+# Deployed data verification over :443 REST.
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run verify:rest
+```
+
+`docs/firm-source-adapters.md` lists every production-ready adapter command and
+source limitation. `docs/fabric-runbook.md` has the full data-depth runbook for
+coverage audits, workflow dispatch, extraction loading, and deployed
+verification.
+
 For ad-hoc data-plane calls, use the Harper-native JWT:
 
 ```bash
@@ -221,7 +251,8 @@ docs/
                                for the public read-only endpoint
   firm-source-adapters.md      reusable contract, CLI flags, fixture
                                layout, and docs checklist for public
-                               firm advisor-locator imports
+                               firm advisor-locator imports plus the
+                               data-depth audit/import/verification path
   brokercheck-spike.md         feasibility study for adding FINRA
                                BrokerCheck as a regulator-of-record
                                source alongside AdvisorHub (research,
@@ -359,6 +390,12 @@ research/wpjson` walks every public post type. (Run from a residential
 IP; Cloudflare's WAF flags datacenter ASNs. Use `--browser` when the
 plain Node fetch path is blocked, and `--since YYYY-MM-DD` for bounded
 backfills.)
+
+AdvisorHub extraction loading is a second stage: extraction automation writes
+normalized JSON into `research/extractions/`, then `bun run load:extractions`
+upserts Harper rows and archives loaded files into
+`research/extractions/.loaded/`. Firm-source imports do not call this loader;
+they use their own public locator adapters and workflow artifacts.
 
 ## License
 

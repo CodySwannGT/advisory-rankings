@@ -79,6 +79,59 @@ to `research/extractions/.loaded/`. When an upstream extraction automation
 produces those files, run `bun run load:extractions` as a separate follow-up
 step so the loader can preserve its file lifecycle.
 
+## Data-Depth Operating Path
+
+Use the firm-source adapters as the bounded public-source import path for firm
+and advisor locator data. Dry-runs prove parser coverage without writing to
+Fabric:
+
+```bash
+bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
+bun run scrape:wells-fargo -- --query 10022 --max-advisors 5 --json
+bun run scrape:rbc -- --query 10022 --max-advisors 5 --json
+bun run scrape:raymond-james -- --query 10022 --max-advisors 5 --json
+bun run scrape:edward-jones -- --query 10022 --max-advisors 5 --json
+bun run scrape:stifel -- --query ny --max-advisors 5 --json
+bun run scrape:ubs -- --query smith --max-advisors 5 --json
+```
+
+For a controlled write to the dev Fabric cluster, use either a single adapter
+with `--write` or the bounded workflow:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run scrape:merrill -- --query 10022 --max-advisors 5 --json --write
+
+gh workflow run firm-source-imports.yml \
+  --repo CodySwannGT/advisory-rankings \
+  -f write=true \
+  -f max_advisors=25
+```
+
+AdvisorHub extraction loading is intentionally separate from firm locator
+imports. Extraction files are local JSON payloads under `research/extractions/`;
+`bun run load:extractions` upserts their normalized rows, then moves loaded
+files into `research/extractions/.loaded/`. Run it after an extraction
+automation has produced files, not as part of the firm-source matrix.
+
+After any write run, verify the loaded data through the public app resources:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run verify:rest
+
+curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingMarket?limit=3' \
+  | jq '{summary, recentMoves: [.recentMoves[] | {id, fromFirm, toFirm, sourceStatus}]}'
+```
+
+`/RecruitingMarket` is the public source-depth audit surface for recruiting
+moves: it reports summary totals, firm momentum, market activity, recent moves,
+article links, source-status flags, and provenance IDs from
+`TransitionEvent`, `ArticleTransitionEventMention`, `Article`, and `FirmAlias`.
+`/RankingsExplorer` is the analogous rankings coverage surface; its `coverage`
+payload groups loaded ranking rows and source-status gaps.
+
 ## Fixtures
 
 Fixtures live under `tests/fixtures/firm-sources/<firm-slug>/`.
