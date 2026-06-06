@@ -97,9 +97,16 @@ export async function browseLabelChecks(
   page: Page,
   routeLabel: string
 ): Promise<readonly Check[]> {
-  const rawLabels = await page
-    .locator(".left .card", { hasText: "Browse" })
+  const browseCard = page.locator(".left .card", { hasText: "Browse" }).first();
+  // The left column is cleared to skeletons during a feed (re-)render; wait for
+  // the Browse card's links to be present before reading so we never assert
+  // against the transient empty state.
+  await browseCard
+    .locator("a")
     .first()
+    .waitFor({ timeout: QUICK_UI_TIMEOUT })
+    .catch(() => undefined);
+  const rawLabels = await browseCard
     .locator("a")
     .evaluateAll(nodes =>
       nodes.map(node => node.textContent?.trim() || "").filter(Boolean)
@@ -226,6 +233,14 @@ async function visibleFeedMetadata(page: Page): Promise<readonly string[]> {
       url => url.searchParams.get("category") === "public_web_research",
       { timeout: QUICK_UI_TIMEOUT }
     );
+    // Selecting a category re-fetches and re-renders the feed; `loadFeed`
+    // clears the columns to skeletons first. Reading before the cards
+    // re-render races that skeleton window and returns nothing. Wait for the
+    // filtered render to settle (cards appear) before reading; if the filter
+    // legitimately has no cards we fall through to the unfiltered feed below.
+    await page
+      .waitForSelector(FEED_HEADLINE_SELECTOR, { timeout: QUICK_UI_TIMEOUT })
+      .catch(() => undefined);
   }
 
   const metadata = await page
@@ -235,7 +250,10 @@ async function visibleFeedMetadata(page: Page): Promise<readonly string[]> {
     );
   if (metadata.length > 0) return metadata;
 
+  // `smokeGoto` only waits for `domcontentloaded`; the SPA renders the feed
+  // asynchronously after that, so wait for cards before reading the fallback.
   await smokeGoto(page, `${BASE}/`);
+  await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   return await page
     .locator("article.card .post-header")
     .evaluateAll(nodes =>
