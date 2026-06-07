@@ -206,6 +206,10 @@ function filterChecks(facts: {
       JSON.stringify(facts.filteredFacts)
     ),
     check(
+      facts.filteredFacts.accessibleLabels,
+      "advisors filters: controls are reachable by visible labels"
+    ),
+    check(
       facts.filteredFacts.total > 0 && facts.filteredFacts.rowCount > 0,
       "advisors filters: matching rows render",
       `${facts.filteredFacts.rowCount} of ${facts.filteredFacts.total}`
@@ -379,6 +383,21 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
       const rows = Array.from(document.querySelectorAll(rowSelector));
 
       return {
+        accessibleLabels: [
+          ["Advisor", "advisor-filter-q", "q"],
+          ["Current firm", "advisor-filter-firm", "firm"],
+          ["Career status", "advisor-filter-careerStatus", "careerStatus"],
+          ["CRD", "advisor-filter-hasCrd", "hasCrd"],
+        ].every(([labelText, id, name]) => {
+          const labelNode = document.querySelector(`label[for="${id}"]`);
+          const control = document.getElementById(id);
+          return Boolean(
+            labelNode?.textContent?.trim() === labelText &&
+            control &&
+            ["INPUT", "SELECT"].includes(control.tagName) &&
+            control.getAttribute("name") === name
+          );
+        }),
         bodyText: document.body.textContent || "",
         careerStatus: valueOf("careerStatus"),
         firm: valueOf("firm"),
@@ -417,6 +436,7 @@ async function viewportOverflow(page: Page): Promise<ViewportOverflow> {
 
 /** Captured DOM facts for the advisor filter page. */
 interface AdvisorFilterFacts {
+  readonly accessibleLabels: boolean;
   readonly bodyText: string;
   readonly careerStatus: string;
   readonly firm: string;

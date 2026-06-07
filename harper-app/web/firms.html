@@ -262,22 +262,24 @@
       }
 
       function textField(label, name, value, placeholder) {
+        const id = `firm-filter-${name}`;
         return el(
-          "label",
+          "div",
           { class: "filter-field" },
-          label,
-          el("input", { name, value, placeholder })
+          el("label", { for: id }, label),
+          el("input", { id, name, value, placeholder })
         );
       }
 
       function selectField(label, name, value, options) {
+        const id = `firm-filter-${name}`;
         return el(
-          "label",
+          "div",
           { class: "filter-field" },
-          label,
+          el("label", { for: id }, label),
           el(
             "select",
-            { name },
+            { id, name },
             ...options.map(([optionValue, optionLabel]) =>
               el(
                 "option",
