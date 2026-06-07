@@ -8,6 +8,7 @@ import {
   advisorComparisonPathFromLocation,
   comparisonSelectionDetails,
 } from "./compare-selection.js";
+import { privateOverlayMount } from "./compare-private-overlay.js";
 import {
   AsyncStateCard,
   SectionCard,
@@ -82,7 +83,11 @@ function renderPacket(
   payload: AdvisorComparisonPayload
 ): void {
   clear(center);
-  center.append(packetHero(payload), packetSummary(payload));
+  center.append(
+    packetHero(payload),
+    packetSummary(payload),
+    privateOverlayMount(payload.items)
+  );
 }
 
 /**
