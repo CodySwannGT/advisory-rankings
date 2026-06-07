@@ -572,36 +572,25 @@ type UserRating @table {
   createdAt: Date @createdTime
 }
 
-# `UserList`/`UserListEntry` are legacy private table names retained below for
-# deployed data compatibility. The active watchlist resource stores new rows in
-# `UserWatchlist`/`UserWatchlistEntry` because Fabric did not register the
-# legacy names in the jsResource `tables` global even though SQL could see
-# them. The active watchlist tables are `@export`ed only so Fabric registers
-# them in the resource runtime; regular app users must still have no direct
-# table permission.
-type UserWatchlist @table @export {
+# The active watchlist resource (`UserWatchlists`) stores rows in
+# `UserWatchlist`/`UserWatchlistEntry`, resolved through the `tables` global.
+# These are per-user PRIVATE tables, so like `User`/`UserRating` they are
+# `@table` WITHOUT `@export`: Harper's table-level RBAC is not row-scoped, and
+# auto-generating raw `/UserWatchlist/` + `/UserWatchlistEntry/` REST routes
+# would let any authenticated role with table read enumerate every user's
+# private watchlist rows. (PR #1005 added `@export` as a failed workaround for a
+# resource-binding bug; PR #1020 fixed the real cause — the `isSearchableTable`
+# guard rejected Harper's function-typed table handles — so binding now works
+# without `@export`.) The legacy `UserList`/`UserListEntry` tables from a
+# reverted rename were dropped from the dev cluster and removed here.
+type UserWatchlist @table {
   id: ID @primaryKey
   userId: ID! @indexed
   name: String!
   createdAt: Date @createdTime
 }
 
-type UserWatchlistEntry @table @export {
-  id: ID @primaryKey
-  listId: ID! @indexed
-  advisorId: ID! @indexed
-  rank: Int
-  note: String
-}
-
-type UserList @table {
-  id: ID @primaryKey
-  userId: ID! @indexed
-  name: String!
-  createdAt: Date @createdTime
-}
-
-type UserListEntry @table {
+type UserWatchlistEntry @table {
   id: ID @primaryKey
   listId: ID! @indexed
   advisorId: ID! @indexed

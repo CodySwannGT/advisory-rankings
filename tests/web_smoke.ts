@@ -400,6 +400,16 @@ async function runScenarios(
       ...(await smokeDiscrepancyQueue(page)),
     ];
   }
+  // SMOKE_SCOPE=watchlists isolates the per-user private watchlist path
+  // (scoped `/UserWatchlists` resource) so the watchlist resource binding can
+  // be verified without the full deploy suite — used to confirm no privacy or
+  // binding regression after schema/table changes to the user layer.
+  if (process.env.SMOKE_SCOPE === "watchlists") {
+    return [
+      ...(await smokeRootBootResilience(page)),
+      ...(await smokeWatchlists(page)),
+    ];
+  }
   return [
     ...(await smokeRootBootResilience(page)),
     ...(await smokeFavicon(page)),

@@ -726,13 +726,16 @@ every user's private rows. All UI access is funneled through the scoped
 resources (`AdvisorRating`, `UserWatchlists`), which run elevated and
 enforce per-user ownership in code.
 
-`UserList` and `UserListEntry` remain as legacy non-exported physical
-tables for deployed-data compatibility. New watchlist reads and writes use
-`UserWatchlist` and `UserWatchlistEntry`; Fabric SQL could see the legacy
-tables, but the jsResource runtime did not register the legacy names in the
-`tables` global. `UserWatchlist` and `UserWatchlistEntry` are `@export`ed
-only to force Fabric to register them in the resource runtime; regular app
-users must still have no direct table permission.
+Watchlist reads and writes use `UserWatchlist` and `UserWatchlistEntry`,
+resolved through the jsResource `tables` global. Like the other user-private
+tables, they are `@table` **without** `@export` — Harper's table-level RBAC is
+not row-scoped, so auto-generating raw `/UserWatchlist/` routes would expose
+every user's private rows to any role with table read. (PR #1005 briefly added
+`@export` as a workaround for a resource-binding bug; PR #1020 fixed the real
+cause — the table-handle guard rejected Harper's function-typed handles — so
+binding works without `@export`.) The legacy `UserList` / `UserListEntry`
+tables from a reverted rename were dropped from the dev cluster and removed
+from the schema.
 
 ```
 UserRating(advisor_id, user_id, rating_int, dimensions: {responsiveness, transparency, performance, planning_depth}, review_text, created_at)

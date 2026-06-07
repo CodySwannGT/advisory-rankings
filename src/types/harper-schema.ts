@@ -618,9 +618,3 @@ export interface UserWatchlistEntryRow {
   readonly rank?: number;
   readonly note?: string;
 }
-
-/** Legacy user list row retained for old Fabric tables. */
-export interface UserListRow extends UserWatchlistRow {}
-
-/** Legacy user list entry row retained for old Fabric tables. */
-export interface UserListEntryRow extends UserWatchlistEntryRow {}
