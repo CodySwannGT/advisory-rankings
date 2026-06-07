@@ -62,8 +62,10 @@ function matchesConditions(row: any, conditions: TableQuery["conditions"]) {
 };
 (globalThis as any).databases = {
   advisoryRankings: {
-    UserWatchlist: table(lists),
-    UserWatchlistEntry: table(entries),
+    tables: {
+      UserWatchlist: table(lists),
+      UserWatchlistEntry: table(entries),
+    },
   },
 };
 
