@@ -21,6 +21,19 @@ const DRAWER_COMPLIANCE_LINK =
   '.nav-drawer .nav-links a:has-text("Compliance")';
 const LEFT_RAIL_SELECTOR = ".layout > .left";
 const RIGHT_RAIL_SELECTOR = ".layout > .right";
+const SEARCH_KIND_BUTTON_SELECTOR = ".gs-kind-controls .gs-kind-toggle";
+const TABLET_ROUTE_PATHS = [
+  "/",
+  "/firms",
+  "/recruiting",
+  "/rankings",
+  "/advisors",
+  "/teams",
+  "/watchlists",
+  "/regulatory",
+  "/login",
+] as const;
+const TABLET_ROUTE_WIDTHS = [768, 900] as const;
 
 /**
  * Expected visible shell state at a named responsive breakpoint.
@@ -35,12 +48,14 @@ interface BreakpointExpectation {
 const breakpointMatrix: readonly BreakpointExpectation[] = [
   railBreakpoint(1440, true, true, "desktop"),
   railBreakpoint(1101, true, true, "desktop"),
-  railBreakpoint(1100, false, true, "desktop"),
-  railBreakpoint(1099, false, true, "desktop"),
-  railBreakpoint(801, false, true, "desktop"),
-  railBreakpoint(800, false, false, "desktop"),
-  railBreakpoint(799, false, false, "desktop"),
-  railBreakpoint(701, false, false, "desktop"),
+  railBreakpoint(1100, false, true, "mobile"),
+  railBreakpoint(1099, false, true, "mobile"),
+  railBreakpoint(901, false, true, "mobile"),
+  railBreakpoint(900, false, true, "mobile"),
+  railBreakpoint(801, false, true, "mobile"),
+  railBreakpoint(800, false, false, "mobile"),
+  railBreakpoint(799, false, false, "mobile"),
+  railBreakpoint(701, false, false, "mobile"),
   railBreakpoint(700, false, false, "mobile"),
   railBreakpoint(390, false, false, "mobile"),
   railBreakpoint(320, false, false, "mobile"),
@@ -73,13 +88,19 @@ export async function smokeBreakpoints(
   browser: Browser,
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[]> {
-  return await breakpointMatrix.reduce<Promise<readonly Check[]>>(
+  const breakpointChecks = await breakpointMatrix.reduce<
+    Promise<readonly Check[]>
+  >(
     async (previousChecks, expectation) => [
       ...(await previousChecks),
       ...(await smokeBreakpoint(browser, expectation, extraHTTPHeaders)),
     ],
     Promise.resolve([])
   );
+  return [
+    ...breakpointChecks,
+    ...(await smokeTabletHeaderRoutes(browser, extraHTTPHeaders)),
+  ];
 }
 
 /**
@@ -214,7 +235,8 @@ async function openedDrawerChecks(
   burger: Locator,
   width: number
 ): Promise<readonly Check[]> {
-  if (width !== 700 && width !== 320) return [];
+  if (width !== 1100 && width !== 900 && width !== 700 && width !== 320)
+    return [];
 
   await burger.click();
   await page.waitForFunction(
@@ -330,6 +352,122 @@ async function overflowCheck(page: Page, width: number): Promise<Check> {
     `breakpoint ${width}px: no horizontal overflow`,
     `scrollWidth ${overflow.scrollWidth}, clientWidth ${overflow.clientWidth}`
   );
+}
+
+/**
+ * Checks public routes at tablet widths for header control overlap and overflow.
+ * @param browser - Browser used to create route contexts.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @returns Smoke assertions for tablet header readability.
+ */
+async function smokeTabletHeaderRoutes(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  return await TABLET_ROUTE_WIDTHS.reduce<Promise<readonly Check[]>>(
+    async (previousChecks, width) => [
+      ...(await previousChecks),
+      ...(await smokeTabletHeaderWidth(browser, width, extraHTTPHeaders)),
+    ],
+    Promise.resolve([])
+  );
+}
+
+/**
+ * Checks the full public route set at one tablet width.
+ * @param browser - Browser used to create route contexts.
+ * @param width - Viewport width in CSS pixels.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @returns Smoke assertions for the route set.
+ */
+async function smokeTabletHeaderWidth(
+  browser: Browser,
+  width: number,
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  const context = await newContext(
+    browser,
+    { width, height: 900 },
+    extraHTTPHeaders
+  );
+  const page = await context.newPage();
+  const checks = await TABLET_ROUTE_PATHS.reduce<Promise<readonly Check[]>>(
+    async (previousChecks, path) => [
+      ...(await previousChecks),
+      ...(await smokeTabletHeaderRoute(page, width, path)),
+    ],
+    Promise.resolve([])
+  );
+
+  return await closeWithChecks(context, checks);
+}
+
+/**
+ * Checks one route for tablet-width header readability and overflow.
+ * @param page - Browser page to inspect.
+ * @param width - Viewport width in CSS pixels.
+ * @param path - Public route path.
+ * @returns Smoke assertions for one route.
+ */
+async function smokeTabletHeaderRoute(
+  page: Page,
+  width: number,
+  path: string
+): Promise<readonly Check[]> {
+  await smokeGoto(page, `${BASE}${path}`);
+  await smokeWaitForSelector(page, ".nav", QUICK_UI_TIMEOUT);
+  const metrics = await tabletHeaderMetrics(page);
+
+  return [
+    check(
+      metrics.scrollWidth <= metrics.clientWidth,
+      `tablet header ${width}px ${path}: no horizontal overflow`,
+      `scrollWidth ${metrics.scrollWidth}, clientWidth ${metrics.clientWidth}`
+    ),
+    check(
+      metrics.kindButtonsVisible === 4,
+      `tablet header ${width}px ${path}: search kind options visible`,
+      `visible ${metrics.kindButtonsVisible}`
+    ),
+    check(
+      metrics.kindButtonsSeparated,
+      `tablet header ${width}px ${path}: search kind labels do not overlap`,
+      metrics.kindButtonBoxes
+    ),
+    check(
+      metrics.searchWidth >= 280,
+      `tablet header ${width}px ${path}: search remains readable`,
+      `width ${Math.round(metrics.searchWidth)}px`
+    ),
+  ];
+}
+
+/**
+ * Reads tablet header boxes for overlap detection.
+ * @param page - Browser page to inspect.
+ * @returns Header width, overflow, and kind-button layout metrics.
+ */
+async function tabletHeaderMetrics(page: Page) {
+  return await page.evaluate(selector => {
+    const buttons = [...document.querySelectorAll(selector)];
+    const boxes = buttons.map(button => button.getBoundingClientRect());
+    const searchBox = document
+      .querySelector(".nav .search")
+      ?.getBoundingClientRect();
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      kindButtonBoxes: boxes
+        .map(box => `${Math.round(box.left)}-${Math.round(box.right)}`)
+        .join(", "),
+      kindButtonsSeparated: boxes.every((box, index) => {
+        const previous = boxes[index - 1];
+        return !previous || previous.right <= box.left;
+      }),
+      kindButtonsVisible: boxes.filter(box => box.width >= 36).length,
+      scrollWidth: document.documentElement.scrollWidth,
+      searchWidth: searchBox?.width ?? 0,
+    };
+  }, SEARCH_KIND_BUTTON_SELECTOR);
 }
 
 /**

@@ -12,6 +12,8 @@ import type { Page, Route } from "playwright";
 
 /** Generated web asset root served to the browser under test. */
 const WEB_ROOT = resolve("harper-app/web");
+/** Login shell served outside the generated web asset root. */
+const LOGIN_SHELL = resolve("harper-app/login/shell.html");
 /** Directory screenshots are written to. */
 export const SHOTS = resolve("tests/screenshots");
 /** Standard wait budget for UI assertions. */
@@ -451,6 +453,7 @@ export async function startStaticServer(): Promise<Server> {
  * @returns Absolute static file path.
  */
 function resolveStaticPath(urlPath: string): string {
+  if (urlPath === "/login") return LOGIN_SHELL;
   const cleanPath = normalize(decodeURIComponent(urlPath)).replace(
     /^(\.\.(\/|\\|$))+/u,
     ""
