@@ -2454,6 +2454,26 @@ describe("Harper resource endpoints", () => {
     });
   });
 
+  it("matches Date-valued recruiting move dates for year filters", async () => {
+    setRows(
+      "TransitionEvent",
+      (tableRows.get("TransitionEvent") ?? []).map(row =>
+        row.id === TRANSITION_A_ID
+          ? { ...row, moveDate: new Date("2024-02-01T00:00:00.000Z") }
+          : row
+      )
+    );
+
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", { firm: EXAMPLE_WEALTH_LLC, state: "ga", year: "2024" })
+    );
+
+    expect(market.summary.count).toBe(3);
+    expect(market.provenance.sourceIds).toEqual(
+      expect.arrayContaining([TRANSITION_A_ID])
+    );
+  });
+
   it("serves deterministic recruiting watchlist snapshots", async () => {
     const market = await new (resources as any).RecruitingMarket().get(
       routeTarget("", {
