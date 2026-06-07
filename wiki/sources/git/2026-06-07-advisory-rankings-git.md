@@ -10,7 +10,7 @@ project: advisory-rankings
 
 # git history — advisory-rankings (2026-06-07)
 
-- Repo: `/Users/cody/.codex/worktrees/d887/advisory-rankings`
+- Repo: `CodySwannGT/advisory-rankings`
 - HEAD: `cd2367be58ce74bfd1b2e348c385542a4b19f6f8`
 - Total commits on HEAD: 271
 - New commits since last ingest (`ccf4a529c9561a7843185054e9d7e358bb1ecb76`): 92
