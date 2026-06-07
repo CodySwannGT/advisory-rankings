@@ -50,6 +50,14 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
       "article.html: found feed article with provenance"
     ),
     check(
+      (await page.locator("h1").count()) === 1,
+      "article.html: exactly one page-level h1"
+    ),
+    check(
+      (await page.locator("h1.post-headline").count()) === 1,
+      "article.html: h1 uses article title"
+    ),
+    check(
       cleanProfilePath("articles", page.url()),
       "article URL: clean /articles/... path",
       page.url()
