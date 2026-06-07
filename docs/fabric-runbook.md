@@ -950,18 +950,17 @@ and re-breaks the deploy.
 
 ### Firm source import automation
 
-`.github/workflows/firm-source-imports.yml` is the Codex/GitHub Actions path
-for running all production-ready firm source adapters without a local operator.
-It runs every Tuesday and Friday at 08:23 UTC and dispatches a bounded matrix
-for Morgan Stanley, Merrill / Bank of America, Wells Fargo Advisors, RBC Wealth
-Management, Raymond James, Edward Jones, Stifel, and UBS Wealth Management USA.
+Codex Automation is the scheduled path for running all production-ready firm
+source adapters without a local operator. The automation is `AdvisorBook: Major
+Firm Source Imports` and its prompt is the single skill call
+`$firm-source-major-imports`. It dispatches a bounded run for Morgan Stanley,
+Merrill / Bank of America, Wells Fargo Advisors, RBC Wealth Management, Raymond
+James, Edward Jones, Stifel, and UBS Wealth Management USA.
 
 Scheduled runs write to the dev Fabric cluster with `--write` and default to 25
-advisors per source. Manual workflow dispatch defaults to dry-run; set
-`write=true` and tune `max_advisors` for a larger controlled import. The
-workflow uses the same `HARPER_ADMIN_USERNAME` and `HARPER_ADMIN_PASSWORD`
-secrets as deploy, limits source pressure with `max-parallel: 2`, and uploads a
-per-firm JSON artifact for review.
+advisors per source. `.github/workflows/firm-source-imports.yml` remains only
+as a manual `workflow_dispatch` operator path; do not add a GitHub Actions cron
+trigger for firm-source imports.
 
 This workflow is separate from `bun run load:extractions`. The extraction
 loader expects local files under `research/extractions/*.json`, then archives
@@ -1000,17 +999,15 @@ one adapter:
 bun run scrape:merrill -- --query 10022 --max-advisors 5 --json
 ```
 
-For a controlled write, either add `--write` to a single adapter or dispatch the
-bounded workflow:
+For a controlled write, either add `--write` to a single adapter or run the
+bounded major importer:
 
 ```bash
 HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
   bun run scrape:merrill -- --query 10022 --max-advisors 5 --json --write
 
-gh workflow run firm-source-imports.yml \
-  --repo CodySwannGT/advisory-rankings \
-  -f write=true \
-  -f max_advisors=25
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run firm-source:major-imports -- --max-advisors 25 --write
 ```
 
 **AdvisorHub extraction loading.** The extraction loader consumes local JSON
