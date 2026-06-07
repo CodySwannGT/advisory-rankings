@@ -287,6 +287,16 @@ async function smokeRankingsMobileViewport(
       `rankings: mobile page has no horizontal overflow at ${viewport.width}px`,
       `scrollWidth ${evidence.scrollWidth}, clientWidth ${evidence.clientWidth}`
     ),
+    check(
+      evidence.hasReadableRowStatus,
+      `rankings: mobile row statuses are readable at ${viewport.width}px`,
+      evidence.tableText.slice(0, 180)
+    ),
+    check(
+      evidence.statusTagsFit,
+      `rankings: mobile row status chips fit card bounds at ${viewport.width}px`,
+      evidence.clippedStatusLabels.join(", ")
+    ),
   ]);
 }
 
@@ -299,6 +309,21 @@ async function readMobileRankings(page: Page) {
   return await page.evaluate(() => {
     const workbench = document.querySelector(".rankings-coverage-workbench");
     const text = workbench?.textContent || "";
+    const table = document.querySelector(".rankings-table");
+    const tableText = table?.textContent || "";
+    const statusTags = [
+      ...document.querySelectorAll<HTMLElement>(".rankings-table .tag"),
+    ];
+    const clippedStatusLabels = statusTags
+      .filter(tag => {
+        const rect = tag.getBoundingClientRect();
+        return (
+          tag.scrollWidth > tag.clientWidth + 1 ||
+          rect.left < 0 ||
+          rect.right > document.documentElement.clientWidth + 1
+        );
+      })
+      .map(tag => tag.textContent?.trim() || "empty status");
     return {
       clientWidth: document.documentElement.clientWidth,
       hasCounts: /Rows in slice|Buckets|Gap types/i.test(text),
@@ -309,10 +334,16 @@ async function readMobileRankings(page: Page) {
       hasLabels: /Category coverage|Source-status gaps|Latest loaded/i.test(
         text
       ),
+      hasReadableRowStatus:
+        tableText.includes("Advisor or team not matched yet") &&
+        tableText.includes("Source confirmed"),
       noOverflow:
         document.documentElement.scrollWidth <=
         document.documentElement.clientWidth,
+      statusTagsFit: clippedStatusLabels.length === 0,
+      clippedStatusLabels,
       scrollWidth: document.documentElement.scrollWidth,
+      tableText,
       text,
     };
   });

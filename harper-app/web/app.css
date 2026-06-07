@@ -1473,7 +1473,9 @@ body.drawer-open .nav .nav-scrim {
   vertical-align: top;
 }
 .recruiting-table th,
-.recruiting-table td {
+.recruiting-table td,
+.rankings-table th,
+.rankings-table td {
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -1710,17 +1712,41 @@ body.drawer-open .nav .nav-scrim {
   .feed-filter-clear {
     grid-column: 1 / -1;
   }
-  .snap-table-scroll:has(.recruiting-table) {
+  .snap-table-scroll:has(.recruiting-table),
+  .snap-table-scroll:has(.rankings-table) {
     overflow-x: visible;
   }
+  .snap-table-scroll > .rankings-table {
+    min-width: 0;
+  }
   .recruiting-table,
+  .rankings-table,
   .recruiting-table thead,
+  .rankings-table thead,
   .recruiting-table tbody,
+  .rankings-table tbody,
   .recruiting-table tr,
+  .rankings-table tr,
   .recruiting-table th,
-  .recruiting-table td {
+  .rankings-table th,
+  .recruiting-table td,
+  .rankings-table td {
     display: block;
     width: 100%;
+  }
+  .rankings-table {
+    min-width: 0;
+    table-layout: fixed;
+    width: 100%;
+  }
+  .rankings-table .tag-list {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .rankings-table .tag {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
   .recruiting-table.firm-momentum-table th,
   .recruiting-table.firm-momentum-table td,
@@ -1730,11 +1756,13 @@ body.drawer-open .nav .nav-scrim {
   .recruiting-table.recent-moves-table td {
     width: 100%;
   }
-  .recruiting-table {
+  .recruiting-table,
+  .rankings-table {
     border-collapse: separate;
     border-spacing: 0;
   }
-  .recruiting-table thead {
+  .recruiting-table thead,
+  .rankings-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1742,16 +1770,19 @@ body.drawer-open .nav .nav-scrim {
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .recruiting-table tr {
+  .recruiting-table tr,
+  .rankings-table tr {
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--bg);
     overflow: hidden;
   }
-  .recruiting-table tr + tr {
+  .recruiting-table tr + tr,
+  .rankings-table tr + tr {
     margin-top: 10px;
   }
-  .recruiting-table td {
+  .recruiting-table td,
+  .rankings-table td {
     display: grid;
     grid-template-columns: minmax(82px, 34%) minmax(0, 1fr);
     gap: 10px;
@@ -1759,17 +1790,20 @@ body.drawer-open .nav .nav-scrim {
     min-width: 0;
     border-bottom: 1px solid var(--border);
   }
-  .recruiting-table td::before {
+  .recruiting-table td::before,
+  .rankings-table td::before {
     content: attr(data-label);
     color: var(--text-muted);
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
   }
-  .recruiting-table tr:last-child td:not(:last-child) {
+  .recruiting-table tr:last-child td:not(:last-child),
+  .rankings-table tr:last-child td:not(:last-child) {
     border-bottom: 1px solid var(--border);
   }
-  .recruiting-table td:last-child {
+  .recruiting-table td:last-child,
+  .rankings-table td:last-child {
     border-bottom: 0;
   }
   .watchlist-firms,

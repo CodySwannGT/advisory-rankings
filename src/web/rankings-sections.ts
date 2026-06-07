@@ -181,7 +181,15 @@ function table(
     el(
       "tbody",
       {},
-      ...rows.map(row => el("tr", {}, ...row.map(cell => el("td", {}, cell))))
+      ...rows.map(row =>
+        el(
+          "tr",
+          {},
+          ...row.map((cell, index) =>
+            el("td", { "data-label": headings[index] }, cell)
+          )
+        )
+      )
     )
   );
 }
