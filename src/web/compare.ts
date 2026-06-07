@@ -211,6 +211,7 @@ function comparisonHero(payload: AdvisorComparisonPayload): HTMLElement {
     ProfileHeadComponent({
       initialsText: initials(names || PAGE_TITLE),
       title: PAGE_TITLE,
+      headingLevel: 2,
       subtitle: names || "Public diligence evidence",
       tags: [
         { label: `${payload.items.length} selected` },

@@ -19,6 +19,7 @@ const COMPARISON_TABLE_SELECTOR = ".comparison-table";
 const COMPARISON_START_SELECTOR = ".comparison-start";
 const COMPARISON_RESOURCE_ROUTE = "**/AdvisorComparison";
 const COMPARISON_RESOURCE_QUERY_ROUTE = "**/AdvisorComparison?**";
+const EXPECTED_COMPARISON_HEADING = "Advisor comparison";
 const UNDER_LIMIT_ADVISOR_ID = "advisor-a";
 const RUN_ENABLED = process.env.RUN_WEB_COMPARISON_SMOKE === "1";
 const browserDescribe =
@@ -144,7 +145,8 @@ browserDescribe(
       });
       await mobile.close();
 
-      expect(desktopMetrics.heading).toBe("Advisor comparison");
+      expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
+      expect(desktopMetrics.h1Count).toBe(1);
       expect(desktopMetrics.rows).toBeGreaterThanOrEqual(6);
       expect(desktopMetrics.brokerCheckAttributions).toBeGreaterThanOrEqual(1);
       expect(mobileMetrics.rows).toBeGreaterThanOrEqual(6);
@@ -202,7 +204,8 @@ browserDescribe(
       });
       await mobile.close();
 
-      expect(desktopMetrics.heading).toBe("Advisor comparison");
+      expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
+      expect(desktopMetrics.h1Count).toBe(1);
       expect(desktopMetrics.startTitle).toBe("Choose advisors to compare");
       expect(desktopMetrics.hasManualUrlInstruction).toBe(false);
       expect(desktopMetrics.hasBrowseAction).toBe(true);
@@ -257,6 +260,8 @@ browserDescribe(
       await mobile.close();
 
       expect(desktopMetrics.startTitle).toBe("Choose advisors to compare");
+      expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
+      expect(desktopMetrics.h1Count).toBe(1);
       expect(desktopMetrics.hasUnderLimitCopy).toBe(true);
       expect(desktopMetrics.hasBrowseAction).toBe(true);
       expect(desktopMetrics.hasDirectoryLink).toBe(true);
@@ -594,6 +599,7 @@ async function comparisonMetrics(page: Page) {
     const table = document.querySelector(tableSelector);
     return {
       heading: document.querySelector("h1")?.textContent?.trim() ?? "",
+      h1Count: document.querySelectorAll("h1").length,
       rows: document.querySelectorAll(`${tableSelector} tbody tr`).length,
       brokerCheckAttributions: document.querySelectorAll(
         ".comparison-source-attribution"
@@ -620,6 +626,7 @@ async function compareStartMetrics(page: Page) {
     const start = document.querySelector(startSelector);
     return {
       heading: document.querySelector("h1")?.textContent?.trim() ?? "",
+      h1Count: document.querySelectorAll("h1").length,
       startTitle:
         start?.querySelector(".card-title")?.textContent?.trim() ?? "",
       hasManualUrlInstruction: Boolean(

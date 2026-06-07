@@ -192,6 +192,7 @@ export function EntityList({
  * @param root0.initialsText - Avatar fallback initials.
  * @param root0.imageUrl - Optional avatar image URL.
  * @param root0.title - Primary display title.
+ * @param root0.headingLevel - Semantic heading level for the title.
  * @param root0.subtitle - Secondary profile context.
  * @param root0.tags - Badge labels shown below the title.
  * @returns Rendered DOM node.
@@ -200,6 +201,7 @@ export function ProfileHead({
   initialsText,
   imageUrl,
   title,
+  headingLevel = 1,
   subtitle,
   tags = [],
 }: ProfileHeadOptions = {}): HTMLElement {
@@ -220,7 +222,7 @@ export function ProfileHead({
         el(
           "div",
           { class: "profile-title" },
-          Heading({ level: 1, children: title ?? "" }),
+          Heading({ level: headingLevel, children: title ?? "" }),
           subtitle ? el("div", { class: "subtitle" }, subtitle) : null,
           tags.length
             ? el(
