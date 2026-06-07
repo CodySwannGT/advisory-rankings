@@ -705,6 +705,14 @@ and source-type coverage. Profiles with no research-check rows return
 the same keys with zero counts and null dates rather than omitting the
 section.
 
+`GET /AdvisorResearchQueue` exposes due public-web research targets using
+the same `selectDueAdvisors` semantics as `bun run research:advisors due`.
+The resource supports `sourceType`, `staleDays`, `status`, `missingField`,
+and `limit` query filters and returns public-safe advisor identity, current
+firm context, source/check status, missing public fields, next-check dates,
+profile URLs, and `AdvisorResearchCheck` provenance ids. It does not read or
+return private user rating/watchlist tables.
+
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 
 | Field | Type |
