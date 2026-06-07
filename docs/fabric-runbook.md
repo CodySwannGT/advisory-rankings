@@ -645,6 +645,42 @@ gone — the cookie just becomes dead weight. If you ever care about
 *the cookie value itself* being scrubbed (e.g. for compliance), add
 explicit response-header manipulation here.
 
+### Authenticated test account (non-admin)
+
+A dedicated non-admin user exists on the dev cluster for verifying the
+signed-in experience (watchlist notes, private ratings, packet private
+sections) without using the `super_user` admin login.
+
+| What | Value |
+|---|---|
+| Username / email | `advisorbook-test@advisory-rankings.dev` |
+| Role | `app_user` — non-`super_user`; **`read` on the public `data` content tables only, and NO direct access to the user-private tables** (`User`, `UserList`, `UserListEntry`, `UserRating`). Private data is reached exclusively through the scoped resources (`/AdvisorRating`, `/UserWatchlists`), which run with elevated context and enforce per-user ownership in code. Granting a regular role table-level access to the user-private tables would otherwise be a privacy hole — Harper RBAC is table-level, not row-scoped. As defense-in-depth, the user-private tables are also no longer `@export`ed, so the raw routes do not exist regardless of RBAC. Verified post-deploy: even with table-read grants temporarily re-added to this role, `GET /UserRating/`, `/UserList/`, `/UserListEntry/`, `/User/` all return 404, while the scoped `/AdvisorRating` GET/POST return 200. |
+| Password storage | macOS Keychain services `advisory-rankings-testuser-username` / `advisory-rankings-testuser-password`. Never stored in a tracked file. |
+| Seeded data | Owns a `UserList` named "Smoke Test Watchlist" with one `UserListEntry` note, plus one `UserRating`, both on advisor `0005c389-42b5-55ee-aa4b-be86d586d5d5`. |
+
+Resolve the credentials at runtime, never by printing them:
+
+```bash
+security find-generic-password -s advisory-rankings-testuser-username -w
+security find-generic-password -s advisory-rankings-testuser-password -w
+```
+
+The `app_user` role and the user were created through the Studio
+control-plane proxy (`add_role` / `add_user` via `StudioSession.clusterOp`
+in `src/scripts/_auth.ts`), the same path deploys use. To re-create on a
+fresh cluster, run those two ops with the role permission map covering the
+`data` tables, then store a freshly generated password in the keychain
+services above.
+
+> **Watchlist resource caveat (dev):** the deployed `/UserWatchlists`
+> resource currently returns `503 "UserList table is unavailable"` even
+> though the `UserList`/`UserListEntry` tables exist (the `/AdvisorRating`
+> write path works). The seeded watchlist rows above were inserted
+> directly via the ops-API `insert` operation as a workaround. A redeploy
+> of the current `resources.js` is expected to restore the resource
+> binding; confirm `POST /UserWatchlists {action:"create"}` returns 200
+> after deploying packet work that depends on it.
+
 ### Public vs. authenticated routes
 
 The point of the Facebook-style UI is a public-facing news feed, so
@@ -660,6 +696,7 @@ Everything else still requires auth.
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
+| `GET /UserRating/`, `/UserList/`, `/UserListEntry/`, `/User/` | ❌ 404 | The user-private tables are `@table` **without** `@export` (`schema.graphql` §USER LAYER), so no raw route is generated at all — even an authenticated role with table-read grants gets 404. Private data is only reachable via the scoped `/AdvisorRating` and `/UserWatchlists` resources. This is defense-in-depth so an RBAC misconfig can't leak other users' notes/ratings. |
 | `PUT/POST/DELETE` anywhere else | ❌ 401 | Same. The custom UI resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. `/mcp` is the one public POST route and its JSON-RPC handler exposes no write/admin methods. |
 
 If a future change needs to lock the public routes back down, drop
