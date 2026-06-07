@@ -33,23 +33,29 @@ export interface SearchableTable<Row> {
 
 /**
  * Resolves the Harper-backed `UserList` table, throwing a 503 if Harper has not registered it.
+ * @param candidate Resource-module static table binding, when Harper exposes one.
  * @returns The searchable `UserList` table.
  */
-export function userListTable(): SearchableTable<UserListRow> {
+export function userListTable(
+  candidate: unknown = tables.UserList
+): SearchableTable<UserListRow> {
   return requiredTable<UserListRow>(
     "UserList",
-    tables.UserList ?? databaseTable("UserList")
+    candidate ?? databaseTable("UserList")
   );
 }
 
 /**
  * Resolves the Harper-backed `UserListEntry` table, throwing a 503 if Harper has not registered it.
+ * @param candidate Resource-module static table binding, when Harper exposes one.
  * @returns The searchable `UserListEntry` table.
  */
-export function userListEntryTable(): SearchableTable<UserListEntryRow> {
+export function userListEntryTable(
+  candidate: unknown = tables.UserListEntry
+): SearchableTable<UserListEntryRow> {
   return requiredTable<UserListEntryRow>(
     "UserListEntry",
-    tables.UserListEntry ?? databaseTable("UserListEntry")
+    candidate ?? databaseTable("UserListEntry")
   );
 }
 

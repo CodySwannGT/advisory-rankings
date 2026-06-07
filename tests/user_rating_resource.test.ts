@@ -276,16 +276,20 @@ describe("UserWatchlists resource", () => {
   });
 
   it("keeps watchlist tables statically bound for Harper jsResource packaging", async () => {
-    const source = await readFile(
+    const storeSource = await readFile(
       "src/harper/resource-user-watchlists-store.ts",
       "utf8"
     );
+    const resourceSource = await readFile(
+      "src/harper/resource-user-watchlists.ts",
+      "utf8"
+    );
 
-    expect(source).toContain("tables.UserList");
-    expect(source).toContain("tables.UserListEntry");
-    expect(source).toContain('databaseTable("UserList")');
-    expect(source).toContain('databaseTable("UserListEntry")');
-    expect(source).not.toContain("Reflect.get(tables");
+    expect(resourceSource).toContain("tables.UserList");
+    expect(resourceSource).toContain("tables.UserListEntry");
+    expect(storeSource).toContain('databaseTable("UserList")');
+    expect(storeSource).toContain('databaseTable("UserListEntry")');
+    expect(storeSource).not.toContain("Reflect.get(tables");
   });
 
   it("falls back to the Harper database registry when tables are unbound", async () => {

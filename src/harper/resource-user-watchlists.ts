@@ -20,6 +20,11 @@ const MAX_NAME_LENGTH = 120;
 const MAX_NOTE_LENGTH = 2_000;
 const ADVISOR_ID_REQUIRED = "advisor id required";
 
+const watchlistTableBindings = {
+  userList: tables.UserList,
+  userListEntry: tables.UserListEntry,
+} as const;
+
 /**
  * Shape of the JSON body accepted by the watchlist POST endpoint. All fields are
  * `unknown` because they originate from untrusted client input and are validated downstream.
@@ -182,7 +187,7 @@ async function createList(
     userId,
     name,
   };
-  await writeRow(userListTable(), row);
+  await writeRow(userListTable(watchlistTableBindings.userList), row);
   return { id: row.id, name: row.name, entries: [] };
 }
 
@@ -199,7 +204,10 @@ async function renameList(
   const list = await requireOwnedList(userId, body.listId ?? body.id);
   const name = textValue(body.name, MAX_NAME_LENGTH);
   if (!name) throwStatus("watchlist name required", 400);
-  await writeRow(userListTable(), { ...list, name });
+  await writeRow(userListTable(watchlistTableBindings.userList), {
+    ...list,
+    name,
+  });
   return await decorateList({ ...list, name });
 }
 
@@ -216,9 +224,14 @@ async function deleteList(
   const list = await requireOwnedList(userId, body.listId ?? body.id);
   const entries = await listEntries(list.id);
   await Promise.all(
-    entries.map(entry => deleteRow(userListEntryTable(), entry.id))
+    entries.map(entry =>
+      deleteRow(
+        userListEntryTable(watchlistTableBindings.userListEntry),
+        entry.id
+      )
+    )
   );
-  await deleteRow(userListTable(), list.id);
+  await deleteRow(userListTable(watchlistTableBindings.userList), list.id);
   return { authenticated: true, deleted: true, listId: list.id };
 }
 
@@ -242,7 +255,7 @@ async function addEntry(
     rank: positiveInt(body.rank),
     note: textValue(body.note, MAX_NOTE_LENGTH),
   };
-  await writeRow(userListEntryTable(), row);
+  await writeRow(userListEntryTable(watchlistTableBindings.userListEntry), row);
   return await decorateList(list);
 }
 
@@ -265,7 +278,7 @@ async function updateEntry(
     rank: positiveInt(body.rank),
     note: textValue(body.note, MAX_NOTE_LENGTH),
   };
-  await writeRow(userListEntryTable(), row);
+  await writeRow(userListEntryTable(watchlistTableBindings.userListEntry), row);
   return await decorateList(list);
 }
 
@@ -283,7 +296,10 @@ async function deleteEntry(
   const advisorId = textValue(body.advisorId, 200);
   if (!advisorId) throwStatus(ADVISOR_ID_REQUIRED, 400);
   const entry = await requireEntry(list.id, advisorId);
-  await deleteRow(userListEntryTable(), entry.id);
+  await deleteRow(
+    userListEntryTable(watchlistTableBindings.userListEntry),
+    entry.id
+  );
   return {
     authenticated: true,
     deleted: true,
@@ -350,7 +366,9 @@ async function requireOwnedList(
 ): Promise<UserListRow> {
   const listId = textValue(rawListId, 240);
   if (!listId) throwStatus("watchlist id required", 400);
-  const row = await userListTable().get?.(listId);
+  const row = await userListTable(watchlistTableBindings.userList).get?.(
+    listId
+  );
   if (!row || row.userId !== userId) throwStatus("watchlist not found", 404);
   return row;
 }
@@ -366,7 +384,9 @@ async function requireEntry(
   advisorId: string
 ): Promise<UserListEntryRow> {
   const id = entryId(listId, advisorId);
-  const row = await userListEntryTable().get?.(id);
+  const row = await userListEntryTable(
+    watchlistTableBindings.userListEntry
+  ).get?.(id);
   if (!row || row.listId !== listId || row.advisorId !== advisorId) {
     throwStatus("watchlist entry not found", 404);
   }
@@ -379,7 +399,11 @@ async function requireEntry(
  * @returns The user's list rows.
  */
 async function userLists(userId: string): Promise<ReadonlyArray<UserListRow>> {
-  return await rowsFor(userListTable(), "userId", userId);
+  return await rowsFor(
+    userListTable(watchlistTableBindings.userList),
+    "userId",
+    userId
+  );
 }
 
 /**
@@ -390,7 +414,11 @@ async function userLists(userId: string): Promise<ReadonlyArray<UserListRow>> {
 async function listEntries(
   listId: string
 ): Promise<ReadonlyArray<UserListEntryRow>> {
-  return await rowsFor(userListEntryTable(), "listId", listId);
+  return await rowsFor(
+    userListEntryTable(watchlistTableBindings.userListEntry),
+    "listId",
+    listId
+  );
 }
 
 /**
