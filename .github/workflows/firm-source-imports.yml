@@ -1,8 +1,6 @@
 name: Firm Source Imports
 
 on:
-  schedule:
-    - cron: '23 8 * * 2,5'
   workflow_dispatch:
     inputs:
       write:
@@ -72,7 +70,7 @@ jobs:
       HARPER_ADMIN_USERNAME: ${{ secrets.HARPER_ADMIN_USERNAME }}
       HARPER_ADMIN_PASSWORD: ${{ secrets.HARPER_ADMIN_PASSWORD }}
       MAX_ADVISORS: ${{ github.event_name == 'workflow_dispatch' && inputs.max_advisors || '25' }}
-      WRITE_MODE: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.write) }}
+      WRITE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.write }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

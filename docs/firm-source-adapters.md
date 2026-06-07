@@ -55,23 +55,25 @@ Bounded proof runs should use:
 bun run scrape:<firm-slug> -- --max-advisors 5 --json
 ```
 
-## GitHub Actions Automation
+## Codex Automation
 
-`.github/workflows/firm-source-imports.yml` runs the production-ready firm
-source adapters on a bounded schedule. The workflow covers Morgan Stanley,
-Merrill / Bank of America, Wells Fargo Advisors, RBC Wealth Management, Raymond
-James, Edward Jones, Stifel, and UBS Wealth Management USA.
+The scheduled production-ready firm source adapter run lives in Codex
+Automation as `AdvisorBook: Major Firm Source Imports`, invoking:
 
-- Schedule: Tuesday and Friday at 08:23 UTC.
-- Scheduled behavior: write mode is enabled and each adapter is capped at 25
-  advisors by default.
-- Manual behavior: `workflow_dispatch` defaults to dry-run; set `write=true`
-  to upsert normalized rows into Fabric and adjust `max_advisors` when a larger
-  bounded run is needed.
-- Credentials: the workflow requires `HARPER_ADMIN_USERNAME` and
-  `HARPER_ADMIN_PASSWORD` repo secrets and targets the dev Fabric cluster.
-- Evidence: every matrix job uploads a `firm-source-<slug>` JSON artifact with
-  counts and mapped rows.
+```text
+$firm-source-major-imports
+```
+
+The Codex automation covers Morgan Stanley, Merrill / Bank of America, Wells
+Fargo Advisors, RBC Wealth Management, Raymond James, Edward Jones, Stifel, and
+UBS Wealth Management USA. Scheduled behavior uses write mode and caps each
+adapter at 25 advisors by default.
+
+`.github/workflows/firm-source-imports.yml` remains available only for manual
+`workflow_dispatch` operator runs. Manual dispatch defaults to dry-run; set
+`write=true` to upsert normalized rows into Fabric and adjust `max_advisors`
+when a larger bounded run is needed. Do not add a GitHub Actions `schedule`
+trigger for this workflow.
 
 The workflow intentionally does not call `bun run load:extractions` because
 that loader consumes local `research/extractions/*.json` files and moves them
@@ -96,7 +98,7 @@ bun run scrape:ubs -- --query smith --max-advisors 5 --json
 ```
 
 For a controlled write to the dev Fabric cluster, use either a single adapter
-with `--write` or the bounded workflow:
+with `--write` or the bounded major importer:
 
 ```bash
 HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
@@ -107,11 +109,6 @@ HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
     --max-advisors 5 \
     --write \
     --output-dir artifacts/firm-source-imports/<run-id>
-
-gh workflow run firm-source-imports.yml \
-  --repo CodySwannGT/advisory-rankings \
-  -f write=true \
-  -f max_advisors=25
 ```
 
 AdvisorHub extraction loading is intentionally separate from firm locator

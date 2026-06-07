@@ -173,13 +173,13 @@ Automatically triages CodeRabbit review comments and either fixes valid findings
 
 ### Claude Nightly Test Improvement (`claude-nightly-test-improvement.yml`)
 
-**Triggers**: Cron at 3 AM UTC weekdays, manual dispatch
+**Triggers**: Manual dispatch only; recurring schedules live in Codex Automation.
 
 **Opt-in**: Set repository variable `ENABLE_CLAUDE_NIGHTLY` to `true`
 
 Analyzes tests and creates a PR with improvements. Supports two modes:
 
-- **Nightly mode** (default for cron and manual dispatch): Scopes analysis to files changed in the last 24 hours on the default branch. Maps changed source files to their corresponding test files and improves only those tests. Skips the run entirely if no source files changed in the last 24 hours.
+- **Nightly mode** (default for manual dispatch and Codex Automation): Scopes analysis to files changed in the last 24 hours on the default branch. Maps changed source files to their corresponding test files and improves only those tests. Skips the run entirely if no source files changed in the last 24 hours.
 - **General mode** (manual dispatch only): Full repository analysis. Scans all test files for weak, brittle, or poorly-written tests and improves 3-5 files with the most impactful changes.
 
 Both modes look for: missing edge cases, weak assertions, missing error path coverage, and implementation-coupled tests. Verifies all tests pass before creating a PR. Prevents duplicate PRs (skips if one is already open).
@@ -188,7 +188,7 @@ To trigger general mode manually: **Actions** > **Claude Nightly Test Improvemen
 
 ### Claude Nightly Test Coverage (`claude-nightly-test-coverage.yml`)
 
-**Triggers**: Cron at 4 AM UTC weekdays, manual dispatch
+**Triggers**: Manual dispatch only; recurring schedules live in Codex Automation.
 
 **Opt-in**: Set repository variable `ENABLE_CLAUDE_NIGHTLY` to `true`
 
@@ -217,7 +217,7 @@ Skips the run if all metrics are already at or above 90%. Prevents duplicate PRs
 
 ### Claude Nightly Code Complexity (`claude-nightly-code-complexity.yml`)
 
-**Triggers**: Cron at 5 AM UTC weekdays, manual dispatch
+**Triggers**: Manual dispatch only; recurring schedules live in Codex Automation.
 
 **Opt-in**: Set repository variable `ENABLE_CLAUDE_NIGHTLY` to `true`
 
@@ -235,7 +235,7 @@ Does not modify the `maxLines` threshold. Skips if all metrics are at/below targ
 
 ### Claude Nightly Jira Triage (`claude-nightly-jira-triage.yml`)
 
-**Triggers**: Cron every 2 hours (all days), manual dispatch
+**Triggers**: Manual dispatch only if this workflow exists in the project; recurring schedules live in Codex Automation.
 
 **Auto-enables**: When Claude and Jira credentials are configured (`CLAUDE_CODE_OAUTH_TOKEN`, `JIRA_API_TOKEN` secrets and `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_PROJECT_KEY` repository variables). No feature flag needed.
 
