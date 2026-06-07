@@ -77,8 +77,8 @@ const tables = [
   "AdvisorResearchCheck",
   "User",
   "UserRating",
-  "UserList",
-  "UserListEntry",
+  "UserWatchlist",
+  "UserWatchlistEntry",
 ];
 
 console.error(`[verify_via_rest] target: REST ${base}`);

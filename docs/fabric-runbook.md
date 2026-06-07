@@ -654,9 +654,9 @@ sections) without using the `super_user` admin login.
 | What | Value |
 |---|---|
 | Username / email | `advisorbook-test@advisory-rankings.dev` |
-| Role | `app_user` — non-`super_user`; **`read` on the public `data` content tables only, and NO direct access to the user-private tables** (`User`, `UserList`, `UserListEntry`, `UserRating`). Private data is reached exclusively through the scoped resources (`/AdvisorRating`, `/UserWatchlists`), which run with elevated context and enforce per-user ownership in code. Granting a regular role table-level access to the user-private tables would otherwise be a privacy hole — Harper RBAC is table-level, not row-scoped. As defense-in-depth, the user-private tables are also no longer `@export`ed, so the raw routes do not exist regardless of RBAC. Verified post-deploy: even with table-read grants temporarily re-added to this role, `GET /UserRating/`, `/UserList/`, `/UserListEntry/`, `/User/` all return 404, while the scoped `/AdvisorRating` GET/POST return 200. |
+| Role | `app_user` — non-`super_user`; **`read` on the public `data` content tables only, and NO direct access to the user-private tables** (`User`, `UserRating`, `UserWatchlist`, `UserWatchlistEntry`, plus legacy `UserList` / `UserListEntry`). Private data is reached exclusively through the scoped resources (`/AdvisorRating`, `/UserWatchlists`), which run with elevated context and enforce per-user ownership in code. Granting a regular role table-level access to the user-private tables would otherwise be a privacy hole — Harper RBAC is table-level, not row-scoped. As defense-in-depth, the user-private tables are also not `@export`ed, so the raw routes do not exist regardless of RBAC. Verified post-deploy: even with table-read grants temporarily re-added to this role, raw private routes return 404, while the scoped `/AdvisorRating` GET/POST return 200. |
 | Password storage | macOS Keychain services `advisory-rankings-testuser-username` / `advisory-rankings-testuser-password`. Never stored in a tracked file. |
-| Seeded data | Owns a `UserList` named "Smoke Test Watchlist" with one `UserListEntry` note, plus one `UserRating`, both on advisor `0005c389-42b5-55ee-aa4b-be86d586d5d5`. |
+| Seeded data | Owns a `UserWatchlist` named "Smoke Test Watchlist" with one `UserWatchlistEntry` note, plus one `UserRating`, both on advisor `0005c389-42b5-55ee-aa4b-be86d586d5d5`. Legacy `UserList` rows may also exist from earlier deploys. |
 
 Resolve the credentials at runtime, never by printing them:
 
@@ -674,13 +674,13 @@ services above.
 
 > **Watchlist resource binding regression:** if `/UserWatchlists` returns
 > `503 "UserList table is unavailable"` while `/AdvisorRating` still works,
-> the serving component likely predates the fix that statically binds
-> `tables.UserList` and `tables.UserListEntry` in the exported
-> `resource-user-watchlists.js` module. The `UserList`/`UserListEntry`
-> tables can still exist at the DB/REST layer in this state, so anonymous
-> watchlist checks are not sufficient. Verify with an authenticated
-> operation-token probe and confirm repeated `GET /UserWatchlists` calls
-> return 200 after redeploy/restart.
+> the serving component is still targeting the legacy `UserList` storage
+> names. Fabric SQL can see those legacy tables, but the jsResource runtime
+> did not register them in the `tables` global. The active resource stores
+> new rows in `UserWatchlist` / `UserWatchlistEntry`; anonymous watchlist
+> checks are not sufficient. Verify with an authenticated operation-token
+> probe and confirm repeated `GET /UserWatchlists` calls return 200 after
+> redeploy/restart.
 
 ### Public vs. authenticated routes
 
@@ -697,7 +697,7 @@ Everything else still requires auth.
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
-| `GET /UserRating/`, `/UserList/`, `/UserListEntry/`, `/User/` | ❌ 404 | The user-private tables are `@table` **without** `@export` (`schema.graphql` §USER LAYER), so no raw route is generated at all — even an authenticated role with table-read grants gets 404. Private data is only reachable via the scoped `/AdvisorRating` and `/UserWatchlists` resources. This is defense-in-depth so an RBAC misconfig can't leak other users' notes/ratings. |
+| `GET /UserRating/`, `/UserWatchlist/`, `/UserWatchlistEntry/`, `/UserList/`, `/UserListEntry/`, `/User/` | ❌ 404 | The user-private tables are `@table` **without** `@export` (`schema.graphql` §USER LAYER), so no raw route is generated at all — even an authenticated role with table-read grants gets 404. Private data is only reachable via the scoped `/AdvisorRating` and `/UserWatchlists` resources. This is defense-in-depth so an RBAC misconfig can't leak other users' notes/ratings. |
 | `PUT/POST/DELETE` anywhere else | ❌ 401 | Same. The custom UI resources only define `get` + `allowRead`; mutating ops fall through to the table defaults. `/mcp` is the one public POST route and its JSON-RPC handler exposes no write/admin methods. |
 
 If a future change needs to lock the public routes back down, drop

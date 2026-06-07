@@ -602,19 +602,25 @@ export interface UserRatingRow {
   readonly createdAt?: HarperDate;
 }
 
-/** User list row. */
-export interface UserListRow {
+/** User watchlist row. */
+export interface UserWatchlistRow {
   readonly id: string;
   readonly userId: string;
   readonly name: string;
   readonly createdAt?: HarperDate;
 }
 
-/** User list entry row. */
-export interface UserListEntryRow {
+/** User watchlist entry row. */
+export interface UserWatchlistEntryRow {
   readonly id: string;
   readonly listId: string;
   readonly advisorId: string;
   readonly rank?: number;
   readonly note?: string;
 }
+
+/** Legacy user list row retained for old Fabric tables. */
+export interface UserListRow extends UserWatchlistRow {}
+
+/** Legacy user list entry row retained for old Fabric tables. */
+export interface UserListEntryRow extends UserWatchlistEntryRow {}

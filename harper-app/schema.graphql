@@ -547,7 +547,7 @@ type AdvisorResearchCheck @table @export {
 #
 # These tables hold per-user PRIVATE data (watchlist notes, private
 # ratings). They are intentionally NOT `@export`ed: exporting them would
-# auto-generate raw REST routes (`/UserRating/`, `/UserList/`, …) whose
+# auto-generate raw REST routes (`/UserRating/`, `/UserWatchlist/`, …) whose
 # only protection is Harper's table-level RBAC, which is not row-scoped —
 # any authenticated role with table read could enumerate EVERY user's
 # private rows. Instead, all access goes exclusively through the scoped
@@ -574,6 +574,26 @@ type UserRating @table {
   planningDepth: Int
   reviewText: String
   createdAt: Date @createdTime
+}
+
+# `UserList`/`UserListEntry` are legacy private table names retained below
+# for deployed data compatibility. The active watchlist resource stores new
+# rows in `UserWatchlist`/`UserWatchlistEntry` because Fabric did not register
+# the legacy names in the jsResource `tables` global even though SQL could see
+# them. Keep all four non-exported.
+type UserWatchlist @table {
+  id: ID @primaryKey
+  userId: ID! @indexed
+  name: String!
+  createdAt: Date @createdTime
+}
+
+type UserWatchlistEntry @table {
+  id: ID @primaryKey
+  listId: ID! @indexed
+  advisorId: ID! @indexed
+  rank: Int
+  note: String
 }
 
 type UserList @table {

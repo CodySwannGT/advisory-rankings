@@ -1,4 +1,7 @@
-import type { UserListEntryRow, UserListRow } from "../types/harper-schema.js";
+import type {
+  UserWatchlistEntryRow,
+  UserWatchlistRow,
+} from "../types/harper-schema.js";
 
 /**
  * Minimal duck-typed view of a Harper current-user record used to derive a stable identifier.
@@ -32,30 +35,30 @@ export interface SearchableTable<Row> {
 }
 
 /**
- * Resolves the Harper-backed `UserList` table, throwing a 503 if Harper has not registered it.
+ * Resolves the Harper-backed `UserWatchlist` table, throwing a 503 if Harper has not registered it.
  * @param candidate Resource-module static table binding, when Harper exposes one.
- * @returns The searchable `UserList` table.
+ * @returns The searchable `UserWatchlist` table.
  */
 export function userListTable(
-  candidate: unknown = tables.UserList
-): SearchableTable<UserListRow> {
-  return requiredTable<UserListRow>(
-    "UserList",
-    candidate ?? databaseTable("UserList")
+  candidate: unknown = tables.UserWatchlist
+): SearchableTable<UserWatchlistRow> {
+  return requiredTable<UserWatchlistRow>(
+    "UserWatchlist",
+    candidate ?? databaseTable("UserWatchlist")
   );
 }
 
 /**
- * Resolves the Harper-backed `UserListEntry` table, throwing a 503 if Harper has not registered it.
+ * Resolves the Harper-backed `UserWatchlistEntry` table, throwing a 503 if Harper has not registered it.
  * @param candidate Resource-module static table binding, when Harper exposes one.
- * @returns The searchable `UserListEntry` table.
+ * @returns The searchable `UserWatchlistEntry` table.
  */
 export function userListEntryTable(
-  candidate: unknown = tables.UserListEntry
-): SearchableTable<UserListEntryRow> {
-  return requiredTable<UserListEntryRow>(
-    "UserListEntry",
-    candidate ?? databaseTable("UserListEntry")
+  candidate: unknown = tables.UserWatchlistEntry
+): SearchableTable<UserWatchlistEntryRow> {
+  return requiredTable<UserWatchlistEntryRow>(
+    "UserWatchlistEntry",
+    candidate ?? databaseTable("UserWatchlistEntry")
   );
 }
 
