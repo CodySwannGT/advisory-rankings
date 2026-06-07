@@ -156,7 +156,7 @@ function articleHead(
         when: fmtDate(article.publishedDate),
         category: article.category,
       }),
-      el("h2", { class: "post-headline" }, article.headline || "(untitled)"),
+      el("h1", { class: "post-headline" }, article.headline || "(untitled)"),
       article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
       ...eventCards(eventCardRows),
       ChipRowComponent({
