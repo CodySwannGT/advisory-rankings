@@ -287,6 +287,7 @@ describe("UserWatchlists resource", () => {
 
     expect(resourceSource).toContain("tables.UserList");
     expect(resourceSource).toContain("tables.UserListEntry");
+    expect(resourceSource).not.toContain("watchlistTableBindings");
     expect(storeSource).toContain('databaseTable("UserList")');
     expect(storeSource).toContain('databaseTable("UserListEntry")');
     expect(storeSource).not.toContain("Reflect.get(tables");
