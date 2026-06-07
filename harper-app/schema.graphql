@@ -544,15 +544,26 @@ type AdvisorResearchCheck @table @export {
 }
 
 # ─── USER LAYER ────────────────────────────────────────────────────
+#
+# These tables hold per-user PRIVATE data (watchlist notes, private
+# ratings). They are intentionally NOT `@export`ed: exporting them would
+# auto-generate raw REST routes (`/UserRating/`, `/UserList/`, …) whose
+# only protection is Harper's table-level RBAC, which is not row-scoped —
+# any authenticated role with table read could enumerate EVERY user's
+# private rows. Instead, all access goes exclusively through the scoped
+# resources (`AdvisorRating`, `UserWatchlists`), which run with elevated
+# context and enforce per-user ownership in code. The table objects stay
+# reachable to those resources via the `tables.X` global (which is keyed
+# off `@table`, independent of `@export`). Do not re-add `@export` here.
 
-type User @table @export {
+type User @table {
   id: ID @primaryKey
   email: String! @indexed
   displayName: String
   createdAt: Date @createdTime
 }
 
-type UserRating @table @export {
+type UserRating @table {
   id: ID @primaryKey
   advisorId: ID! @indexed
   userId: ID! @indexed
@@ -565,14 +576,14 @@ type UserRating @table @export {
   createdAt: Date @createdTime
 }
 
-type UserList @table @export {
+type UserList @table {
   id: ID @primaryKey
   userId: ID! @indexed
   name: String!
   createdAt: Date @createdTime
 }
 
-type UserListEntry @table @export {
+type UserListEntry @table {
   id: ID @primaryKey
   listId: ID! @indexed
   advisorId: ID! @indexed
