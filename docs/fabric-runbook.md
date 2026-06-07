@@ -844,8 +844,11 @@ through the now-healthy **system-database replication** within a few
 seconds. `src/scripts/deploy.ts` therefore does not treat the
 `replicated` array as authoritative: it attempts a direct public-node
 deploy (best-effort — `:9925` is firewalled from CI, so this is a no-op
-there), then **polls `/version.js` on the public URL until it matches the
-freshly built `package.json` version** (`verifyRuntimeFreshness`). The
+there). Fabric public-node operations can exceed the former 15-second
+abort budget while still completing successfully, so `deploy.ts` defaults
+`HARPER_RESTART_TIMEOUT_MS` to 60 seconds. It then **polls `/version.js`
+on the public URL until it matches the freshly built `package.json`
+version** (`verifyRuntimeFreshness`). The
 deploy passes when the served node reports the new version and fails only
 if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
 exercise the CI-only path (Studio deploy + replication + freshness poll)
