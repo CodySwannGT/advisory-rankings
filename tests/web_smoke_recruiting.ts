@@ -30,6 +30,11 @@ const RAW_RECRUITING_LABELS = [
   "ARTICLETRANSITIONEVENTMENTION",
   "FIRMALIAS",
 ];
+const INBOUND_RECRUITING_FIRM = "Wells Fargo Advisors";
+const OUTBOUND_RECRUITING_FIRM = "Morgan Stanley";
+const REPRESENTATIVE_RECRUITING_STATE = "NY";
+const REPRESENTATIVE_RECRUITING_YEAR = "2026";
+const RECRUITING_TABLE_SELECTOR = ".recruiting-table";
 
 /** Viewport and overflow budget used by recruiting table smoke checks. */
 type RecruitingViewport = (typeof RECRUITING_OVERFLOW_VIEWPORTS)[number];
@@ -59,6 +64,12 @@ interface LoadedRecruitingState {
   readonly rawLabels: readonly string[];
   readonly rowCount: number;
 }
+/** Representative non-empty Recruiting filter slice observations. */
+interface RecruitingSliceState {
+  readonly label: string;
+  readonly rowCount: number;
+  readonly summaryMoves: string;
+}
 /** Empty-filter Recruiting route observations. */
 interface EmptyRecruitingState {
   readonly hasEmpty: boolean;
@@ -73,11 +84,13 @@ interface EmptyRecruitingState {
 export async function smokeRecruiting(page: Page): Promise<readonly Check[]> {
   const loaded = await readLoadedRecruiting(page);
   const overflowChecks = await smokeRecruitingOverflow(page);
+  const slices = await readRecruitingSlices(page);
   const empty = await readEmptyRecruiting(page);
   const watchlist = await readWatchlistRecruiting(page);
   const watchlistMobileChecks = await smokeWatchlistMobile(page);
   return recruitingChecks(
     loaded,
+    slices,
     empty,
     watchlist,
     overflowChecks,
@@ -94,9 +107,9 @@ async function readLoadedRecruiting(
   page: Page
 ): Promise<LoadedRecruitingState> {
   await smokeGoto(page, `${BASE}/recruiting`);
-  await smokeWaitForSelector(page, ".recruiting-table", QUICK_UI_TIMEOUT);
+  await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const loaded: LoadedRecruitingState = await page.evaluate(
-    rawRecruitingLabels => ({
+    ({ rawRecruitingLabels, tableSelector }) => ({
       hasHeader: document.body.innerText.includes("Recruiting Market Map"),
       hasMomentum: document.body.innerText.includes("Firm momentum"),
       hasRecentMoves: document.body.innerText.includes("Recent moves"),
@@ -105,12 +118,107 @@ async function readLoadedRecruiting(
       rawLabels: rawRecruitingLabels.filter(label =>
         document.body.innerText.includes(label)
       ),
-      rowCount: document.querySelectorAll(".recruiting-table tbody tr").length,
+      rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
     }),
-    RAW_RECRUITING_LABELS
+    {
+      rawRecruitingLabels: RAW_RECRUITING_LABELS,
+      tableSelector: RECRUITING_TABLE_SELECTOR,
+    }
   );
   await shot(page, "10-recruiting-desktop");
   return loaded;
+}
+
+/**
+ * Reads representative source-backed Recruiting filter slices.
+ * @param page - Browser page shared by smoke scenarios.
+ * @returns Non-empty slice observations.
+ */
+async function readRecruitingSlices(
+  page: Page
+): Promise<readonly RecruitingSliceState[]> {
+  const slices = [
+    {
+      label: "firm",
+      path: `/recruiting?firm=${encodeURIComponent(INBOUND_RECRUITING_FIRM)}`,
+    },
+    {
+      label: "state",
+      path: `/recruiting?state=${REPRESENTATIVE_RECRUITING_STATE}`,
+    },
+    {
+      label: "year",
+      path: `/recruiting?year=${REPRESENTATIVE_RECRUITING_YEAR}`,
+    },
+    {
+      label: "inbound direction",
+      path: `/recruiting?firm=${encodeURIComponent(
+        INBOUND_RECRUITING_FIRM
+      )}&direction=inbound`,
+    },
+    {
+      label: "outbound direction",
+      path: `/recruiting?firm=${encodeURIComponent(
+        OUTBOUND_RECRUITING_FIRM
+      )}&direction=outbound`,
+    },
+  ] as const;
+
+  return await slices.reduce<Promise<readonly RecruitingSliceState[]>>(
+    async (previous, slice) => [
+      ...(await previous),
+      await readRecruitingSliceFromPath(page, slice),
+    ],
+    Promise.resolve([])
+  );
+}
+
+/**
+ * Loads and reads one representative Recruiting filter slice.
+ * @param page - Browser page shared by smoke scenarios.
+ * @param slice - Slice label and route path.
+ * @param slice.label - Human-readable slice label.
+ * @param slice.path - Route path for the filtered slice.
+ * @returns Rendered slice observations.
+ */
+async function readRecruitingSliceFromPath(
+  page: Page,
+  slice: { readonly label: string; readonly path: string }
+): Promise<RecruitingSliceState> {
+  await smokeGoto(page, `${BASE}${slice.path}`);
+  await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
+  return await readRecruitingSlice(page, slice.label);
+}
+
+/**
+ * Reads one rendered Recruiting filter slice from the current page.
+ * @param page - Browser page rendering the slice.
+ * @param label - Human-readable slice label.
+ * @returns Slice row and summary facts.
+ */
+async function readRecruitingSlice(
+  page: Page,
+  label: string
+): Promise<RecruitingSliceState> {
+  return await page.evaluate(
+    ({ sliceLabel, tableSelector }) => {
+      const summaryPairs = Array.from(
+        document.querySelectorAll<HTMLElement>(".details-card .detail-row")
+      );
+      const movesPair = summaryPairs.find(row =>
+        row.textContent?.includes("Moves")
+      );
+      const rowCount = document.querySelectorAll(
+        `${tableSelector} tbody tr`
+      ).length;
+      return {
+        label: sliceLabel,
+        rowCount,
+        summaryMoves: movesPair?.textContent?.trim() ?? "",
+      };
+    },
+    { sliceLabel: label, tableSelector: RECRUITING_TABLE_SELECTOR }
+  );
 }
 
 /**
@@ -136,6 +244,7 @@ async function readEmptyRecruiting(page: Page): Promise<EmptyRecruitingState> {
 /**
  * Converts recruiting observations into smoke checks.
  * @param loaded - Default page observations.
+ * @param slices - Representative filtered slice observations.
  * @param empty - Empty-state observations.
  * @param watchlist - Watchlist observations.
  * @param overflowChecks - Desktop and mobile overflow checks.
@@ -144,6 +253,7 @@ async function readEmptyRecruiting(page: Page): Promise<EmptyRecruitingState> {
  */
 function recruitingChecks(
   loaded: LoadedRecruitingState,
+  slices: readonly RecruitingSliceState[],
   empty: EmptyRecruitingState,
   watchlist: WatchlistRecruitingState,
   overflowChecks: readonly Check[],
@@ -164,6 +274,7 @@ function recruitingChecks(
       "recruiting: raw source table labels are hidden",
       loaded.rawLabels.join(", ")
     ),
+    ...recruitingSliceChecks(slices),
     ...overflowChecks,
     check(empty.hasEmpty, "recruiting: empty filter explains missing data"),
     check(empty.state === "ZZ", "recruiting: state filter is retained"),
@@ -213,6 +324,23 @@ function recruitingChecks(
 }
 
 /**
+ * Converts representative filtered slice observations into smoke checks.
+ * @param slices - Rendered Recruiting slice facts.
+ * @returns Slice smoke checks.
+ */
+function recruitingSliceChecks(
+  slices: readonly RecruitingSliceState[]
+): readonly Check[] {
+  return slices.map(slice =>
+    check(
+      slice.rowCount > 0,
+      `recruiting: ${slice.label} slice renders source-backed rows`,
+      `rows ${slice.rowCount}, summary ${slice.summaryMoves}`
+    )
+  );
+}
+
+/**
  * Checks recruiting tables at required breakpoints and restores desktop sizing.
  * @param page - Browser page shared by smoke scenarios.
  * @returns Recruiting overflow assertions.
@@ -243,7 +371,7 @@ async function smokeRecruitingViewport(
 ): Promise<Check> {
   await page.setViewportSize(viewport);
   await smokeGoto(page, `${BASE}/recruiting`);
-  await smokeWaitForSelector(page, ".recruiting-table", QUICK_UI_TIMEOUT);
+  await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const metrics = await readRecruitingOverflow(page);
   await writeRecruitingOverflowArtifacts(page, viewport, metrics);
   return recruitingOverflowCheck(metrics, viewport);

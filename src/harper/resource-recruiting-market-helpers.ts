@@ -202,7 +202,7 @@ function matchesFilters(
  */
 function matchesYear(move: RecruitingMove, year: string | null): boolean {
   if (!year) return true;
-  return String(move.moveDate ?? "").startsWith(year);
+  return toIsoOrNull(move.moveDate)?.startsWith(year) ?? false;
 }
 
 /**
