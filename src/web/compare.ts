@@ -104,6 +104,11 @@ function renderComparison(
   center: HTMLElement,
   payload: AdvisorComparisonPayload
 ): void {
+  const recoveryCard =
+    payload.selection.status === "under_limit"
+      ? [compareStartCard(underLimitStartCopy(payload.items.length))]
+      : [];
+
   clear(center);
 
   if (!payload.items.length) {
@@ -114,6 +119,7 @@ function renderComparison(
   center.append(
     comparisonHero(payload),
     selectionNotice(payload),
+    ...recoveryCard,
     SectionCardComponent({
       title: "Due diligence evidence",
       body: comparisonTable(payload.items, {
@@ -139,18 +145,17 @@ function renderComparison(
 
 /**
  * Renders a human-usable starting point for cold `/compare` visits.
+ * @param copy - Introductory action copy.
  * @returns Compare empty-state section.
  */
-function compareStartCard(): HTMLElement {
+function compareStartCard(
+  copy = "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row."
+): HTMLElement {
   return SectionCardComponent({
     title: "Choose advisors to compare",
     attrs: { class: "comparison-start" },
     body: [
-      el(
-        "p",
-        { class: "comparison-start-copy" },
-        "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row."
-      ),
+      el("p", { class: "comparison-start-copy" }, copy),
       el(
         "div",
         { class: "comparison-start-actions" },
@@ -179,6 +184,16 @@ function compareStartCard(): HTMLElement {
       ),
     ],
   });
+}
+
+/**
+ * Builds recovery copy for an under-limit comparison selection.
+ * @param selectedCount - Number of selected advisor columns.
+ * @returns User-facing recovery guidance.
+ */
+function underLimitStartCopy(selectedCount: number): string {
+  const advisorLabel = selectedCount === 1 ? "advisor" : "advisors";
+  return `You have selected ${selectedCount} ${advisorLabel}. Browse the directory to add another advisor and complete the comparison.`;
 }
 
 /**
