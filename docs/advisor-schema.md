@@ -720,21 +720,19 @@ section.
 Kept separate from AdvisorHub-sourced ground truth.
 
 **Privacy:** `User`, `UserRating`, `UserWatchlist`, and
-`UserWatchlistEntry` hold
-per-user private data and are declared `@table` **without** `@export` in
-`harper-app/schema.graphql`. They therefore expose **no** raw REST routes
-(`/UserRating/`, `/UserWatchlist/`, …). Harper's table-level RBAC is not
-row-scoped, so an exported route would let any role with table read
-enumerate every user's private rows. All access is funneled through the
-scoped resources (`AdvisorRating`, `UserWatchlists`), which run elevated
-and enforce per-user ownership in code. Do not add `@export` to these
-types.
+`UserWatchlistEntry` hold per-user private data. Harper's table-level RBAC
+is not row-scoped, so a regular role with direct table read could enumerate
+every user's private rows. All UI access is funneled through the scoped
+resources (`AdvisorRating`, `UserWatchlists`), which run elevated and
+enforce per-user ownership in code.
 
 `UserList` and `UserListEntry` remain as legacy non-exported physical
 tables for deployed-data compatibility. New watchlist reads and writes use
 `UserWatchlist` and `UserWatchlistEntry`; Fabric SQL could see the legacy
 tables, but the jsResource runtime did not register the legacy names in the
-`tables` global.
+`tables` global. `UserWatchlist` and `UserWatchlistEntry` are `@export`ed
+only to force Fabric to register them in the resource runtime; regular app
+users must still have no direct table permission.
 
 ```
 UserRating(advisor_id, user_id, rating_int, dimensions: {responsiveness, transparency, performance, planning_depth}, review_text, created_at)
