@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Browser, Page } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
@@ -8,6 +8,8 @@ import {
   TAYLOR_GROUP_TEXT,
   check,
   cleanProfilePath,
+  closeWithChecks,
+  newContext,
   retryAsync,
   shot,
   smokeGoto,
@@ -153,10 +155,23 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
 
 /**
  * Checks the public Watchlists route for the anonymous sign-in gate.
- * @param page - Browser page used for the scenario.
+ *
+ * Runs in a dedicated anonymous context (never the suite's shared page) so the
+ * anonymous gate is exercised even when the deployed smoke carries a JWT bearer
+ * for the authenticated scenarios — an authenticated context renders the
+ * watchlist management UI instead of the sign-in gate.
+ * @param browser - Browser used to open an isolated anonymous context.
  * @returns Smoke assertions for the Watchlists page.
  */
-export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
+export async function smokeWatchlists(
+  browser: Browser
+): Promise<readonly Check[]> {
+  const context = await newContext(
+    browser,
+    { width: 1280, height: 900 },
+    undefined
+  );
+  const page = await context.newPage();
   await smokeGoto(page, `${BASE}/watchlists`);
   await smokeWaitForSelector(page, WATCHLIST_SIGN_IN_LINK_SELECTOR);
   await shot(page, "06-watchlists");
@@ -169,7 +184,7 @@ export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
     .first()
     .getAttribute("href");
 
-  return [
+  return await closeWithChecks(context, [
     check(
       new URL(page.url()).pathname === "/watchlists",
       "watchlists: clean URL"
@@ -194,7 +209,7 @@ export async function smokeWatchlists(page: Page): Promise<readonly Check[]> {
       "watchlists: no horizontal overflow",
       `scrollWidth ${overflow.scrollWidth}, clientWidth ${overflow.clientWidth}`
     ),
-  ];
+  ]);
 }
 
 /**
