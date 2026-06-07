@@ -478,6 +478,18 @@ re-reads files on reload; no special handling.
 >    Returned HTTP error statuses (404, server 503, …) are deliberately
 >    **not** retried, so deterministic failures and the existing manual-retry
 >    UI are unchanged, and mutations never double-apply.
+> 3. **Per-attempt timeout** — every `fetchWithRetry` attempt runs under
+>    `DEFAULT_REQUEST_TIMEOUT_MS` (12s). A bare `fetch` has no timeout, so the
+>    deploy *cutover* failure mode — the serving node cold-starts and the first
+>    request after the restart hangs ~30s before responding (or never settles)
+>    — pinned the whole page open and dead-ended the feed and session UI for
+>    the full stall ("Could not load feed" + "Session status is temporarily
+>    unavailable"). An attempt that does not settle in time is aborted; the
+>    abort surfaces as a thrown error and is retried exactly like a reset, so
+>    the retry lands on the now-warmed node instead of blocking on the cold
+>    one. The window sits well above healthy latency (sub-second) and below the
+>    observed cold-start stall. Mutations still never retry, so a timed-out
+>    `POST` fails fast rather than double-applying.
 >
 > Tempting but wrong: cache-busting the failed module via a query string —
 > blocked by the query-string caveat above, and a failed transitive import is
