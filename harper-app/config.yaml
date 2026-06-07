@@ -18,6 +18,7 @@ jsResource:
 # These serve the same static HTML shells as the legacy *.html paths.
 fastifyRoutes:
   files:
+    - 'static-web/index.js'
     - 'firms/index.js'
     - 'advisors/index.js'
     - 'teams/index.js'

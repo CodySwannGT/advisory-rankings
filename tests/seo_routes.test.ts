@@ -6,6 +6,7 @@ import firmsRoutes from "../harper-app/firms/index.js";
 import loginRoutes from "../harper-app/login/index.js";
 import recruitingRoutes from "../harper-app/recruiting/index.js";
 import regulatoryRoutes from "../harper-app/regulatory/index.js";
+import staticWebRoutes from "../harper-app/static-web/index.js";
 import teamsRoutes from "../harper-app/teams/index.js";
 
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
@@ -57,5 +58,23 @@ describe("SEO route shells", () => {
 
     expect(handlers.has("/login")).toBe(true);
     expect(redirects).toEqual([[302, "/login"]]);
+  });
+});
+
+describe("static web route shells", () => {
+  it("registers root web assets explicitly without catching API resources", async () => {
+    const paths: string[] = [];
+    const fastify = { get: (path: string) => paths.push(path) };
+
+    await staticWebRoutes(fastify);
+
+    expect(paths).toContain("/");
+    expect(paths).toContain("/app.css");
+    expect(paths).toContain("/index.html");
+    expect(paths).toContain("/compare.html");
+    expect(paths).toContain("/design-system/components.css");
+    expect(paths).not.toContain("/Feed");
+    expect(paths).not.toContain("/:asset");
+    expect(paths).not.toContain("/*");
   });
 });

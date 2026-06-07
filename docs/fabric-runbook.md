@@ -135,6 +135,7 @@ jsResource:
   files: 'resources.js'
 fastifyRoutes:
   files:
+    - 'static-web/index.js'
     - 'firms/index.js'
     - 'advisors/index.js'
     - 'teams/index.js'
@@ -162,6 +163,11 @@ That gives us, on `:443`:
   the page-load to one round-trip.
 - A Facebook-style activity-feed UI under `/` (HTML + CSS tracked in
   `web/`, JavaScript generated from `src/web/**/*.ts`).
+- Explicit static web Fastify routes from `static-web/index.js` for `/`
+  and each built `web/**` asset. These mirror Harper's static extension at
+  the URL paths the HTML shells reference, so Fabric nodes that miss or race
+  the static extension still serve `/app.css`, generated root JS modules, and
+  nested `design-system/` files without wildcarding API resources.
 - Clean comparison packet route `/report-packet?ids=...`, served by
   `report-packet/index.js` and backed by `/AdvisorComparison`.
 - Public UI and MCP routes are explicitly allowed by their JS resources.
@@ -389,6 +395,10 @@ re-reads files on reload; no special handling.
 > `/<kind>/<slug>-<id>` paths) are Fastify shells that serve those
 > same HTML files. `/login` serves `login/shell.html`, while `/login.html`
 > redirects to `/login` for old bookmarks instead of serving a static file.
+> `static-web/index.js` also registers `/` and exact built-asset routes from
+> `web/**` (`/app.css`, generated `/*.js`, and nested `design-system/*`) so
+> clean shells can boot even on Fabric nodes where the built-in static
+> extension does not expose root-level asset paths.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
