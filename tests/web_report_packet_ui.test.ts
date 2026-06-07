@@ -18,8 +18,9 @@ const browserDescribe =
     ? describe.sequential
     : describe.skip;
 const MISSING_ADVISOR_ID = "missing-id";
+const BROKERCHECK_FETCHED_AT = "2026-05-30T00:00:00.000Z";
 
-browserDescribe("report packet route (#965)", () => {
+browserDescribe("report packet route (#966)", () => {
   let browser: Browser;
   let server: Server;
   let baseUrl: string;
@@ -38,7 +39,7 @@ browserDescribe("report packet route (#965)", () => {
     });
   });
 
-  it("loads comparison data and renders a packet shell", async () => {
+  it("loads comparison data and renders public evidence sections", async () => {
     const page = await browser.newPage();
     const requests: string[] = [];
     await routeComparison(
@@ -59,11 +60,33 @@ browserDescribe("report packet route (#965)", () => {
     expect(await page.locator(".comparison-status").textContent()).toContain(
       "Ready"
     );
-    expect(await page.locator(".report-packet-advisor").count()).toBe(2);
-    expect(
-      await page.locator(".report-packet-advisor").first().textContent()
-    ).toContain("Advisor 1");
-    await captureViewports(page, "issue-965-report-packet-shell");
+    const advisorCards = page.locator(".report-packet-advisor");
+    expect(await advisorCards.count()).toBe(2);
+    const firstAdvisor = await advisorCards.first().textContent();
+    expect(firstAdvisor).toContain("Advisor 1");
+    expect(firstAdvisor).toContain("Profile");
+    expect(firstAdvisor).toContain("Active");
+    expect(firstAdvisor).toContain("Firm");
+    expect(firstAdvisor).toContain("Firm 1");
+    expect(firstAdvisor).toContain("Regulatory");
+    expect(firstAdvisor).toContain("CRD 1000");
+    expect(firstAdvisor).toContain("Career");
+    expect(firstAdvisor).toContain("Managing director at Firm 1");
+    expect(firstAdvisor).toContain("Rankings / articles");
+    expect(firstAdvisor).toContain("#12 AdvisorBook 100");
+    expect(firstAdvisor).toContain("Data confidence");
+    expect(firstAdvisor).toContain("3 source-backed fields");
+    expect(firstAdvisor).toContain("Attribution");
+    expect(firstAdvisor).toContain("BrokerCheck snapshot loaded");
+    expect(firstAdvisor).toContain("1 article reference");
+    expect(firstAdvisor).toContain("1 field assertion");
+    expect(firstAdvisor).toContain("1 research source check");
+
+    const secondAdvisor = await advisorCards.nth(1).textContent();
+    expect(secondAdvisor).toContain("No career evidence available.");
+    expect(secondAdvisor).toContain("No BrokerCheck snapshot loaded");
+    expect(secondAdvisor).toContain("No article references loaded.");
+    await captureViewports(page, "issue-966-report-packet-evidence");
     await page.close();
   });
 
@@ -162,11 +185,33 @@ function comparisonItem(id: string, index: number): unknown {
     regulatory: {
       disclosureCount: 0,
       registrationApplications: [],
-      brokerCheckSnapshot: null,
+      brokerCheckSnapshot:
+        index === 0
+          ? { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT }
+          : null,
     },
-    career: [],
-    rankings: [],
-    articles: [],
+    career:
+      index === 0
+        ? [
+            {
+              firm: { name: `Firm ${index + 1}` },
+              roleTitle: "Managing director",
+            },
+          ]
+        : [],
+    rankings:
+      index === 0
+        ? [
+            {
+              entry: {
+                rank: 12,
+                sourceLabel: "AdvisorBook fallback",
+              },
+              ranking: { name: "AdvisorBook 100" },
+            },
+          ]
+        : [],
+    articles: index === 0 ? [{ title: "Advisor profile coverage" }] : [],
     dataConfidence: {
       confidenceSummary: { hasData: true, total: 3 },
       evidenceFreshness: {
@@ -175,10 +220,34 @@ function comparisonItem(id: string, index: number): unknown {
       },
     },
     attribution: {
-      brokerCheck: null,
-      articles: [],
-      assertions: [],
-      researchSources: [],
+      brokerCheck:
+        index === 0
+          ? { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT }
+          : null,
+      articles: index === 0 ? [{ title: "Advisor profile coverage" }] : [],
+      assertions:
+        index === 0
+          ? [
+              {
+                articleId: "article-1",
+                fieldName: "firm",
+                assertedValue: `Firm ${index + 1}`,
+                quotePhrase: "Firm 1",
+                confidence: "high",
+              },
+            ]
+          : [],
+      researchSources:
+        index === 0
+          ? [
+              {
+                sourceType: "brokercheck",
+                status: "checked",
+                checkedAt: BROKERCHECK_FETCHED_AT,
+                sourcesChecked: ["FINRA BrokerCheck"],
+              },
+            ]
+          : [],
     },
   };
 }
