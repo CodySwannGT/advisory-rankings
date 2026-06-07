@@ -41,7 +41,7 @@
 ## Projects
 | Page | Summary | Updated |
 |---|---|---|
-| [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-06-06 |
+| [Git history](projects/git-history.md) | Initial and incremental git-history ingest windows plus recent project themes | 2026-06-07 |
 
 ## Sources
 
@@ -49,5 +49,5 @@
 |---|---|
 | [documentation - project docs](sources/documentation/2026-05-23-initial-project-docs.md) | Initial project docs ingest on 2026-05-23 |
 | [documentation - AdvisorBook personas](sources/documentation/2026-05-25-advisorbook-personas.md) | Persona seed and app-evidence ingest on 2026-05-25 |
-| [git](sources/git/2026-06-06-advisory-rankings-git.md) | Incremental git history ingest on 2026-06-06 |
-| [roles](sources/roles/2026-06-06-roles.md) | Empty digital-staff roster ingest on 2026-06-06 |
+| [git](sources/git/2026-06-07-advisory-rankings-git.md) | Incremental git history ingest on 2026-06-07 |
+| [roles](sources/roles/2026-06-07-roles.md) | Empty digital-staff roster ingest on 2026-06-07 |

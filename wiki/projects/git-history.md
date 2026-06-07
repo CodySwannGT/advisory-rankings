@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-06
+updated: 2026-06-07
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -13,6 +13,7 @@ sources:
   - ../sources/git/2026-06-02-advisory-rankings-git.md
   - ../sources/git/2026-06-03-advisory-rankings-git.md
   - ../sources/git/2026-06-06-advisory-rankings-git.md
+  - ../sources/git/2026-06-07-advisory-rankings-git.md
 ---
 
 # Git history
@@ -61,6 +62,11 @@ commits since the 2026-06-03 cursor and refreshed recent merged PR metadata thro
 "fix: show safe invalid login errors." Source:
 wiki/sources/git/2026-06-06-advisory-rankings-git.md.
 
+The 2026-06-07 git ingest ran at HEAD `cd2367be58ce74bfd1b2e348c385542a4b19f6f8`. It added 92
+commits since the 2026-06-06 cursor and refreshed recent merged PR metadata through #983,
+"fix: make rankings statuses readable on mobile." Source:
+wiki/sources/git/2026-06-07-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -93,6 +99,11 @@ wiki/sources/git/2026-06-06-advisory-rankings-git.md.
   hardening, clean login route and redirect fixes, mobile team/profile detail polish, mobile
   comparison evidence readability, mobile nav core-link exposure, and safer invalid-login error
   handling.
+- The 2026-06-06 wiki ingest PR merged, followed by feed boot recovery, deploy boot resilience,
+  feed category filter fixes, compliance navigation smoke coverage, data-depth reporting and
+  runbook work, advisor and firm profile richness checks, major firm source imports, recruiting
+  market economics and thresholds, report packet routing/evidence/source appendix surfaces, article
+  detail heading coverage, and mobile rankings status readability.
 
 ## Use
 
@@ -104,4 +115,5 @@ wiki/sources/git/2026-05-31-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-01-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-02-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-03-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-06-advisory-rankings-git.md.
+wiki/sources/git/2026-06-06-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-07-advisory-rankings-git.md.
