@@ -2,7 +2,7 @@ import {
   selectDueAdvisors,
   type AdvisorResearchAdvisor,
   type AdvisorResearchCheck,
-} from "../lib/advisor-research.js";
+} from "../lib/advisor-research-select.js";
 import type { RouteTarget } from "../types/harper-resource.js";
 import type {
   AdvisorResearchCheckRow,
