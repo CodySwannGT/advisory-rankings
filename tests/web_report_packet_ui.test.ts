@@ -5,11 +5,16 @@ import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  ADVISOR_ID,
   baseUrlOf,
   captureViewports,
   QUICK_TIMEOUT,
+  RATING_ROUTE,
+  routeAuth,
+  routeWatchlists,
   SHOTS,
   startStaticServer,
+  WATCHLISTS_ROUTE,
 } from "./fixtures/watchlist-ui-harness.js";
 
 const browserDescribe =
@@ -19,6 +24,8 @@ const browserDescribe =
     : describe.skip;
 const MISSING_ADVISOR_ID = "missing-id";
 const BROKERCHECK_FETCHED_AT = "2026-05-30T00:00:00.000Z";
+const PACKET_PRIVATE_NOTE = "packet-only private note";
+const PACKET_PRIVATE_REVIEW = "Packet follow-up rating.";
 
 browserDescribe("report packet route (#966, #967)", () => {
   let browser: Browser;
@@ -133,6 +140,67 @@ browserDescribe("report packet route (#966, #967)", () => {
     expect(statusText).toContain("Missing ids: missing-id.");
     await page.close();
   });
+
+  it("renders signed-in private annotations in a separate packet section", async () => {
+    const page = await browser.newPage();
+    await routeAuth(page, true);
+    await routeComparison(page, [], comparisonPayload([ADVISOR_ID, "adv-b"]));
+    await routeWatchlists(page, () => undefined, [
+      {
+        id: "packet-list",
+        name: "Packet watchlist",
+        entries: [
+          {
+            id: "packet-entry",
+            advisorId: ADVISOR_ID,
+            rank: 2,
+            note: PACKET_PRIVATE_NOTE,
+          },
+        ],
+      },
+    ]);
+    await routePacketRatings(page);
+
+    await page.goto(`${baseUrl}/report-packet.html?ids=${ADVISOR_ID},adv-b`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    const privateSection = page.locator(".comparison-private");
+    await privateSection
+      .getByText(PACKET_PRIVATE_NOTE)
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await privateSection.getByText("Private rating").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await privateSection.getByText(PACKET_PRIVATE_REVIEW).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await page.locator(".report-packet-source-appendix").count()).toBe(
+      1
+    );
+    await captureViewports(page, "issue-968-report-packet-private-auth");
+    await page.close();
+  });
+
+  it("does not fetch private packet annotations when signed out", async () => {
+    const page = await browser.newPage();
+    const privateRequests: string[] = [];
+    await routeAuth(page, false);
+    await routeComparison(page, [], comparisonPayload([ADVISOR_ID, "adv-b"]));
+    await routePrivateRequestTracker(page, privateRequests);
+
+    await page.goto(`${baseUrl}/report-packet.html?ids=${ADVISOR_ID},adv-b`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await page.locator(".report-packet-summary").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await page.locator(".comparison-private").count()).toBe(0);
+    expect(privateRequests).toHaveLength(0);
+    await captureViewports(page, "issue-968-report-packet-private-signed-out");
+    await page.close();
+  });
 });
 
 /**
@@ -150,6 +218,45 @@ async function routeComparison(
     requests.push(new URL(route.request().url()).searchParams.get("ids") ?? "");
     await route.fulfill({ json: payload });
   });
+}
+
+/**
+ * Routes packet private rating reads for signed-in overlay coverage.
+ * @param page - Browser page under test.
+ */
+async function routePacketRatings(page: Page): Promise<void> {
+  await page.route(RATING_ROUTE, async route => {
+    const advisorId = route.request().url().split("/").pop();
+    await route.fulfill({
+      json: {
+        authenticated: true,
+        rating:
+          advisorId === ADVISOR_ID
+            ? { ratingInt: 4, reviewText: PACKET_PRIVATE_REVIEW }
+            : null,
+      },
+    });
+  });
+}
+
+/**
+ * Tracks private resource requests that must not fire for anonymous packets.
+ * @param page - Browser page under test.
+ * @param requests - Collector for private request URLs.
+ */
+async function routePrivateRequestTracker(
+  page: Page,
+  requests: string[]
+): Promise<void> {
+  for (const glob of [WATCHLISTS_ROUTE, RATING_ROUTE]) {
+    await page.route(glob, async route => {
+      requests.push(route.request().url());
+      await route.fulfill({
+        status: 401,
+        json: { authenticated: false },
+      });
+    });
+  }
 }
 
 /**
