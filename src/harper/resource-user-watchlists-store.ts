@@ -208,12 +208,49 @@ function requiredTable<Row>(
  * @param name Table name to look up.
  * @returns The first matching table candidate, or undefined.
  */
-function databaseTable(name: string): unknown {
-  for (const database of Object.values(databases)) {
-    const candidate = Reflect.get(database, name);
-    if (candidate) return candidate;
-  }
-  return undefined;
+function databaseTable<Row>(name: string): SearchableTable<Row> | undefined {
+  return nestedDatabaseTable<Row>(name, Object.values(databases), 0, []);
+}
+
+/**
+ * Recursively searches Harper's database registry for a named table. Fabric
+ * versions have exposed table handles at different nesting levels.
+ * @param name Table name to find.
+ * @param values Candidate registry values at the current nesting level.
+ * @param depth Current search depth.
+ * @param seen Objects already traversed.
+ * @returns A matching searchable table, or undefined.
+ */
+function nestedDatabaseTable<Row>(
+  name: string,
+  values: readonly unknown[],
+  depth: number,
+  seen: readonly object[]
+): SearchableTable<Row> | undefined {
+  const objects = values.filter(isUnseenObject(seen));
+  const direct = objects
+    .map(value => Reflect.get(value, name))
+    .find(isSearchableTable<Row>);
+  if (direct) return direct;
+  if (depth >= 4) return undefined;
+  return nestedDatabaseTable<Row>(
+    name,
+    objects.flatMap(value => Object.values(value)),
+    depth + 1,
+    [...seen, ...objects]
+  );
+}
+
+/**
+ * Builds a predicate that keeps traversable objects not already visited.
+ * @param seen Objects already traversed.
+ * @returns Predicate for unknown registry values.
+ */
+function isUnseenObject(
+  seen: readonly object[]
+): (value: unknown) => value is object {
+  return (value: unknown): value is object =>
+    !!value && typeof value === "object" && !seen.includes(value);
 }
 
 /**
