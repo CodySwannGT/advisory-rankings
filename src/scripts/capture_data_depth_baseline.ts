@@ -2,12 +2,17 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import {
+  summarizeRecruitingResourcePayload,
+  validateRecruitingMarketDepth,
+} from "../lib/recruiting-depth-validation.js";
+
 const DEFAULT_BASE_URL =
   "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const DEFAULT_OUT = "evidence/data-depth-baseline.json";
 
 const RESOURCE_PROBES = [
-  { name: "recruiting", path: "/RecruitingMarket?limit=3" },
+  { name: "recruiting", path: "/RecruitingMarket?limit=100" },
   { name: "firms", path: "/PublicFirms?limit=5" },
   { name: "advisors", path: "/PublicAdvisors?limit=5" },
   { name: "feed", path: "/Feed?limit=5" },
@@ -44,6 +49,8 @@ interface EndpointEvidence {
 /** Loose JSON object used for compact evidence summaries. */
 type JsonRecord = Readonly<Record<string, unknown>>;
 
+export { validateRecruitingMarketDepth };
+
 /**
  * Captures the public data-depth baseline resources from the deployed app.
  * @param options - Probe target and output options.
@@ -74,7 +81,7 @@ export function summarizeResourcePayload(
   payload: unknown
 ): JsonRecord {
   const body = recordValue(payload);
-  if (name === "recruiting") return recruitingSummary(body);
+  if (name === "recruiting") return summarizeRecruitingResourcePayload(body);
   if (name === "firms") return directorySummary(body, ["name", "slug"]);
   if (name === "advisors")
     return directorySummary(body, ["displayName", "legalName", "slug"]);
@@ -97,39 +104,15 @@ async function captureEndpoint(
     headers: { Accept: "application/json" },
   });
   const payload = await response.json().catch(() => null);
+  const summary = summarizeResourcePayload(probe.name, payload);
+  if (probe.name === "recruiting") validateRecruitingMarketDepth(payload);
   return {
     name: probe.name,
     path: probe.path,
     status: response.status,
     ok: response.ok,
     elapsedMs: Date.now() - started,
-    summary: summarizeResourcePayload(probe.name, payload),
-  };
-}
-
-/**
- * Builds the recruiting-resource baseline summary.
- * @param body - Decoded `/RecruitingMarket` JSON object.
- * @returns Compact recruiting depth evidence.
- */
-function recruitingSummary(body: JsonRecord): JsonRecord {
-  const summary = recordValue(body.summary);
-  const recentMoves = arrayValue(body.recentMoves);
-  const marketActivity = arrayValue(body.marketActivity);
-  const firmMomentum = arrayValue(body.firmMomentum);
-  return {
     summary,
-    recentMoveCount: recentMoves.length,
-    marketActivityCount: marketActivity.length,
-    firmMomentumCount: firmMomentum.length,
-    sampleRecentMoves: sampleRecords(recentMoves, [
-      "id",
-      "subject",
-      "fromFirm",
-      "toFirm",
-      "sourceStatus",
-      "provenance",
-    ]),
   };
 }
 
