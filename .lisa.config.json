@@ -1,5 +1,5 @@
 {
-  "harness": "both",
+  "harness": "fleet",
   "tracker": "github",
   "source": "github",
   "github": {
