@@ -16,6 +16,7 @@ import {
   el,
   mountFullWidthPage,
 } from "./design-system/index.js";
+import { packetSourceAppendix } from "./report-packet-source-appendix.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 
 /** Design-system component signature normalized at this boundary. */
@@ -141,6 +142,7 @@ function packetSummary(payload: AdvisorComparisonPayload): HTMLElement {
           packetAdvisor(item, sections, index)
         )
       ),
+      packetSourceAppendix(payload.items),
     ],
   });
 }
@@ -200,8 +202,7 @@ function packetAdvisor(
           section.values[index] || missingEvidence(section.label)
         )
       )
-    ),
-    packetAttribution(item)
+    )
   );
 }
 
@@ -217,41 +218,6 @@ function packetEvidenceRow(label: string, value: string): HTMLElement {
     { class: "report-packet-evidence-row" },
     el("dt", {}, label),
     el("dd", {}, value || missingEvidence(label))
-  );
-}
-
-/**
- * Builds a compact public attribution block for one advisor.
- * @param item - Compared advisor item.
- * @returns Attribution block.
- */
-function packetAttribution(item: AdvisorComparisonItem): HTMLElement {
-  const brokerCheck = item.attribution.brokerCheck;
-  const brokerCheckText = brokerCheck
-    ? `BrokerCheck snapshot loaded ${fmtDate(brokerCheck.fetchedAt, { mode: "short" })}`
-    : "No BrokerCheck snapshot loaded for this advisor.";
-  const articleText = item.attribution.articles.length
-    ? `${item.attribution.articles.length} article reference${item.attribution.articles.length === 1 ? "" : "s"}`
-    : "No article references loaded.";
-  const assertionText = item.attribution.assertions.length
-    ? `${item.attribution.assertions.length} field assertion${item.attribution.assertions.length === 1 ? "" : "s"}`
-    : "No source-backed field assertions loaded.";
-  const researchText = item.attribution.researchSources.length
-    ? `${item.attribution.researchSources.length} research source check${item.attribution.researchSources.length === 1 ? "" : "s"}`
-    : "No research source checks loaded.";
-
-  return el(
-    "section",
-    { class: "report-packet-attribution" },
-    el("h4", {}, "Attribution"),
-    el(
-      "ul",
-      {},
-      el("li", {}, brokerCheckText),
-      el("li", {}, articleText),
-      el("li", {}, assertionText),
-      el("li", {}, researchText)
-    )
   );
 }
 
