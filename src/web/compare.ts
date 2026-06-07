@@ -24,6 +24,7 @@ import {
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
+import { reportPacketAction } from "./compare-packet-action.js";
 import { privateOverlayMount } from "./compare-private-overlay.js";
 import {
   advisorComparisonPathFromLocation,
@@ -204,15 +205,22 @@ function underLimitStartCopy(selectedCount: number): string {
 function comparisonHero(payload: AdvisorComparisonPayload): HTMLElement {
   const found = payload.items.filter(item => item.status === "found");
   const names = found.map(item => item.displayName).join(" vs ");
-  return ProfileHeadComponent({
-    initialsText: initials(names || PAGE_TITLE),
-    title: PAGE_TITLE,
-    subtitle: names || "Public diligence evidence",
-    tags: [
-      { label: `${payload.items.length} selected` },
-      { label: `Generated ${fmtDate(payload.generatedAt, { mode: "short" })}` },
-    ],
-  });
+  return el(
+    "div",
+    { class: "comparison-hero" },
+    ProfileHeadComponent({
+      initialsText: initials(names || PAGE_TITLE),
+      title: PAGE_TITLE,
+      subtitle: names || "Public diligence evidence",
+      tags: [
+        { label: `${payload.items.length} selected` },
+        {
+          label: `Generated ${fmtDate(payload.generatedAt, { mode: "short" })}`,
+        },
+      ],
+    }),
+    reportPacketAction(payload.ids)
+  );
 }
 
 /**

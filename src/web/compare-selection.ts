@@ -122,6 +122,17 @@ export function updateComparisonSelection(
 }
 
 /**
+ * Builds the report packet URL for the current ordered comparison selection.
+ * @param ids - Ordered advisor ids.
+ * @returns Path and query string for the report packet route.
+ */
+export function reportPacketUrl(ids: readonly string[]): string {
+  const qs = new URLSearchParams();
+  if (ids.length) qs.set(IDS_PARAM, ids.join(","));
+  return qs.size ? `/report-packet?${qs.toString()}` : "/report-packet";
+}
+
+/**
  * Moves one advisor column left or right, clamping at table boundaries.
  * @param items - Current advisor columns.
  * @param id - Advisor id to move.
