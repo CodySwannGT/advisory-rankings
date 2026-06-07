@@ -672,14 +672,15 @@ fresh cluster, run those two ops with the role permission map covering the
 `data` tables, then store a freshly generated password in the keychain
 services above.
 
-> **Watchlist resource caveat (dev):** the deployed `/UserWatchlists`
-> resource currently returns `503 "UserList table is unavailable"` even
-> though the `UserList`/`UserListEntry` tables exist (the `/AdvisorRating`
-> write path works). The seeded watchlist rows above were inserted
-> directly via the ops-API `insert` operation as a workaround. A redeploy
-> of the current `resources.js` is expected to restore the resource
-> binding; confirm `POST /UserWatchlists {action:"create"}` returns 200
-> after deploying packet work that depends on it.
+> **Watchlist resource binding regression:** if `/UserWatchlists` returns
+> `503 "UserList table is unavailable"` while `/AdvisorRating` still works,
+> the serving component likely predates the fix that statically binds
+> `tables.UserList` and `tables.UserListEntry` in the exported
+> `resource-user-watchlists.js` module. The `UserList`/`UserListEntry`
+> tables can still exist at the DB/REST layer in this state, so anonymous
+> watchlist checks are not sufficient. Verify with an authenticated
+> operation-token probe and confirm repeated `GET /UserWatchlists` calls
+> return 200 after redeploy/restart.
 
 ### Public vs. authenticated routes
 
