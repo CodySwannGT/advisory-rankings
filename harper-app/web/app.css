@@ -1893,6 +1893,27 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text-muted);
 }
 
+.comparison-hero {
+  display: grid;
+  gap: var(--ab-space-3);
+  margin-bottom: var(--ab-space-4);
+}
+
+.comparison-hero .profile-head {
+  margin-bottom: 0;
+}
+
+.comparison-hero-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ab-space-3);
+}
+
+.comparison-packet-button {
+  min-width: 148px;
+}
+
 .comparison-start .card-body {
   display: grid;
   gap: var(--ab-space-4);
@@ -2289,6 +2310,15 @@ body.drawer-open .nav .nav-scrim {
 }
 
 @media (max-width: 700px) {
+  .comparison-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .comparison-packet-button {
+    width: 100%;
+  }
+
   .comparison-status {
     align-items: flex-start;
     flex-direction: column;
@@ -2373,6 +2403,90 @@ body.drawer-open .nav .nav-scrim {
     color: var(--text);
     font-size: 13px;
     font-weight: 700;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  header.site-header,
+  footer.site-footer,
+  .comparison-hero-actions,
+  .comparison-column-controls,
+  .comparison-private .ab-btn {
+    display: none !important;
+  }
+
+  .page,
+  .full-width-page,
+  .full-width-main,
+  main {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .report-packet-hero,
+  .report-packet-summary,
+  .comparison-private {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-packet-hero h2 {
+    color: #111;
+    font-size: 22pt;
+  }
+
+  .report-packet-summary.card,
+  .comparison-private.card,
+  .report-packet-advisor,
+  .report-packet-source-advisor,
+  .comparison-private-card {
+    border: 1px solid #bbb;
+    box-shadow: none;
+    background: #fff;
+  }
+
+  .report-packet-summary .card-body,
+  .comparison-private .card-body {
+    gap: 12pt;
+  }
+
+  .report-packet-advisors,
+  .report-packet-source-grid,
+  .comparison-private-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-packet-advisor,
+  .report-packet-source-advisor,
+  .comparison-private-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 12pt;
+  }
+
+  .report-packet-metadata dt,
+  .report-packet-evidence dt,
+  .report-packet-source-row dt,
+  .comparison-private-metrics dt {
+    color: #444;
+  }
+
+  .report-packet-metadata dd,
+  .report-packet-evidence dd,
+  .report-packet-source-row dd,
+  .comparison-private-card p,
+  .comparison-private-metrics dd {
+    color: #111;
+  }
+
+  .report-packet-source-row li {
+    color: #222;
   }
 }
 

@@ -26,8 +26,12 @@ const MISSING_ADVISOR_ID = "missing-id";
 const BROKERCHECK_FETCHED_AT = "2026-05-30T00:00:00.000Z";
 const PACKET_PRIVATE_NOTE = "packet-only private note";
 const PACKET_PRIVATE_REVIEW = "Packet follow-up rating.";
+const PACKET_ADVISOR_IDS = ["adv-a", "adv-b"] as const;
+const PACKET_ADVISOR_QUERY = PACKET_ADVISOR_IDS.join(",");
+const PACKET_SUMMARY_SELECTOR = ".report-packet-summary";
+const PACKET_ADVISOR_SELECTOR = ".report-packet-advisor";
 
-browserDescribe("report packet route (#966, #967)", () => {
+browserDescribe("report packet route (#966, #967, #969)", () => {
   let browser: Browser;
   let server: Server;
   let baseUrl: string;
@@ -52,22 +56,25 @@ browserDescribe("report packet route (#966, #967)", () => {
     await routeComparison(
       page,
       requests,
-      comparisonPayload(["adv-a", "adv-b"])
+      comparisonPayload(PACKET_ADVISOR_IDS)
     );
 
-    await page.goto(`${baseUrl}/report-packet.html?ids=adv-a,adv-b`, {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(
+      `${baseUrl}/report-packet.html?ids=${PACKET_ADVISOR_QUERY}`,
+      {
+        waitUntil: "domcontentloaded",
+      }
+    );
 
-    await page.locator(".report-packet-summary").waitFor({
+    await page.locator(PACKET_SUMMARY_SELECTOR).waitFor({
       timeout: QUICK_TIMEOUT,
     });
-    expect(requests).toEqual(["adv-a,adv-b"]);
+    expect(requests).toEqual([PACKET_ADVISOR_QUERY]);
     expect(await page.locator("h1").textContent()).toBe("Report packet");
     expect(await page.locator(".comparison-status").textContent()).toContain(
       "Ready"
     );
-    const advisorCards = page.locator(".report-packet-advisor");
+    const advisorCards = page.locator(PACKET_ADVISOR_SELECTOR);
     expect(await advisorCards.count()).toBe(2);
     const firstAdvisor = await advisorCards.first().textContent();
     expect(firstAdvisor).toContain("Advisor 1");
@@ -113,6 +120,33 @@ browserDescribe("report packet route (#966, #967)", () => {
       "Incomplete: no source-backed field confidence summary is available."
     );
     await captureViewports(page, "issue-966-report-packet-evidence");
+    await page.close();
+  });
+
+  it("opens the packet from comparison with the same advisor ids", async () => {
+    const page = await browser.newPage();
+    const requests: string[] = [];
+    await routeComparison(
+      page,
+      requests,
+      comparisonPayload(PACKET_ADVISOR_IDS)
+    );
+
+    await page.goto(`${baseUrl}/compare.html?ids=${PACKET_ADVISOR_QUERY}`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await page
+      .getByRole("button", { name: "Open report packet for selected advisors" })
+      .click();
+    await page.waitForURL(/\/report-packet\?ids=adv-a%2Cadv-b$/u, {
+      timeout: QUICK_TIMEOUT,
+    });
+    await page.locator(PACKET_SUMMARY_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(requests).toEqual([PACKET_ADVISOR_QUERY, PACKET_ADVISOR_QUERY]);
+    expect(await page.locator(PACKET_ADVISOR_SELECTOR).count()).toBe(2);
     await page.close();
   });
 
@@ -193,12 +227,45 @@ browserDescribe("report packet route (#966, #967)", () => {
       waitUntil: "domcontentloaded",
     });
 
-    await page.locator(".report-packet-summary").waitFor({
+    await page.locator(PACKET_SUMMARY_SELECTOR).waitFor({
       timeout: QUICK_TIMEOUT,
     });
     expect(await page.locator(".comparison-private").count()).toBe(0);
     expect(privateRequests).toHaveLength(0);
     await captureViewports(page, "issue-968-report-packet-private-signed-out");
+    await page.close();
+  });
+
+  it("keeps packet print and mobile layouts readable", async () => {
+    const page = await browser.newPage();
+    await routeAuth(page, false);
+    await routeComparison(page, [], comparisonPayload(PACKET_ADVISOR_IDS));
+    await routePrivateRequestTracker(page, []);
+
+    await page.goto(
+      `${baseUrl}/report-packet.html?ids=${PACKET_ADVISOR_QUERY}`,
+      {
+        waitUntil: "domcontentloaded",
+      }
+    );
+    await page.locator(PACKET_SUMMARY_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    await page.emulateMedia({ media: "print" });
+    const printMetrics = await packetLayoutMetrics(page);
+    expect(printMetrics.summaryWidth).toBeGreaterThan(600);
+    expect(printMetrics.hiddenHeaderCount).toBe(0);
+    expect(printMetrics.advisorOverflow).toBe(false);
+    expect(printMetrics.appendixOverflow).toBe(false);
+
+    await page.emulateMedia({ media: "screen" });
+    await page.setViewportSize({ width: 360, height: 780 });
+    const mobileMetrics = await packetLayoutMetrics(page);
+    expect(mobileMetrics.documentOverflow).toBeLessThanOrEqual(1);
+    expect(mobileMetrics.advisorOverflow).toBe(false);
+    expect(mobileMetrics.appendixOverflow).toBe(false);
+    await captureViewports(page, "issue-969-report-packet-print-mobile");
     await page.close();
   });
 });
@@ -413,4 +480,41 @@ function notFoundItem(id: string): unknown {
     identity: null,
     firm: null,
   };
+}
+
+/**
+ * Reads layout measurements that catch clipped packet text and print chrome.
+ * @param page - Browser page rendering the report packet.
+ * @returns Packet layout metrics for assertions.
+ */
+async function packetLayoutMetrics(page: Page): Promise<{
+  readonly advisorOverflow: boolean;
+  readonly appendixOverflow: boolean;
+  readonly documentOverflow: number;
+  readonly hiddenHeaderCount: number;
+  readonly summaryWidth: number;
+}> {
+  return page.evaluate(
+    ({ advisorSelector, summarySelector }) => {
+      const overflows = (selector: string): boolean =>
+        [...document.querySelectorAll<HTMLElement>(selector)].some(
+          node => node.scrollWidth > node.clientWidth + 1
+        );
+      const summary = document.querySelector<HTMLElement>(summarySelector);
+      const visibleHeaders = [
+        ...document.querySelectorAll<HTMLElement>("header.site-header"),
+      ].filter(node => getComputedStyle(node).display !== "none");
+      return {
+        advisorOverflow: overflows(advisorSelector),
+        appendixOverflow: overflows(".report-packet-source-advisor"),
+        documentOverflow: document.documentElement.scrollWidth - innerWidth,
+        hiddenHeaderCount: visibleHeaders.length,
+        summaryWidth: summary?.getBoundingClientRect().width ?? 0,
+      };
+    },
+    {
+      advisorSelector: PACKET_ADVISOR_SELECTOR,
+      summarySelector: PACKET_SUMMARY_SELECTOR,
+    }
+  );
 }
