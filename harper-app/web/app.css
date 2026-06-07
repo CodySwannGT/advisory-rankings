@@ -2081,6 +2081,83 @@ body.drawer-open .nav .nav-scrim {
   opacity: 0.45;
 }
 
+.report-packet-hero {
+  display: grid;
+  gap: var(--ab-space-3);
+  margin-bottom: var(--ab-space-4);
+}
+
+.report-packet-hero h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.report-packet-summary .card-body {
+  display: grid;
+  gap: var(--ab-space-4);
+}
+
+.report-packet-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ab-space-3);
+  margin: 0;
+}
+
+.report-packet-metadata-row {
+  display: grid;
+  gap: var(--ab-space-1);
+  min-width: 0;
+}
+
+.report-packet-metadata dt,
+.report-packet-metadata dd {
+  margin: 0;
+}
+
+.report-packet-metadata dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-packet-metadata dd {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.report-packet-advisors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ab-space-3);
+}
+
+.report-packet-advisor {
+  display: grid;
+  gap: var(--ab-space-2);
+  padding: var(--ab-space-4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.report-packet-advisor h3,
+.report-packet-advisor p {
+  margin: 0;
+}
+
+.report-packet-advisor h3 {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.report-packet-advisor p {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 @media (max-width: 700px) {
   .comparison-status {
     align-items: flex-start;

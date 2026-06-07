@@ -27,6 +27,7 @@ fastifyRoutes:
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
     - 'compare/index.js'
+    - 'report-packet/index.js'
     - 'watchlists/index.js'
     - 'login/index.js'
     - 'favicon/index.js'

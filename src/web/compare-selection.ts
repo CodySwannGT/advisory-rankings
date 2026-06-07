@@ -3,11 +3,60 @@
 import type {
   AdvisorComparisonItem,
   AdvisorComparisonPayload,
+  AdvisorComparisonSelection,
 } from "../types/advisor-comparison.js";
 import { Button, el } from "./design-system/index.js";
 
+const IDS_PARAM = "ids";
+
 /** Selection mutation callback used by comparison column controls. */
 export type ComparisonRender = (payload: AdvisorComparisonPayload) => void;
+
+/**
+ * Builds the AdvisorComparison resource path from the current browser URL.
+ * @returns Resource URL with the selected ids query when available.
+ */
+export function advisorComparisonPathFromLocation(): string {
+  return advisorComparisonPathFromParams(new URLSearchParams(location.search));
+}
+
+/**
+ * Builds the AdvisorComparison resource path from URL query params.
+ * @param params - Current route query params.
+ * @returns Resource URL with selected ids query when available.
+ */
+export function advisorComparisonPathFromParams(
+  params: URLSearchParams
+): string {
+  const ids = params.get(IDS_PARAM) ?? repeatedIds(params).join(",");
+  const qs = new URLSearchParams();
+  if (ids) qs.set(IDS_PARAM, ids);
+  return qs.size ? `/AdvisorComparison?${qs.toString()}` : "/AdvisorComparison";
+}
+
+/**
+ * Builds human-readable selection caveats from a normalized comparison payload.
+ * @param selection - AdvisorComparison selection metadata.
+ * @returns Caveat lines, or an empty array when the selection is ready.
+ */
+export function comparisonSelectionDetails(
+  selection: AdvisorComparisonSelection
+): readonly string[] {
+  return [
+    selection.status === "under_limit"
+      ? `Add at least ${selection.min} advisors for a complete comparison.`
+      : null,
+    selection.truncated
+      ? `Showing the first ${selection.max} advisors from this URL.`
+      : null,
+    selection.duplicateIds.length
+      ? `Duplicate ids ignored: ${selection.duplicateIds.join(", ")}.`
+      : null,
+    selection.missingIds.length
+      ? `Missing ids: ${selection.missingIds.join(", ")}.`
+      : null,
+  ].filter((detail): detail is string => Boolean(detail));
+}
 
 /**
  * Builds one advisor column header with URL-backed selection controls.
@@ -192,4 +241,16 @@ function comparisonPayloadWithItems(
 function comparisonUrl(ids: readonly string[]): string {
   if (!ids.length) return "/compare";
   return `/compare?ids=${ids.map(encodeURIComponent).join(",")}`;
+}
+
+/**
+ * Reads repeated id params from a URLSearchParams bag.
+ * @param params - Current location params.
+ * @returns Repeated id values.
+ */
+function repeatedIds(params: URLSearchParams): readonly string[] {
+  return params
+    .getAll("id")
+    .map(id => id.trim())
+    .filter(Boolean);
 }
