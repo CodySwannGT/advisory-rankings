@@ -364,9 +364,39 @@ async function deployComponent(studio: StudioSession): Promise<DeployResult> {
   );
 
   console.log(`▶ deploy_component project=${PROJECT}`);
-  const result = await submitDeploy(studio, deployPackage.payload);
+  const result = await submitDeployWithDisconnectTolerance(
+    studio,
+    deployPackage.payload
+  );
   logDeployResult(result);
   return result;
+}
+
+/**
+ * Submits the component package while tolerating Studio proxy disconnects that happen after upload acceptance.
+ * @param studio - Authenticated Studio session.
+ * @param payload - Base64-encoded deployment archive.
+ * @returns Fabric response, or an indeterminate success that must be proven by freshness checks.
+ */
+async function submitDeployWithDisconnectTolerance(
+  studio: StudioSession,
+  payload: string
+): Promise<DeployResult> {
+  try {
+    return await submitDeploy(studio, payload);
+  } catch (error) {
+    if (!isFetchDisconnect(error)) throw error;
+    console.warn(
+      "  deploy_component request dropped while waiting for Fabric; continuing to runtime freshness checks"
+    );
+    return {
+      status: 200,
+      body: {
+        message:
+          "deploy_component request dropped after upload; runtime freshness checks will confirm whether the component landed",
+      },
+    };
+  }
 }
 
 /**
