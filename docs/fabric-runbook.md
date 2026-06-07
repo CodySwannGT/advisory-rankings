@@ -737,12 +737,16 @@ through Studio's operations proxy, and follows with an explicit bounded
 `restart`. The extra restart is intentional: Fabric can accept updated
 component files while the public app still serves the previous
 static/resource module set. The restart request is timed out locally so a
-service restart cannot leave CI waiting on a dropped proxy response. When
-Fabric reports a replica failure, or when the data-plane freshness check
-still sees the previous bundle, the script mints a Harper JWT and deploys
-directly to the public node's `:9925` Operations API once. Same effect as
-the CLI below, while keeping the Studio path as the primary path for
-environments where direct ops are blocked.
+service restart cannot leave CI waiting on a dropped proxy response. A
+Studio `deploy_component` request can also drop after Fabric has accepted
+the upload but before the proxy returns; the deploy script treats that as
+indeterminate and continues to the data-plane freshness checks rather
+than aborting before recovery can run. When Fabric reports a replica
+failure, or when the data-plane freshness check still sees the previous
+bundle, the script mints a Harper JWT and deploys directly to the public
+node's `:9925` Operations API once. Same effect as the CLI below, while
+keeping the Studio path as the primary path for environments where direct
+ops are blocked.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
@@ -884,9 +888,12 @@ seconds. `src/scripts/deploy.ts` therefore does not treat the
 deploy (best-effort — `:9925` is firewalled from CI, so this is a no-op
 there). Fabric public-node operations can exceed the former 15-second
 abort budget while still completing successfully, so `deploy.ts` defaults
-`HARPER_RESTART_TIMEOUT_MS` to 60 seconds. It then **polls `/version.js`
-on the public URL until it matches the freshly built `package.json`
-version** (`verifyRuntimeFreshness`). The
+`HARPER_RESTART_TIMEOUT_MS` to 60 seconds. The Studio
+`deploy_component` response can also exceed the proxy's response window
+after the payload has been accepted; `deploy.ts` continues from that
+disconnect into the same data-plane freshness gate. It then **polls
+`/version.js` on the public URL until it matches the freshly built
+`package.json` version** (`verifyRuntimeFreshness`). The
 deploy passes when the served node reports the new version and fails only
 if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
 exercise the CI-only path (Studio deploy + replication + freshness poll)
