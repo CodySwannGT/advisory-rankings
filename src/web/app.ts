@@ -23,7 +23,12 @@
 // static component and REST resources both bind to port 9926 by
 // default), so all calls are relative.
 
-import { fetchWithRetry, isRetryableMethod } from "./api-retry.js";
+import {
+  fetchWithRetry,
+  isRetryableMethod,
+  DEFAULT_RETRY_BACKOFFS_MS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+} from "./api-retry.js";
 import { mountThreeColumnPage } from "./design-system/templates.js";
 import {
   entityPath,
@@ -78,6 +83,32 @@ export type ApiInit = Readonly<Omit<RequestInit, "headers">> &
 export type JsonBody = Readonly<Record<string, unknown>>;
 
 /**
+ * Resolves the per-attempt request timeout handed to {@link fetchWithRetry}.
+ *
+ * Defaults to {@link DEFAULT_REQUEST_TIMEOUT_MS} but honors a positive, finite
+ * `globalThis.__AB_REQUEST_TIMEOUT_MS__` override. That hook lets the deploy
+ * smoke exercise the timeout/abort path deterministically (without waiting the
+ * full production window) and gives operators a tuning knob if a node's
+ * healthy latency ever shifts. Any non-positive or non-finite override is
+ * ignored so a stray value can never disable the guard.
+ * @returns The per-attempt timeout in milliseconds.
+ */
+function resolveRequestTimeoutMs(): number {
+  const override = (globalThis as RequestTimeoutOverride)
+    .__AB_REQUEST_TIMEOUT_MS__;
+  return typeof override === "number" &&
+    Number.isFinite(override) &&
+    override > 0
+    ? override
+    : DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
+/** Optional global tuning hook read by {@link resolveRequestTimeoutMs}. */
+interface RequestTimeoutOverride {
+  readonly __AB_REQUEST_TIMEOUT_MS__?: unknown;
+}
+
+/**
  * Performs a same-origin JSON fetch and surfaces non-2xx responses as
  * thrown {@link Error}s carrying the method, path, status, and the first
  * 200 chars of the response body for diagnostics.
@@ -108,7 +139,9 @@ export async function api<T = unknown>(
     {
       fetch: (input, requestInit) => fetch(input, requestInit),
       sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
-    }
+    },
+    DEFAULT_RETRY_BACKOFFS_MS,
+    resolveRequestTimeoutMs()
   );
   if (!res.ok) {
     const text = await res.text().catch(() => "");

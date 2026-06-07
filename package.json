@@ -55,7 +55,7 @@
     "data:coverage": "bun run build && node dist/scripts/data_coverage_report.js",
     "brokercheck": "bun run build && node dist/scripts/fetch_brokercheck.js",
     "brokercheck:crawl": "bun run build && node dist/scripts/brokercheck_crawl_all.js",
-    "smoke:run": "bun tests/web_smoke.ts || (echo '↻ retrying smoke once after a transient failure (dev-cluster spike)' && bun tests/web_smoke.ts)",
+    "smoke:run": "bun tests/web_smoke.ts || (echo '::warning::smoke first attempt failed; retrying once. A deterministic regression fails both runs; only true dev-cluster transients should pass on retry. Investigate if this recurs.' && bun tests/web_smoke.ts)",
     "test:e2e": "bash scripts/e2e-local-harper.sh",
     "bootstrap": "bash scripts/bootstrap.sh",
     "setup:deploy-key": "setup-deploy-key",
