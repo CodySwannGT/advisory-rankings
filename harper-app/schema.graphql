@@ -546,15 +546,11 @@ type AdvisorResearchCheck @table @export {
 # ─── USER LAYER ────────────────────────────────────────────────────
 #
 # These tables hold per-user PRIVATE data (watchlist notes, private
-# ratings). They are intentionally NOT `@export`ed: exporting them would
-# auto-generate raw REST routes (`/UserRating/`, `/UserWatchlist/`, …) whose
-# only protection is Harper's table-level RBAC, which is not row-scoped —
-# any authenticated role with table read could enumerate EVERY user's
-# private rows. Instead, all access goes exclusively through the scoped
-# resources (`AdvisorRating`, `UserWatchlists`), which run with elevated
-# context and enforce per-user ownership in code. The table objects stay
-# reachable to those resources via the `tables.X` global (which is keyed
-# off `@table`, independent of `@export`). Do not re-add `@export` here.
+# ratings). Raw table routes must not be granted to regular app users because
+# Harper's table-level RBAC is not row-scoped — any role with table read could
+# enumerate EVERY user's private rows. Access goes through the scoped resources
+# (`AdvisorRating`, `UserWatchlists`), which run with elevated context and
+# enforce per-user ownership in code.
 
 type User @table {
   id: ID @primaryKey
@@ -576,19 +572,21 @@ type UserRating @table {
   createdAt: Date @createdTime
 }
 
-# `UserList`/`UserListEntry` are legacy private table names retained below
-# for deployed data compatibility. The active watchlist resource stores new
-# rows in `UserWatchlist`/`UserWatchlistEntry` because Fabric did not register
-# the legacy names in the jsResource `tables` global even though SQL could see
-# them. Keep all four non-exported.
-type UserWatchlist @table {
+# `UserList`/`UserListEntry` are legacy private table names retained below for
+# deployed data compatibility. The active watchlist resource stores new rows in
+# `UserWatchlist`/`UserWatchlistEntry` because Fabric did not register the
+# legacy names in the jsResource `tables` global even though SQL could see
+# them. The active watchlist tables are `@export`ed only so Fabric registers
+# them in the resource runtime; regular app users must still have no direct
+# table permission.
+type UserWatchlist @table @export {
   id: ID @primaryKey
   userId: ID! @indexed
   name: String!
   createdAt: Date @createdTime
 }
 
-type UserWatchlistEntry @table {
+type UserWatchlistEntry @table @export {
   id: ID @primaryKey
   listId: ID! @indexed
   advisorId: ID! @indexed
