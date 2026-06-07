@@ -10,3 +10,4 @@ export * from "./resource-mcp.js";
 export * from "./resource-recruiting-market.js";
 export * from "./resource-rankings-explorer.js";
 export * from "./resource-regulatory-discrepancy-queue.js";
+export * from "./resource-advisor-research-queue.js";

@@ -1397,6 +1397,109 @@ describe("Harper feed and profile builders", () => {
     });
   });
 
+  it("returns due advisor research queue rows with public-safe context", async () => {
+    const payload = await new (resources as any).AdvisorResearchQueue().get(
+      routeTarget("", { limit: "5", staleDays: "1" })
+    );
+
+    expect(new (resources as any).AdvisorResearchQueue().allowRead()).toBe(
+      true
+    );
+    expect(payload).toMatchObject({
+      filters: {
+        sourceType: "web_research",
+        staleDays: 1,
+        status: null,
+        missingField: null,
+        limit: 5,
+      },
+      summary: {
+        returned: 1,
+        statusCounts: { never_checked: 1 },
+      },
+      items: [
+        {
+          advisorId: "advisor-b",
+          advisorName: BLAKE_YOUNG_NAME,
+          finraCrd: null,
+          profileUrl: "/advisor.html?id=advisor-b",
+          firm: {
+            id: "firm-a",
+            name: EXAMPLE_WEALTH_MANAGEMENT,
+            roleTitle: "Advisor",
+          },
+          sourceType: "web_research",
+          status: null,
+          lastCheckedAt: null,
+          nextCheckAfter: null,
+          missingFields: [
+            "headshotUrl",
+            "bioText",
+            "linkedinUrl",
+            "businessEmail",
+            "businessPhone",
+          ],
+          provenance: {
+            sourceTable: "AdvisorResearchCheck",
+            sourceIds: [],
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(payload)).not.toContain("UserRating");
+    expect(JSON.stringify(payload)).not.toContain("UserWatchlist");
+  });
+
+  it("filters due advisor research rows by source and missing field", async () => {
+    const payload = await new (resources as any).AdvisorResearchQueue().get(
+      routeTarget("", {
+        limit: "10",
+        sourceType: "firm_bio",
+        staleDays: "1",
+        status: "ambiguous",
+        missingField: "businessEmail",
+      })
+    );
+
+    expect(payload.filters).toMatchObject({
+      sourceType: "firm_bio",
+      staleDays: 1,
+      status: "ambiguous",
+      missingField: "businessEmail",
+      limit: 10,
+    });
+    expect(payload.summary).toMatchObject({
+      returned: 1,
+      statusCounts: { ambiguous: 1 },
+      missingFieldCounts: { businessEmail: 1, businessPhone: 1 },
+    });
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]).toMatchObject({
+      advisorId: "advisor-a",
+      sourceType: "firm_bio",
+      status: "ambiguous",
+      lastCheckedAt: RESEARCH_B_CHECKED_AT,
+      provenance: { sourceIds: ["research-b"] },
+    });
+  });
+
+  it("preserves the requested source on never-checked research rows", async () => {
+    const payload = await new (resources as any).AdvisorResearchQueue().get(
+      routeTarget("", {
+        sourceType: "firm_bio",
+        staleDays: "1",
+        missingField: "businessEmail",
+      })
+    );
+
+    expect(payload.items[0]).toMatchObject({
+      advisorId: "advisor-b",
+      sourceType: "firm_bio",
+      status: null,
+      provenance: { sourceIds: [] },
+    });
+  });
+
   it("builds a source-backed rankings explorer payload", async () => {
     const payload = await new (resources as any).RankingsExplorer().get(
       routeTarget("", { category: "Next Gen", year: "2025" })
