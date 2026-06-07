@@ -1381,9 +1381,7 @@ body.drawer-open .nav .nav-scrim {
   grid-template-columns: minmax(150px, 1.4fr) minmax(150px, 1.2fr) auto auto;
 }
 .advisor-directory-filters {
-  grid-template-columns:
-    minmax(140px, 1.4fr) minmax(140px, 1.2fr) minmax(120px, 0.8fr)
-    minmax(120px, 0.8fr) auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
 }
 .filter-field {
   display: grid;
