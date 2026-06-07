@@ -20,7 +20,7 @@ const browserDescribe =
 const MISSING_ADVISOR_ID = "missing-id";
 const BROKERCHECK_FETCHED_AT = "2026-05-30T00:00:00.000Z";
 
-browserDescribe("report packet route (#966)", () => {
+browserDescribe("report packet route (#966, #967)", () => {
   let browser: Browser;
   let server: Server;
   let baseUrl: string;
@@ -76,16 +76,35 @@ browserDescribe("report packet route (#966)", () => {
     expect(firstAdvisor).toContain("#12 AdvisorBook 100");
     expect(firstAdvisor).toContain("Data confidence");
     expect(firstAdvisor).toContain("3 source-backed fields");
-    expect(firstAdvisor).toContain("Attribution");
-    expect(firstAdvisor).toContain("BrokerCheck snapshot loaded");
-    expect(firstAdvisor).toContain("1 article reference");
-    expect(firstAdvisor).toContain("1 field assertion");
-    expect(firstAdvisor).toContain("1 research source check");
-
     const secondAdvisor = await advisorCards.nth(1).textContent();
     expect(secondAdvisor).toContain("No career evidence available.");
-    expect(secondAdvisor).toContain("No BrokerCheck snapshot loaded");
-    expect(secondAdvisor).toContain("No article references loaded.");
+
+    const appendix = page.locator(".report-packet-source-appendix");
+    const appendixText = await appendix.textContent();
+    expect(appendixText).toContain("Source appendix");
+    expect(appendixText).toContain("CRD 1000; snapshot loaded May 2026.");
+    expect(appendixText).toContain("Evidence checked May 2026.");
+    expect(appendixText).toContain(
+      "Advisor profile coverage, published Apr 2026, source Advisor Hub"
+    );
+    expect(appendixText).toContain(
+      "Firm: Firm 1 (High confidence; article article-1)"
+    );
+    expect(appendixText).toContain(
+      "Brokercheck; Checked; checked May 2026; sources: FINRA BrokerCheck"
+    );
+    expect(appendixText).toContain(
+      "Unavailable: no BrokerCheck snapshot loaded for this advisor."
+    );
+    expect(appendixText).toContain(
+      "Uncertain: no freshness check date is available."
+    );
+    expect(appendixText).toContain(
+      "Unavailable: no article references loaded."
+    );
+    expect(appendixText).toContain(
+      "Incomplete: no source-backed field confidence summary is available."
+    );
     await captureViewports(page, "issue-966-report-packet-evidence");
     await page.close();
   });
@@ -211,12 +230,24 @@ function comparisonItem(id: string, index: number): unknown {
             },
           ]
         : [],
-    articles: index === 0 ? [{ title: "Advisor profile coverage" }] : [],
+    articles:
+      index === 0
+        ? [
+            {
+              title: "Advisor profile coverage",
+              publishedDate: "2026-04-15T00:00:00.000Z",
+              sourceLabel: "AdvisorHub",
+            },
+          ]
+        : [],
     dataConfidence: {
-      confidenceSummary: { hasData: true, total: 3 },
+      confidenceSummary:
+        index === 0
+          ? { hasData: true, total: 3 }
+          : { hasData: false, total: 0 },
       evidenceFreshness: {
-        hasData: true,
-        lastCheckedAt: "2026-05-31T00:00:00.000Z",
+        hasData: index === 0,
+        lastCheckedAt: index === 0 ? "2026-05-31T00:00:00.000Z" : null,
       },
     },
     attribution: {
@@ -224,7 +255,16 @@ function comparisonItem(id: string, index: number): unknown {
         index === 0
           ? { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT }
           : null,
-      articles: index === 0 ? [{ title: "Advisor profile coverage" }] : [],
+      articles:
+        index === 0
+          ? [
+              {
+                title: "Advisor profile coverage",
+                publishedDate: "2026-04-15T00:00:00.000Z",
+                sourceLabel: "AdvisorHub",
+              },
+            ]
+          : [],
       assertions:
         index === 0
           ? [

@@ -2184,23 +2184,72 @@ body.drawer-open .nav .nav-scrim {
   overflow-wrap: anywhere;
 }
 
-.report-packet-attribution {
+.report-packet-source-appendix {
   display: grid;
-  gap: var(--ab-space-2);
-  padding-top: var(--ab-space-3);
-  border-top: 1px solid var(--border);
+  gap: var(--ab-space-4);
+  margin-top: var(--ab-space-5);
 }
 
-.report-packet-attribution h4 {
+.report-packet-source-appendix h3,
+.report-packet-source-advisor h4 {
   color: var(--text);
-  font-size: 14px;
 }
 
-.report-packet-attribution ul {
+.report-packet-source-appendix h3 {
+  font-size: 18px;
+}
+
+.report-packet-source-grid {
+  display: grid;
+  gap: var(--ab-space-3);
+}
+
+.report-packet-source-advisor {
+  display: grid;
+  gap: var(--ab-space-3);
+  padding: var(--ab-space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--ab-radius-md);
+  background: var(--surface);
+}
+
+.report-packet-source-advisor h4 {
+  font-size: 15px;
+}
+
+.report-packet-source-advisor dl {
+  display: grid;
+  gap: var(--ab-space-3);
+  margin: 0;
+}
+
+.report-packet-source-row {
+  display: grid;
+  gap: var(--ab-space-1);
+}
+
+.report-packet-source-row dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.report-packet-source-row dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.report-packet-source-row ul {
   display: grid;
   gap: var(--ab-space-1);
   margin: 0;
   padding-left: 18px;
+}
+
+.report-packet-source-row li {
   color: var(--text-muted);
   line-height: 1.45;
 }
