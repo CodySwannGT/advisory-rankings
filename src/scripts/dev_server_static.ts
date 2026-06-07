@@ -13,6 +13,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { DEV_URL_BASE } from "./dev_server_constants.js";
 
 const ROOT = resolve("harper-app/web");
+const LOGIN_SHELL = resolve("harper-app/login/shell.html");
 
 const MIME: Readonly<Record<string, string>> = {
   ".html": "text/html; charset=utf-8",
@@ -70,6 +71,15 @@ function staticPath(path: string): string {
 }
 
 /**
+ * Maps routes that live outside the default web root.
+ * @param path - Request pathname.
+ * @returns Absolute special-case file path, if any.
+ */
+function specialStaticFile(path: string): string | undefined {
+  return path === "/login" ? LOGIN_SHELL : undefined;
+}
+
+/**
  * Serves a static file under `harper-app/web` for the given request.
  *
  * Returns 403 for traversal attempts that escape the web root, and 404
@@ -87,8 +97,8 @@ export async function serveStatic(
     new URL(requestUrl, DEV_URL_BASE).pathname
   );
   const mapped = staticPath(rawPath);
-  const file = join(ROOT, mapped);
-  if (!file.startsWith(ROOT)) {
+  const file = specialStaticFile(rawPath) || join(ROOT, mapped);
+  if (!file.startsWith(ROOT) && file !== LOGIN_SHELL) {
     res.writeHead(403).end("forbidden");
     return;
   }

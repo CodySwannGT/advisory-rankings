@@ -110,16 +110,17 @@ a:hover {
   color: var(--brand);
 }
 
-@media (min-width: 701px) and (max-width: 800px) {
+@media (min-width: 901px) and (max-width: 1100px) {
   .nav {
-    gap: 8px;
-    padding: 8px 10px;
+    gap: 10px;
+    padding: 8px 12px;
   }
   .nav .logo {
     font-size: 20px;
   }
   .nav .search {
-    max-width: 240px;
+    min-width: 280px;
+    max-width: 300px;
     padding: 8px 10px;
   }
   .nav .nav-links a {
@@ -219,10 +220,10 @@ body.drawer-open .nav .nav-scrim {
   display: block;
 }
 
-/* Mobile breakpoint (≤700px): the entire .nav-drawer (links + me-spot)
+/* Compact breakpoint (≤1100px): the entire .nav-drawer (links + me-spot)
    collapses into a right-side sliding panel. The navbar keeps the
    hamburger + logo row compact and gives search a readable full row. */
-@media (max-width: 700px) {
+@media (max-width: 1100px) {
   .nav {
     flex-wrap: wrap;
     gap: 8px;
@@ -230,6 +231,7 @@ body.drawer-open .nav .nav-scrim {
   }
   .nav .search {
     flex-basis: 100%;
+    min-width: 0;
     max-width: none;
     order: 2;
   }
