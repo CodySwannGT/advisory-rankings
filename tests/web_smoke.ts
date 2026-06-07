@@ -49,6 +49,7 @@ import { smokePublicPageHeadings } from "./web_smoke_headings.js";
 import { smokeHighSignalEvidence } from "./web_smoke_high_signal_evidence.js";
 import { smokeComparison } from "./web_smoke_comparison.js";
 import { smokeDiscrepancyQueue } from "./web_smoke_discrepancy_queue.js";
+import { smokeAuthenticatedWatchlists } from "./web_smoke_watchlists.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -407,7 +408,8 @@ async function runScenarios(
   if (process.env.SMOKE_SCOPE === "watchlists") {
     return [
       ...(await smokeRootBootResilience(page)),
-      ...(await smokeWatchlists(page)),
+      ...(await smokeWatchlists(browser)),
+      ...(await smokeAuthenticatedWatchlists(browser, extraHTTPHeaders)),
     ];
   }
   return [
@@ -424,7 +426,8 @@ async function runScenarios(
     ...(await smokeTeam(page)),
     ...(await smokeArticle(page)),
     ...(await smokeCompliance(page)),
-    ...(await smokeWatchlists(page)),
+    ...(await smokeWatchlists(browser)),
+    ...(await smokeAuthenticatedWatchlists(browser, extraHTTPHeaders)),
     ...(await smokeDirectories(page)),
     ...(await smokePublicPageHeadings(page)),
     ...(await smokeNotFoundRecovery(page)),
