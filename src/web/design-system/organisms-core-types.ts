@@ -78,6 +78,7 @@ export interface ProfileHeadOptions {
   readonly initialsText?: string | number | null;
   readonly imageUrl?: string | null;
   readonly title?: string | null;
+  readonly headingLevel?: 1 | 2 | 3;
   readonly subtitle?: OrganismChildren;
   readonly tags?: readonly ProfileHeadTag[];
 }
