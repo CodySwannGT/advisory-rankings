@@ -17,6 +17,9 @@ const DEV_BACKEND =
   "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const COMPARISON_TABLE_SELECTOR = ".comparison-table";
 const COMPARISON_START_SELECTOR = ".comparison-start";
+const COMPARISON_RESOURCE_ROUTE = "**/AdvisorComparison";
+const COMPARISON_RESOURCE_QUERY_ROUTE = "**/AdvisorComparison?**";
+const UNDER_LIMIT_ADVISOR_ID = "advisor-a";
 const RUN_ENABLED = process.env.RUN_WEB_COMPARISON_SMOKE === "1";
 const browserDescribe =
   RUN_ENABLED && existsSync(chromium.executablePath())
@@ -209,6 +212,59 @@ browserDescribe(
         mobileMetrics.clientWidth
       );
     });
+
+    it("guides under-limit visitors who arrive with one advisor", async () => {
+      const desktop = await browser.newPage({
+        viewport: { width: 1280, height: 900 },
+      });
+      await routeSingleSelectionComparison(desktop);
+      await desktop.goto(`${baseUrl}/compare?ids=${UNDER_LIMIT_ADVISOR_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await desktop.locator(COMPARISON_START_SELECTOR).waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+      await desktop.locator(COMPARISON_TABLE_SELECTOR).waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const desktopMetrics = await compareStartMetrics(desktop);
+      await desktop.screenshot({
+        path: join(SHOTS, "issue-987-compare-under-limit-desktop.png"),
+        fullPage: true,
+      });
+      await desktop.close();
+
+      const mobile = await browser.newPage({
+        viewport: { width: 390, height: 844 },
+      });
+      await routeSingleSelectionComparison(mobile);
+      await mobile.goto(`${baseUrl}/compare?ids=${UNDER_LIMIT_ADVISOR_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await mobile.locator(COMPARISON_START_SELECTOR).waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const mobileMetrics = await compareStartMetrics(mobile);
+      await mobile.screenshot({
+        path: join(SHOTS, "issue-987-compare-under-limit-mobile.png"),
+        fullPage: true,
+      });
+      await mobile.close();
+
+      expect(desktopMetrics.startTitle).toBe("Choose advisors to compare");
+      expect(desktopMetrics.hasUnderLimitCopy).toBe(true);
+      expect(desktopMetrics.hasBrowseAction).toBe(true);
+      expect(desktopMetrics.hasDirectoryLink).toBe(true);
+      expect(mobileMetrics.hasUnderLimitCopy).toBe(true);
+      expect(mobileMetrics.scrollWidth).toBeLessThanOrEqual(
+        mobileMetrics.clientWidth
+      );
+    });
   }
 );
 
@@ -279,8 +335,8 @@ async function routeDevResources(page: Page): Promise<void> {
     await route.fulfill({ json: { authenticated: false } });
   });
   await page.route("**/Feed", proxyDevResource);
-  await page.route("**/AdvisorComparison", proxyComparisonResource);
-  await page.route("**/AdvisorComparison?**", proxyComparisonResource);
+  await page.route(COMPARISON_RESOURCE_ROUTE, proxyComparisonResource);
+  await page.route(COMPARISON_RESOURCE_QUERY_ROUTE, proxyComparisonResource);
 }
 
 /**
@@ -291,7 +347,7 @@ async function routeNoSelectionComparison(page: Page): Promise<void> {
   await page.route("**/Me", async route => {
     await route.fulfill({ json: { authenticated: false } });
   });
-  await page.route("**/AdvisorComparison", async route => {
+  await page.route(COMPARISON_RESOURCE_ROUTE, async route => {
     await route.fulfill({
       json: {
         generatedAt: new Date().toISOString(),
@@ -309,6 +365,47 @@ async function routeNoSelectionComparison(page: Page): Promise<void> {
         items: [],
       },
     });
+  });
+}
+
+/**
+ * Routes a one-advisor comparison resource to prove the under-limit state
+ * remains recoverable after a directory-row Compare click.
+ * @param page - Browser page under test.
+ */
+async function routeSingleSelectionComparison(page: Page): Promise<void> {
+  await page.route("**/Me", async route => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route(COMPARISON_RESOURCE_ROUTE, fulfillSingleSelectionComparison);
+  await page.route(COMPARISON_RESOURCE_QUERY_ROUTE, async route => {
+    await fulfillSingleSelectionComparison(route);
+  });
+}
+
+/**
+ * Fulfills the one-advisor comparison resource route.
+ * @param route - Playwright route to fulfill.
+ */
+async function fulfillSingleSelectionComparison(route: Route): Promise<void> {
+  await route.fulfill({
+    json: {
+      generatedAt: new Date().toISOString(),
+      count: 1,
+      ids: [UNDER_LIMIT_ADVISOR_ID],
+      selection: {
+        status: "under_limit",
+        requestedIds: [UNDER_LIMIT_ADVISOR_ID],
+        normalizedIds: [UNDER_LIMIT_ADVISOR_ID],
+        duplicateIds: [],
+        cappedIds: [UNDER_LIMIT_ADVISOR_ID],
+        missingIds: [],
+        min: 2,
+        max: 4,
+        truncated: false,
+      },
+      items: [notFoundItem(UNDER_LIMIT_ADVISOR_ID)],
+    },
   });
 }
 
@@ -463,8 +560,16 @@ function notFoundItem(id: string): ComparisonItem {
     career: [],
     rankings: [],
     articles: [],
-    dataConfidence: {},
-    attribution: {},
+    dataConfidence: {
+      confidenceSummary: { hasData: false, total: 0 },
+      evidenceFreshness: { hasData: false, lastCheckedAt: null },
+    },
+    attribution: {
+      brokerCheck: null,
+      articles: [],
+      assertions: [],
+      researchSources: [],
+    },
   };
 }
 
@@ -526,6 +631,11 @@ async function compareStartMetrics(page: Page) {
         )
       ),
       hasDirectoryLink: Boolean(document.querySelector('a[href="/advisors"]')),
+      hasUnderLimitCopy: Boolean(
+        document.body.textContent?.includes(
+          "Browse the directory to add another advisor"
+        )
+      ),
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
     };
