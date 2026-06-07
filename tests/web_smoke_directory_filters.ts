@@ -75,6 +75,10 @@ async function smokeFirmDirectoryFilters(
       filtered.activeValue === "true",
       "firms filters: active status restores"
     ),
+    check(
+      filtered.accessibleLabels,
+      "firms filters: controls are reachable by visible labels"
+    ),
     check(filtered.rowCount >= 1, "firms filters: filtered rows render"),
     check(
       filtered.loaded === filtered.rowCount &&

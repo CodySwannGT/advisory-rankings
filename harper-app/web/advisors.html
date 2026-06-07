@@ -239,22 +239,24 @@
       }
 
       function filterInput(label, name, value, placeholder) {
+        const id = `advisor-filter-${name}`;
         return el(
-          "label",
+          "div",
           { class: "filter-field" },
-          label,
-          el("input", { name, value, placeholder, autocomplete: "off" })
+          el("label", { for: id }, label),
+          el("input", { id, name, value, placeholder, autocomplete: "off" })
         );
       }
 
       function filterSelect(label, name, value, options) {
+        const id = `advisor-filter-${name}`;
         return el(
-          "label",
+          "div",
           { class: "filter-field" },
-          label,
+          el("label", { for: id }, label),
           el(
             "select",
-            { name },
+            { id, name },
             ...options.map(([optionValue, optionLabel]) =>
               el(
                 "option",

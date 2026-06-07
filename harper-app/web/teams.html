@@ -240,11 +240,12 @@
       }
 
       function textField(label, name, value, placeholder) {
+        const id = `team-filter-${name}`;
         return el(
-          "label",
+          "div",
           { class: "filter-field" },
-          label,
-          el("input", { name, value, placeholder })
+          el("label", { for: id }, label),
+          el("input", { id, name, value, placeholder })
         );
       }
 

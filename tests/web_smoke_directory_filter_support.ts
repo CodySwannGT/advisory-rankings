@@ -17,6 +17,7 @@ type DirectoryPageName = "firms" | "teams";
 /** Browser state read from a filtered directory page. */
 interface FilteredDirectoryState {
   readonly activeValue?: string;
+  readonly accessibleLabels: boolean;
   readonly channelValue?: string;
   readonly firmValue?: string;
   readonly firstHref: string;
@@ -52,6 +53,7 @@ export async function captureFilteredState(
       pageName === "firms"
         ? await page.locator('[name="active"]').inputValue()
         : undefined,
+    accessibleLabels: await controlsHaveAccessibleLabels(page, pageName),
     channelValue:
       pageName === "firms"
         ? await page.locator('[name="channel"]').inputValue()
@@ -140,6 +142,42 @@ async function controlsRemainAvailable(page: Page): Promise<boolean> {
     .locator(".directory-filters input, .directory-filters select")
     .first()
     .isEnabled();
+}
+
+/**
+ * Confirms visible filter labels have explicit control associations.
+ * @param page - Browser page to inspect.
+ * @param pageName - Directory route name.
+ * @returns Whether all expected labels point at form controls.
+ */
+async function controlsHaveAccessibleLabels(
+  page: Page,
+  pageName: DirectoryPageName
+): Promise<boolean> {
+  const labels =
+    pageName === "firms"
+      ? [
+          ["Firm", "firm-filter-q", "q"],
+          ["Channel", "firm-filter-channel", "channel"],
+          ["HQ state", "firm-filter-state", "state"],
+          ["Status", "firm-filter-active", "active"],
+        ]
+      : [
+          ["Current firm", "team-filter-firm", "firm"],
+          ["Service model", "team-filter-serviceModel", "serviceModel"],
+        ];
+  return await page.evaluate(expectedLabels => {
+    return expectedLabels.every(([labelText, id, name]) => {
+      const labelNode = document.querySelector(`label[for="${id}"]`);
+      const control = document.getElementById(id);
+      return Boolean(
+        labelNode?.textContent?.trim() === labelText &&
+        control &&
+        ["INPUT", "SELECT"].includes(control.tagName) &&
+        control.getAttribute("name") === name
+      );
+    });
+  }, labels);
 }
 
 /**
