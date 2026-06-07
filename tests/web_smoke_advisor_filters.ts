@@ -10,6 +10,7 @@ import {
 
 const ADVISOR_STATS_TITLE = "Advisor directory";
 const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
+const FILTER_FORM_SELECTOR = ".advisor-directory-filters";
 const STATS_CARD_SELECTOR = ".right .card";
 
 interface DirectoryPayload<T> {
@@ -50,7 +51,7 @@ export async function smokeAdvisorDirectoryFilters(
 ): Promise<readonly Check[]> {
   const viewport = page.viewportSize();
   const rows = page.locator(DIRECTORY_ROW_SELECTOR);
-  const filterForm = page.locator(".advisor-directory-filters");
+  const filterForm = page.locator(FILTER_FORM_SELECTOR);
 
   // Derive the firm filter from live data rather than hardcoding a firm. This
   // keeps the firm+careerStatus assertion satisfiable against whatever data is
@@ -77,6 +78,8 @@ export async function smokeAdvisorDirectoryFilters(
   const emptyFacts = await readAdvisorFilterFacts(page);
   await shot(page, "06-advisors-filter-empty");
 
+  const desktopLayout = await sweepAdvisorFilterLayouts(page, filteredUrl);
+
   await page.setViewportSize({ width: 390, height: 844 });
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -94,6 +97,7 @@ export async function smokeAdvisorDirectoryFilters(
   return filterChecks({
     emptyFacts,
     expectedFirm: firm,
+    desktopLayout,
     filteredFacts,
     mobile320,
     mobile390,
@@ -175,6 +179,7 @@ async function firstFirmWithActiveAdvisors(
 /**
  * Builds pass/fail checks from captured advisor-filter facts.
  * @param facts - Captured desktop, reload, empty, and mobile facts.
+ * @param facts.desktopLayout - Bounds sweeps for desktop/tablet widths.
  * @param facts.emptyFacts - Empty-filter result facts.
  * @param facts.expectedFirm - Firm name derived from live data for the filter.
  * @param facts.filteredFacts - Initial filtered result facts.
@@ -184,6 +189,7 @@ async function firstFirmWithActiveAdvisors(
  * @returns Smoke assertions for the advisor filter journey.
  */
 function filterChecks(facts: {
+  readonly desktopLayout: readonly FilterLayoutSweep[];
   readonly emptyFacts: AdvisorFilterFacts;
   readonly expectedFirm: string;
   readonly filteredFacts: AdvisorFilterFacts;
@@ -239,7 +245,93 @@ function filterChecks(facts: {
       "advisors filters: no mobile horizontal overflow at 390px and 320px",
       `390 ${facts.mobile390.scrollWidth}/${facts.mobile390.clientWidth}, 320 ${facts.mobile320.scrollWidth}/${facts.mobile320.clientWidth}`
     ),
+    check(
+      facts.desktopLayout.every(sweep => sweep.escapedControls.length === 0),
+      "advisors filters: controls stay inside card at desktop and tablet widths",
+      facts.desktopLayout
+        .map(sweep =>
+          sweep.escapedControls.length
+            ? `${sweep.width}px escaped ${sweep.escapedControls.join(", ")}`
+            : `${sweep.width}px ok`
+        )
+        .join("; ")
+    ),
   ];
+}
+
+/**
+ * Checks the advisor filter card at the widths called out in the bug report.
+ * @param page - Browser page rendering the advisor directory.
+ * @param url - Advisor directory URL with satisfiable filters.
+ * @returns Per-width controls that escaped the card bounds.
+ */
+async function sweepAdvisorFilterLayouts(
+  page: Page,
+  url: string
+): Promise<readonly FilterLayoutSweep[]> {
+  const widths = [900, 1024, 1180, 1440] as const;
+  return await widths.reduce<Promise<readonly FilterLayoutSweep[]>>(
+    async (previousSweeps, width) => {
+      const sweeps = await previousSweeps;
+      await page.setViewportSize({ width, height: 900 });
+      await smokeGoto(page, url);
+      await page
+        .locator(FILTER_FORM_SELECTOR)
+        .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+      return [...sweeps, await readAdvisorFilterLayout(page, width)];
+    },
+    Promise.resolve([])
+  );
+}
+
+/**
+ * Reads filter control bounds relative to their visible card.
+ * @param page - Browser page rendering the advisor directory.
+ * @param width - Current viewport width.
+ * @returns Controls outside the card bounds at this width.
+ */
+async function readAdvisorFilterLayout(
+  page: Page,
+  width: number
+): Promise<FilterLayoutSweep> {
+  return await page.evaluate(
+    ({ selector, viewportWidth }) => {
+      const form = document.querySelector(selector);
+      const card = form?.closest(".card");
+      const cardRect = card?.getBoundingClientRect();
+      if (!form || !cardRect) {
+        return {
+          escapedControls: ["missing filter card"],
+          width: viewportWidth,
+        };
+      }
+
+      const controls = Array.from(
+        form.querySelectorAll("input, select, button")
+      );
+      const escapedControls = controls
+        .map(control => {
+          const rect = control.getBoundingClientRect();
+          const label =
+            control.getAttribute("name") ||
+            control.textContent?.trim() ||
+            control.tagName.toLowerCase();
+          const outside =
+            rect.left < cardRect.left ||
+            rect.right > cardRect.right ||
+            rect.top < cardRect.top ||
+            rect.bottom > cardRect.bottom;
+          return outside ? label : "";
+        })
+        .filter(Boolean);
+
+      return {
+        escapedControls,
+        width: viewportWidth,
+      };
+    },
+    { selector: FILTER_FORM_SELECTOR, viewportWidth: width }
+  );
 }
 
 /**
@@ -334,6 +426,12 @@ interface AdvisorFilterFacts {
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
   readonly total: number;
+}
+
+/** Advisor filter card layout facts for one viewport width. */
+interface FilterLayoutSweep {
+  readonly escapedControls: readonly string[];
+  readonly width: number;
 }
 
 /** Document width metrics for a responsive viewport. */
