@@ -26,7 +26,9 @@ import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
 import { privateOverlayMount } from "./compare-private-overlay.js";
 import {
+  advisorComparisonPathFromLocation,
   comparisonColumnHeader,
+  comparisonSelectionDetails,
   moveComparisonItem,
   updateComparisonSelection,
   type ComparisonColumnActions,
@@ -70,7 +72,8 @@ mountFullWidthPage({
         title: "Loading comparison",
         body: "Still fetching advisor diligence evidence. Retry if this takes longer than expected.",
         onRetry: loadComparison,
-        request: () => api<AdvisorComparisonPayload>(comparisonPath()),
+        request: () =>
+          api<AdvisorComparisonPayload>(advisorComparisonPathFromLocation()),
         onSuccess: payload => renderComparison(center, payload),
         onError: error => {
           console.error("Comparison route failed to load", error);
@@ -91,30 +94,6 @@ mountFullWidthPage({
     loadComparison();
   },
 });
-
-/**
- * Builds the AdvisorComparison resource path from the current URL.
- * @returns Resource URL with normalized ids query when available.
- */
-function comparisonPath(): string {
-  const params = new URLSearchParams(location.search);
-  const ids = params.get("ids") ?? repeatedIds(params).join(",");
-  const qs = new URLSearchParams();
-  if (ids) qs.set("ids", ids);
-  return qs.size ? `/AdvisorComparison?${qs.toString()}` : "/AdvisorComparison";
-}
-
-/**
- * Reads repeated id params from a URLSearchParams bag.
- * @param params - Current location params.
- * @returns Repeated id values.
- */
-function repeatedIds(params: URLSearchParams): readonly string[] {
-  return params
-    .getAll("id")
-    .map(id => id.trim())
-    .filter(Boolean);
-}
 
 /**
  * Renders the comparison page payload.
@@ -228,20 +207,7 @@ function comparisonHero(payload: AdvisorComparisonPayload): HTMLElement {
  */
 function selectionNotice(payload: AdvisorComparisonPayload): HTMLElement {
   const { selection } = payload;
-  const details = [
-    selection.status === "under_limit"
-      ? `Add at least ${selection.min} advisors for a complete comparison.`
-      : null,
-    selection.truncated
-      ? `Showing the first ${selection.max} advisors from this URL.`
-      : null,
-    selection.duplicateIds.length
-      ? `Duplicate ids ignored: ${selection.duplicateIds.join(", ")}.`
-      : null,
-    selection.missingIds.length
-      ? `Missing ids: ${selection.missingIds.join(", ")}.`
-      : null,
-  ].filter(Boolean);
+  const details = comparisonSelectionDetails(selection);
 
   return el(
     "div",
