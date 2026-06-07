@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* eslint-disable code-organization/enforce-statement-order, functional/immutable-data, functional/no-let, functional/prefer-readonly-type, max-lines -- Deploy orchestration is intentionally linear and logs operations in execution order. */
+/* eslint-disable code-organization/enforce-statement-order, functional/immutable-data, functional/prefer-readonly-type, max-lines -- Deploy orchestration is intentionally linear and logs operations in execution order. */
 /**
  * Deploy the local harper-app/ component to the Fabric cluster.
  *
@@ -31,7 +31,7 @@ const PROJECT = process.env.PROJECT || "advisor-app";
 const DIR = process.env.DIR || "harper-app";
 const PACKAGE_JSON = "package.json";
 const parsedRestartTimeoutMs = Number(
-  process.env.HARPER_RESTART_TIMEOUT_MS ?? 15000
+  process.env.HARPER_RESTART_TIMEOUT_MS ?? 60000
 );
 const RESTART_TIMEOUT_MS =
   Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
@@ -693,4 +693,4 @@ main().catch(err => {
   console.error(err instanceof Error ? err.stack || err.message : err);
   process.exitCode = 1;
 });
-/* eslint-enable code-organization/enforce-statement-order, functional/immutable-data, functional/no-let, functional/prefer-readonly-type, max-lines -- Re-enable after deploy orchestration module. */
+/* eslint-enable code-organization/enforce-statement-order, functional/immutable-data, functional/prefer-readonly-type, max-lines -- Re-enable after deploy orchestration module. */
