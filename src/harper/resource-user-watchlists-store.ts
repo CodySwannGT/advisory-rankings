@@ -255,11 +255,22 @@ function isUnseenObject(
 
 /**
  * Type guard verifying that `value` exposes the minimum `search` function required by SearchableTable.
- * @param value Candidate object.
+ *
+ * Harper exposes table handles as class constructors, so `typeof tables.X` is
+ * `"function"`, not `"object"`. A prior version of this guard rejected anything
+ * that was not `"object"`, which meant a perfectly bound, searchable table was
+ * always treated as "unavailable" on the authenticated path — the actual cause
+ * of #999 (the table was bound the whole time; only this guard rejected it).
+ * Accept both object- and function-typed handles that expose `search`.
+ * @param value Candidate table handle (object or class constructor).
  * @returns True when `value` is a usable SearchableTable.
  */
 function isSearchableTable<Row>(value: unknown): value is SearchableTable<Row> {
-  if (!value || typeof value !== "object" || !("search" in value)) {
+  if (
+    !value ||
+    (typeof value !== "object" && typeof value !== "function") ||
+    !("search" in value)
+  ) {
     return false;
   }
   return typeof Reflect.get(value, "search") === "function";
