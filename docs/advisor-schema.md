@@ -715,24 +715,31 @@ section.
 | `year` | int |
 | `rank?` | int |
 
-### 4.23 `UserRating` & `UserList` (your product layer)
+### 4.23 `UserRating` & `UserWatchlist` (your product layer)
 
 Kept separate from AdvisorHub-sourced ground truth.
 
-**Privacy:** `User`, `UserRating`, `UserList`, and `UserListEntry` hold
+**Privacy:** `User`, `UserRating`, `UserWatchlist`, and
+`UserWatchlistEntry` hold
 per-user private data and are declared `@table` **without** `@export` in
 `harper-app/schema.graphql`. They therefore expose **no** raw REST routes
-(`/UserRating/`, `/UserList/`, …). Harper's table-level RBAC is not
+(`/UserRating/`, `/UserWatchlist/`, …). Harper's table-level RBAC is not
 row-scoped, so an exported route would let any role with table read
 enumerate every user's private rows. All access is funneled through the
 scoped resources (`AdvisorRating`, `UserWatchlists`), which run elevated
 and enforce per-user ownership in code. Do not add `@export` to these
 types.
 
+`UserList` and `UserListEntry` remain as legacy non-exported physical
+tables for deployed-data compatibility. New watchlist reads and writes use
+`UserWatchlist` and `UserWatchlistEntry`; Fabric SQL could see the legacy
+tables, but the jsResource runtime did not register the legacy names in the
+`tables` global.
+
 ```
 UserRating(advisor_id, user_id, rating_int, dimensions: {responsiveness, transparency, performance, planning_depth}, review_text, created_at)
-UserList(user_id, name)
-UserListEntry(list_id, advisor_id, rank, note)
+UserWatchlist(user_id, name)
+UserWatchlistEntry(list_id, advisor_id, rank, note)
 AdvisorAggregateRating  -- materialised view
 ```
 

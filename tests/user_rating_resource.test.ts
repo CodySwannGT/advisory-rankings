@@ -57,13 +57,13 @@ function matchesConditions(row: any, conditions: TableQuery["conditions"]) {
 
 (globalThis as any).tables = {
   UserRating: table(rows),
-  UserList: table(lists),
-  UserListEntry: table(entries),
+  UserWatchlist: table(lists),
+  UserWatchlistEntry: table(entries),
 };
 (globalThis as any).databases = {
   advisoryRankings: {
-    UserList: table(lists),
-    UserListEntry: table(entries),
+    UserWatchlist: table(lists),
+    UserWatchlistEntry: table(entries),
   },
 };
 
@@ -285,21 +285,22 @@ describe("UserWatchlists resource", () => {
       "utf8"
     );
 
-    expect(resourceSource).toContain("tables.UserList");
-    expect(resourceSource).toContain("tables.UserListEntry");
+    expect(resourceSource).toContain("tables.UserWatchlist");
+    expect(resourceSource).toContain("tables.UserWatchlistEntry");
     expect(resourceSource).not.toContain("watchlistTableBindings");
-    expect(storeSource).toContain('databaseTable("UserList")');
-    expect(storeSource).toContain('databaseTable("UserListEntry")');
+    expect(storeSource).toContain('databaseTable("UserWatchlist")');
+    expect(storeSource).toContain('databaseTable("UserWatchlistEntry")');
     expect(storeSource).not.toContain("Reflect.get(tables");
   });
 
   it("falls back to the Harper database registry when tables are unbound", async () => {
     const endpoint = new watchlistResources.UserWatchlists() as any;
     endpoint.user = { username: "user-a" };
-    const originalUserList = (globalThis as any).tables.UserList;
-    const originalUserListEntry = (globalThis as any).tables.UserListEntry;
-    delete (globalThis as any).tables.UserList;
-    delete (globalThis as any).tables.UserListEntry;
+    const originalUserWatchlist = (globalThis as any).tables.UserWatchlist;
+    const originalUserWatchlistEntry = (globalThis as any).tables
+      .UserWatchlistEntry;
+    delete (globalThis as any).tables.UserWatchlist;
+    delete (globalThis as any).tables.UserWatchlistEntry;
     try {
       const created = await endpoint.post({
         action: "create",
@@ -311,8 +312,9 @@ describe("UserWatchlists resource", () => {
         lists: [{ id: created.list.id, name: "Database fallback" }],
       });
     } finally {
-      (globalThis as any).tables.UserList = originalUserList;
-      (globalThis as any).tables.UserListEntry = originalUserListEntry;
+      (globalThis as any).tables.UserWatchlist = originalUserWatchlist;
+      (globalThis as any).tables.UserWatchlistEntry =
+        originalUserWatchlistEntry;
     }
   });
 });

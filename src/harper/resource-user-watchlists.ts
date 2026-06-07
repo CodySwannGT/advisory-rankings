@@ -1,4 +1,7 @@
-import type { UserListEntryRow, UserListRow } from "../types/harper-schema.js";
+import type {
+  UserWatchlistEntryRow,
+  UserWatchlistRow,
+} from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
 
 import { normalizeId } from "./resource-routing.js";
@@ -177,12 +180,12 @@ async function createList(
 ): Promise<WatchlistResponse> {
   const name = textValue(body.name, MAX_NAME_LENGTH);
   if (!name) throwStatus("watchlist name required", 400);
-  const row: UserListRow = {
+  const row: UserWatchlistRow = {
     id: newId("list", userId),
     userId,
     name,
   };
-  await writeRow(userListTable(tables.UserList), row);
+  await writeRow(userListTable(tables.UserWatchlist), row);
   return { id: row.id, name: row.name, entries: [] };
 }
 
@@ -199,7 +202,7 @@ async function renameList(
   const list = await requireOwnedList(userId, body.listId ?? body.id);
   const name = textValue(body.name, MAX_NAME_LENGTH);
   if (!name) throwStatus("watchlist name required", 400);
-  await writeRow(userListTable(tables.UserList), {
+  await writeRow(userListTable(tables.UserWatchlist), {
     ...list,
     name,
   });
@@ -220,10 +223,10 @@ async function deleteList(
   const entries = await listEntries(list.id);
   await Promise.all(
     entries.map(entry =>
-      deleteRow(userListEntryTable(tables.UserListEntry), entry.id)
+      deleteRow(userListEntryTable(tables.UserWatchlistEntry), entry.id)
     )
   );
-  await deleteRow(userListTable(tables.UserList), list.id);
+  await deleteRow(userListTable(tables.UserWatchlist), list.id);
   return { authenticated: true, deleted: true, listId: list.id };
 }
 
@@ -240,14 +243,14 @@ async function addEntry(
   const list = await requireOwnedList(userId, body.listId);
   const advisorId = textValue(body.advisorId, 200);
   if (!advisorId) throwStatus(ADVISOR_ID_REQUIRED, 400);
-  const row: UserListEntryRow = {
+  const row: UserWatchlistEntryRow = {
     id: entryId(list.id, advisorId),
     listId: list.id,
     advisorId,
     rank: positiveInt(body.rank),
     note: textValue(body.note, MAX_NOTE_LENGTH),
   };
-  await writeRow(userListEntryTable(tables.UserListEntry), row);
+  await writeRow(userListEntryTable(tables.UserWatchlistEntry), row);
   return await decorateList(list);
 }
 
@@ -265,12 +268,12 @@ async function updateEntry(
   const advisorId = textValue(body.advisorId, 200);
   if (!advisorId) throwStatus(ADVISOR_ID_REQUIRED, 400);
   const existing = await requireEntry(list.id, advisorId);
-  const row: UserListEntryRow = {
+  const row: UserWatchlistEntryRow = {
     ...existing,
     rank: positiveInt(body.rank),
     note: textValue(body.note, MAX_NOTE_LENGTH),
   };
-  await writeRow(userListEntryTable(tables.UserListEntry), row);
+  await writeRow(userListEntryTable(tables.UserWatchlistEntry), row);
   return await decorateList(list);
 }
 
@@ -288,7 +291,7 @@ async function deleteEntry(
   const advisorId = textValue(body.advisorId, 200);
   if (!advisorId) throwStatus(ADVISOR_ID_REQUIRED, 400);
   const entry = await requireEntry(list.id, advisorId);
-  await deleteRow(userListEntryTable(tables.UserListEntry), entry.id);
+  await deleteRow(userListEntryTable(tables.UserWatchlistEntry), entry.id);
   return {
     authenticated: true,
     deleted: true,
@@ -303,7 +306,7 @@ async function deleteEntry(
  * @returns Public list responses sorted by name.
  */
 async function decorateLists(
-  lists: ReadonlyArray<UserListRow>
+  lists: ReadonlyArray<UserWatchlistRow>
 ): Promise<ReadonlyArray<WatchlistResponse>> {
   return await Promise.all(
     [...lists]
@@ -317,7 +320,9 @@ async function decorateLists(
  * @param list The owning list row.
  * @returns The list response with its sorted, sanitized entries.
  */
-async function decorateList(list: UserListRow): Promise<WatchlistResponse> {
+async function decorateList(
+  list: UserWatchlistRow
+): Promise<WatchlistResponse> {
   const entries = await listEntries(list.id);
   return {
     id: list.id,
@@ -333,7 +338,7 @@ async function decorateList(list: UserListRow): Promise<WatchlistResponse> {
  * @param row The persisted entry row.
  * @returns The client-facing entry representation.
  */
-function sanitizeEntry(row: UserListEntryRow): WatchlistEntryResponse {
+function sanitizeEntry(row: UserWatchlistEntryRow): WatchlistEntryResponse {
   return {
     id: row.id,
     listId: row.listId,
@@ -352,10 +357,10 @@ function sanitizeEntry(row: UserListEntryRow): WatchlistEntryResponse {
 async function requireOwnedList(
   userId: string,
   rawListId: unknown
-): Promise<UserListRow> {
+): Promise<UserWatchlistRow> {
   const listId = textValue(rawListId, 240);
   if (!listId) throwStatus("watchlist id required", 400);
-  const row = await userListTable(tables.UserList).get?.(listId);
+  const row = await userListTable(tables.UserWatchlist).get?.(listId);
   if (!row || row.userId !== userId) throwStatus("watchlist not found", 404);
   return row;
 }
@@ -369,9 +374,9 @@ async function requireOwnedList(
 async function requireEntry(
   listId: string,
   advisorId: string
-): Promise<UserListEntryRow> {
+): Promise<UserWatchlistEntryRow> {
   const id = entryId(listId, advisorId);
-  const row = await userListEntryTable(tables.UserListEntry).get?.(id);
+  const row = await userListEntryTable(tables.UserWatchlistEntry).get?.(id);
   if (!row || row.listId !== listId || row.advisorId !== advisorId) {
     throwStatus("watchlist entry not found", 404);
   }
@@ -383,8 +388,10 @@ async function requireEntry(
  * @param userId Authenticated user id.
  * @returns The user's list rows.
  */
-async function userLists(userId: string): Promise<ReadonlyArray<UserListRow>> {
-  return await rowsFor(userListTable(tables.UserList), "userId", userId);
+async function userLists(
+  userId: string
+): Promise<ReadonlyArray<UserWatchlistRow>> {
+  return await rowsFor(userListTable(tables.UserWatchlist), "userId", userId);
 }
 
 /**
@@ -394,9 +401,9 @@ async function userLists(userId: string): Promise<ReadonlyArray<UserListRow>> {
  */
 async function listEntries(
   listId: string
-): Promise<ReadonlyArray<UserListEntryRow>> {
+): Promise<ReadonlyArray<UserWatchlistEntryRow>> {
   return await rowsFor(
-    userListEntryTable(tables.UserListEntry),
+    userListEntryTable(tables.UserWatchlistEntry),
     "listId",
     listId
   );
