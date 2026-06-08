@@ -1,3 +1,8 @@
+import {
+  dealEconomicsStatusCount,
+  recruitingValidationReport,
+} from "./recruiting-depth-report.js";
+
 const RECRUITING_DEPTH_THRESHOLDS = {
   minMoves: 25,
   minFirmMomentumRows: 8,
@@ -22,6 +27,7 @@ export function summarizeRecruitingResourcePayload(
 ): JsonRecord {
   const summary = recordValue(body.summary);
   const recentMoves = arrayValue(body.recentMoves);
+  const sourceCoverage = recordValue(body.sourceCoverage);
   const marketActivity = arrayValue(body.marketActivity);
   const firmMomentum = arrayValue(body.firmMomentum);
   const sourceStatusTags = uniqueStrings(
@@ -30,19 +36,36 @@ export function summarizeRecruitingResourcePayload(
   const missingFieldTags = sourceStatusTags.filter(tag =>
     tag.startsWith("missing-")
   );
-  const sourceBackedCount = recentMoves.filter(move =>
-    arrayValue(recordValue(move).sourceStatus).includes("source-backed")
+  const fallbackSourceBackedCount = recentMoves.filter(move =>
+    hasStatus(move, "source-backed")
   ).length;
-  return {
+  const moveCount = numericValue(sourceCoverage.moveCount, recentMoves.length);
+  const sourceBackedCount = numericValue(
+    sourceCoverage.sourceBackedCount,
+    fallbackSourceBackedCount
+  );
+  const missingAumCount = numericValue(
+    sourceCoverage.missingAumCount,
+    countMovesWithStatus(recentMoves, "missing-aum")
+  );
+  const missingDealEconomicsStatusCount = dealEconomicsStatusCount(
+    sourceCoverage,
+    recentMoves
+  );
+  const filterSlices = recruitingFilterSlices(recentMoves);
+  const compactSummary = {
     summary,
-    recentMoveCount: recentMoves.length,
+    recentMoveCount: moveCount,
     marketActivityCount: marketActivity.length,
     firmMomentumCount: firmMomentum.length,
     sourceBackedCount,
-    sourceCoveragePercent: percent(sourceBackedCount, recentMoves.length),
+    sourceCoveragePercent: percent(sourceBackedCount, moveCount),
+    knownAumCount: Math.max(moveCount - missingAumCount, 0),
+    missingAumCount,
+    missingDealEconomicsStatusCount,
     sourceStatusTags,
     missingFieldTags,
-    filterSlices: recruitingFilterSlices(recentMoves),
+    filterSlices,
     thresholds: RECRUITING_DEPTH_THRESHOLDS,
     sampleRecentMoves: sampleRecords(recentMoves, [
       "id",
@@ -52,6 +75,18 @@ export function summarizeRecruitingResourcePayload(
       "sourceStatus",
       "provenance",
     ]),
+  };
+  return {
+    ...compactSummary,
+    validationReport: recruitingValidationReport({
+      moveCount,
+      marketActivityCount: marketActivity.length,
+      sourceBackedCount,
+      missingAumCount,
+      missingDealEconomicsStatusCount,
+      directionSliceCount: arrayValue(filterSlices.directions).length,
+      minimums: RECRUITING_DEPTH_THRESHOLDS,
+    }),
   };
 }
 
@@ -175,6 +210,29 @@ function moveDirections(move: JsonRecord): readonly string[] {
 }
 
 /**
+ * Counts rows carrying a specific source-status token.
+ * @param moves - Public move rows.
+ * @param status - Source-status token.
+ * @returns Number of matching moves.
+ */
+function countMovesWithStatus(
+  moves: readonly unknown[],
+  status: string
+): number {
+  return moves.filter(move => hasStatus(move, status)).length;
+}
+
+/**
+ * Checks whether a move carries a status token.
+ * @param move - Public move row.
+ * @param status - Source-status token.
+ * @returns True when the row includes the token.
+ */
+function hasStatus(move: unknown, status: string): boolean {
+  return arrayValue(recordValue(move).sourceStatus).includes(status);
+}
+
+/**
  * Samples up to three objects and keeps only selected fields.
  * @param values - Candidate response rows.
  * @param keys - Keys to keep in each sampled row.
@@ -225,6 +283,17 @@ function uniqueStrings(values: readonly unknown[]): readonly string[] {
 function percent(numerator: number, denominator: number): number {
   if (denominator === 0) return 0;
   return Math.round((numerator / denominator) * 10_000) / 100;
+}
+
+/**
+ * Reads a numeric field with a fallback.
+ * @param value - Candidate value.
+ * @param fallback - Fallback when the candidate is not numeric.
+ * @returns Finite numeric value.
+ */
+function numericValue(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 /**

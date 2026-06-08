@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  captureDataDepthBaseline,
   summarizeResourcePayload,
   validateRecruitingMarketDepth,
 } from "../src/scripts/capture_data_depth_baseline.js";
@@ -8,11 +9,22 @@ import {
 const EXAMPLE_WEALTH = "Example Wealth";
 const BETA_ADVISORS = "Beta Advisors";
 const SOURCE_BACKED = "source-backed";
+const MISSING_DEAL_TERMS = "missing-deal-terms";
 
 describe("data-depth baseline evidence", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("summarizes recruiting resource depth without storing full payloads", () => {
     const summary = summarizeResourcePayload("recruiting", {
       summary: { totalMoves: 2, sourceBackedMoves: 1 },
+      sourceCoverage: {
+        moveCount: 2,
+        sourceBackedCount: 1,
+        missingAumCount: 1,
+        statusCounts: [{ status: MISSING_DEAL_TERMS, count: 1 }],
+      },
       marketActivity: [{ state: "NY" }],
       firmMomentum: [{ firm: "Example Wealth" }],
       recentMoves: [
@@ -30,11 +42,14 @@ describe("data-depth baseline evidence", () => {
 
     expect(summary).toMatchObject({
       summary: { totalMoves: 2, sourceBackedMoves: 1 },
-      recentMoveCount: 1,
+      recentMoveCount: 2,
       marketActivityCount: 1,
       firmMomentumCount: 1,
       sourceBackedCount: 1,
-      sourceCoveragePercent: 100,
+      sourceCoveragePercent: 50,
+      knownAumCount: 1,
+      missingAumCount: 1,
+      missingDealEconomicsStatusCount: 1,
       sourceStatusTags: [SOURCE_BACKED],
       missingFieldTags: [],
       filterSlices: {
@@ -52,6 +67,54 @@ describe("data-depth baseline evidence", () => {
           provenance: ["article-1"],
         },
       ],
+      validationReport: {
+        passCount: 4,
+        failCount: 3,
+        checks: [
+          {
+            id: "move-depth",
+            actual: 2,
+            expectedMinimum: 25,
+            passed: false,
+          },
+          {
+            id: "market-depth",
+            actual: 1,
+            expectedMinimum: 10,
+            passed: false,
+          },
+          {
+            id: "directional-slices",
+            actual: 0,
+            expectedMinimum: 2,
+            passed: false,
+          },
+          {
+            id: "source-backed-rows",
+            actual: 1,
+            expectedMinimum: 1,
+            passed: true,
+          },
+          {
+            id: "known-aum-rows",
+            actual: 1,
+            expectedMinimum: 1,
+            passed: true,
+          },
+          {
+            id: "unknown-aum-rows",
+            actual: 1,
+            expectedMinimum: 1,
+            passed: true,
+          },
+          {
+            id: "missing-deal-economics-statuses",
+            actual: 1,
+            expectedMinimum: 1,
+            passed: true,
+          },
+        ],
+      },
     });
   });
 
@@ -75,10 +138,17 @@ describe("data-depth baseline evidence", () => {
       firmMomentumCount: 8,
       sourceBackedCount: 24,
       sourceCoveragePercent: 96,
-      missingFieldTags: ["missing-source"],
+      knownAumCount: 24,
+      missingAumCount: 1,
+      missingDealEconomicsStatusCount: 1,
+      missingFieldTags: ["missing-aum", "missing-deal-terms", "missing-source"],
       filterSlices: {
         directions: ["inbound", "outbound"],
         states: ["CA", "NY"],
+      },
+      validationReport: {
+        passCount: 7,
+        failCount: 0,
       },
     });
   });
@@ -93,6 +163,52 @@ describe("data-depth baseline evidence", () => {
       })
     ).toThrow(
       /moves 1 < 25; firm momentum rows 1 < 8; market activity rows 1 < 10/
+    );
+  });
+
+  it("captures a recruiting validation failure in the report", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({
+        ok: true,
+        status: 200,
+        json: async () =>
+          url.includes("/RecruitingMarket")
+            ? {
+                summary: { count: 1 },
+                sourceCoverage: {
+                  moveCount: 1,
+                  sourceBackedCount: 1,
+                  missingAumCount: 1,
+                  statusCounts: [{ status: MISSING_DEAL_TERMS, count: 1 }],
+                },
+                marketActivity: [{ market: "New York, NY" }],
+                firmMomentum: [{ firm: { id: "firm-1" } }],
+                recentMoves: [recruitingMove(0)],
+              }
+            : { items: [] },
+      }))
+    );
+
+    const report = await captureDataDepthBaseline({
+      baseUrl: "https://example.test",
+      out: "unused.json",
+      stdout: false,
+    });
+
+    expect(report.endpoints[0]).toMatchObject({
+      name: "recruiting",
+      ok: false,
+      validationPassed: false,
+      summary: {
+        validationReport: {
+          passCount: 4,
+          failCount: 3,
+        },
+      },
+    });
+    expect(report.endpoints[0]?.summary.validationError).toMatch(
+      /moves 1 < 25/
     );
   });
 
@@ -145,7 +261,10 @@ function recruitingMove(index: number): object {
     fromFirm: { id: `from-${index % 4}`, name: `From ${index % 4}` },
     toFirm: { id: `to-${index % 4}`, name: `To ${index % 4}` },
     location: { state: index % 2 === 0 ? "NY" : "CA" },
-    sourceStatus: index === 0 ? ["missing-source"] : [SOURCE_BACKED],
+    sourceStatus:
+      index === 0
+        ? ["missing-source", "missing-aum", MISSING_DEAL_TERMS]
+        : [SOURCE_BACKED],
     provenance: { sourceIds: [`transition-${index}`] },
   };
 }
