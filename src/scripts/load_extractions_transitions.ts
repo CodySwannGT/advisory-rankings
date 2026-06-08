@@ -22,6 +22,9 @@ interface LoadContext {
 export const transitionSourceRows = (ex: Row): ReadonlyArray<Row> => [
   ...extractionRows(ex.transition_events),
   ...extractionRows(ex.transitions),
+  ...extractionRows(ex.comparator_transition_events),
+  ...extractionRows(ex.comparator_transitions),
+  ...extractionRows(ex.mentioned_transition_events),
 ];
 
 export const transitionRows = (ex: Row, context: LoadContext) => {

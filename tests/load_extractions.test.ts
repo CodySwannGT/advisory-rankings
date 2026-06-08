@@ -7,6 +7,8 @@ const MORGAN_STANLEY = "Morgan Stanley";
 const WELLS_FARGO = "Wells Fargo Advisors";
 const UBS_WEALTH = "UBS Wealth Management USA";
 const ROCKEFELLER = "Rockefeller Capital";
+const BLAIR_BROKER = "Blair Broker";
+const COMPARATOR_MOVE_ANNOUNCED_DATE = "2026-05-02";
 
 describe("AdvisorHub extraction loader", () => {
   it("derives Article.publishedDate from modifiedDate when the source omits it", () => {
@@ -222,7 +224,7 @@ describe("AdvisorHub extraction loader", () => {
         },
         {
           natural_key: {
-            legal_name: "Blair Broker",
+            legal_name: BLAIR_BROKER,
             first_employer: UBS_WEALTH,
           },
         },
@@ -241,11 +243,11 @@ describe("AdvisorHub extraction loader", () => {
         },
         {
           local_key: "blair-rockefeller",
-          subject_advisor_legal_name: "Blair Broker",
+          subject_advisor_legal_name: BLAIR_BROKER,
           from_firm_canonical_name: UBS_WEALTH,
           to_firm_canonical_name: ROCKEFELLER,
           fields: {
-            announcedDate: "2026-05-02",
+            announcedDate: COMPARATOR_MOVE_ANNOUNCED_DATE,
             aumMoved: 466000000,
             notes: "Comparator move mentioned in the article.",
           },
@@ -271,8 +273,79 @@ describe("AdvisorHub extraction loader", () => {
       expect.objectContaining({
         fromFirmId: rows.Firm.find(row => row.name === UBS_WEALTH)?.id,
         toFirmId: rows.Firm.find(row => row.name === ROCKEFELLER)?.id,
-        announcedDate: "2026-05-02",
+        announcedDate: COMPARATOR_MOVE_ANNOUNCED_DATE,
         aumMoved: 466000000,
+      }),
+    ]);
+  });
+
+  it("loads comparator recruiting moves from dedicated mention arrays", () => {
+    const rows = buildRows({
+      article: {
+        url: "https://www.advisorhub.com/comparator-move-profile/",
+        headline: "Comparator move profile",
+      },
+      firms: [
+        { natural_key: { canonical_name: UBS_WEALTH } },
+        { natural_key: { canonical_name: ROCKEFELLER } },
+        { natural_key: { canonical_name: WELLS_FARGO } },
+      ],
+      advisors: [
+        {
+          natural_key: {
+            legal_name: BLAIR_BROKER,
+            first_employer: UBS_WEALTH,
+          },
+        },
+      ],
+      comparator_transition_events: [
+        {
+          local_key: "blair-rockefeller-comparator",
+          subject_advisor_legal_name: BLAIR_BROKER,
+          from_firm_canonical_name: UBS_WEALTH,
+          to_firm_canonical_name: ROCKEFELLER,
+          fields: {
+            announcedDate: COMPARATOR_MOVE_ANNOUNCED_DATE,
+            aumMoved: 466000000,
+            notes: "Comparator move mentioned in the article.",
+          },
+        },
+      ],
+      mentioned_transition_events: [
+        {
+          local_key: "blair-wells-mentioned",
+          subject_advisor_legal_name: BLAIR_BROKER,
+          from_firm_canonical_name: UBS_WEALTH,
+          to_firm_canonical_name: WELLS_FARGO,
+          fields: {
+            announcedDate: "2026-04-21",
+            aumMoved: 2100000000,
+            notes: "Second comparator move mentioned in the article.",
+          },
+        },
+      ],
+    });
+
+    expect(rows.TransitionEvent).toHaveLength(2);
+    expect(rows.ArticleTransitionEventMention).toHaveLength(2);
+    expect(
+      rows.ArticleTransitionEventMention.map(row => row.articleId)
+    ).toEqual([rows.Article[0].id, rows.Article[0].id]);
+    expect(
+      rows.ArticleTransitionEventMention.map(row => row.transitionEventId)
+    ).toEqual(rows.TransitionEvent.map(row => row.id));
+    expect(rows.TransitionEvent).toEqual([
+      expect.objectContaining({
+        fromFirmId: rows.Firm.find(row => row.name === UBS_WEALTH)?.id,
+        toFirmId: rows.Firm.find(row => row.name === ROCKEFELLER)?.id,
+        announcedDate: COMPARATOR_MOVE_ANNOUNCED_DATE,
+        aumMoved: 466000000,
+      }),
+      expect.objectContaining({
+        fromFirmId: rows.Firm.find(row => row.name === UBS_WEALTH)?.id,
+        toFirmId: rows.Firm.find(row => row.name === WELLS_FARGO)?.id,
+        announcedDate: "2026-04-21",
+        aumMoved: 2100000000,
       }),
     ]);
   });
