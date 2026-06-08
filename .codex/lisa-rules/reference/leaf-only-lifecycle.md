@@ -42,7 +42,7 @@ Where a vendor lacks native hierarchy for a given pair, a text link or metadata 
 **Build-ready means a directly implementable leaf work unit.** Therefore:
 
 - **At decomposition / write time** — when a PRD decomposes into a hierarchy, only the leaf work units receive the `ready` role (status/label). Parent containers (Epic, Story, Project, and any parent issue that has child work) are created in their normal non-ready state and never receive the build-ready role directly. The leaves are what downstream build intake will claim.
-- **At validate time** — the `*-validate-*` gate FAILs any container carrying the build-ready role. This is the symmetric write-side guard: a stale or hand-applied build-ready role on a parent is a lifecycle error.
+- **At validate time** — the `*-validate-*` gate FAILs any container carrying the build-ready role. This is the symmetric write-side guard: a stale or hand-applied build-ready role on a parent is a lifecycle error. Conversely, the parent-declared gate (S7) does **not** FAIL a build-ready leaf that has no parent: a flat Task/Improvement or a childless Story/Spike may stand alone, so a missing parent on such a leaf is `N/A`. Stranding a parentless build-ready leaf would directly violate the "must not be stranded" guarantee below. (A Sub-task is the one exception — it always requires a parent.)
 - **At claim time** — build intake scans for the `ready` role but dispatches **only leaf work units**. A container that still carries a stale build-ready role (e.g. applied before this rule existed) is **not dispatched**: intake either moves it into the vendor's parent/container progress state or safely blocks it with a clear lifecycle-repair message. Intake never silently implements a container.
 
 The permission boundary is the maintainer-applied build-ready role, not authorship — do not add author-based guards (PRD #522 non-goal). This rule narrows *what* may carry that role, not *who* may apply it.
@@ -58,7 +58,7 @@ So the exception is narrow only at the top: childlessness promotes every type **
 
 ## Parent status rollup (the state machine)
 
-A parent/container never sets its own lifecycle state; it **derives** it from the roll-up of its children's states. Rollup is evaluated whenever a child transitions (or when intake observes the child set). Using the canonical build-lifecycle roles from `config-resolution` (`ready`, `claimed`, `review`, `blocked`, `done`):
+A parent/container never sets its own lifecycle state; it **derives** it from the roll-up of its children's states. Rollup is evaluated whenever a child transitions — the **forward** arm runs in each `*-build-intake` done step the moment a leaf reaches `done`, walking the leaf's ancestor chain (see Citation → Rollup) — or when intake observes the child set, with `repair-intake` as the **recovery** net for parents left un-rolled. Using the canonical build-lifecycle roles from `config-resolution` (`ready`, `claimed`, `review`, `blocked`, `done`):
 
 Evaluate over the **env ladder** `in-progress < dev < staging < production` — the ordered keys of the project's env-keyed `done` map, with `claimed`/`review` as the rung below the first env (a single-environment project has only the `production` rung). Take the **first** match:
 
@@ -114,9 +114,14 @@ Skills that enforce this invariant or perform rollup cite this rule by slug (the
 - **Decomposition / write** (`*-to-tracker`, `*-write-*`) — apply the `ready` role to leaves only; never to containers.
 - **Validate** (`*-validate-*`) — FAIL a container carrying the build-ready role; FAIL a childless **Epic** marked build-ready (a childless Story/Spike is a valid leaf and passes).
 - **Build intake** (`*-build-intake`, `tracker-build-intake`) — dispatch leaves only; move or safe-block containers with stale build-ready roles according to vendor lifecycle semantics.
-- **Rollup** — derive parent state from children per the state machine above. `repair-intake`
-  also uses this rule to close out parent/container rollups that were left open after every
-  required child became terminal.
+- **Rollup** — derive parent state from children per the state machine above. The **forward**
+  rollup fires the moment a leaf transitions to `done`: each `*-build-intake` done step (`3d.1`)
+  walks the leaf's ancestor chain and invokes `*-sync --rollup`, so a parent advances/closes as
+  soon as its last required child ships rather than waiting on a cron. `*-sync --rollup` is the
+  single rollup implementation; `repair-intake` calls the same path as the **recovery** net,
+  closing out parent/container rollups that were left open after every required child became
+  terminal — e.g. children closed outside the Lisa flow (external automation), or completed while
+  no forward `*-build-intake` cycle ran.
 - **Terminal native closure** (`*-build-intake`, `repair-intake`, terminal helpers) — after a leaf
   or all-terminal rollup parent reaches the true terminal `done` role, finalize it through the
   provider's native close / complete / resolve mechanism where available; never do this for
