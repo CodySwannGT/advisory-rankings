@@ -42,12 +42,20 @@ interface EndpointEvidence {
   readonly path: string;
   readonly status: number;
   readonly ok: boolean;
+  readonly validationPassed?: boolean;
   readonly elapsedMs: number;
   readonly summary: JsonRecord;
 }
 
 /** Loose JSON object used for compact evidence summaries. */
 type JsonRecord = Readonly<Record<string, unknown>>;
+
+/** Endpoint-specific validation outcome. */
+interface EndpointValidation {
+  readonly required: boolean;
+  readonly passed: boolean;
+  readonly error?: string;
+}
 
 export { validateRecruitingMarketDepth };
 
@@ -105,15 +113,41 @@ async function captureEndpoint(
   });
   const payload = await response.json().catch(() => null);
   const summary = summarizeResourcePayload(probe.name, payload);
-  if (probe.name === "recruiting") validateRecruitingMarketDepth(payload);
+  const validation = validateEndpoint(probe.name, payload);
   return {
     name: probe.name,
     path: probe.path,
     status: response.status,
-    ok: response.ok,
+    ok: response.ok && validation.passed,
+    validationPassed: validation.required ? validation.passed : undefined,
     elapsedMs: Date.now() - started,
-    summary,
+    summary: validation.error
+      ? { ...summary, validationError: validation.error }
+      : summary,
   };
+}
+
+/**
+ * Runs endpoint-specific validation without discarding the captured report.
+ * @param name - Logical resource probe name.
+ * @param payload - Decoded JSON response.
+ * @returns Validation status and optional failure text.
+ */
+function validateEndpoint(
+  name: ResourceName,
+  payload: unknown
+): EndpointValidation {
+  if (name !== "recruiting") return { required: false, passed: true };
+  try {
+    validateRecruitingMarketDepth(payload);
+    return { required: true, passed: true };
+  } catch (error) {
+    return {
+      required: true,
+      passed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 /**
@@ -279,4 +313,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const report = await captureDataDepthBaseline(options);
   if (options.stdout) console.log(JSON.stringify(report, null, 2));
   await writeReport(report, options.out);
+  if (report.endpoints.some(endpoint => !endpoint.ok)) process.exitCode = 1;
 }
