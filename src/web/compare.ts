@@ -105,9 +105,15 @@ function renderComparison(
   center: HTMLElement,
   payload: AdvisorComparisonPayload
 ): void {
+  const selectedDirectoryHref = `/advisors?ids=${payload.ids.map(encodeURIComponent).join(",")}`;
   const recoveryCard =
     payload.selection.status === "under_limit"
-      ? [compareStartCard(underLimitStartCopy(payload.items.length))]
+      ? [
+          compareStartCard(
+            underLimitStartCopy(payload.items.length),
+            selectedDirectoryHref
+          ),
+        ]
       : [];
 
   clear(center);
@@ -147,10 +153,12 @@ function renderComparison(
 /**
  * Renders a human-usable starting point for cold `/compare` visits.
  * @param copy - Introductory action copy.
+ * @param browseHref - Advisor directory href for Browse actions.
  * @returns Compare empty-state section.
  */
 function compareStartCard(
-  copy = "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row."
+  copy = "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row.",
+  browseHref = "/advisors"
 ): HTMLElement {
   return SectionCardComponent({
     title: "Choose advisors to compare",
@@ -164,7 +172,7 @@ function compareStartCard(
           variant: "primary",
           children: "Browse advisors",
           onClick: () => {
-            window.location.href = "/advisors";
+            window.location.href = browseHref;
           },
           attrs: {
             class: "comparison-start-button",
@@ -172,7 +180,7 @@ function compareStartCard(
         }),
         el(
           "a",
-          { class: "comparison-start-link", href: "/advisors" },
+          { class: "comparison-start-link", href: browseHref },
           "Open advisor directory"
         )
       ),
