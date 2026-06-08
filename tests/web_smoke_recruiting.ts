@@ -12,6 +12,7 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { buildRecruitingResourceQuery } from "../src/web/recruiting-query.js";
 import {
   readWatchlistRecruiting,
   smokeWatchlistMobile,
@@ -66,9 +67,30 @@ interface LoadedRecruitingState {
 }
 /** Representative non-empty Recruiting filter slice observations. */
 interface RecruitingSliceState {
+  readonly expectedFirmMomentumRows: number;
+  readonly expectedMarketActivityRows: number;
+  readonly expectedRecentMoveRows: number;
+  readonly expectedSourceStatusLabel: string;
+  readonly expectedSummaryMoves: string;
+  readonly firmMomentumRows: number;
   readonly label: string;
-  readonly rowCount: number;
+  readonly marketActivityRows: number;
+  readonly recentMoveRows: number;
+  readonly renderedSourceStatus: string;
   readonly summaryMoves: string;
+}
+/** Minimal `/RecruitingMarket` payload shape needed for page/API parity checks. */
+interface RecruitingSlicePayload {
+  readonly firmMomentum: readonly unknown[];
+  readonly marketActivity: readonly unknown[];
+  readonly recentMoves: readonly RecruitingSliceMove[];
+  readonly summary: {
+    readonly count: number;
+  };
+}
+/** Minimal recent-move shape needed for source-status UI parity checks. */
+interface RecruitingSliceMove {
+  readonly sourceStatus?: readonly string[];
 }
 /** Empty-filter Recruiting route observations. */
 interface EmptyRecruitingState {
@@ -185,40 +207,112 @@ async function readRecruitingSliceFromPath(
   page: Page,
   slice: { readonly label: string; readonly path: string }
 ): Promise<RecruitingSliceState> {
+  const payload = await readRecruitingSlicePayload(page, slice.path);
   await smokeGoto(page, `${BASE}${slice.path}`);
   await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
-  return await readRecruitingSlice(page, slice.label);
+  return await readRecruitingSlice(page, slice.label, payload);
 }
 
 /**
  * Reads one rendered Recruiting filter slice from the current page.
  * @param page - Browser page rendering the slice.
  * @param label - Human-readable slice label.
+ * @param payload - Matching resource response for the same filters.
  * @returns Slice row and summary facts.
  */
 async function readRecruitingSlice(
   page: Page,
-  label: string
+  label: string,
+  payload: RecruitingSlicePayload
 ): Promise<RecruitingSliceState> {
-  return await page.evaluate(
-    ({ sliceLabel, tableSelector }) => {
-      const summaryPairs = Array.from(
-        document.querySelectorAll<HTMLElement>(".details-card .detail-row")
-      );
-      const movesPair = summaryPairs.find(row =>
-        row.textContent?.includes("Moves")
-      );
-      const rowCount = document.querySelectorAll(
-        `${tableSelector} tbody tr`
-      ).length;
+  const rendered = await page.evaluate(
+    ({ sourceStatusLabel }) => {
+      const tableRows = (selector: string): number =>
+        document.querySelectorAll(`${selector} tbody tr`).length;
+      const detailValue = (label: string): string => {
+        const terms = Array.from(document.querySelectorAll("dt"));
+        const term = terms.find(node => node.textContent?.trim() === label);
+        return term?.nextElementSibling?.textContent?.trim() ?? "";
+      };
+      const summaryMoves = detailValue("Moves");
       return {
-        label: sliceLabel,
-        rowCount,
-        summaryMoves: movesPair?.textContent?.trim() ?? "",
+        firmMomentumRows: tableRows(".firm-momentum-table"),
+        marketActivityRows: tableRows(".market-activity-table"),
+        recentMoveRows: tableRows(".recent-moves-table"),
+        renderedSourceStatus: document.body.innerText.includes(
+          sourceStatusLabel
+        )
+          ? sourceStatusLabel
+          : "",
+        summaryMoves,
       };
     },
-    { sliceLabel: label, tableSelector: RECRUITING_TABLE_SELECTOR }
+    { sourceStatusLabel: expectedSourceStatusLabel(payload) }
   );
+  return {
+    ...rendered,
+    expectedFirmMomentumRows: payload.firmMomentum.length,
+    expectedMarketActivityRows: payload.marketActivity.length,
+    expectedRecentMoveRows: payload.recentMoves.length,
+    expectedSourceStatusLabel: expectedSourceStatusLabel(payload),
+    expectedSummaryMoves: payload.summary.count.toLocaleString(),
+    label,
+  };
+}
+
+/**
+ * Fetches the resource payload that backs one Recruiting filter route.
+ * @param page - Browser page shared by smoke scenarios.
+ * @param path - `/recruiting` path and query string under inspection.
+ * @returns The matching resource response.
+ */
+async function readRecruitingSlicePayload(
+  page: Page,
+  path: string
+): Promise<RecruitingSlicePayload> {
+  const pageUrl = new URL(path, BASE);
+  const resourceQuery = buildRecruitingResourceQuery(pageUrl.search, 30);
+  const resourceUrl = new URL(`/RecruitingMarket${resourceQuery}`, BASE);
+  const response = await page.request.get(resourceUrl.toString());
+  if (!response.ok()) {
+    throw new Error(
+      `RecruitingMarket ${resourceUrl.search} returned ${response.status()}`
+    );
+  }
+  return (await response.json()) as RecruitingSlicePayload;
+}
+
+/**
+ * Returns one readable source-status label that should be visible in the page.
+ * @param payload - Matching recruiting resource response.
+ * @returns Human-readable status text.
+ */
+function expectedSourceStatusLabel(payload: RecruitingSlicePayload): string {
+  for (const move of payload.recentMoves) {
+    const status = move.sourceStatus?.[0];
+    if (status) return sourceStatusLabel(status);
+  }
+  return "";
+}
+
+/**
+ * Mirrors the Recruiting page's public source-status labels for smoke parity.
+ * @param status - Resource source-status token.
+ * @returns Rendered status label.
+ */
+function sourceStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    "missing-backend-metrics": "Back-end metrics unavailable",
+    "missing-clawback-terms": "Clawback terms unavailable",
+    "missing-deal-terms": "Deal terms unavailable",
+    "missing-location": "Location unavailable",
+    "missing-producer-tier": "Producer tier unavailable",
+    "missing-source": "Source unavailable",
+    "missing-total-pct-t12": "Total T-12 unavailable",
+    "missing-upfront-pct-t12": "Upfront T-12 unavailable",
+    "source-backed": "Source confirmed",
+  };
+  return labels[status] ?? status.replace(/-/g, " ");
 }
 
 /**
@@ -331,13 +425,33 @@ function recruitingChecks(
 function recruitingSliceChecks(
   slices: readonly RecruitingSliceState[]
 ): readonly Check[] {
-  return slices.map(slice =>
+  return slices.flatMap(slice => [
     check(
-      slice.rowCount > 0,
-      `recruiting: ${slice.label} slice renders source-backed rows`,
-      `rows ${slice.rowCount}, summary ${slice.summaryMoves}`
-    )
-  );
+      slice.summaryMoves === slice.expectedSummaryMoves,
+      `recruiting: ${slice.label} slice summary matches resource`,
+      `rendered ${slice.summaryMoves}, expected ${slice.expectedSummaryMoves}`
+    ),
+    check(
+      slice.firmMomentumRows === slice.expectedFirmMomentumRows,
+      `recruiting: ${slice.label} slice firm momentum matches resource`,
+      `rendered ${slice.firmMomentumRows}, expected ${slice.expectedFirmMomentumRows}`
+    ),
+    check(
+      slice.marketActivityRows === slice.expectedMarketActivityRows,
+      `recruiting: ${slice.label} slice market activity matches resource`,
+      `rendered ${slice.marketActivityRows}, expected ${slice.expectedMarketActivityRows}`
+    ),
+    check(
+      slice.recentMoveRows === slice.expectedRecentMoveRows,
+      `recruiting: ${slice.label} slice recent moves match resource`,
+      `rendered ${slice.recentMoveRows}, expected ${slice.expectedRecentMoveRows}`
+    ),
+    check(
+      slice.renderedSourceStatus === slice.expectedSourceStatusLabel,
+      `recruiting: ${slice.label} slice source status matches resource`,
+      `rendered ${slice.renderedSourceStatus || "none"}, expected ${slice.expectedSourceStatusLabel || "none"}`
+    ),
+  ]);
 }
 
 /**
