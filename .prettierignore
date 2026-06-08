@@ -37,10 +37,6 @@ amplify
 # No-op for projects without a Codex mirror.
 .codex
 
-# Lisa also regenerates the OpenCode distribution mirror (.opencode/) on every
-# run. Same generated-output rationale as .codex above.
-.opencode
-
 # BEGIN: AI GUARDRAILS HARPER-FABRIC
 
 # Harper/Fabric generated web output and scraped research captures are not
