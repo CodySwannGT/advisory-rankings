@@ -111,6 +111,21 @@ HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
     --output-dir artifacts/firm-source-imports/<run-id>
 ```
 
+The bounded importer is the repeatable recruiting coverage expansion path.
+Inputs are intentionally explicit: `--max-advisors` caps each adapter,
+`--output-dir` names the evidence directory, `--write` is the only flag that
+permits Harper upserts, and `HDB_TARGET_URL` selects the dev Fabric target.
+Without `--write`, the importer remains a dry-run parser proof and must not
+mutate Fabric.
+
+The output directory contains a top-level `summary.json` and one JSON artifact
+per adapter. Preserve that directory with the run notes when coverage changes:
+the summary records which sources ran, which sources were blocked or empty,
+aggregate counts, and touched-row totals; each adapter artifact records the
+exact command, stdout/stderr, normalized samples, counts, source errors, and
+write errors. A public source returning bot protection, rate limits, or no
+structured feed is recorded as evidence, not treated as a silent success.
+
 AdvisorHub extraction loading is intentionally separate from firm locator
 imports. Extraction files are local JSON payloads under `research/extractions/`;
 `bun run load:extractions` upserts their normalized rows, then moves loaded
@@ -155,6 +170,28 @@ from `TransitionEvent`, `RecruitingDealQuote`,
 `ArticleTransitionEventMention`, `Article`, and `FirmAlias`.
 `/RankingsExplorer` is the analogous rankings coverage surface; its `coverage`
 payload groups loaded ranking rows and source-status gaps.
+
+Interpret `sourceStatus` as the operator signal for replay:
+
+- `source-backed` means the move has a resolved public article and should be
+  inspectable from the UI or JSON evidence.
+- `missing-source` means the move is useful for coverage but still lacks a
+  public article source.
+- Missing-field tags such as `missing-aum`, `missing-t12`,
+  `missing-total-pct-t12`, `missing-clawback-terms`, and `missing-location`
+  identify specific gaps to prioritize on the next source pass.
+- Source-error fields in importer artifacts mean the upstream source was
+  unavailable, rate-limited, or protected during the bounded run; keep the
+  artifact and retry later instead of inflating the cap.
+
+Reviewer replay for recruiting expansion is: run the dry-run or write command
+above, keep the artifact directory, fetch `/RecruitingMarket?limit=3`, run
+`bun run baseline:data-depth`, and inspect `/recruiting` for the same recent
+moves, firm momentum, and source-status slices. The JSON resource is the
+machine evidence; the `/recruiting` page is the user-facing check.
+`baseline:data-depth` is a threshold gate, so a failure with counts below the
+reported thresholds means the expansion is still shallow, not that the replay
+command is malformed.
 
 ## Fixtures
 
