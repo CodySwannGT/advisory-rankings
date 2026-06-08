@@ -25,6 +25,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadCreds, StudioSession } from "./_auth.js";
+import { recoverPublicRuntime } from "../lib/deploy-runtime-recovery.js";
 
 const TAR_PATH = "/usr/bin/tar";
 const PROJECT = process.env.PROJECT || "advisor-app";
@@ -703,19 +704,14 @@ async function main(): Promise<void> {
   try {
     await verifyFeed(creds.clusterUrl);
   } catch (error) {
-    console.warn(
-      "post-deploy runtime verification failed; deploying directly to public node once:",
-      error instanceof Error ? error.message : String(error)
-    );
-    if ((await deployPublicRuntime()) !== 200) {
+    const recovered = await recoverPublicRuntime(error, {
+      deployPublicRuntime,
+      restartPublicRuntime,
+      verifyFeed: () => verifyFeed(creds.clusterUrl),
+    });
+    if (!recovered) {
       process.exitCode = 1;
-      return;
     }
-    if ((await restartPublicRuntime()) !== 200) {
-      process.exitCode = 1;
-      return;
-    }
-    await verifyFeed(creds.clusterUrl);
   }
 }
 

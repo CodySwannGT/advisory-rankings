@@ -99,11 +99,22 @@ function textFromHtml(html: string): string {
 async function* postFiles(root: string): AsyncGenerator<string> {
   if (!existsSync(root)) return;
   for (const entry of await readdir(root, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    for (const file of await readdir(join(root, entry.name))) {
-      if (file.startsWith("post_") && file.endsWith(".json"))
-        yield join(root, entry.name, file);
-    }
+    if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
+  }
+}
+
+/**
+ * Finds saved WordPress post JSON files inside one crawl-output directory.
+ * @param root - Root crawl output directory.
+ * @param entryName - Child directory name to scan for post files.
+ */
+async function* postFilesForEntry(
+  root: string,
+  entryName: string
+): AsyncGenerator<string> {
+  for (const file of await readdir(join(root, entryName))) {
+    if (file.startsWith("post_") && file.endsWith(".json"))
+      yield join(root, entryName, file);
   }
 }
 
