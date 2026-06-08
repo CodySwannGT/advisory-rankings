@@ -23,8 +23,18 @@ export async function recoverPublicRuntime(
     "post-deploy runtime verification failed; deploying directly to public node once:",
     error instanceof Error ? error.message : String(error)
   );
-  if ((await actions.deployPublicRuntime()) !== 200) return false;
-  if ((await actions.restartPublicRuntime()) !== 200) return false;
-  await actions.verifyFeed();
-  return true;
+  try {
+    if ((await actions.deployPublicRuntime()) !== 200) return false;
+    if ((await actions.restartPublicRuntime()) !== 200) return false;
+    await actions.verifyFeed();
+    return true;
+  } catch (recoveryError) {
+    console.warn(
+      "public runtime recovery attempt failed:",
+      recoveryError instanceof Error
+        ? recoveryError.message
+        : String(recoveryError)
+    );
+    return false;
+  }
 }

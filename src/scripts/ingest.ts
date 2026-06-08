@@ -98,8 +98,15 @@ function textFromHtml(html: string): string {
  */
 async function* postFiles(root: string): AsyncGenerator<string> {
   if (!existsSync(root)) return;
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
+  try {
+    for (const entry of await readdir(root, { withFileTypes: true })) {
+      if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
+    }
+  } catch (error) {
+    console.error(
+      `[ingest] failed to read crawl directory ${root}:`,
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 
@@ -112,9 +119,15 @@ async function* postFilesForEntry(
   root: string,
   entryName: string
 ): AsyncGenerator<string> {
-  for (const file of await readdir(join(root, entryName))) {
-    if (file.startsWith("post_") && file.endsWith(".json"))
-      yield join(root, entryName, file);
+  try {
+    for (const file of await readdir(join(root, entryName))) {
+      if (/^post_\d+\.json$/.test(file)) yield join(root, entryName, file);
+    }
+  } catch (error) {
+    console.error(
+      `[ingest] failed to read post directory ${join(root, entryName)}:`,
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 

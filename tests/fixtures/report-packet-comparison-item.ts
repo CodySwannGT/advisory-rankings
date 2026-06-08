@@ -16,6 +16,7 @@ export function comparisonItem(id: string, index: number): unknown {
     firm: { name: `Firm ${index + 1}` },
     regulatory: {
       disclosureCount: 0,
+      disclosures: [],
       registrationApplications: [],
       brokerCheckSnapshot: featured.brokerCheck,
     },
@@ -42,7 +43,13 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
       career: [],
       rankings: [],
       articles: [],
-      confidenceSummary: { hasData: false, total: 0 },
+      confidenceSummary: {
+        hasData: false,
+        asserted: 0,
+        inferred: 0,
+        derived: 0,
+        total: 0,
+      },
       evidenceFreshness: { hasData: false, lastCheckedAt: null },
       assertions: [],
       researchSources: [],
@@ -72,7 +79,13 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
         sourceLabel: "AdvisorHub",
       },
     ],
-    confidenceSummary: { hasData: true, total: 3 },
+    confidenceSummary: {
+      hasData: true,
+      asserted: 1,
+      inferred: 1,
+      derived: 1,
+      total: 3,
+    },
     evidenceFreshness: {
       hasData: true,
       lastCheckedAt: "2026-05-31T00:00:00.000Z",
