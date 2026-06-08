@@ -24,8 +24,8 @@ import {
   metricBlock,
   moveCell,
   netValue,
-  sourceCell,
   statusTag,
+  sourceCell,
   summaryCell,
   summaryValue,
   table,
@@ -234,6 +234,52 @@ export function sourceCard(data: RecruitingMarketResponse): HTMLElement {
         children:
           "AUM totals exclude unknown values. Rows keep missing fields visible and retain source/provenance references.",
       }),
+      el(
+        "div",
+        { class: "tag-list" },
+        Tag({
+          kind: data.sourceCoverage.missingSourceCount > 0 ? "warn" : "ok",
+          children: `${fmtNumber(data.sourceCoverage.sourceBackedCount)}/${fmtNumber(data.sourceCoverage.moveCount)} source-backed`,
+        }),
+        data.sourceCoverage.missingSourceCount > 0
+          ? Tag({
+              kind: "warn",
+              children: `${fmtNumber(data.sourceCoverage.missingSourceCount)} missing source`,
+            })
+          : null,
+        data.sourceCoverage.missingLocationCount > 0
+          ? Tag({
+              kind: "warn",
+              children: `${fmtNumber(data.sourceCoverage.missingLocationCount)} missing location`,
+            })
+          : null,
+        data.sourceCoverage.missingAumCount > 0
+          ? Tag({
+              kind: "warn",
+              children: `${fmtNumber(data.sourceCoverage.missingAumCount)} missing AUM`,
+            })
+          : null,
+        data.sourceCoverage.missingT12Count > 0
+          ? Tag({
+              kind: "warn",
+              children: `${fmtNumber(data.sourceCoverage.missingT12Count)} missing T12`,
+            })
+          : null
+      ),
+      data.sourceCoverage.statusCounts.length
+        ? el(
+            "div",
+            { class: "tag-list" },
+            ...data.sourceCoverage.statusCounts.map(row =>
+              el(
+                "span",
+                { class: "stacked-cell" },
+                statusTag(row.status),
+                el("span", {}, `${fmtNumber(row.count)} moves`)
+              )
+            )
+          )
+        : null,
       el(
         "div",
         { class: "tag-list" },

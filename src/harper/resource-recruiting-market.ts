@@ -20,6 +20,7 @@ import type {
 
 import { loadAll } from "./resource-data.js";
 import * as watchlist from "./resource-recruiting-watchlist.js";
+import { sourceCoverage } from "./resource-recruiting-market-coverage.js";
 import {
   filteredMoves,
   firmMomentum,
@@ -62,6 +63,7 @@ export class RecruitingMarket extends Resource {
       generatedAt,
       filters: publicFilters(filters),
       summary: summarizeMoves(moves),
+      sourceCoverage: sourceCoverage(moves),
       firmMomentum: firmMomentum(db, moves),
       watchlist: watchlist.watchlistPayload(db, moves, filters, generatedAt),
       marketActivity: marketActivity(moves),
