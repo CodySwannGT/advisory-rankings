@@ -974,6 +974,24 @@ advisors per source. `.github/workflows/firm-source-imports.yml` remains only
 as a manual `workflow_dispatch` operator path; do not add a GitHub Actions cron
 trigger for firm-source imports.
 
+For a manual bounded replay, make the cap, target, and evidence directory
+explicit:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run firm-source:major-imports -- \
+    --max-advisors 5 \
+    --write \
+    --output-dir artifacts/firm-source-imports/<run-id>
+```
+
+Omit `--write` for a parser-only dry-run. The importer writes `summary.json`
+plus one artifact per adapter under `--output-dir`; those files are the durable
+record of command inputs, source blocking, normalized samples, counts, and
+write errors. Do not raise the cap to force a green-looking run when a public
+source reports bot protection or a feed shape change; keep the artifact and
+treat that source as retryable evidence.
+
 This workflow is separate from `bun run load:extractions`. The extraction
 loader expects local files under `research/extractions/*.json`, then archives
 loaded files into `research/extractions/.loaded/`; if a future automation
@@ -1003,6 +1021,16 @@ reports transition-event depth by firm, market, recent move, source-status flag,
 and provenance ID. `/RankingsExplorer` reports ranking-row coverage buckets and
 source-status gaps. Treat these resource payloads as the first coverage audit
 before opening screenshots or table-level REST.
+
+For recruiting expansion replay, `sourceStatus` is the main interpretation
+field. `source-backed` rows have public article URLs suitable for UI and JSON
+inspection. `missing-source` rows still contribute to market context but need
+article provenance. Missing-field tags such as `missing-aum`, `missing-t12`,
+`missing-total-pct-t12`, `missing-clawback-terms`, and `missing-location`
+identify the next source-pass priorities. Source-error entries in the importer
+artifacts mean the upstream public source was protected, rate-limited, or
+unavailable during the bounded run; preserve the artifact and rerun later
+instead of treating missing rows as deleted data.
 
 **Firm source imports.** For local parser proof, run a bounded dry-run against
 one adapter:
@@ -1046,7 +1074,11 @@ HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
 Then open the corresponding UI slice or run `bun run smoke` when the change is
 UI-facing. For Recruiting Market updates, inspect `/recruiting` and
 `/RecruitingMarket?limit=3`; for ranking coverage, inspect `/rankings` and
-`/RankingsExplorer?limit=10`.
+`/RankingsExplorer?limit=10`. `bun run baseline:data-depth` is a threshold gate:
+if it fails with move, firm-momentum, market-activity, or filter-slice counts
+below the reported thresholds, treat the recruiting expansion as incomplete and
+use the importer artifacts plus `sourceStatus` gaps to choose the next bounded
+source pass.
 
 > **Don't drop the `bun install` step — symptom: smoke fails with
 > `Cannot find module '/opt/node22/lib/node_modules/playwright'`.**
