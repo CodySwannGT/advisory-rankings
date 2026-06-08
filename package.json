@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "@codyswann/lisa": "^2.141.1",
+    "@codyswann/lisa": "^2.155.2",
     "@ast-grep/cli": "^0.40.4",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",

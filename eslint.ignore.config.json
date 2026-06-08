@@ -49,6 +49,7 @@
 
     ".expo/**",
     ".codex/**",
+    ".opencode/**",
     ".github/**",
     "public/**",
     ".dead/**",
@@ -79,6 +80,7 @@
 
     "audit.ignore.config.json",
     "audit.ignore.local.json",
+    ".lisa.config.json",
 
     "amplify/**",
 
