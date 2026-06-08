@@ -257,7 +257,6 @@ browserDescribe(
         path: join(SHOTS, "issue-987-compare-under-limit-mobile.png"),
         fullPage: true,
       });
-      await mobile.close();
 
       expect(desktopMetrics.startTitle).toBe("Choose advisors to compare");
       expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
@@ -265,10 +264,20 @@ browserDescribe(
       expect(desktopMetrics.hasUnderLimitCopy).toBe(true);
       expect(desktopMetrics.hasBrowseAction).toBe(true);
       expect(desktopMetrics.hasDirectoryLink).toBe(true);
+      expect(desktopMetrics.directoryHref).toBe(
+        `${baseUrl}/advisors?ids=${UNDER_LIMIT_ADVISOR_ID}`
+      );
       expect(mobileMetrics.hasUnderLimitCopy).toBe(true);
       expect(mobileMetrics.scrollWidth).toBeLessThanOrEqual(
         mobileMetrics.clientWidth
       );
+      await Promise.all([
+        mobile.waitForURL(
+          new RegExp(`/advisors\\?ids=${UNDER_LIMIT_ADVISOR_ID}$`, "u")
+        ),
+        mobile.getByRole("button", { name: "Browse advisors" }).click(),
+      ]);
+      await mobile.close();
     });
   }
 );
@@ -637,7 +646,12 @@ async function compareStartMetrics(page: Page) {
           button.textContent?.includes("Browse advisors")
         )
       ),
-      hasDirectoryLink: Boolean(document.querySelector('a[href="/advisors"]')),
+      hasDirectoryLink: Boolean(
+        document.querySelector(".comparison-start-link")
+      ),
+      directoryHref:
+        document.querySelector<HTMLAnchorElement>(".comparison-start-link")
+          ?.href ?? null,
       hasUnderLimitCopy: Boolean(
         document.body.textContent?.includes(
           "Browse the directory to add another advisor"
