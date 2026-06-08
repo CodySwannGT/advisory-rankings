@@ -72,7 +72,7 @@ function registerAsset(fastify, routePath, assetPath) {
   const cache = { body: undefined };
 
   fastify.get(routePath, async (_request, reply) => {
-    cache.body ||= await readFile(assetUrl);
+    cache.body ||= await readFile(assetUrl, "utf8");
     const extension = extname(assetPath);
     return reply.headers(headersFor(extension)).send(cache.body);
   });
