@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { uid } from "../src/lib/ids.js";
 import {
+  createRestAdvisorSearchIndexHandle,
   reindexAdvisorTokens,
   type AdvisorSearchIndexHandle,
   type AdvisorSearchIndexRow,
 } from "../src/lib/advisor-search-index.js";
 import { type AdvisorRow } from "../src/lib/advisor-tokens.js";
+import { type HarperREST } from "../src/lib/brokercheck-rest.js";
 
 /**
  *
@@ -56,6 +58,16 @@ const makeHandle = (
       [...tokensById.values()].sort((a, b) => a.id.localeCompare(b.id)),
   };
 };
+
+const makeRest = (
+  overrides: Partial<Pick<HarperREST, "delete" | "get" | "put">>
+): HarperREST =>
+  ({
+    delete: async () => true,
+    get: async () => [],
+    put: async () => true,
+    ...overrides,
+  }) as HarperREST;
 
 describe("reindexAdvisorTokens", () => {
   it("returns zero counts for an empty input list", async () => {
@@ -153,5 +165,108 @@ describe("reindexAdvisorTokens", () => {
     expect(summary.added).toBe(0);
     expect(summary.removed).toBe(1);
     expect(handle.snapshot()).toEqual([]);
+  });
+});
+
+describe("createRestAdvisorSearchIndexHandle", () => {
+  it("narrows REST advisor and token payloads before returning rows", async () => {
+    const handle = createRestAdvisorSearchIndexHandle(
+      makeRest({
+        get: async path =>
+          path === "/Advisor/"
+            ? [
+                {
+                  id: "advisor-1",
+                  legalName: "Ada Lovelace",
+                  firstName: "Ada",
+                  lastName: "Lovelace",
+                  preferredName: 42,
+                },
+              ]
+            : [
+                {
+                  id: "token-1",
+                  advisorId: "advisor-1",
+                  token: "ada",
+                  kind: "firstName",
+                },
+              ],
+      })
+    );
+
+    await expect(handle.getAdvisor("advisor-1")).resolves.toEqual({
+      id: "advisor-1",
+      legalName: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      preferredName: null,
+    });
+    await expect(handle.listTokensForAdvisor("advisor-1")).resolves.toEqual([
+      {
+        id: "token-1",
+        advisorId: "advisor-1",
+        token: "ada",
+        kind: "firstName",
+      },
+    ]);
+  });
+
+  it("treats non-array REST payloads as missing rows", async () => {
+    const handle = createRestAdvisorSearchIndexHandle(
+      makeRest({ get: async () => ({ id: "advisor-1" }) })
+    );
+
+    await expect(handle.getAdvisor("advisor-1")).resolves.toBeNull();
+    await expect(handle.listTokensForAdvisor("advisor-1")).resolves.toEqual([]);
+  });
+
+  it("does not call REST writes for empty batches", async () => {
+    const calls: string[] = [];
+    const handle = createRestAdvisorSearchIndexHandle(
+      makeRest({
+        delete: async () => {
+          calls.push("delete");
+          return true;
+        },
+        put: async () => {
+          calls.push("put");
+          return true;
+        },
+      })
+    );
+
+    await handle.upsertTokens([]);
+    await handle.deleteTokens([]);
+
+    expect(calls).toEqual([]);
+  });
+
+  it("throws when any REST token upsert fails", async () => {
+    const handle = createRestAdvisorSearchIndexHandle(
+      makeRest({ put: async () => false })
+    );
+
+    await expect(
+      handle.upsertTokens([
+        {
+          id: "token-1",
+          advisorId: "advisor-1",
+          token: "ada",
+          kind: "firstName",
+        },
+      ])
+    ).rejects.toThrow(
+      "advisor-search-index: 1/1 AdvisorSearchIndex PUTs failed"
+    );
+  });
+
+  it("throws when any REST token delete fails", async () => {
+    const handle = createRestAdvisorSearchIndexHandle(
+      makeRest({ delete: async () => false })
+    );
+
+    await expect(handle.deleteTokens(["token-1"])).rejects.toThrow(
+      "advisor-search-index: 1/1 AdvisorSearchIndex DELETEs failed"
+    );
   });
 });
