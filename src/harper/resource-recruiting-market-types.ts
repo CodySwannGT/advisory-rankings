@@ -103,6 +103,23 @@ export interface FirmMomentumRow {
   readonly sourceMoveIds: readonly string[];
 }
 
+/** Count for one source-status token across the filtered move slice. */
+export interface RecruitingSourceStatusCount {
+  readonly status: string;
+  readonly count: number;
+}
+
+/** Source coverage rollup for the same filtered move slice as the response. */
+export interface RecruitingSourceCoverage {
+  readonly moveCount: number;
+  readonly sourceBackedCount: number;
+  readonly missingSourceCount: number;
+  readonly missingLocationCount: number;
+  readonly missingAumCount: number;
+  readonly missingT12Count: number;
+  readonly statusCounts: readonly RecruitingSourceStatusCount[];
+}
+
 /** Intermediate accumulator entry for firm momentum aggregation. */
 export interface FirmMomentumAccumulator {
   readonly firm: FirmChip;
@@ -155,6 +172,7 @@ export interface RecruitingMarketResponse {
   readonly generatedAt: string;
   readonly filters: PublicRecruitingFilters;
   readonly summary: MoveSummary;
+  readonly sourceCoverage: RecruitingSourceCoverage;
   readonly firmMomentum: readonly FirmMomentumRow[];
   readonly watchlist: WatchlistPayload | null;
   readonly marketActivity: readonly MarketActivityRow[];

@@ -2469,6 +2469,23 @@ describe("Harper resource endpoints", () => {
         unknownAumCount: 2,
         missingT12Count: 2,
       },
+      sourceCoverage: {
+        moveCount: 3,
+        sourceBackedCount: 1,
+        missingSourceCount: 2,
+        missingAumCount: 2,
+        missingT12Count: 2,
+        statusCounts: expect.arrayContaining([
+          { status: SOURCE_BACKED_REASON, count: 1 },
+          { status: MISSING_SOURCE_REASON, count: 2 },
+          { status: MISSING_AUM_REASON, count: 2 },
+          { status: MISSING_T12_REASON, count: 2 },
+          { status: MISSING_DEAL_TERMS_REASON, count: 2 },
+          { status: MISSING_TOTAL_PCT_T12_REASON, count: 1 },
+          { status: MISSING_BACKEND_METRICS_REASON, count: 1 },
+          { status: MISSING_CLAWBACK_TERMS_REASON, count: 1 },
+        ]),
+      },
       provenance: {
         sourceTables: expect.arrayContaining([
           "TransitionEvent",
@@ -2555,6 +2572,39 @@ describe("Harper resource endpoints", () => {
       emptyState:
         "No matching public recruiting move data is loaded for these filters.",
     });
+  });
+
+  it("keeps recruiting source coverage aligned with filtered slices", async () => {
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", {
+        firm: EXAMPLE_WEALTH_LLC,
+        limit: "1",
+        state: "ga",
+        year: "2024",
+      })
+    );
+
+    expect(market.summary.count).toBe(3);
+    expect(market.recentMoves).toHaveLength(1);
+    expect(market.sourceCoverage).toMatchObject({
+      moveCount: 3,
+      sourceBackedCount: 1,
+      missingSourceCount: 2,
+      missingAumCount: 2,
+      missingT12Count: 2,
+    });
+    expect(market.sourceCoverage.statusCounts).toEqual(
+      expect.arrayContaining([
+        { status: MISSING_SOURCE_REASON, count: 2 },
+        { status: SOURCE_BACKED_REASON, count: 1 },
+      ])
+    );
+    expect(market.firmMomentum[0].sourceMoveIds).toEqual(
+      expect.arrayContaining(market.provenance.sourceIds)
+    );
+    expect(market.marketActivity[0].sourceMoveIds).toEqual(
+      expect.arrayContaining(market.provenance.sourceIds)
+    );
   });
 
   it("matches Date-valued recruiting move dates for year filters", async () => {
