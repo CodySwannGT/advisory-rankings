@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Page } from "playwright";
+import type { APIResponse, Page } from "playwright";
 
 import {
   BASE,
@@ -35,7 +35,9 @@ const INBOUND_RECRUITING_FIRM = "Wells Fargo Advisors";
 const OUTBOUND_RECRUITING_FIRM = "Morgan Stanley";
 const REPRESENTATIVE_RECRUITING_STATE = "NY";
 const REPRESENTATIVE_RECRUITING_YEAR = "2026";
+const RECRUITING_SLICE_LIMIT = 30;
 const RECRUITING_TABLE_SELECTOR = ".recruiting-table";
+const JSON_ERROR_PREVIEW_LENGTH = 500;
 
 /** Viewport and overflow budget used by recruiting table smoke checks. */
 type RecruitingViewport = (typeof RECRUITING_OVERFLOW_VIEWPORTS)[number];
@@ -271,7 +273,10 @@ async function readRecruitingSlicePayload(
   path: string
 ): Promise<RecruitingSlicePayload> {
   const pageUrl = new URL(path, BASE);
-  const resourceQuery = buildRecruitingResourceQuery(pageUrl.search, 30);
+  const resourceQuery = buildRecruitingResourceQuery(
+    pageUrl.search,
+    RECRUITING_SLICE_LIMIT
+  );
   const resourceUrl = new URL(`/RecruitingMarket${resourceQuery}`, BASE);
   const response = await page.request.get(resourceUrl.toString());
   if (!response.ok()) {
@@ -279,7 +284,55 @@ async function readRecruitingSlicePayload(
       `RecruitingMarket ${resourceUrl.search} returned ${response.status()}`
     );
   }
-  return (await response.json()) as RecruitingSlicePayload;
+  return await parseRecruitingSlicePayload(response, resourceUrl);
+}
+
+/**
+ * Parses a RecruitingMarket response with diagnostics for invalid JSON.
+ * @param response - Playwright API response to parse.
+ * @param resourceUrl - Resource URL used for the request.
+ * @returns Parsed RecruitingMarket payload.
+ */
+async function parseRecruitingSlicePayload(
+  response: APIResponse,
+  resourceUrl: URL
+): Promise<RecruitingSlicePayload> {
+  try {
+    return (await response.json()) as RecruitingSlicePayload;
+  } catch (error) {
+    throw new Error(
+      [
+        `RecruitingMarket ${resourceUrl.search} returned invalid JSON`,
+        `status ${response.status()}`,
+        `content-type ${response.headers()["content-type"] ?? "unknown"}`,
+        `body ${await responsePreview(response)}`,
+        `parse error ${errorMessage(error)}`,
+      ].join("; ")
+    );
+  }
+}
+
+/**
+ * Reads a compact response body preview for parse-failure diagnostics.
+ * @param response - Response whose body should be inspected.
+ * @returns Truncated response body text.
+ */
+async function responsePreview(response: APIResponse): Promise<string> {
+  try {
+    return (await response.text()).slice(0, JSON_ERROR_PREVIEW_LENGTH);
+  } catch (error) {
+    return `unavailable: ${errorMessage(error)}`;
+  }
+}
+
+/**
+ * Converts unknown thrown values into readable diagnostic text.
+ * @param error - Caught parse or body-read failure.
+ * @returns Printable error message.
+ */
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
 
 /**
