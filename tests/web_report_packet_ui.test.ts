@@ -16,6 +16,7 @@ import {
   startStaticServer,
   WATCHLISTS_ROUTE,
 } from "./fixtures/watchlist-ui-harness.js";
+import { comparisonItem } from "./fixtures/report-packet-comparison-item.js";
 
 const browserDescribe =
   process.env.RUN_WEB_REPORT_PACKET_UI === "1" &&
@@ -23,7 +24,6 @@ const browserDescribe =
     ? describe.sequential
     : describe.skip;
 const MISSING_ADVISOR_ID = "missing-id";
-const BROKERCHECK_FETCHED_AT = "2026-05-30T00:00:00.000Z";
 const PACKET_PRIVATE_NOTE = "packet-only private note";
 const PACKET_PRIVATE_REVIEW = "Packet follow-up rating.";
 const PACKET_ADVISOR_IDS = ["adv-a", "adv-b"] as const;
@@ -359,110 +359,6 @@ function comparisonPayload(
     items: ids.map((id, index) =>
       missingIds.includes(id) ? notFoundItem(id) : comparisonItem(id, index)
     ),
-  };
-}
-
-/**
- * Builds one found advisor comparison item.
- * @param id - Advisor id.
- * @param index - Display index.
- * @returns Found comparison item.
- */
-function comparisonItem(id: string, index: number): unknown {
-  return {
-    id,
-    status: "found",
-    displayName: `Advisor ${index + 1}`,
-    identity: { careerStatus: "active", yearsExperience: 10 + index },
-    firm: { name: `Firm ${index + 1}` },
-    regulatory: {
-      disclosureCount: 0,
-      registrationApplications: [],
-      brokerCheckSnapshot:
-        index === 0
-          ? { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT }
-          : null,
-    },
-    career:
-      index === 0
-        ? [
-            {
-              firm: { name: `Firm ${index + 1}` },
-              roleTitle: "Managing director",
-            },
-          ]
-        : [],
-    rankings:
-      index === 0
-        ? [
-            {
-              entry: {
-                rank: 12,
-                sourceLabel: "AdvisorBook fallback",
-              },
-              ranking: { name: "AdvisorBook 100" },
-            },
-          ]
-        : [],
-    articles:
-      index === 0
-        ? [
-            {
-              title: "Advisor profile coverage",
-              publishedDate: "2026-04-15T00:00:00.000Z",
-              sourceLabel: "AdvisorHub",
-            },
-          ]
-        : [],
-    dataConfidence: {
-      confidenceSummary:
-        index === 0
-          ? { hasData: true, total: 3 }
-          : { hasData: false, total: 0 },
-      evidenceFreshness: {
-        hasData: index === 0,
-        lastCheckedAt: index === 0 ? "2026-05-31T00:00:00.000Z" : null,
-      },
-    },
-    attribution: {
-      brokerCheck:
-        index === 0
-          ? { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT }
-          : null,
-      articles:
-        index === 0
-          ? [
-              {
-                title: "Advisor profile coverage",
-                publishedDate: "2026-04-15T00:00:00.000Z",
-                sourceLabel: "AdvisorHub",
-              },
-            ]
-          : [],
-      assertions:
-        index === 0
-          ? [
-              {
-                articleId: "article-1",
-                fieldName: "firm",
-                assertedValue: `Firm ${index + 1}`,
-                quotePhrase: "Firm 1",
-                confidence: "high",
-              },
-            ]
-          : [],
-      researchSources:
-        index === 0
-          ? [
-              {
-                sourceType: "brokercheck",
-                status: "checked",
-                checkedAt: BROKERCHECK_FETCHED_AT,
-                sourcesChecked: ["FINRA BrokerCheck"],
-              },
-            ]
-          : [],
-    },
   };
 }
 

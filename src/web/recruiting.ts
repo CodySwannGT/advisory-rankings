@@ -10,7 +10,6 @@ import {
   EmptyCardC,
   fmtMoneyC,
   fmtNumberC,
-  getQueryParamC,
   marketCardC,
   momentumCardC,
   MountThreeColumnPage,
@@ -24,10 +23,9 @@ import {
   type RecruitingMarketResponse,
   type ThreeColumnLayout,
 } from "./recruiting-types.js";
+import { buildRecruitingResourceQuery } from "./recruiting-query.js";
 import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 
-const FIRM_FILTER_FIELDS = ["firm", "firmId"] as const;
-const SINGLE_VALUE_FILTER_FIELDS = ["state", "year", "direction"] as const;
 const DEFAULT_LIMIT = 30;
 const FIRM_INPUT_SELECTOR = 'input[name="firm"]';
 const WATCHLIST_ADD_BUTTON_SELECTOR = ".watchlist-add-button";
@@ -96,19 +94,7 @@ function errorMessage(error: unknown): string {
  * @returns Query string for /RecruitingMarket.
  */
 function resourceQuery(): string {
-  const params = new URLSearchParams();
-  const current = new URLSearchParams(location.search);
-  for (const field of FIRM_FILTER_FIELDS) {
-    for (const value of current.getAll(field)) {
-      if (value) params.append(field, value);
-    }
-  }
-  for (const field of SINGLE_VALUE_FILTER_FIELDS) {
-    const value = getQueryParamC(field);
-    if (value) params.set(field, value);
-  }
-  params.set("limit", String(DEFAULT_LIMIT));
-  return params.size ? `?${params}` : "";
+  return buildRecruitingResourceQuery(location.search, DEFAULT_LIMIT);
 }
 
 /**

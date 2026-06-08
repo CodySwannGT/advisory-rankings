@@ -98,12 +98,36 @@ function textFromHtml(html: string): string {
  */
 async function* postFiles(root: string): AsyncGenerator<string> {
   if (!existsSync(root)) return;
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    for (const file of await readdir(join(root, entry.name))) {
-      if (file.startsWith("post_") && file.endsWith(".json"))
-        yield join(root, entry.name, file);
+  try {
+    for (const entry of await readdir(root, { withFileTypes: true })) {
+      if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
     }
+  } catch (error) {
+    console.error(
+      `[ingest] failed to read crawl directory ${root}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
+/**
+ * Finds saved WordPress post JSON files inside one crawl-output directory.
+ * @param root - Root crawl output directory.
+ * @param entryName - Child directory name to scan for post files.
+ */
+async function* postFilesForEntry(
+  root: string,
+  entryName: string
+): AsyncGenerator<string> {
+  try {
+    for (const file of await readdir(join(root, entryName))) {
+      if (/^post_\d+\.json$/.test(file)) yield join(root, entryName, file);
+    }
+  } catch (error) {
+    console.error(
+      `[ingest] failed to read post directory ${join(root, entryName)}:`,
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 
