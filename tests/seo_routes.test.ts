@@ -77,4 +77,29 @@ describe("static web route shells", () => {
     expect(paths).not.toContain("/:asset");
     expect(paths).not.toContain("/*");
   });
+
+  it("serves static assets as string bodies for Harper Fastify replies", async () => {
+    const handlers = new Map<string, RouteHandler>();
+    const sent: unknown[] = [];
+    const headerSets: Array<Record<string, string>> = [];
+    const fastify = {
+      get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+    };
+    const reply = {
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
+        return reply;
+      },
+      send: (body: unknown) => sent.push(body),
+    };
+
+    await staticWebRoutes(fastify);
+    await handlers.get("/app.css")?.({}, reply);
+
+    expect(headerSets[0]).toMatchObject({
+      "content-type": "text/css; charset=utf-8",
+    });
+    expect(typeof sent[0]).toBe("string");
+    expect(String(sent[0])).toContain(".ab-page-title");
+  });
 });
