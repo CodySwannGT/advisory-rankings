@@ -22,6 +22,8 @@ const EXAMPLE_WEALTH_SHORT = "Example Wealth";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
+const LAYOUT_TOLERANCE_PX = 0.5;
+const EVIDENCE_HELP_COPY = "public-source checks last ran";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -277,6 +279,37 @@ describe("detail async states", () => {
         firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
       ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
       expect(await page.getByText(COULD_NOT_LOAD_FIRM).count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("opens firm help text without shifting due-diligence content", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1180, height: 900 },
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(FIRM_PROFILE_ROUTE, async route => {
+        await route.fulfill({ json: firmDueDiligenceProfile() });
+      });
+
+      await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.getByRole("heading", { name: FIRM_DUE_DILIGENCE }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      await expectHelpDisclosureDoesNotShiftLayout(
+        page,
+        ".firm-dd-card .firm-dd-help",
+        ".firm-dd-card .firm-dd-summary",
+        "public source rows support each trust check"
+      );
     } finally {
       await page.close();
     }
@@ -599,13 +632,14 @@ describe("detail async states", () => {
           .filter({ hasText: /^Current$/ })
           .isVisible()
       ).toBe(true);
-      await desktopEvidence
-        .getByLabel("Evidence freshness explanation")
-        .click();
+      await expectHelpDisclosureDoesNotShiftLayout(
+        page,
+        ".right .advisor-evidence-help",
+        ".right .advisor-evidence",
+        EVIDENCE_HELP_COPY
+      );
       expect(
-        await desktopEvidence
-          .getByText("public-source checks last ran")
-          .isVisible()
+        await desktopEvidence.getByText(EVIDENCE_HELP_COPY).isVisible()
       ).toBe(true);
       expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
         true
@@ -1028,6 +1062,67 @@ async function routeAdvisorEvidence(page: Page) {
     const id = route.request().url().split("/").pop() || "advisor-loaded";
     await route.fulfill({ json: advisorEvidenceProfile(id) });
   });
+}
+
+async function expectHelpDisclosureDoesNotShiftLayout(
+  page: Page,
+  helpSelector: string,
+  followingContentSelector: string,
+  visibleCopy: string
+): Promise<void> {
+  const help = page.locator(helpSelector).first();
+  const followingContent = page.locator(followingContentSelector).first();
+  await help.scrollIntoViewIfNeeded();
+  await followingContent.waitFor({ timeout: QUICK_TIMEOUT });
+
+  const closed = await helpDisclosureMetrics(
+    page,
+    helpSelector,
+    followingContentSelector
+  );
+  await help.locator("summary").click();
+  await help.getByText(visibleCopy).waitFor({ timeout: QUICK_TIMEOUT });
+  const open = await helpDisclosureMetrics(
+    page,
+    helpSelector,
+    followingContentSelector
+  );
+
+  expect(open.followingTop).toBeCloseTo(closed.followingTop, 0);
+  expect(open.summaryWidth).toBeCloseTo(closed.summaryWidth, 0);
+  expect(open.summaryHeight).toBeCloseTo(closed.summaryHeight, 0);
+  expect(Math.abs(open.followingTop - closed.followingTop)).toBeLessThanOrEqual(
+    LAYOUT_TOLERANCE_PX
+  );
+}
+
+async function helpDisclosureMetrics(
+  page: Page,
+  helpSelector: string,
+  followingContentSelector: string
+): Promise<{
+  readonly followingTop: number;
+  readonly summaryHeight: number;
+  readonly summaryWidth: number;
+}> {
+  return await page.evaluate(
+    ({ helpSelector: helpQuery, followingContentSelector: contentQuery }) => {
+      const summary = document.querySelector<HTMLElement>(
+        `${helpQuery} summary`
+      );
+      const followingContent =
+        document.querySelector<HTMLElement>(contentQuery);
+      const summaryRect = summary?.getBoundingClientRect();
+      const contentRect = followingContent?.getBoundingClientRect();
+
+      return {
+        followingTop: contentRect?.top ?? 0,
+        summaryHeight: summaryRect?.height ?? 0,
+        summaryWidth: summaryRect?.width ?? 0,
+      };
+    },
+    { helpSelector, followingContentSelector }
+  );
 }
 
 async function lowerHeadingCountAfterFirstH1(page: Page): Promise<number> {
