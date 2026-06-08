@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-06
+updated: 2026-06-08
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -9,6 +9,7 @@ sources:
   - ../sources/documentation/2026-05-23-initial-project-docs.md
   - ../sources/git/2026-05-23-advisory-rankings-git.md
   - ../sources/git/2026-06-06-advisory-rankings-git.md
+  - ../sources/git/2026-06-08-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -48,3 +49,8 @@ The 2026-06-06 git ingest shows current architecture work focused on login-route
 auth-error rendering, mobile navigation and profile detail behavior, comparison evidence readability,
 and stale serving-node feed-index tolerance. Source:
 wiki/sources/git/2026-06-06-advisory-rankings-git.md.
+
+The 2026-06-08 git ingest shows continued architecture work around user-private table export safety,
+watchlist table discovery and runtime binding, root static asset serving, advisor research queue
+resources, and bounded fetch attempts so deploy cutovers cannot indefinitely stall the UI. Source:
+wiki/sources/git/2026-06-08-advisory-rankings-git.md.

@@ -1,0 +1,12 @@
+{
+  "connector": "git",
+  "profile": "advisory-rankings",
+  "ranAt": "2026-06-08T07:02:42.341Z",
+  "proposedCursor": {
+    "lastCommit": "45d98086993847e8cc7503198c33e24b90d304e4",
+    "lastPr": 983
+  },
+  "sourceNotes": [
+    "wiki/sources/git/2026-06-08-advisory-rankings-git.md"
+  ]
+}
