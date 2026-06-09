@@ -27,7 +27,7 @@ const MOBILE_VIEWPORTS = [
 ] as const;
 
 /**
- * Verifies the public Interactive Rankings Explorer page.
+ * Verifies the public Advisor Rankings Browser page.
  * @param page - Browser page shared by smoke scenarios.
  * @param browser - Browser used to open isolated mobile contexts.
  * @param extraHTTPHeaders - Optional auth headers for deployed checks.
@@ -87,12 +87,14 @@ async function readLoadedRankings(page: Page) {
         viewportWidth
       );
       return {
-        hasHeader: document.body.innerText.includes(
-          "Interactive Rankings Explorer"
+        hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
+        hasPurposeLede: document.body.innerText.includes(
+          "Browse public advisor and team ranking appearances"
         ),
         hasNextGen: document.body.innerText.includes("Next Gen"),
-        hasCoverageWorkbench:
-          document.body.innerText.includes("Coverage workbench"),
+        hasDataQualityPanel: document.body.innerText.includes(
+          "Ranking data quality"
+        ),
         hasCoverageBucket:
           document.querySelectorAll(".rankings-coverage-bucket[href]").length >
           0,
@@ -172,8 +174,9 @@ async function readUnresolvedRankings(page: Page) {
       hasUnresolvedStatus: document.body.innerText.includes(
         "Advisor or team not matched yet"
       ),
-      hasUnresolvedWorkbench:
-        document.body.innerText.includes("Coverage workbench"),
+      hasUnresolvedDataQuality: document.body.innerText.includes(
+        "Ranking data quality"
+      ),
       state: document.querySelector<HTMLInputElement>('input[name="state"]')
         ?.value,
       noOverflow:
@@ -212,9 +215,12 @@ async function readEmptyRankings(page: Page) {
  */
 function rankingsChecks(loaded, drilldown, unresolved, empty) {
   return [
-    check(loaded.hasHeader, "rankings: page header renders"),
+    check(
+      loaded.hasHeader && loaded.hasPurposeLede,
+      "rankings: page purpose and primary workflow render"
+    ),
     check(loaded.hasNextGen, "rankings: category data renders"),
-    check(loaded.hasCoverageWorkbench, "rankings: coverage workbench renders"),
+    check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
     check(loaded.hasCoverageBucket, "rankings: coverage buckets render"),
     check(
       loaded.hasGapSample && loaded.hasGapSource,
@@ -255,8 +261,8 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     ),
     check(unresolved.state === "TX", "rankings: state filter is retained"),
     check(
-      unresolved.hasUnresolvedWorkbench,
-      "rankings: filtered coverage workbench remains visible"
+      unresolved.hasUnresolvedDataQuality,
+      "rankings: filtered data quality panel remains visible"
     ),
     check(
       unresolved.noOverflow,
@@ -413,7 +419,7 @@ async function smokeRankingsNoRows(
     check(evidence.hasEmpty, "rankings: no-row state explains missing rows"),
     check(
       evidence.hasCoverageEmpty,
-      "rankings: no-row coverage workbench renders explicit empty state"
+      "rankings: no-row data quality panel renders explicit empty state"
     ),
   ]);
 }

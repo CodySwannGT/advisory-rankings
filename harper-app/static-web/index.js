@@ -12,6 +12,7 @@ const MIME = {
 };
 
 const CACHEABLE = new Set([".css", ".ico", ".js", ".svg"]);
+const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
 
 /**
  * Register root-level static web routes for Fabric nodes that do not expose
@@ -69,15 +70,25 @@ function isWebAsset(path) {
  */
 async function registerAsset(fastify, routePath, assetPath) {
   const assetUrl = new URL(assetPath, WEB_ROOT);
-  const body = await readFile(assetUrl);
-  const headers = headersFor(extname(assetPath));
+  const extension = extname(assetPath);
+  const body = await readAssetBody(assetUrl, extension);
+  const headers = headersFor(extension);
 
   fastify.get(routePath, async (_request, reply) => {
-    for (const [key, value] of Object.entries(headers)) {
-      reply.header(key, value);
-    }
-    return reply.send(body);
+    return reply.headers(headers).send(body);
   });
+}
+
+/**
+ * Reads text assets as strings and binary assets as buffers.
+ * @param assetUrl Static asset URL under the web root.
+ * @param extension File extension including the leading dot.
+ * @returns Asset body suitable for Fastify reply.send.
+ */
+function readAssetBody(assetUrl, extension) {
+  return TEXT_EXTENSIONS.has(extension)
+    ? readFile(assetUrl, "utf8")
+    : readFile(assetUrl);
 }
 
 /**

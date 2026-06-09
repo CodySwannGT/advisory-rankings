@@ -76,7 +76,7 @@ mountThreeColumnPage({
   refreshMe,
   logout,
   search,
-  pageTitle: "Interactive Rankings Explorer",
+  pageTitle: "Advisor Rankings Browser",
   build({ center, layout, right }) {
     layout.classList.add("rankings-layout");
     center.append(SkeletonCard(), SkeletonCard());
@@ -176,13 +176,13 @@ function renderRankings(
  */
 function headerCard(data: RankingsExplorerPayload): HTMLElement {
   return SectionCard({
-    title: "Interactive Rankings Explorer",
+    title: "Advisor Rankings Browser",
     attrs: { class: "rankings-header" },
     body: [
       el(
         "p",
         { class: "rankings-lede" },
-        "Source-backed AdvisorHub ranking rows with profile resolution, transparent missing fields, and filterable firm and market context."
+        "Browse public advisor and team ranking appearances, then filter by category, year, firm, market, and profile-match status to find source-backed rows."
       ),
       statGrid([
         ["Rows", fmtNumber(data.summary.totalEntries)],

@@ -746,7 +746,7 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/compare.js`, and `/AdvisorComparison` |
+| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/`, `/app.css`, `/compare.js`, and `/AdvisorComparison` with bounded public route retries |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
 
@@ -784,12 +784,13 @@ verification: the freshness gate has already proven the component
 propagated, so a verification error is treated as a transient cold-start
 blip and retried rather than triggering a deploy the runner cannot reach.
 
-The secondary public-route checks (`/compare.js`, `/AdvisorComparison`)
-poll with a short per-attempt timeout instead of a single shot: a freshly
-restarted resource route cold-starts and its first request can take
-several seconds, so `verifyPublicRoute` retries (6 attempts, 5 s apart,
-15 s per attempt) before failing. A single slow first hit no longer fails
-an otherwise healthy deploy or kicks off the recovery path.
+The public-route checks (`/`, `/app.css`, `/compare.js`, and
+`/AdvisorComparison`) poll with a short per-attempt timeout instead of a
+single shot: a freshly restarted static or resource route cold-starts and
+its first request can take several seconds, so `verifyPublicRoute` retries
+(6 attempts, 5 s apart, 15 s per attempt) before failing. A single slow
+first hit no longer fails an otherwise healthy deploy or kicks off the
+recovery path.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
@@ -1418,7 +1419,7 @@ organisms / templates) — see `docs/design-system.md`.
 | `/articles/<slug>-<id>` (`article.html?id=…` still works) | Single-article view: same event blocks as the feed card + the article body + the `FieldAssertion` provenance table. |
 | `/firms`, `/advisors`, `/teams` (`*.html` still works) | Plain directory pages (alphabetical), driven by public directory resources with GET filters and cursor pagination. |
 | `/recruiting` (`recruiting.html` still works) | Recruiting Market Map: state filter, summary KPIs, firm momentum, market activity, and recent advisor-team moves from `/RecruitingMarket`. |
-| `/rankings` (`rankings.html` still works) | Interactive Rankings Explorer: category/year/firm/state/city filters, resolved/unresolved status, source URLs, unavailable score labels, and ranking rows from `/RankingsExplorer`. |
+| `/rankings` (`rankings.html` still works) | Advisor Rankings Browser: category/year/firm/state/city filters, resolved/unresolved profile-match status, source URLs, unavailable score labels, ranking data-quality context, and ranking rows from `/RankingsExplorer`. |
 | `/regulatory` (`regulatory.html` still works) | Compliance events page: recent disclosure cards sourced from `/Feed`, with regulatory context and load-error fallback. |
 | `/regulatory/discrepancies` (`regulatory-discrepancies.html`) | Authenticated analyst queue for open `RegulatoryDiscrepancy` rows, showing compared source values, event clues, provenance, severity, status, and available review actions from `/RegulatoryDiscrepancyQueue`. |
 | `/research/freshness` (`research-freshness.html`) | Public research freshness queue for advisors due for source checks, showing advisor identity, firm context, source lane, stale/missing fields, status counts, provenance ids, and profile links from `/AdvisorResearchQueue`. |

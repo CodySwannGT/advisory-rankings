@@ -12,6 +12,7 @@ research/wpjson/
 .codex-tmp/
 tests/screenshots/
 tests/parity/
+artifacts/
 
 # BrokerCheck scraper runtime output — re-derived on every run, not
 # source-of-truth. State file lets the scraper skip CRDs fetched in

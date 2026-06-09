@@ -599,9 +599,11 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
     );
   }
 
+  await verifyPublicRoute(clusterUrl, "/");
+  await verifyPublicRoute(clusterUrl, "/app.css");
   await verifyPublicRoute(clusterUrl, "/compare.js");
   await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
-  console.log("▶ public comparison assets/resources verified");
+  console.log("▶ public static assets and comparison resources verified");
 }
 
 /**
