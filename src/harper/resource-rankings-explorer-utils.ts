@@ -234,7 +234,7 @@ function mergeFirmEntry(
 }
 
 /**
- * Computes the facet lists used by the explorer's filter controls (categories, years, firms, states).
+ * Computes the facet lists used by the explorer's filter controls.
  * @param entries Source entries to derive facets from.
  * @returns Sorted, de-duplicated facet lists.
  */
@@ -248,6 +248,11 @@ export function facets(
   );
   return {
     categories: uniqueSorted(entries.map(entry => entry.ranking.name)),
+    cities: uniqueSorted(
+      entries
+        .map(entry => entry.location.city)
+        .filter((city): city is string => !!city)
+    ),
     years: [...years].sort((left, right) => right - left),
     firms: uniqueSorted(
       entries

@@ -88,6 +88,7 @@ export interface TopFirmRow {
 /** Facet selectors derived from the loaded entry set. */
 export interface RankingsFacets {
   readonly categories: readonly string[];
+  readonly cities: readonly string[];
   readonly years: readonly number[];
   readonly firms: readonly string[];
   readonly states: readonly string[];
