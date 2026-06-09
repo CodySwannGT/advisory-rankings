@@ -48,6 +48,13 @@ const DEPLOY_TIMEOUT_MS =
 const FRESHNESS_POLL_ATTEMPTS = 18;
 const FRESHNESS_POLL_INTERVAL_MS = 5000;
 const FEED_READINESS_TIMEOUT_MS = 10000;
+// Secondary resource routes (e.g. /AdvisorComparison) cold-start after a
+// restart and can take seconds to answer their first request. Poll them with a
+// short per-attempt timeout so a single slow first hit retries instead of
+// hanging the full restart-scale budget and failing an otherwise healthy deploy.
+const ROUTE_READINESS_ATTEMPTS = 6;
+const ROUTE_READINESS_INTERVAL_MS = 5000;
+const ROUTE_READINESS_TIMEOUT_MS = 15000;
 const creds = loadCreds();
 
 /**
@@ -538,20 +545,51 @@ function localBundlePath(): string {
 }
 
 /**
- * Verifies a public GET route returns 200 after deploy.
+ * Summarizes a route-readiness failure for the retry log without leaking stacks.
+ * @param error - Unknown thrown value from fetch/AbortController.
+ * @returns A short, human-readable cause.
+ */
+function describeRouteError(error: unknown): string {
+  if (isAbortError(error)) return "request timed out";
+  if (isFetchDisconnect(error)) return "connection dropped";
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Verifies a public GET route returns 200 after deploy, polling to absorb the
+ * cold-start latency a freshly restarted resource route shows on its first
+ * request. The version + bundle freshness gate has already proven the component
+ * propagated to the serving node, so a single slow or transient first hit must
+ * retry rather than fail an otherwise healthy deploy.
  * @param clusterUrl - Base URL for the deployed Harper component.
  * @param path - Absolute path to check.
+ * @param attempts - Remaining poll attempts.
+ * @returns Nothing once the route answers 200, else throws after the budget.
  */
 async function verifyPublicRoute(
   clusterUrl: string,
-  path: string
+  path: string,
+  attempts = ROUTE_READINESS_ATTEMPTS
 ): Promise<void> {
-  const response = await fetchWithTimeout(`${clusterUrl}${path}`, {
-    headers: { Accept: "application/json, text/javascript, */*" },
-  });
-  if (!response.ok) {
-    throw new Error(`${path} returned HTTP ${response.status}`);
+  const outcome = await fetchWithTimeout(
+    `${clusterUrl}${path}`,
+    { headers: { Accept: "application/json, text/javascript, */*" } },
+    ROUTE_READINESS_TIMEOUT_MS
+  ).then(
+    response => ({ ready: response.ok, detail: `HTTP ${response.status}` }),
+    (error: unknown) => ({ ready: false, detail: describeRouteError(error) })
+  );
+  if (outcome.ready) return;
+  if (attempts <= 1) {
+    throw new Error(`${path} did not become ready: ${outcome.detail}`);
   }
+  console.log(
+    `  ${path} not ready (${outcome.detail}); retrying … (${attempts - 1} left)`
+  );
+  await new Promise(resolve =>
+    setTimeout(resolve, ROUTE_READINESS_INTERVAL_MS)
+  );
+  return verifyPublicRoute(clusterUrl, path, attempts - 1);
 }
 
 /**
@@ -720,6 +758,7 @@ async function main(): Promise<void> {
       deployPublicRuntime,
       restartPublicRuntime,
       verifyFeed: () => verifyFeed(creds.clusterUrl),
+      skipDirectDeploy: process.env.SKIP_DIRECT_PUBLIC_DEPLOY === "1",
     });
     if (!recovered) {
       process.exitCode = 1;

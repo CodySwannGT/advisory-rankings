@@ -777,7 +777,19 @@ When Fabric reports a replica failure, or when the data-plane freshness
 check still sees the previous bundle, the script uses Basic auth and
 deploys directly to the public node's `:9925` Operations API once. Same
 effect as the CLI below, while keeping the Studio path as the primary
-path for environments where direct ops are blocked.
+path for environments where direct ops are blocked. When
+`SKIP_DIRECT_PUBLIC_DEPLOY=1` (always set on CI — see below), the recovery
+path skips that firewalled direct deploy and simply re-runs the data-plane
+verification: the freshness gate has already proven the component
+propagated, so a verification error is treated as a transient cold-start
+blip and retried rather than triggering a deploy the runner cannot reach.
+
+The secondary public-route checks (`/compare.js`, `/AdvisorComparison`)
+poll with a short per-attempt timeout instead of a single shot: a freshly
+restarted resource route cold-starts and its first request can take
+several seconds, so `verifyPublicRoute` retries (6 attempts, 5 s apart,
+15 s per attempt) before failing. A single slow first hit no longer fails
+an otherwise healthy deploy or kicks off the recovery path.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
@@ -928,9 +940,17 @@ data-plane freshness gate. It then **polls `/version.js` on the public
 URL until it matches the freshly built `package.json` version**
 (`verifyRuntimeFreshness`). The deploy passes when the served node
 reports the new version and fails only
-if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
-exercise the CI-only path (Studio deploy + replication + freshness poll)
-from a local network.
+if replication never propagates it. `SKIP_DIRECT_PUBLIC_DEPLOY=1` selects
+the CI path (Studio deploy + replication + freshness poll, no direct
+`:9925` deploy); the deploy workflow sets it on every run because the
+runner cannot reach `:9925`, and you can set it locally to exercise the
+same path. When it is set, both the replica-failure branch and the
+post-deploy recovery branch skip the direct deploy — recovery re-verifies
+the public runtime instead of attempting a deploy the runner cannot
+complete. Before this was wired, a transient cold-start on a secondary
+route (`/AdvisorComparison`) would fail verification on a fully-propagated
+deploy and then burn the full `HARPER_DEPLOY_TIMEOUT_MS` against the
+firewalled port before failing the build (run `27203171950`, 2026-06-09).
 
 **Secondary indexes do not replicate reliably to the served node
 (2026-06-03).** A subtler layer of the same east→west replication gap:
