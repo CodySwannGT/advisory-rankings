@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-08
+updated: 2026-06-09
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -15,6 +15,7 @@ sources:
   - ../sources/git/2026-06-06-advisory-rankings-git.md
   - ../sources/git/2026-06-07-advisory-rankings-git.md
   - ../sources/git/2026-06-08-advisory-rankings-git.md
+  - ../sources/git/2026-06-09-advisory-rankings-git.md
 ---
 
 # Git history
@@ -73,6 +74,11 @@ commits since the 2026-06-07 cursor, bringing the branch total to 1253 commits. 
 was skipped because the connector's `gh pr list` request timed out. Source:
 wiki/sources/git/2026-06-08-advisory-rankings-git.md.
 
+The 2026-06-09 git ingest ran at HEAD `e1b44fde0ff6d47e66b54c6279581628ab7fbbba`. It added 68
+commits since the 2026-06-08 cursor, bringing the branch total to 1321 commits, and refreshed merged
+PR metadata through #1074, with #1059 also merged after #1074. Source:
+wiki/sources/git/2026-06-09-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -114,6 +120,11 @@ wiki/sources/git/2026-06-08-advisory-rankings-git.md.
   CSS coverage, directory label and compare heading accessibility fixes, watchlist storage/table
   binding hardening, Lisa harness migration to fleet mode, advisor research queue resource work,
   SPA root asset recovery, and deploy-cutover fetch timeout guards.
+- The 2026-06-08 wiki ingest PR merged, followed by nightly coverage and complexity threshold work,
+  removal of legacy AdvisorBook Lisa intake wrappers, the Lisa 2.155.2 update, recruiting source and
+  filter validation work, compare-selection preservation, static asset response fixes, comparator
+  transition mention loading, research freshness and URL-filter routes, bounded recruiting article
+  backfill, recruiting market seed-depth restoration, and research-queue profile parity coverage.
 
 ## Use
 
@@ -127,4 +138,5 @@ wiki/sources/git/2026-06-02-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-03-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-06-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-07-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-08-advisory-rankings-git.md.
+wiki/sources/git/2026-06-08-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-09-advisory-rankings-git.md.
