@@ -1,4 +1,4 @@
-// Rankings coverage workbench renderers.
+// Ranking data-quality renderers.
 
 import type { HarperDate } from "../types/harper-schema.js";
 import type {
@@ -14,27 +14,27 @@ const COVERAGE_BUCKET_LIMIT = 4;
 const GAP_BUCKET_LIMIT = 6;
 
 /**
- * Builds the rankings coverage workbench.
+ * Builds the rankings data-quality panel.
  * @param coverage - Rankings coverage payload.
- * @returns Coverage workbench card.
+ * @returns Data-quality panel card.
  */
 export function coverageWorkbenchCard(
   coverage: RankingsCoverage | null | undefined
 ): HTMLElement {
   if (!coverage || coverage.emptyState) {
     return SectionCard({
-      title: "Coverage workbench",
+      title: "Ranking data quality",
       attrs: { class: "rankings-coverage-workbench" },
       body: EmptyText({
         children:
           coverage?.emptyState ||
-          "Coverage data is unavailable for this slice.",
+          "Data-quality details are unavailable for this slice.",
       }),
     });
   }
 
   return SectionCard({
-    title: "Coverage workbench",
+    title: "Ranking data quality",
     attrs: { class: "rankings-coverage-workbench" },
     body: [
       coverageSummary(coverage),
@@ -81,7 +81,7 @@ function coverageMetric(label: string, value: string): HTMLElement {
 }
 
 /**
- * Builds category/year coverage buckets.
+ * Builds category/year data-quality buckets.
  * @param buckets - Coverage buckets.
  * @returns Bucket panel.
  */
@@ -105,7 +105,7 @@ function coverageBucketPanel(
 }
 
 /**
- * Builds one category/year coverage bucket.
+ * Builds one category/year data-quality bucket.
  * @param bucket - Coverage bucket.
  * @returns Bucket card node.
  */
@@ -187,7 +187,7 @@ function gapBucketCard(bucket: SourceStatusBucket): HTMLElement {
 }
 
 /**
- * Wraps a coverage workbench panel.
+ * Wraps a data-quality panel section.
  * @param title - Panel title.
  * @param body - Panel body.
  * @returns Panel node.
