@@ -87,13 +87,14 @@ function articleListRowOptions(
       article.headline || article.id || ""
     ),
     sub: subParts.filter((part): part is string => Boolean(part)).join(" · "),
-    tail: article.url
-      ? el(
-          "a",
-          { href: article.url, target: "_blank", rel: "noreferrer" },
-          `${src.source} →`
-        )
-      : null,
+    tail:
+      article.url && src.publicOriginalLink !== false
+        ? el(
+            "a",
+            { href: article.url, target: "_blank", rel: "noreferrer" },
+            `${src.source} →`
+          )
+        : null,
   };
 }
 

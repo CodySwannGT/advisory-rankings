@@ -226,6 +226,52 @@ browserDescribe("web async states", () => {
     await page.close();
   });
 
+  it("hides LinkedIn profile originals in public feed cards", async () => {
+    const page = await browser.newPage();
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(FEED_ROUTE, async route => {
+      await route.fulfill({
+        json: feedWithArticles([
+          {
+            id: "article-linkedin-profile",
+            headline: "Adam Fleishman - Morgan Stanley | LinkedIn",
+            url: "https://www.linkedin.com/in/adam-fleishman-example/",
+          },
+          {
+            id: "article-advisorhub",
+            headline: "AdvisorHub source-backed move",
+            url: "https://www.advisorhub.com/source-backed-move/",
+          },
+        ]),
+      });
+    });
+
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+
+    await page
+      .getByRole("link", { name: "Adam Fleishman - Morgan Stanley | LinkedIn" })
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .getByRole("link", { name: "AdvisorHub source-backed move" })
+      .waitFor({ timeout: QUICK_TIMEOUT });
+
+    expect(
+      await page.locator('a.ext-link[href*="linkedin.com/in"]').count()
+    ).toBe(0);
+    expect(await page.getByText("Snippet-derived context").count()).toBe(1);
+    expect(
+      await page
+        .locator(
+          'a.ext-link[href="https://www.advisorhub.com/source-backed-move/"]'
+        )
+        .textContent()
+    ).toContain("AdvisorHub original");
+    await page.close();
+  });
+
   it("renders the research freshness queue route with profile links", async () => {
     const page = await browser.newPage();
     const queueRequests: string[] = [];
@@ -917,25 +963,40 @@ type FeedWithArticle = {
  * @returns Feed resource payload with one article.
  */
 function feedWithArticle(): FeedWithArticle {
+  return feedWithArticles([
+    {
+      id: "article-retry",
+      headline: RETRY_RECOVERY_ARTICLE,
+      url: "https://example.com/retry-recovery",
+    },
+  ]);
+}
+
+/**
+ * Builds a feed payload with caller-supplied article identity and source URLs.
+ * @param articles - Article source fixtures to render.
+ * @returns Feed resource payload.
+ */
+function feedWithArticles(
+  articles: readonly Pick<FeedArticleStub, "id" | "headline" | "url">[]
+): FeedWithArticle {
   return {
-    items: [
-      {
-        article: {
-          id: "article-retry",
-          headline: RETRY_RECOVERY_ARTICLE,
-          dek: "Loaded after a manual retry.",
-          category: "transitions",
-          publishedDate: "2026-05-27T00:00:00.000Z",
-          modifiedDate: "2026-05-27T00:00:00.000Z",
-          authors: ["AdvisorBook"],
-          url: "https://example.com/retry-recovery",
-        },
-        eventCards: [],
-        firms: [],
-        teams: [],
-        advisors: [],
+    items: articles.map(article => ({
+      article: {
+        id: article.id,
+        headline: article.headline,
+        dek: "Loaded after a manual retry.",
+        category: "transitions",
+        publishedDate: "2026-05-27T00:00:00.000Z",
+        modifiedDate: "2026-05-27T00:00:00.000Z",
+        authors: ["AdvisorBook"],
+        url: article.url,
       },
-    ],
+      eventCards: [],
+      firms: [],
+      teams: [],
+      advisors: [],
+    })),
   };
 }
 

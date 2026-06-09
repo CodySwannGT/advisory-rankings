@@ -29,6 +29,7 @@ export interface ArticleSourceMeta {
   readonly source: string;
   readonly initials: string;
   readonly ctaLabel?: string;
+  readonly publicOriginalLink?: boolean;
 }
 
 /** Adapter signature for resolving an article's source attribution. */

@@ -246,6 +246,7 @@ export interface ArticleSource {
   readonly source: string;
   readonly initials: string;
   readonly ctaLabel: string;
+  readonly publicOriginalLink: boolean;
 }
 
 /**
@@ -261,7 +262,20 @@ export function articleSource(
 ): ArticleSource {
   const url = article && article.url;
   if (!url)
-    return { source: "External", initials: "?", ctaLabel: "Read original →" };
+    return {
+      source: "External",
+      initials: "?",
+      ctaLabel: "Read original →",
+      publicOriginalLink: false,
+    };
+  if (isLinkedInProfileUrl(url)) {
+    return {
+      source: "LinkedIn snippet",
+      initials: "LS",
+      ctaLabel: "Snippet-derived context",
+      publicOriginalLink: false,
+    };
+  }
   const host = hostnameForUrl(url);
   const known = PUBLISHER_BY_HOST[host];
   const source = known
@@ -275,6 +289,7 @@ export function articleSource(
     source,
     initials: initialsText,
     ctaLabel: `Read original on ${source} →`,
+    publicOriginalLink: true,
   };
 }
 
@@ -288,6 +303,24 @@ function hostnameForUrl(url: string): string {
     return new URL(url).hostname.toLowerCase();
   } catch {
     return "";
+  }
+}
+
+/**
+ * Identifies LinkedIn profile URLs that come from search-result snippets, not
+ * public source articles.
+ * @param url - Article URL to classify.
+ * @returns True for LinkedIn profile URLs.
+ */
+function isLinkedInProfileUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname.toLowerCase().replace(/^www\./, "") === "linkedin.com" &&
+      parsed.pathname.toLowerCase().startsWith("/in/")
+    );
+  } catch {
+    return false;
   }
 }
 

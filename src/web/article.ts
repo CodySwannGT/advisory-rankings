@@ -284,13 +284,15 @@ function metadataSection(article: ArticleMetadata): HTMLElement {
       ["Authors", (article.authors || []).join(", ")],
       [
         "Source",
-        article.url
+        article.url && src.publicOriginalLink !== false
           ? el(
               "a",
               { href: article.url, target: "_blank", rel: "noreferrer" },
               `${src.source} →`
             )
-          : null,
+          : article.url
+            ? (src.ctaLabel ?? null)
+            : null,
       ],
     ],
   });

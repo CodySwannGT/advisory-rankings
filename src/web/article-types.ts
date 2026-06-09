@@ -102,6 +102,7 @@ export interface ArticleSourceMetadata {
   readonly initials: string;
   readonly source: string;
   readonly ctaLabel: string;
+  readonly publicOriginalLink: boolean;
 }
 
 /** Event cards linked from an article feed item. */
