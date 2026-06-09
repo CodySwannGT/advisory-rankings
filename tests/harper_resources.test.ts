@@ -1789,7 +1789,7 @@ describe("Harper feed and profile builders", () => {
     );
   });
 
-  it("returns an explicit rankings coverage payload when no ranking rows are loaded", async () => {
+  it("returns an explicit rankings coverage payload when no rankings are loaded", async () => {
     setRows("RankingEntry", []);
 
     const payload = await new (resources as any).RankingsExplorer().get(
@@ -1807,11 +1807,11 @@ describe("Harper feed and profile builders", () => {
       totalEntries: 0,
       buckets: [],
       gapBuckets: [],
-      emptyState: "No ranking rows are loaded for this coverage slice.",
+      emptyState: "No rankings are loaded for this coverage view.",
     });
     expect(payload.items).toEqual([]);
     expect(payload.emptyState).toBe(
-      "No matching public ranking rows are loaded for these filters."
+      "No matching public rankings are loaded for these filters."
     );
   });
 
@@ -1926,10 +1926,9 @@ describe("Harper feed and profile builders", () => {
         totalEntries: 0,
         buckets: [],
         gapBuckets: [],
-        emptyState: "No ranking rows are loaded for this coverage slice.",
+        emptyState: "No rankings are loaded for this coverage view.",
       },
-      emptyState:
-        "No matching public ranking rows are loaded for these filters.",
+      emptyState: "No matching public rankings are loaded for these filters.",
     });
   });
 

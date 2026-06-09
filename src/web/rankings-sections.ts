@@ -1,6 +1,7 @@
 // Section renderers for the public Interactive Rankings Explorer.
 
 import { fmtDate } from "./app.js";
+import { humanize } from "./app-formatters.js";
 import {
   el,
   EmptyCard,
@@ -19,18 +20,20 @@ import type {
 } from "../harper/resource-rankings-explorer-types.js";
 
 const STACKED_CELL_CLASS = "stacked-cell";
+const RANKED_PROFILES_LABEL = "Ranked profiles";
 const SOURCE_TABLE_LABELS: Record<string, string> = {
-  RankingEntry: "Loaded rows",
-  RankingList: "List definitions",
+  Ranking: "Ranking definitions",
+  RankingEntry: "Imported rankings",
+  RankingList: "Ranking list definitions",
   RankingSource: "Public ranking sources",
 };
 const STATUS_LABELS: Record<string, string> = {
   "missing-market": "Market not matched yet",
-  "missing-scale": "Ranking scale unavailable",
+  "missing-scale": "Missing scale score",
   "missing-source": "Source unavailable",
-  resolved: "Matched profile",
-  "source-backed": "Source confirmed",
-  unavailable: "Unavailable",
+  resolved: "Matched to AdvisorBook profile",
+  "source-backed": "Verified source",
+  unavailable: "Missing score",
   "unresolved-entity": "Advisor or team not matched yet",
   "unresolved-firm": "Firm not matched yet",
 };
@@ -62,12 +65,12 @@ export function rankingsTableCard(
 ): HTMLElement {
   if (!rows.length) {
     return EmptyCard({
-      title: "Ranking rows",
-      body: "No ranking rows match the current filters.",
+      title: RANKED_PROFILES_LABEL,
+      body: "No rankings match the current filters.",
     });
   }
   return SectionCard({
-    title: "Ranking rows",
+    title: RANKED_PROFILES_LABEL,
     body: ScrollableTable(
       table(
         [
@@ -106,7 +109,7 @@ export function topFirmsCard(rows: readonly TopFirmRow[]): HTMLElement {
     rows: rows.slice(0, 6),
     renderRow: row => ({
       name: row.firm?.name || row.firmText,
-      sub: row.firm?.id ? "Resolved firm" : "Source text",
+      sub: row.firm?.id ? "Matched firm" : "Source firm name",
       tail: String(row.count),
     }),
   });
@@ -123,7 +126,7 @@ export function sourceCard(data: RankingsExplorerData): HTMLElement {
     body: [
       EmptyText({
         children:
-          "Rows preserve public source URLs, loaded dates, unresolved entities, and unavailable score states.",
+          "Imported rankings keep public source URLs, import dates, profile-match status, and missing score details visible.",
       }),
       el(
         "div",
@@ -145,11 +148,11 @@ export function summaryCard(data: RankingsExplorerData): HTMLElement {
   return DetailsCard({
     title: "Ranking summary",
     pairs: [
-      ["Rows", fmtNumber(data.summary.totalEntries)],
-      ["Resolved", fmtNumber(data.summary.resolvedEntries)],
-      ["Unresolved", fmtNumber(data.summary.unresolvedEntries)],
+      ["Ranked profiles", fmtNumber(data.summary.totalEntries)],
+      ["Matched profiles", fmtNumber(data.summary.resolvedEntries)],
+      ["Needs match", fmtNumber(data.summary.unresolvedEntries)],
       ["Firms", fmtNumber(data.summary.representedFirms)],
-      ["States", fmtNumber(data.summary.representedStates)],
+      ["Markets", fmtNumber(data.summary.representedStates)],
       ["Generated", fmtDate(data.generatedAt, { mode: "rel" })],
     ],
   });
@@ -200,7 +203,7 @@ function table(
  * @returns Subject cell.
  */
 function subjectCell(row: PublicRankingEntry): HTMLElement {
-  const name = row.subject?.displayName || "Unresolved ranking row";
+  const name = row.subject?.displayName || "Unmatched ranking profile";
   const label = row.subject?.url
     ? el("a", { href: row.subject.url }, name)
     : el("strong", {}, name);
@@ -266,8 +269,8 @@ function sourceCell(row: PublicRankingEntry): HTMLElement {
       "span",
       {},
       row.source?.loadedAt
-        ? `Loaded ${row.source.loadedAt}`
-        : "Loaded date unavailable"
+        ? `Imported ${row.source.loadedAt}`
+        : "Import date unavailable"
     )
   );
 }
@@ -318,7 +321,7 @@ function statusTag(status: string | null | undefined): HTMLElement {
  * @returns Display label.
  */
 function sourceTableLabel(name: string): string {
-  return SOURCE_TABLE_LABELS[name] || "Ranking source records";
+  return SOURCE_TABLE_LABELS[name] || humanize(name) || "Ranking source";
 }
 
 /**

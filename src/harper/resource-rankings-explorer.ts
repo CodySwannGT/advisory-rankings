@@ -21,7 +21,7 @@ export type { RankingExplorerEntry } from "./resource-rankings-explorer-entries.
 /** Public rankings explorer resource. */
 export class RankingsExplorer extends Resource {
   /**
-   * Allows anonymous readers to inspect source-backed ranking rows.
+   * Allows anonymous readers to inspect source-backed rankings.
    * @returns True because rankings explorer data is public.
    */
   allowRead(): boolean {
@@ -59,7 +59,7 @@ export class RankingsExplorer extends Resource {
       },
       emptyState:
         entries.length === 0
-          ? "No matching public ranking rows are loaded for these filters."
+          ? "No matching public rankings are loaded for these filters."
           : null,
     };
   }

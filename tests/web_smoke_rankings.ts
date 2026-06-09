@@ -20,6 +20,12 @@ const RAW_RANKINGS_LABELS = [
   "MISSING SCALE",
   "UNRESOLVED ENTITY",
   "UNRESOLVED FIRM",
+  "Rows",
+  "Rows in slice",
+  "Buckets",
+  "Gap types",
+  "Source confirmed",
+  "Loaded rows",
 ];
 const MOBILE_VIEWPORTS = [
   { width: 390, height: 844 },
@@ -68,13 +74,13 @@ export async function smokeRankings(
  */
 async function readLoadedRankings(page: Page) {
   return await page.evaluate(
-    ({
-      nextGenSourceLabel,
-      rankingsTableSelector,
-      rawRankingsLabels,
-      unresolvedRowName,
-    }) => {
-      const table = document.querySelector<HTMLElement>(rankingsTableSelector);
+    args => {
+      const pageText = document.body.innerText;
+      const hasText = (label: string) =>
+        pageText.toLowerCase().includes(label.toLowerCase());
+      const table = document.querySelector<HTMLElement>(
+        args.rankingsTableSelector
+      );
       const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
       const center = table?.closest<HTMLElement>(".center");
       const right = document.querySelector<HTMLElement>(".right");
@@ -98,20 +104,21 @@ async function readLoadedRankings(page: Page) {
         hasCoverageBucket:
           document.querySelectorAll(".rankings-coverage-bucket[href]").length >
           0,
-        hasGapSample: document.body.innerText.includes(unresolvedRowName),
-        hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
+        hasGapSample: document.body.innerText.includes(args.unresolvedRowName),
+        hasGapSource: document.body.innerText.includes(args.nextGenSourceLabel),
         hasLatestLoaded: document.body.innerText.includes("Latest"),
-        hasResolved: document.body.innerText.includes("Matched profile"),
-        hasSourceBacked: document.body.innerText.includes("Source confirmed"),
-        hasUnavailable: document.body.innerText.includes("Unavailable"),
-        rawLabels: rawRankingsLabels.filter(label =>
+        hasResolved: hasText("Matched to AdvisorBook profile"),
+        hasSourceBacked: hasText("Verified source"),
+        hasUnavailable: hasText("Missing score"),
+        rawLabels: args.rawRankingsLabels.filter(label =>
           document.body.innerText.includes(label)
         ),
         profileHref: document.querySelector<HTMLAnchorElement>(
           ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
         )?.href,
-        rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
-          .length,
+        rowCount: document.querySelectorAll(
+          `${args.rankingsTableSelector} tbody tr`
+        ).length,
         tableLayout: {
           centerRight: Math.round(centerRect?.right ?? 0),
           isContained:
@@ -194,11 +201,9 @@ async function readUnresolvedRankings(page: Page) {
  */
 async function readEmptyRankings(page: Page) {
   return await page.evaluate(() => ({
-    hasEmpty: document.body.innerText.includes(
-      "No matching public ranking rows"
-    ),
+    hasEmpty: document.body.innerText.includes("No matching public rankings"),
     hasCoverageEmpty: document.body.innerText.includes(
-      "No ranking rows are loaded for this coverage slice."
+      "No rankings are loaded for this coverage view."
     ),
     state: document.querySelector<HTMLInputElement>('input[name="state"]')
       ?.value,
@@ -365,17 +370,18 @@ async function readMobileRankings(page: Page) {
       .map(tag => tag.textContent?.trim() || "empty status");
     return {
       clientWidth: document.documentElement.clientWidth,
-      hasCounts: /Rows in slice|Buckets|Gap types/i.test(text),
+      hasCounts: /Rankings in view|Ranking lists|Open match issues/i.test(text),
       hasDrilldown:
         document.querySelectorAll(
           ".rankings-coverage-bucket[href], .rankings-gap-bucket[href]"
         ).length > 0,
-      hasLabels: /Category coverage|Source-status gaps|Latest loaded/i.test(
-        text
-      ),
+      hasLabels:
+        /Ranking-list coverage|Profile and source issues|Latest import/i.test(
+          text
+        ),
       hasReadableRowStatus:
-        tableText.includes("Advisor or team not matched yet") &&
-        tableText.includes("Source confirmed"),
+        tableText.toLowerCase().includes("advisor or team not matched yet") &&
+        tableText.toLowerCase().includes("verified source"),
       noOverflow:
         document.documentElement.scrollWidth <=
         document.documentElement.clientWidth,
@@ -454,7 +460,7 @@ function noRankingRowsPayload() {
       totalEntries: 0,
       buckets: [],
       gapBuckets: [],
-      emptyState: "No ranking rows are loaded for this coverage slice.",
+      emptyState: "No rankings are loaded for this coverage view.",
     },
     topFirms: [],
     source: {
@@ -465,6 +471,6 @@ function noRankingRowsPayload() {
       sourceTables: ["Ranking", "RankingEntry", "FirmAlias"],
       sourceIds: [],
     },
-    emptyState: "No matching public ranking rows are available.",
+    emptyState: "No matching public rankings are available.",
   };
 }
