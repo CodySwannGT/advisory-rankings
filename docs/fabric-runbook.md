@@ -1274,6 +1274,12 @@ provides the durable queue and bookkeeping that an agent Automation
 uses before and after targeted public searches that follow the
 `upsert-advisor` skill.
 
+The deployed operator surface has two matching entrypoints:
+`GET /AdvisorResearchQueue` returns the public-safe queue payload, and
+`/research/freshness` renders the same rows in the browser. Both support
+`sourceType`, `staleDays`, `status`, `missingField`, and `limit`; the web UI
+keeps those filters in the URL and forwards them to the resource.
+
 ```bash
 export HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>
 export HDB_ADMIN_USERNAME=<FABRIC_LOGIN_EMAIL>
