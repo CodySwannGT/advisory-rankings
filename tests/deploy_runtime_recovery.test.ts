@@ -53,6 +53,47 @@ describe("recoverPublicRuntime", () => {
     warn.mockRestore();
   });
 
+  it("re-verifies instead of direct-deploying when the ops port is firewalled", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const actions = {
+      deployPublicRuntime: vi.fn(async () => 200),
+      restartPublicRuntime: vi.fn(async () => 200),
+      verifyFeed: vi.fn(async () => {}),
+      skipDirectDeploy: true,
+    };
+
+    await expect(
+      recoverPublicRuntime(new Error("compare route cold"), actions)
+    ).resolves.toBe(true);
+    expect(actions.deployPublicRuntime).not.toHaveBeenCalled();
+    expect(actions.restartPublicRuntime).not.toHaveBeenCalled();
+    expect(actions.verifyFeed).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  it("reports failure when the firewalled re-verification still rejects", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const actions = {
+      deployPublicRuntime: vi.fn(async () => 200),
+      restartPublicRuntime: vi.fn(async () => 200),
+      verifyFeed: vi.fn(async () => {
+        throw new Error("still cold");
+      }),
+      skipDirectDeploy: true,
+    };
+
+    await expect(
+      recoverPublicRuntime(new Error("compare route cold"), actions)
+    ).resolves.toBe(false);
+    expect(actions.deployPublicRuntime).not.toHaveBeenCalled();
+    expect(actions.verifyFeed).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      "public runtime recovery attempt failed:",
+      "still cold"
+    );
+    warn.mockRestore();
+  });
+
   it("reports failure when final feed verification still rejects", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const actions = {
