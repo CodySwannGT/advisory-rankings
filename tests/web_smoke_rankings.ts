@@ -78,20 +78,6 @@ async function readLoadedRankings(page: Page) {
       const pageText = document.body.innerText;
       const hasText = (label: string) =>
         pageText.toLowerCase().includes(label.toLowerCase());
-      const table = document.querySelector<HTMLElement>(
-        args.rankingsTableSelector
-      );
-      const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
-      const center = table?.closest<HTMLElement>(".center");
-      const right = document.querySelector<HTMLElement>(".right");
-      const scrollRect = scroll?.getBoundingClientRect();
-      const centerRect = center?.getBoundingClientRect();
-      const rightRect = right?.getBoundingClientRect();
-      const viewportWidth = document.documentElement.clientWidth;
-      const maxRight = Math.min(
-        rightRect?.left ?? viewportWidth,
-        viewportWidth
-      );
       return {
         hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
         hasPurposeLede: document.body.innerText.includes(
@@ -112,25 +98,6 @@ async function readLoadedRankings(page: Page) {
         rawLabels: args.rawRankingsLabels.filter(label =>
           document.body.innerText.includes(label)
         ),
-        profileHref: document.querySelector<HTMLAnchorElement>(
-          ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
-        )?.href,
-        rowCount: document.querySelectorAll(
-          `${args.rankingsTableSelector} tbody tr`
-        ).length,
-        tableLayout: {
-          centerRight: Math.round(centerRect?.right ?? 0),
-          isContained:
-            Boolean(scrollRect && centerRect) &&
-            scrollRect.left >= centerRect.left - 1 &&
-            scrollRect.right <= centerRect.right + 1 &&
-            scrollRect.right <= maxRight + 1 &&
-            document.documentElement.scrollWidth <= viewportWidth,
-          rightRailLeft: Math.round(rightRect?.left ?? viewportWidth),
-          scrollRight: Math.round(scrollRect?.right ?? 0),
-          scrollWidth: document.documentElement.scrollWidth,
-          viewportWidth,
-        },
         unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
           ".rankings-gap-bucket[href*='resolved=unresolved']"
         )?.href,
@@ -143,7 +110,12 @@ async function readLoadedRankings(page: Page) {
       unresolvedRowName: UNRESOLVED_ROW_NAME,
     }
   );
-  return { ...evidence, ...(await readRankingsDateEvidence(page)) };
+  return {
+    ...evidence,
+    ...(await readRankingsDateEvidence(page)),
+    ...(await readRankingsControlEvidence(page)),
+    ...(await readRankingsTableEvidence(page)),
+  };
 }
 
 /**
@@ -167,6 +139,81 @@ async function readRankingsDateEvidence(page: Page) {
     rawDateLabels:
       pageText.match(/\b(?:\d{4}-\d{2}-\d{2}T|\d{4}-\d{2}-\d{2}\b)/g) ?? [],
   };
+}
+
+/**
+ * Reads DOM grouping facts for filters and presentation controls.
+ * @param page - Browser page to inspect.
+ * @returns Sort/filter grouping evidence.
+ */
+async function readRankingsControlEvidence(page: Page) {
+  return await page.evaluate(rankingsTableSelector => {
+    const cards = [...document.querySelectorAll<HTMLElement>(".card")];
+    const cardByTitle = (title: string) =>
+      cards.find(
+        card =>
+          card
+            .querySelector<HTMLElement>(".card-title")
+            ?.textContent?.trim() === title
+      );
+    const filtersCard = cardByTitle("Filters");
+    const viewOptionsCard = cardByTitle("View options");
+    const table = document.querySelector<HTMLElement>(rankingsTableSelector);
+    const filterControlNames = [
+      ...(filtersCard?.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+        "input:not([type='hidden']), select"
+      ) ?? []),
+    ].map(control => control.name);
+    return {
+      filterControlNames,
+      hasSeparateSortControl:
+        Boolean(viewOptionsCard?.querySelector('select[name="sort"]')) &&
+        !filterControlNames.includes("sort"),
+      hasSortNearResults:
+        Boolean(viewOptionsCard && table) &&
+        viewOptionsCard.getBoundingClientRect().top <
+          table.getBoundingClientRect().top,
+    };
+  }, RANKINGS_TABLE_SELECTOR);
+}
+
+/**
+ * Reads ranking table link, count, and layout facts.
+ * @param page - Browser page to inspect.
+ * @returns Table evidence.
+ */
+async function readRankingsTableEvidence(page: Page) {
+  return await page.evaluate(rankingsTableSelector => {
+    const table = document.querySelector<HTMLElement>(rankingsTableSelector);
+    const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
+    const center = table?.closest<HTMLElement>(".center");
+    const right = document.querySelector<HTMLElement>(".right");
+    const scrollRect = scroll?.getBoundingClientRect();
+    const centerRect = center?.getBoundingClientRect();
+    const rightRect = right?.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const maxRight = Math.min(rightRect?.left ?? viewportWidth, viewportWidth);
+    return {
+      profileHref: document.querySelector<HTMLAnchorElement>(
+        `${rankingsTableSelector} tbody a[href*='advisor.html'], ${rankingsTableSelector} tbody a[href*='team.html']`
+      )?.href,
+      rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
+        .length,
+      tableLayout: {
+        centerRight: Math.round(centerRect?.right ?? 0),
+        isContained:
+          Boolean(scrollRect && centerRect) &&
+          scrollRect.left >= centerRect.left - 1 &&
+          scrollRect.right <= centerRect.right + 1 &&
+          scrollRect.right <= maxRight + 1 &&
+          document.documentElement.scrollWidth <= viewportWidth,
+        rightRailLeft: Math.round(rightRect?.left ?? viewportWidth),
+        scrollRight: Math.round(scrollRect?.right ?? 0),
+        scrollWidth: document.documentElement.scrollWidth,
+        viewportWidth,
+      },
+    };
+  }, RANKINGS_TABLE_SELECTOR);
 }
 
 /**
@@ -272,6 +319,15 @@ function loadedRankingsChecks(loaded) {
       "rankings: page purpose and primary workflow render"
     ),
     check(loaded.hasNextGen, "rankings: category data renders"),
+    check(
+      loaded.hasSeparateSortControl && loaded.hasSortNearResults,
+      "rankings: sort control is separate from filters",
+      JSON.stringify({
+        filterControlNames: loaded.filterControlNames,
+        hasSeparateSortControl: loaded.hasSeparateSortControl,
+        hasSortNearResults: loaded.hasSortNearResults,
+      })
+    ),
     check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
     check(
       loaded.hasDataVolumeState,
@@ -451,13 +507,15 @@ async function smokeRankingsMobileViewport(
  * @returns Mobile coverage facts.
  */
 async function readMobileRankings(page: Page) {
-  return await page.evaluate(() => {
+  return await page.evaluate(rankingsTableSelector => {
     const workbench = document.querySelector(".rankings-coverage-workbench");
     const text = workbench?.textContent || "";
-    const table = document.querySelector(".rankings-table");
+    const table = document.querySelector(rankingsTableSelector);
     const tableText = table?.textContent || "";
     const statusTags = [
-      ...document.querySelectorAll<HTMLElement>(".rankings-table .tag"),
+      ...document.querySelectorAll<HTMLElement>(
+        `${rankingsTableSelector} .tag`
+      ),
     ];
     const clippedStatusLabels = statusTags
       .filter(tag => {
@@ -492,7 +550,7 @@ async function readMobileRankings(page: Page) {
       tableText,
       text,
     };
-  });
+  }, RANKINGS_TABLE_SELECTOR);
 }
 
 /**
