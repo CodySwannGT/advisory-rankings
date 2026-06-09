@@ -64,9 +64,17 @@ function runtimeQuery(): CoverageQuery {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const strict = process.argv.includes("--strict");
   await buildDataCoverageReport(runtimeQuery())
     .then(report => {
       console.log(renderDataCoverageReport(report, describeTarget()));
+      const gap = report.unextractedRecruitingArticles;
+      if (strict && gap.length > 0) {
+        console.error(
+          `[data-coverage] --strict: ${gap.length} recruiting-shaped article(s) have no linked move`
+        );
+        process.exitCode = 1;
+      }
     })
     .catch(error => {
       console.error(error);

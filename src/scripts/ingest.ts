@@ -7,6 +7,7 @@ import { articleDates } from "../lib/article-dates.js";
 import { articleId, firmId, uid } from "../lib/ids.js";
 import { canonicalFirmName } from "../lib/firm-identity.js";
 import { describeTarget, upsert } from "../lib/harper.js";
+import { deriveArticleCategory } from "../lib/recruiting-article-gap.js";
 import type {
   ArticleFirmMentionRow,
   ArticleRow,
@@ -159,7 +160,7 @@ function rowsForPost(post: RawWpPost): PostIngestRows {
     ...(post.slug !== undefined ? { slug: post.slug } : {}),
     headline,
     ...articleDates(post),
-    category: "unknown",
+    category: deriveArticleCategory(headline),
   };
   const aliasMatches = FIRM_ALIASES.filter(
     ([alias]) => body.includes(alias) || headline.includes(alias)

@@ -2,6 +2,13 @@ import {
   firmSourceCoverage,
   type FirmSourceCoverageMetric,
 } from "./data-coverage-firm-source.js";
+import {
+  detectUnextractedRecruiting,
+  unextractedRecruitingWarnings,
+  type RecruitingGapEntry,
+} from "./data-coverage-recruiting-gap.js";
+
+export type { RecruitingGapEntry } from "./data-coverage-recruiting-gap.js";
 
 /**
  *
@@ -63,6 +70,7 @@ export interface CoverageReport {
   readonly sparseAdvisors: ReadonlyArray<SparseRow>;
   readonly sparseFirms: ReadonlyArray<SparseRow>;
   readonly recruitingCoverage: ReadonlyArray<GroupCountRow>;
+  readonly unextractedRecruitingArticles: ReadonlyArray<RecruitingGapEntry>;
   readonly freshness: Readonly<
     Record<"articles" | "transitions" | "firmSourceChecks", string | null>
   >;
@@ -128,6 +136,7 @@ export async function buildDataCoverageReport(
   const sparseAdvisors = await safeRows<SparseRow>(query, sparseAdvisorSql());
   const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
   const recruiting = await recruitingCoverage(query);
+  const recruitingGap = await detectUnextractedRecruiting(query);
   const articles = await latestDate(
     query,
     "SELECT MAX(publishedDate) AS latest FROM data.Article"
@@ -150,6 +159,7 @@ export async function buildDataCoverageReport(
     sparseAdvisors: sparseAdvisors.rows,
     sparseFirms: sparseFirms.rows,
     recruitingCoverage: recruiting.rows,
+    unextractedRecruitingArticles: recruitingGap.rows,
     freshness: {
       articles: articles.rows[0]?.latest ?? null,
       transitions: transitions.rows[0]?.latest ?? null,
@@ -164,6 +174,8 @@ export async function buildDataCoverageReport(
       ...sparseAdvisors.warnings,
       ...sparseFirms.warnings,
       ...recruiting.warnings,
+      ...recruitingGap.warnings,
+      ...unextractedRecruitingWarnings(recruitingGap.rows),
       ...articles.warnings,
       ...transitions.warnings,
       ...firmSourceChecks.warnings,

@@ -31,9 +31,21 @@ export function renderDataCoverageReport(
     sparseLines("Sparse advisor rankings", report.sparseAdvisors),
     sparseLines("Sparse firm rankings", report.sparseFirms),
     groupLines("Recruiting coverage", report.recruitingCoverage),
+    recruitingGapLines(report.unextractedRecruitingArticles),
     warningLines(report),
   ].join("\n");
 }
+
+const recruitingGapLines = (
+  rows: CoverageReport["unextractedRecruitingArticles"]
+): string =>
+  [
+    "",
+    "Recruiting articles missing moves",
+    ...(rows.length
+      ? rows.map(row => `  ${String(row.headline ?? row.id)}  (${row.id})`)
+      : ["  none"]),
+  ].join("\n");
 
 const groupLines = (
   title: string,
