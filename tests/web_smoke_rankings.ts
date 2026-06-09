@@ -96,6 +96,7 @@ async function readLoadedRankings(page: Page) {
       )?.href,
       rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
         .length,
+      tableLayout: readRankingsTableLayout(rankingsTableSelector),
       unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
         ".rankings-gap-bucket[href*='resolved=unresolved']"
       )?.href,
@@ -217,6 +218,11 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
       "rankings: resolved row links to profile"
     ),
     check(
+      loaded.tableLayout.isContained,
+      "rankings: desktop table stays inside the content column",
+      JSON.stringify(loaded.tableLayout)
+    ),
+    check(
       unresolved.hasUnresolvedRow && unresolved.hasUnresolvedStatus,
       "rankings: unresolved row remains visible"
     ),
@@ -233,6 +239,37 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     check(empty.hasCoverageEmpty, "rankings: empty coverage state renders"),
     check(empty.state === "ZZ", "rankings: empty state retains filter"),
   ];
+}
+
+/**
+ * Reads desktop geometry evidence for the rankings table card.
+ * @param rankingsTableSelector - Selector for the rankings table.
+ * @returns Layout facts used by smoke assertions.
+ */
+function readRankingsTableLayout(rankingsTableSelector: string) {
+  const table = document.querySelector<HTMLElement>(rankingsTableSelector);
+  const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
+  const center = table?.closest<HTMLElement>(".center");
+  const right = document.querySelector<HTMLElement>(".right");
+  const scrollRect = scroll?.getBoundingClientRect();
+  const centerRect = center?.getBoundingClientRect();
+  const rightRect = right?.getBoundingClientRect();
+  const viewportWidth = document.documentElement.clientWidth;
+  const maxRight = Math.min(rightRect?.left ?? viewportWidth, viewportWidth);
+  const isContained =
+    Boolean(scrollRect && centerRect) &&
+    scrollRect.left >= centerRect.left - 1 &&
+    scrollRect.right <= centerRect.right + 1 &&
+    scrollRect.right <= maxRight + 1 &&
+    document.documentElement.scrollWidth <= viewportWidth;
+  return {
+    centerRight: Math.round(centerRect?.right ?? 0),
+    isContained,
+    rightRailLeft: Math.round(rightRect?.left ?? viewportWidth),
+    scrollRight: Math.round(scrollRect?.right ?? 0),
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth,
+  };
 }
 
 /**
