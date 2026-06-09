@@ -1,4 +1,10 @@
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
+import { runRecruitingArticleBackfill } from "../src/lib/recruiting-article-backfill.js";
 import { buildRows } from "../src/scripts/load_extractions.js";
 
 const EXAMPLE_ADVISOR_NAME = "Alex Example";
@@ -8,6 +14,7 @@ const WELLS_FARGO = "Wells Fargo Advisors";
 const UBS_WEALTH = "UBS Wealth Management USA";
 const ROCKEFELLER = "Rockefeller Capital";
 const BLAIR_BROKER = "Blair Broker";
+const ALEX_WELLS_MOVE_DATE = "2026-05-01";
 const COMPARATOR_MOVE_ANNOUNCED_DATE = "2026-05-02";
 
 describe("AdvisorHub extraction loader", () => {
@@ -236,7 +243,7 @@ describe("AdvisorHub extraction loader", () => {
           from_firm_canonical_name: MORGAN_STANLEY,
           to_firm_canonical_name: WELLS_FARGO,
           fields: {
-            moveDate: "2026-05-01",
+            moveDate: ALEX_WELLS_MOVE_DATE,
             aumMoved: 6000000000,
             notes: "Headline move.",
           },
@@ -267,7 +274,7 @@ describe("AdvisorHub extraction loader", () => {
       expect.objectContaining({
         fromFirmId: rows.Firm.find(row => row.name === MORGAN_STANLEY)?.id,
         toFirmId: rows.Firm.find(row => row.name === WELLS_FARGO)?.id,
-        moveDate: "2026-05-01",
+        moveDate: ALEX_WELLS_MOVE_DATE,
         aumMoved: 6000000000,
       }),
       expect.objectContaining({
@@ -386,5 +393,83 @@ describe("AdvisorHub extraction loader", () => {
         assertedValue: JSON.stringify("missing_from_or_to_firm"),
       }),
     ]);
+  });
+
+  it("runs a bounded dry-run recruiting article backfill with summary counts", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "recruiting-backfill-"));
+    const artifactPath = join(dir, "summary.json");
+    try {
+      await writeFile(
+        join(dir, "001-recruiting.json"),
+        JSON.stringify({
+          article: {
+            url: "https://www.advisorhub.com/recruiting-example/",
+            headline: "Recruiting example",
+            category: "recruiting",
+          },
+          firms: [
+            { natural_key: { canonical_name: MORGAN_STANLEY } },
+            { natural_key: { canonical_name: WELLS_FARGO } },
+          ],
+          advisors: [
+            {
+              natural_key: {
+                legal_name: ALEX_ADVISOR,
+                first_employer: MORGAN_STANLEY,
+              },
+            },
+          ],
+          transition_events: [
+            {
+              local_key: "alex-wells",
+              subject_advisor_legal_name: ALEX_ADVISOR,
+              from_firm_canonical_name: MORGAN_STANLEY,
+              to_firm_canonical_name: WELLS_FARGO,
+              fields: { moveDate: ALEX_WELLS_MOVE_DATE },
+            },
+          ],
+        })
+      );
+      await writeFile(
+        join(dir, "002-regulatory.json"),
+        JSON.stringify({
+          article: {
+            url: "https://www.advisorhub.com/regulatory-example/",
+            headline: "Regulatory example",
+            category: "regulatory",
+          },
+        })
+      );
+
+      const summary = await runRecruitingArticleBackfill({
+        sourceDir: dir,
+        artifactPath,
+        limit: 2,
+        dryRun: true,
+      });
+      const artifact = JSON.parse(await readFile(artifactPath, "utf8"));
+
+      expect(summary).toMatchObject({
+        checkedCount: 2,
+        loadedCount: 1,
+        skippedCount: 1,
+        articleCount: 1,
+        moveCount: 1,
+        unresolvedCount: 0,
+      });
+      expect(summary.files[1]).toMatchObject({
+        status: "skipped",
+        reason: "not_recruiting",
+      });
+      expect(summary.files[0]?.upserts).toMatchObject({
+        Article: 1,
+        TransitionEvent: 1,
+        ArticleTransitionEventMention: 1,
+      });
+      expect(artifact.moveCount).toBe(1);
+      expect(artifact.artifact).toBe("summary.json");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

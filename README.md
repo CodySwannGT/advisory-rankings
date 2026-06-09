@@ -8,3 +8,4 @@ This repository is operated through its Lisa LLM Wiki.
 - Data coverage report: `bun run data:coverage`
 - Data-depth baseline artifact: `bun run baseline:data-depth`
 - Major firm-source import artifacts: `bun run firm-source:major-imports`
+- Bounded recruiting article backfill: `bun run backfill:recruiting-articles -- --limit 5`
