@@ -131,6 +131,7 @@ function primaryBrowseCard(): HTMLElement {
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
       { label: "Recruiting", icon: "↔", href: "/recruiting" },
+      { label: "Research queue", icon: "?", href: "/research/freshness" },
       { label: "Rankings", icon: "#", href: "/rankings" },
       { label: "Advisors", icon: "👤", href: "/advisors" },
       { label: "Teams", icon: "🤝", href: "/teams" },

@@ -12,11 +12,15 @@ const SHOTS = resolve("tests/screenshots");
 const QUICK_TIMEOUT = 4_000;
 const ME_ROUTE = "**/Me";
 const FEED_ROUTE = "**/Feed";
+const ADVISOR_RESEARCH_QUEUE_ROUTE = "**/AdvisorResearchQueue";
 const NO_ARTICLES_TEXT = "No articles yet";
 const FEED_ERROR_TITLE = "Could not load feed";
 const TEMPORARY_OUTAGE = "temporary outage";
 const RETRY_RECOVERY_ARTICLE = "Retry recovery article";
 const ADVISOR_RECOVERY_NAME = "Avery Stone";
+const RESEARCH_QUEUE_FIRM_NAME = "Acme Advisory";
+const RESEARCH_QUEUE_SOURCE_TABLE = "AdvisorResearchCheck";
+const RESEARCH_QUEUE_PROFILE_LINK = "Open advisor profile";
 const ROUTE_RETRY_LOG = join(SHOTS, "issue-279-route-retry-requests.json");
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
@@ -219,6 +223,49 @@ browserDescribe("web async states", () => {
       feedRequests.map(requestUrl => new URL(requestUrl).pathname)
     ).toEqual(["/Feed", "/Feed"]);
     expect(await page.getByText(FEED_ERROR_TITLE).count()).toBe(0);
+    await page.close();
+  });
+
+  it("renders the research freshness queue route with profile links", async () => {
+    const page = await browser.newPage();
+    const queueRequests: string[] = [];
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+      queueRequests.push(route.request().url());
+      await route.fulfill({ json: researchQueuePayload() });
+    });
+
+    await page.goto(`${baseUrl}/research/freshness`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page
+      .getByRole("heading", { name: "Research freshness queue" })
+      .waitFor({ timeout: QUICK_TIMEOUT });
+
+    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await expectVisibleText(page, [
+      "Due advisor research",
+      "Public-safe queue rows",
+      RESEARCH_QUEUE_FIRM_NAME,
+      "Headshot Url",
+      "Business Phone",
+      RESEARCH_QUEUE_SOURCE_TABLE,
+    ]);
+
+    const profileLink = page.getByRole("link", {
+      name: RESEARCH_QUEUE_PROFILE_LINK,
+    });
+    expect(await profileLink.getAttribute("href")).toBe(
+      "/advisor.html?id=avery-stone"
+    );
+    expect(
+      queueRequests.map(requestUrl => new URL(requestUrl).pathname)
+    ).toEqual(["/AdvisorResearchQueue"]);
     await page.close();
   });
 
@@ -620,7 +667,7 @@ async function captureFirmDirectoryRetryEvidence(
     });
     await clickRetryAndCapture(
       page,
-      "Acme Advisory",
+      RESEARCH_QUEUE_FIRM_NAME,
       "issue-279-firm-directory-recovered",
       "Load more"
     );
@@ -716,6 +763,104 @@ function feedWithArticle(): FeedWithArticle {
   };
 }
 
+/** Minimal advisor research queue payload with one due row. */
+type ResearchQueuePayload = {
+  readonly generatedAt: string;
+  readonly filters: Readonly<
+    Record<"sourceType" | "status" | "missingField", string | null> &
+      Record<"staleDays" | "limit", number>
+  >;
+  readonly summary: {
+    readonly totalDue: number;
+    readonly returned: number;
+    readonly statusCounts: Readonly<Record<string, number>>;
+    readonly missingFieldCounts: Readonly<Record<string, number>>;
+  };
+  readonly items: readonly [
+    {
+      readonly advisorId: string;
+      readonly advisorName: string;
+      readonly finraCrd: string;
+      readonly profileUrl: string;
+      readonly firm: {
+        readonly id: string;
+        readonly name: string;
+        readonly roleTitle: string;
+      };
+      readonly sourceType: string;
+      readonly status: string;
+      readonly lastCheckedAt: string;
+      readonly nextCheckAfter: string;
+      readonly daysSinceLastCheck: number;
+      readonly missingFields: readonly string[];
+      readonly provenance: {
+        readonly sourceTable: typeof RESEARCH_QUEUE_SOURCE_TABLE;
+        readonly sourceIds: readonly string[];
+      };
+    },
+  ];
+};
+
+/**
+ * Builds a deterministic research queue payload for route rendering checks.
+ * @returns AdvisorResearchQueue-shaped response with one due advisor.
+ */
+function researchQueuePayload(): ResearchQueuePayload {
+  return {
+    generatedAt: "2026-06-08T12:00:00.000Z",
+    filters: {
+      sourceType: "web_research",
+      staleDays: 30,
+      status: null,
+      missingField: null,
+      limit: 25,
+    },
+    summary: {
+      totalDue: 1,
+      returned: 1,
+      statusCounts: { no_new_data: 1 },
+      missingFieldCounts: { headshotUrl: 1, businessPhone: 1 },
+    },
+    items: [
+      {
+        advisorId: "advisor-loaded",
+        advisorName: ADVISOR_RECOVERY_NAME,
+        finraCrd: "1234567",
+        profileUrl: "/advisor.html?id=avery-stone",
+        firm: {
+          id: "firm-1",
+          name: RESEARCH_QUEUE_FIRM_NAME,
+          roleTitle: "Managing Director",
+        },
+        sourceType: "web_research",
+        status: "no_new_data",
+        lastCheckedAt: "2026-05-01T00:00:00.000Z",
+        nextCheckAfter: "2026-06-01T00:00:00.000Z",
+        daysSinceLastCheck: 38,
+        missingFields: ["headshotUrl", "businessPhone"],
+        provenance: {
+          sourceTable: RESEARCH_QUEUE_SOURCE_TABLE,
+          sourceIds: ["research-check-1"],
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Waits for a set of exact or partial text snippets to be visible.
+ * @param page - Playwright page under test.
+ * @param snippets - Text snippets expected on the page.
+ */
+async function expectVisibleText(
+  page: Page,
+  snippets: readonly string[]
+): Promise<void> {
+  for (const snippet of snippets) {
+    await page.getByText(snippet).first().waitFor({ timeout: QUICK_TIMEOUT });
+  }
+}
+
 /** Minimal not-found envelope used by detail route regression checks. */
 type MissingDetailResponse = {
   readonly error: "not found";
@@ -802,7 +947,7 @@ function firmDirectoryPayload(): unknown {
     items: [
       {
         id: "firm-1",
-        name: "Acme Advisory",
+        name: RESEARCH_QUEUE_FIRM_NAME,
         channel: "ria",
         hqCity: "Austin",
         hqState: "TX",
@@ -860,7 +1005,9 @@ function resolveStaticPath(urlPath: string): string {
       ? "index.html"
       : ["/firms", "/teams", "/regulatory"].includes(cleanPath)
         ? `${cleanPath.slice(1)}.html`
-        : cleanPath.replace(/^[/\\]+/, "");
+        : cleanPath === "/research/freshness"
+          ? "research-freshness.html"
+          : cleanPath.replace(/^[/\\]+/, "");
   const candidate = resolve(WEB_ROOT, relativePath);
   if (!candidate.startsWith(`${WEB_ROOT}${sep}`) && candidate !== WEB_ROOT) {
     return join(WEB_ROOT, "404.html");

@@ -1377,6 +1377,7 @@ organisms / templates) — see `docs/design-system.md`.
 | `/rankings` (`rankings.html` still works) | Interactive Rankings Explorer: category/year/firm/state/city filters, resolved/unresolved status, source URLs, unavailable score labels, and ranking rows from `/RankingsExplorer`. |
 | `/regulatory` (`regulatory.html` still works) | Compliance events page: recent disclosure cards sourced from `/Feed`, with regulatory context and load-error fallback. |
 | `/regulatory/discrepancies` (`regulatory-discrepancies.html`) | Authenticated analyst queue for open `RegulatoryDiscrepancy` rows, showing compared source values, event clues, provenance, severity, status, and available review actions from `/RegulatoryDiscrepancyQueue`. |
+| `/research/freshness` (`research-freshness.html`) | Public research freshness queue for advisors due for source checks, showing advisor identity, firm context, source lane, stale/missing fields, status counts, provenance ids, and profile links from `/AdvisorResearchQueue`. |
 | `/report-packet?ids=<id>,<id>` (`report-packet.html?ids=…` still works) | Public report packet shell that replays the comparison selection, shows generated metadata, selected advisors, and normalized selection caveats from `/AdvisorComparison`. |
 
 ### How the joins happen
