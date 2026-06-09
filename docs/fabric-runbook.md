@@ -746,7 +746,7 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/compare.js`, and `/AdvisorComparison` |
+| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/`, `/app.css`, `/compare.js`, and `/AdvisorComparison` with bounded public route retries |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
 
@@ -784,12 +784,13 @@ verification: the freshness gate has already proven the component
 propagated, so a verification error is treated as a transient cold-start
 blip and retried rather than triggering a deploy the runner cannot reach.
 
-The secondary public-route checks (`/compare.js`, `/AdvisorComparison`)
-poll with a short per-attempt timeout instead of a single shot: a freshly
-restarted resource route cold-starts and its first request can take
-several seconds, so `verifyPublicRoute` retries (6 attempts, 5 s apart,
-15 s per attempt) before failing. A single slow first hit no longer fails
-an otherwise healthy deploy or kicks off the recovery path.
+The public-route checks (`/`, `/app.css`, `/compare.js`, and
+`/AdvisorComparison`) poll with a short per-attempt timeout instead of a
+single shot: a freshly restarted static or resource route cold-starts and
+its first request can take several seconds, so `verifyPublicRoute` retries
+(6 attempts, 5 s apart, 15 s per attempt) before failing. A single slow
+first hit no longer fails an otherwise healthy deploy or kicks off the
+recovery path.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,

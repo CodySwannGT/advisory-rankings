@@ -78,16 +78,16 @@ describe("static web route shells", () => {
     expect(paths).not.toContain("/*");
   });
 
-  it("serves static assets as buffered bodies for Harper Fastify replies", async () => {
+  it("serves static assets as string bodies for Harper Fastify replies", async () => {
     const handlers = new Map<string, RouteHandler>();
     const sent: unknown[] = [];
-    const headers: Record<string, string> = {};
+    const headerSets: Array<Record<string, string>> = [];
     const fastify = {
       get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
     };
     const reply = {
-      header: (key: string, value: string) => {
-        headers[key] = value;
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
         return reply;
       },
       send: (body: unknown) => sent.push(body),
@@ -96,10 +96,34 @@ describe("static web route shells", () => {
     await staticWebRoutes(fastify);
     await handlers.get("/app.css")?.({}, reply);
 
-    expect(headers).toMatchObject({
+    expect(headerSets[0]).toMatchObject({
       "content-type": "text/css; charset=utf-8",
     });
-    expect(Buffer.isBuffer(sent[0])).toBe(true);
+    expect(typeof sent[0]).toBe("string");
     expect(String(sent[0])).toContain(".ab-page-title");
+  });
+
+  it("serves binary static assets as buffered bodies", async () => {
+    const handlers = new Map<string, RouteHandler>();
+    const sent: unknown[] = [];
+    const headerSets: Array<Record<string, string>> = [];
+    const fastify = {
+      get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+    };
+    const reply = {
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
+        return reply;
+      },
+      send: (body: unknown) => sent.push(body),
+    };
+
+    await staticWebRoutes(fastify);
+    await handlers.get("/favicon.ico")?.({}, reply);
+
+    expect(headerSets[0]).toMatchObject({
+      "content-type": "image/x-icon",
+    });
+    expect(Buffer.isBuffer(sent[0])).toBe(true);
   });
 });
