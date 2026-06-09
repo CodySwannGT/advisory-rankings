@@ -65,12 +65,14 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
       page.url()
     ),
     check(
-      (await page.locator(".card:has(.snap-table)").count()) >= 1,
-      "article.html: extracted facts section present"
+      (await page
+        .getByRole("heading", { name: /Source-backed facts/ })
+        .count()) >= 1,
+      "article.html: source-backed facts section present"
     ),
     check(
       (await page.locator(".snap-table tbody tr").count()) >= 3,
-      "article.html: extracted fact rows rendered"
+      "article.html: source-backed fact rows rendered"
     ),
   ];
 }

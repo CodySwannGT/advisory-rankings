@@ -8,6 +8,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const WEB_ROOT = resolve("harper-app/web");
 const QUICK_TIMEOUT = 2_000;
 const HEADLINE_TEXT = "Advisor moves in test market";
+const ARTICLE_FIXTURE_ID = "article-1";
+const ARTICLE_FIXTURE_DATE = "2026-05-24";
+const ARTICLE_FIXTURE_URL = "https://example.com/article-1";
+const ARTICLE_FIXTURE_PATH = `/article.html?id=${ARTICLE_FIXTURE_ID}`;
+const ARTICLE_FIXTURE_RESOURCE = `/ArticleView/${ARTICLE_FIXTURE_ID}`;
+const ARTICLE_FIXTURE_ROUTE = `**${ARTICLE_FIXTURE_RESOURCE}`;
 const ADVISOR_NAME = "Avery Stone";
 const TEMPORARY_OUTAGE = "temporary outage";
 const TRY_AGAIN_TEXT = "Try again shortly.";
@@ -162,8 +168,8 @@ describe("detail async states", () => {
   it("retries article, advisor, and team errors with the same id", async () => {
     const cases = [
       {
-        path: "/article.html?id=article-1",
-        resource: "/ArticleView/article-1",
+        path: ARTICLE_FIXTURE_PATH,
+        resource: ARTICLE_FIXTURE_RESOURCE,
         title: "Could not load article",
         successText: HEADLINE_TEXT,
         payload: articleWithPartialFailures(),
@@ -415,11 +421,11 @@ describe("detail async states", () => {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
-      await page.route("**/ArticleView/article-1", async route => {
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
         await route.fulfill({ json: articleWithPartialFailures() });
       });
 
-      await page.goto(`${baseUrl}/article.html?id=article-1`, {
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
         waitUntil: "domcontentloaded",
       });
 
@@ -436,6 +442,51 @@ describe("detail async states", () => {
       await metadataHeading.waitFor();
       expect(await headline.isVisible()).toBe(true);
       expect(await metadataHeading.isVisible()).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("hides contextless article facts while keeping sourced facts public", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
+        await route.fulfill({ json: articleWithFactContext() });
+      });
+
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: HEADLINE_TEXT }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const factsHeading = page.getByRole("heading", {
+        name: "Source-backed facts (1)",
+      });
+      await factsHeading.waitFor();
+      expect(await factsHeading.isVisible()).toBe(true);
+      expect(
+        await page.getByText("$7 million (Reported amount)").isVisible()
+      ).toBe(true);
+      expect(
+        await page
+          .getByText("The team managed $7 million in client assets.")
+          .isVisible()
+      ).toBe(true);
+      expect(await page.getByText("$5").count()).toBe(0);
+      expect(await page.getByText("Money Mention").count()).toBe(0);
+      expect(await page.getByText("Extracted facts").count()).toBe(0);
+      expect(
+        await page
+          .getByRole("heading", { name: "Article metadata" })
+          .isVisible()
+      ).toBe(true);
     } finally {
       await page.close();
     }
@@ -852,14 +903,14 @@ const missingAdvisor = missingDetail;
 function articleWithPartialFailures(): ArticleWithPartialFailures {
   return {
     article: {
-      id: "article-1",
+      id: ARTICLE_FIXTURE_ID,
       headline: HEADLINE_TEXT,
       dek: "Primary article metadata loaded.",
       category: "transitions",
-      publishedDate: "2026-05-24",
-      modifiedDate: "2026-05-24",
+      publishedDate: ARTICLE_FIXTURE_DATE,
+      modifiedDate: ARTICLE_FIXTURE_DATE,
       authors: ["AdvisorBook"],
-      url: "https://example.com/article-1",
+      url: ARTICLE_FIXTURE_URL,
     },
     body: { error: "body unavailable" },
     eventCards: { error: "events unavailable" },
@@ -867,6 +918,48 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
     teams: [],
     advisors: { error: "advisors unavailable" },
     provenance: { error: "provenance unavailable" },
+  };
+}
+
+/**
+ * Builds an ArticleView payload with one public fact and one contextless value.
+ * @returns ArticleView response for public facts regression tests.
+ */
+function articleWithFactContext(): Readonly<Record<string, unknown>> {
+  return {
+    article: {
+      id: ARTICLE_FIXTURE_ID,
+      headline: HEADLINE_TEXT,
+      dek: "Primary article metadata loaded.",
+      category: "transitions",
+      publishedDate: ARTICLE_FIXTURE_DATE,
+      modifiedDate: ARTICLE_FIXTURE_DATE,
+      authors: ["AdvisorBook"],
+      url: ARTICLE_FIXTURE_URL,
+    },
+    body: { text: "The public article body remains visible." },
+    eventCards: [],
+    firms: [],
+    teams: [],
+    advisors: [],
+    provenance: [
+      {
+        targetTable: "Article",
+        targetId: ARTICLE_FIXTURE_ID,
+        fieldName: "money_mention",
+        assertedValue: "$7 million",
+        quotePhrase: "The team managed $7 million in client assets.",
+        confidence: "medium",
+      },
+      {
+        targetTable: "Article",
+        targetId: ARTICLE_FIXTURE_ID,
+        fieldName: "money_mention",
+        assertedValue: "$5",
+        quotePhrase: "",
+        confidence: "low",
+      },
+    ],
   };
 }
 
@@ -1038,10 +1131,10 @@ function firmDueDiligenceAllLoadedProfile(): FirmDueDiligenceProfile {
   profile.dueDiligence.modules.coverageTimeline.articleCount = 1;
   profile.dueDiligence.modules.coverageTimeline.recentArticles = [
     {
-      id: "article-1",
+      id: ARTICLE_FIXTURE_ID,
       headline: "Example Wealth expands",
       publishedDate: "2026-05-20T00:00:00.000Z",
-      url: "https://example.com/article-1",
+      url: ARTICLE_FIXTURE_URL,
       source: "AdvisorBook",
     },
   ];
