@@ -77,7 +77,8 @@ mountThreeColumnPage({
   logout,
   search,
   pageTitle: "Interactive Rankings Explorer",
-  build({ center, right }: Readonly<Record<"center" | "right", HTMLElement>>) {
+  build({ center, layout, right }) {
+    layout.classList.add("rankings-layout");
     center.append(SkeletonCard(), SkeletonCard());
     loadRankings(center, right);
   },

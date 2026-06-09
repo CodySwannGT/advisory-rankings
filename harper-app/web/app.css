@@ -290,9 +290,15 @@ body.drawer-open .nav .nav-scrim {
   padding: 0 16px;
   align-items: start;
 }
+.layout.rankings-layout {
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(220px, 280px);
+}
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: minmax(0, 590px) minmax(220px, 320px);
+  }
+  .layout.rankings-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
   }
   .layout > .left {
     display: none;
@@ -302,12 +308,21 @@ body.drawer-open .nav .nav-scrim {
   .layout {
     grid-template-columns: minmax(0, 1fr);
   }
+  .layout.rankings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .layout > .right {
     display: none;
   }
 }
 
 .layout > .center {
+  min-width: 0;
+}
+.layout > .right,
+.layout > .left,
+.card,
+.card .card-body {
   min-width: 0;
 }
 .rail {
@@ -1194,6 +1209,7 @@ body.drawer-open .nav .nav-scrim {
 }
 .snap-table-scroll {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -1483,7 +1499,8 @@ body.drawer-open .nav .nav-scrim {
   table-layout: fixed;
 }
 .rankings-table {
-  min-width: 960px;
+  min-width: 760px;
+  table-layout: fixed;
 }
 .recruiting-table td,
 .rankings-table td {
