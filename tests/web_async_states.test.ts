@@ -1350,19 +1350,24 @@ function resolveStaticPath(urlPath: string): string {
   );
   if (cleanPath === "/login") return LOGIN_SHELL;
 
-  const relativePath =
-    cleanPath === sep || cleanPath === "." || cleanPath === "/"
-      ? "index.html"
-      : ["/firms", "/teams", "/regulatory"].includes(cleanPath)
-        ? `${cleanPath.slice(1)}.html`
-        : cleanPath === "/research/freshness"
-          ? "research-freshness.html"
-          : cleanPath.replace(/^[/\\]+/, "");
+  const relativePath = staticRelativePath(cleanPath);
   const candidate = resolve(WEB_ROOT, relativePath);
   if (!candidate.startsWith(`${WEB_ROOT}${sep}`) && candidate !== WEB_ROOT) {
     return join(WEB_ROOT, "404.html");
   }
   return candidate;
+}
+
+function staticRelativePath(cleanPath: string): string {
+  if (cleanPath === sep || cleanPath === "." || cleanPath === "/") {
+    return "index.html";
+  }
+  if (["/firms", "/teams", "/regulatory"].includes(cleanPath)) {
+    return `${cleanPath.slice(1)}.html`;
+  }
+  return cleanPath === "/research/freshness"
+    ? "research-freshness.html"
+    : cleanPath.replace(/^[/\\]+/, "");
 }
 
 /**

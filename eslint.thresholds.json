@@ -1,5 +1,5 @@
 {
-  "cognitiveComplexity": 9,
+  "cognitiveComplexity": 8,
   "maxLines": 300,
-  "maxLinesPerFunction": 74
+  "maxLinesPerFunction": 73
 }

@@ -22,6 +22,12 @@ interface SearchKindModeEvidence {
   readonly firmModePressed: string | null;
   readonly visibleKinds: readonly (SearchKind | null)[];
 }
+
+interface SearchNavigationEvidence {
+  readonly activeRows: number;
+  readonly enterOpenedCleanPath: boolean;
+  readonly enteredUrl: string;
+}
 const SEARCH_RESULTS_SELECTOR = "#global-search-results";
 const SEARCH_RESULT_ROWS_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-item`;
 const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
@@ -70,16 +76,12 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
     kind => kind !== null
   ).length;
 
-  await input.press("ArrowDown");
-  const activeRows = await page.locator(ACTIVE_SEARCH_RESULT_SELECTOR).count();
-  await input.press("Enter");
-  await page.waitForURL(url => url.pathname === expectedPath, {
-    timeout: DEPLOYED_DATA_TIMEOUT,
-  });
-  const enteredUrl = page.url();
-  const enterOpenedCleanPath =
-    firstKind !== null &&
-    cleanProfilePath(pluralSearchKind(firstKind), enteredUrl);
+  const navigation = await searchNavigationEvidence(
+    page,
+    input,
+    expectedPath,
+    firstKind
+  );
   const emptySearchChecks = await smokeSearchEmptyAndDismissChecks(
     page,
     "desktop"
@@ -111,14 +113,36 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
       "global search: count hint reflects selected kind",
       kindMode.countHint
     ),
-    check(activeRows === 1, "global search: ArrowDown selects one result"),
     check(
-      enterOpenedCleanPath,
+      navigation.activeRows === 1,
+      "global search: ArrowDown selects one result"
+    ),
+    check(
+      navigation.enterOpenedCleanPath,
       "global search: Enter opens clean profile route",
-      enteredUrl
+      navigation.enteredUrl
     ),
     ...emptySearchChecks,
   ];
+}
+
+async function searchNavigationEvidence(
+  page: Page,
+  input: Locator,
+  expectedPath: string,
+  firstKind: SearchKind | null
+): Promise<SearchNavigationEvidence> {
+  await input.press("ArrowDown");
+  const activeRows = await page.locator(ACTIVE_SEARCH_RESULT_SELECTOR).count();
+  await input.press("Enter");
+  await page.waitForURL(url => url.pathname === expectedPath, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  const enteredUrl = page.url();
+  const enterOpenedCleanPath =
+    firstKind !== null &&
+    cleanProfilePath(pluralSearchKind(firstKind), enteredUrl);
+  return { activeRows, enteredUrl, enterOpenedCleanPath };
 }
 
 /**
