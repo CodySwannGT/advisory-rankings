@@ -154,6 +154,11 @@ async function readLoadedRankings(page: Page) {
 async function readRankingsDateEvidence(page: Page) {
   const pageText = (await page.locator("body").innerText()) || "";
   return {
+    hasDataVolumeState: [
+      "Data volume",
+      "rankings loaded",
+      "intentionally small",
+    ].every(label => pageText.includes(label)),
     hasHumanImportedDate: /Imported [A-Z][a-z]{2} \d{1,2}, \d{4}/.test(
       pageText
     ),
@@ -199,6 +204,12 @@ async function readUnresolvedRankings(page: Page) {
       hasUnresolvedStatus: document.body.innerText.includes(
         "Advisor or team not matched yet"
       ),
+      hasFilteredCountState:
+        document.body.innerText.includes("rankings match these filters") &&
+        document.body.innerText.includes("Filtered by") &&
+        Boolean(
+          document.querySelector(".rankings-reset-link[href='/rankings']")
+        ),
       hasUnresolvedDataQuality: document.body.innerText.includes(
         "Ranking data quality"
       ),
@@ -223,6 +234,10 @@ async function readEmptyRankings(page: Page) {
     hasCoverageEmpty: document.body.innerText.includes(
       "No rankings are loaded for this coverage view."
     ),
+    hasFilteredCountState:
+      document.body.innerText.includes("0 rankings match these filters") &&
+      document.body.innerText.includes("Broaden or reset the view") &&
+      Boolean(document.querySelector(".rankings-reset-link[href='/rankings']")),
     state: document.querySelector<HTMLInputElement>('input[name="state"]')
       ?.value,
   }));
@@ -238,12 +253,30 @@ async function readEmptyRankings(page: Page) {
  */
 function rankingsChecks(loaded, drilldown, unresolved, empty) {
   return [
+    ...loadedRankingsChecks(loaded),
+    ...drilldownRankingsChecks(drilldown),
+    ...unresolvedRankingsChecks(unresolved),
+    ...emptyRankingsChecks(empty),
+  ];
+}
+
+/**
+ * Converts loaded rankings DOM facts into checks.
+ * @param loaded - Loaded page facts.
+ * @returns Loaded-page checks.
+ */
+function loadedRankingsChecks(loaded) {
+  return [
     check(
       loaded.hasHeader && loaded.hasPurposeLede,
       "rankings: page purpose and primary workflow render"
     ),
     check(loaded.hasNextGen, "rankings: category data renders"),
     check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
+    check(
+      loaded.hasDataVolumeState,
+      "rankings: sparse data volume state explains loaded dataset"
+    ),
     check(loaded.hasCoverageBucket, "rankings: coverage buckets render"),
     check(
       loaded.hasGapSample && loaded.hasGapSource,
@@ -252,12 +285,6 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     check(
       Boolean(loaded.unresolvedGapHref),
       "rankings: unresolved gap exposes drill-down link"
-    ),
-    check(
-      drilldown.resolvedFilter === "unresolved" &&
-        drilldown.hasUnresolvedRow &&
-        drilldown.url.includes("resolved=unresolved"),
-      "rankings: coverage gap drills into unresolved rows"
     ),
     check(
       loaded.hasHumanImportedDate && loaded.hasLatestImportHumanDate,
@@ -290,6 +317,32 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
       "rankings: desktop table stays inside the content column",
       JSON.stringify(loaded.tableLayout)
     ),
+  ];
+}
+
+/**
+ * Converts coverage drill-down DOM facts into checks.
+ * @param drilldown - Drill-down page facts.
+ * @returns Drill-down checks.
+ */
+function drilldownRankingsChecks(drilldown) {
+  return [
+    check(
+      drilldown.resolvedFilter === "unresolved" &&
+        drilldown.hasUnresolvedRow &&
+        drilldown.url.includes("resolved=unresolved"),
+      "rankings: coverage gap drills into unresolved rows"
+    ),
+  ];
+}
+
+/**
+ * Converts unresolved filter DOM facts into checks.
+ * @param unresolved - Filtered unresolved page facts.
+ * @returns Unresolved-page checks.
+ */
+function unresolvedRankingsChecks(unresolved) {
+  return [
     check(
       unresolved.hasUnresolvedRow && unresolved.hasUnresolvedStatus,
       "rankings: unresolved row remains visible"
@@ -300,11 +353,29 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
       "rankings: filtered data quality panel remains visible"
     ),
     check(
+      unresolved.hasFilteredCountState,
+      "rankings: filtered state shows result count and reset action"
+    ),
+    check(
       unresolved.noOverflow,
       "rankings: filtered page has no desktop overflow"
     ),
+  ];
+}
+
+/**
+ * Converts empty filter DOM facts into checks.
+ * @param empty - Empty page facts.
+ * @returns Empty-page checks.
+ */
+function emptyRankingsChecks(empty) {
+  return [
     check(empty.hasEmpty, "rankings: empty filter explains missing data"),
     check(empty.hasCoverageEmpty, "rankings: empty coverage state renders"),
+    check(
+      empty.hasFilteredCountState,
+      "rankings: empty filter shows zero-count reset action"
+    ),
     check(empty.state === "ZZ", "rankings: empty state retains filter"),
   ];
 }
