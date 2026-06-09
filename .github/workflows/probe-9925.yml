@@ -2,6 +2,9 @@ name: Probe 9925 reachability
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/xenodochial-villani-f7f9b3
 
 jobs:
   probe:
