@@ -95,13 +95,29 @@ async function readLoadedRankings(page: Page) {
         hasDataQualityPanel: document.body.innerText.includes(
           "Ranking data quality"
         ),
+        hasSummaryMetricLabels:
+          document.body.innerText.includes("Ranked profiles") &&
+          document.body.innerText.includes("Matched profiles") &&
+          document.body.innerText.includes("Needs match") &&
+          document.body.innerText.includes("Markets"),
         hasCoverageBucket:
           document.querySelectorAll(".rankings-coverage-bucket[href]").length >
           0,
+        hasCoverageMetricHints:
+          document.body.innerText.includes("source-backed rows") &&
+          document.body.innerText.includes("category/year groups") &&
+          document.body.innerText.includes("profile or score gaps"),
         hasGapSample: document.body.innerText.includes(args.unresolvedRowName),
         hasGapSource: document.body.innerText.includes(args.nextGenSourceLabel),
         hasResolved: hasText("Matched to AdvisorBook profile"),
         hasSourceBacked: hasText("Verified source"),
+        hasTopFirmCountLabels:
+          document.body.innerText.includes("Wells Fargo Advisors") &&
+          document.body.innerText.includes("Example Independent") &&
+          document.body.innerText.includes("2 rankings") &&
+          document.body.innerText.includes("1 ranking") &&
+          document.body.innerText.includes("Matched AdvisorBook firm") &&
+          document.body.innerText.includes("Source firm name awaiting match"),
         hasUnavailable: hasText("Missing score"),
         rawLabels: args.rawRankingsLabels.filter(label =>
           document.body.innerText.includes(label)
@@ -384,6 +400,7 @@ function loadedRankingsChecks(loaded) {
       })
     ),
     check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
+    ...lowInformationPanelChecks(loaded),
     check(
       loaded.hasDataVolumeState,
       "rankings: sparse data volume state explains loaded dataset"
@@ -428,6 +445,28 @@ function loadedRankingsChecks(loaded) {
       loaded.tableLayout.isContained,
       "rankings: desktop table stays inside the content column",
       JSON.stringify(loaded.tableLayout)
+    ),
+  ];
+}
+
+/**
+ * Converts sparse-module legibility facts into checks.
+ * @param loaded - Loaded page facts.
+ * @returns Low-information panel regression checks.
+ */
+function lowInformationPanelChecks(loaded) {
+  return [
+    check(
+      loaded.hasSummaryMetricLabels,
+      "rankings: summary metrics expose labeled values"
+    ),
+    check(
+      loaded.hasCoverageMetricHints,
+      "rankings: coverage metrics explain what counts mean"
+    ),
+    check(
+      loaded.hasTopFirmCountLabels,
+      "rankings: top firms name firms and explain ranking counts"
     ),
   ];
 }

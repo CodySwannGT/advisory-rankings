@@ -8,7 +8,6 @@ import {
   EmptyText,
   SectionCard,
   DetailsCard,
-  RollupCard,
   ScrollableTable,
   Tag,
 } from "./design-system/index.js";
@@ -16,7 +15,6 @@ import type { DomChild } from "./design-system/dom.js";
 import type {
   PublicRankingEntry,
   RankingsSummary,
-  TopFirmRow,
 } from "../harper/resource-rankings-explorer-types.js";
 
 const STACKED_CELL_CLASS = "stacked-cell";
@@ -137,23 +135,6 @@ export function rankingsDataStateCard(data: RankingsExplorerData): HTMLElement {
         resetLink(isFiltered)
       ),
     ],
-  });
-}
-
-/**
- * Builds the top firms rail card.
- * @param rows - Top firm aggregate rows.
- * @returns Rail rollup card.
- */
-export function topFirmsCard(rows: readonly TopFirmRow[]): HTMLElement {
-  return RollupCard<TopFirmRow>({
-    title: "Top firms",
-    rows: rows.slice(0, 6),
-    renderRow: row => ({
-      name: row.firm?.name || row.firmText,
-      sub: row.firm?.id ? "Matched firm" : "Source firm name",
-      tail: String(row.count),
-    }),
   });
 }
 

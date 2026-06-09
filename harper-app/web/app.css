@@ -1236,8 +1236,8 @@ body.drawer-open .nav .nav-scrim {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
-  padding: 10px;
+  background: color-mix(in srgb, var(--brand) 5%, var(--card));
+  padding: 12px;
 }
 .recruiting-stat-label,
 .rankings-stat-label {
@@ -1248,9 +1248,33 @@ body.drawer-open .nav .nav-scrim {
 .recruiting-stat strong,
 .rankings-stat strong {
   display: block;
-  margin-top: 2px;
-  font-size: 18px;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.1;
   overflow-wrap: anywhere;
+}
+.rankings-top-firms .entity-list .row {
+  align-items: flex-start;
+  gap: 12px;
+}
+.rankings-top-firms .entity-list .row .avatar {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 10%, var(--bg));
+  color: var(--brand);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.rankings-top-firms .entity-list .row .name {
+  overflow-wrap: anywhere;
+}
+.rankings-top-firms .entity-list .row .tail {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rankings-firm-count {
+  display: inline-block;
 }
 .rankings-coverage-workbench .card-body {
   display: grid;
@@ -1302,8 +1326,8 @@ body.drawer-open .nav .nav-scrim {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
-  padding: 10px;
+  background: color-mix(in srgb, var(--brand) 4%, var(--card));
+  padding: 12px;
 }
 .rankings-coverage-metric span {
   display: block;
@@ -1312,8 +1336,18 @@ body.drawer-open .nav .nav-scrim {
 }
 .rankings-coverage-metric strong {
   display: block;
-  margin-top: 2px;
-  font-size: 17px;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.rankings-coverage-metric small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .rankings-coverage-layout {
@@ -1398,18 +1432,18 @@ body.drawer-open .nav .nav-scrim {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--brand) 3%, var(--bg));
   padding: 7px;
 }
 .rankings-bucket-stats em {
   display: block;
+  margin-top: 2px;
   color: var(--text-muted);
   font-size: 11px;
   font-style: normal;
 }
 .rankings-bucket-stats strong {
   display: block;
-  margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
 .rankings-sample-rows {
