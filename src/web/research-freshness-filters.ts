@@ -86,12 +86,10 @@ export function filterControlsCard(
   filters: QueueFilters,
   onChange: () => void
 ): HTMLElement {
-  const form = queueFilterForm(filters, onChange);
-  form.addEventListener("change", () => applyQueueFilters(form, onChange));
   return SectionCard({
     title: "Queue filters",
     attrs: { class: "research-queue-filter-card" },
-    body: form,
+    body: queueFilterForm(filters, onChange),
   });
 }
 
