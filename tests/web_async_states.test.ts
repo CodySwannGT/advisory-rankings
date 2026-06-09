@@ -1189,7 +1189,7 @@ function researchStatusCounts(
   if (!queueItem)
     return { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 };
   return {
-    success: 0,
+    success: Number(queueItem.status === "success"),
     no_new_data: Number(queueItem.status === "no_new_data"),
     ambiguous: Number(queueItem.status === "ambiguous"),
     failed: Number(queueItem.status === "failed"),
@@ -1204,11 +1204,15 @@ function researchStatusCounts(
 function researchSourceCoverage(
   queueItem?: ResearchQueuePayload["items"][number]
 ): Readonly<
-  Record<"web_research" | "firm_bio" | "rankings" | "press", number>
+  Record<
+    "web_research" | "firm_source" | "firm_bio" | "rankings" | "press",
+    number
+  >
 > {
   if (!queueItem) {
     return {
       web_research: 1,
+      firm_source: 0,
       firm_bio: 1,
       rankings: 0,
       press: 1,
@@ -1216,6 +1220,7 @@ function researchSourceCoverage(
   }
   return {
     web_research: Number(queueItem.sourceType === "web_research"),
+    firm_source: Number(queueItem.sourceType === "firm_source"),
     firm_bio: Number(queueItem.sourceType === "firm_bio"),
     rankings: Number(queueItem.sourceType === "rankings"),
     press: Number(queueItem.sourceType === "press"),
