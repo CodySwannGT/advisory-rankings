@@ -50,3 +50,7 @@
 | 2026-06-08 | INGEST | wiki/sources/roles/2026-06-08-roles.md | Roles ingest confirmed there are still no declared digital staff roles or staff pages. |
 | 2026-06-08 | UPDATE | wiki/projects/git-history.md | Refreshed the git-history synthesis with private table, watchlist, root asset, research queue, and deploy-cutover themes. |
 | 2026-06-08 | UPDATE | wiki/index.md | Pointed the source index at the latest git and roles source notes after the 2026-06-08 ingest. |
+| 2026-06-09 | INGEST | wiki/sources/git/2026-06-09-advisory-rankings-git.md | Incremental git history ingest captured 68 commits since the 2026-06-08 cursor and refreshed merged PR metadata through #1074, with #1059 also merged after #1074. |
+| 2026-06-09 | INGEST | wiki/sources/roles/2026-06-09-roles.md | Roles ingest confirmed there are still no declared digital staff roles or staff pages. |
+| 2026-06-09 | UPDATE | wiki/projects/git-history.md | Refreshed the git-history synthesis with Lisa, test-threshold, recruiting, static asset, comparison, and research queue themes. |
+| 2026-06-09 | UPDATE | wiki/index.md | Pointed the source index at the latest git and roles source notes after the 2026-06-09 ingest. |
