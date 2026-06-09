@@ -241,7 +241,7 @@ export function FeedPostCard(
       teams: item.teams || [],
       advisors: item.advisors || [],
     }),
-    feedPostFooter(detailHref, a.url, src.source)
+    feedPostFooter(detailHref, a.url, src)
   );
 }
 
@@ -249,19 +249,16 @@ export function FeedPostCard(
  * Renders the footer row for {@link FeedPostCard}.
  * @param detailHref - Internal article-detail href.
  * @param externalUrl - External article URL when known.
- * @param sourceLabel - Source attribution label.
+ * @param source - Source attribution and public-link policy.
  * @returns Footer row node.
  */
 function feedPostFooter(
   detailHref: string,
   externalUrl: string | undefined | null,
-  sourceLabel: string
+  source: ArticleSourceMeta
 ): HTMLElement {
-  return el(
-    "div",
-    { class: "post-footer" },
-    el("a", { href: detailHref }, "View details"),
-    externalUrl
+  const externalLink =
+    externalUrl && source.publicOriginalLink !== false
       ? el(
           "a",
           {
@@ -270,8 +267,16 @@ function feedPostFooter(
             rel: "noreferrer",
             class: "ext-link",
           },
-          `${sourceLabel} original →`
+          `${source.source} original →`
         )
+      : null;
+  return el(
+    "div",
+    { class: "post-footer" },
+    el("a", { href: detailHref }, "View details"),
+    externalLink,
+    externalUrl && !externalLink
+      ? el("span", { class: "muted" }, source.ctaLabel ?? "")
       : null
   );
 }
