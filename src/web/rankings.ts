@@ -154,6 +154,7 @@ function renderRankings(
 ): void {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
+  center.appendChild(viewOptionsCard(data));
   center.appendChild(rankingsDataStateCard(data));
   center.appendChild(coverageWorkbenchCard(data.coverage));
   if (data.emptyState) {
@@ -233,7 +234,30 @@ function filterCard(data: RankingsExplorerPayload): HTMLElement {
         ["resolved", "Matched to AdvisorBook profile"],
         ["unresolved", "Needs AdvisorBook match"],
       ]),
-      selectField("Sort", "sort", data.filters.sort, [
+      hiddenField("sort", data.filters.sort),
+      el("button", { class: "filter-button", type: "submit" }, "Apply")
+    ),
+  });
+}
+
+/**
+ * Renders presentation controls that do not narrow the rankings dataset.
+ * @param data - RankingsExplorer response.
+ * @returns View-options form card.
+ */
+function viewOptionsCard(data: RankingsExplorerPayload): HTMLElement {
+  return SectionCard({
+    title: "View options",
+    attrs: { class: "rankings-view-options" },
+    body: el(
+      "form",
+      {
+        class: "rankings-view-options-form",
+        method: "get",
+        action: "/rankings",
+      },
+      ...filterStateFields(data.filters),
+      selectField("Sort by", "sort", data.filters.sort, [
         ["rank", "Rank"],
         ["-rank", "Highest rank number"],
         ["-scale", "Largest practices"],
@@ -244,6 +268,38 @@ function filterCard(data: RankingsExplorerPayload): HTMLElement {
       ]),
       el("button", { class: "filter-button", type: "submit" }, "Apply")
     ),
+  });
+}
+
+/**
+ * Preserves narrowing filters when applying presentation controls.
+ * @param filters - Current public rankings filters.
+ * @returns Hidden form fields for active filters.
+ */
+function filterStateFields(
+  filters: PublicRankingFilters
+): readonly HTMLElement[] {
+  return [
+    hiddenField("category", filters.category),
+    hiddenField("year", filters.year === null ? "" : String(filters.year)),
+    hiddenField("firm", filters.firmQuery),
+    hiddenField("state", filters.state),
+    hiddenField("city", filters.city),
+    hiddenField("resolved", filters.resolved),
+  ];
+}
+
+/**
+ * Creates a hidden GET field when a query value should be preserved.
+ * @param name - Query parameter name.
+ * @param value - Query parameter value.
+ * @returns Hidden input.
+ */
+function hiddenField(name: string, value: string | null): HTMLElement {
+  return el("input", {
+    type: "hidden",
+    name,
+    value: value || "",
   });
 }
 
