@@ -42,7 +42,7 @@ import { expectedSanctionPillCount } from "./web_smoke_sanction_pills.js";
 export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   const postCards = page.locator(ARTICLE_CARD_SELECTOR);
   const taylorCard = postCards.filter({ hasText: TAYLOR_GROUP_TEXT }).first();
-  const transition = page.locator(".event-card.transition").first();
+  const transition = seededTransitionCard(page);
   const disclosure = page.locator(DISCLOSURE_CARD_SELECTOR).first();
   const regulatoryDisclosure = page
     .locator(DISCLOSURE_CARD_SELECTOR)
@@ -113,6 +113,19 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     ...(await smokeFeedFilters(page)),
     ...(await feedCopyGuardrailChecks(page)),
   ];
+}
+
+/**
+ * Finds a stable seeded transition card without depending on feed order.
+ * @param page - Browser page used for the scenario.
+ * @returns Locator for a transition with expected seeded firm and AUM text.
+ */
+function seededTransitionCard(page: Page): Locator {
+  return page
+    .locator(".event-card.transition")
+    .filter({ hasText: /Wells Fargo|Rockefeller/ })
+    .filter({ hasText: /\$1\.60?B|\$2B|\$5\.94B/ })
+    .first();
 }
 
 /**
