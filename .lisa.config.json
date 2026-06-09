@@ -1,4 +1,9 @@
 {
+  "wiki": {
+    "source": {
+      "path": "wiki"
+    }
+  },
   "harness": "fleet",
   "tracker": "github",
   "source": "github",
