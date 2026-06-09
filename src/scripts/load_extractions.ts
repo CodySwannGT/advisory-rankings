@@ -55,7 +55,10 @@ const extractionFiles = async (): Promise<ReadonlyArray<string>> => {
     .map(file => join(EXTRACT_DIR, file));
 };
 
-export const buildRows = (extraction: unknown) => {
+/** Normalized table rows produced from one extraction payload. */
+export type BuiltRows = Readonly<Record<string, ReadonlyArray<Row>>>;
+
+export const buildRows = (extraction: unknown): BuiltRows => {
   const ex = asRecord(extraction);
   const article = asRecord(ex.article);
   const aid = articleId(stringValue(article.url) || String(article.wpId ?? ""));

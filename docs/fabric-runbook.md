@@ -782,7 +782,8 @@ bun run deploy
 ```
 
 Data-write scripts share the same credential lookup. `bun run ingest`,
-`bun run load:extractions`, and write-mode scraper scripts use
+`bun run load:extractions`, `bun run backfill:recruiting-articles`, and
+write-mode scraper scripts use
 `HDB_TARGET_URL` when it is explicitly set; otherwise they default to the
 Fabric cluster URL from `HARPER_CLUSTER_URL` (or the repo's dev-cluster
 default) with `:9925` for Harper operations. `HDB_ADMIN_USERNAME` and
@@ -1061,6 +1062,17 @@ HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
 
 Loaded files move to `research/extractions/.loaded/`, making re-runs
 idempotent by file lifecycle as well as row IDs.
+
+For a non-destructive recruiting-only pass, use the bounded backfill wrapper.
+It keeps source files in place, requires an explicit limit, loads only public
+AdvisorHub recruiting extraction candidates, and emits article, move, skipped,
+and unresolved counts to `artifacts/recruiting-backfill-summary.json`:
+
+```bash
+bun run backfill:recruiting-articles -- --limit 5
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run backfill:recruiting-articles -- --limit 5 --write
+```
 
 **Deployed verification.** After any write, run the REST verifier against the
 public cluster URL. It fetches each exported table through `:443` and joins

@@ -81,6 +81,12 @@ to `research/extractions/.loaded/`. When an upstream extraction automation
 produces those files, run `bun run load:extractions` as a separate follow-up
 step so the loader can preserve its file lifecycle.
 
+For recruiting-only extraction backfills, use
+`bun run backfill:recruiting-articles -- --limit <n>` first. It keeps source
+files in place, requires a small explicit limit, and writes
+`artifacts/recruiting-backfill-summary.json`; add `--write` only for the
+controlled Harper upsert.
+
 ## Data-Depth Operating Path
 
 Use the firm-source adapters as the bounded public-source import path for firm
@@ -129,8 +135,11 @@ structured feed is recorded as evidence, not treated as a silent success.
 AdvisorHub extraction loading is intentionally separate from firm locator
 imports. Extraction files are local JSON payloads under `research/extractions/`;
 `bun run load:extractions` upserts their normalized rows, then moves loaded
-files into `research/extractions/.loaded/`. Run it after an extraction
-automation has produced files, not as part of the firm-source matrix.
+files into `research/extractions/.loaded/`. Use
+`bun run backfill:recruiting-articles -- --limit <n>` when the desired pass is a
+bounded recruiting-only source load with an operator summary artifact. Run
+extraction loading after an extraction automation has produced files, not as
+part of the firm-source matrix.
 
 After any write run, verify the loaded data through the public app resources:
 
