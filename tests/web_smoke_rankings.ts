@@ -15,6 +15,14 @@ import {
 const RANKINGS_TABLE_SELECTOR = ".rankings-table";
 const UNRESOLVED_ROW_NAME = "Jordan Example";
 const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
+const LIST_ATTRIBUTE = "list";
+const CITY_OPTIONS_SELECTOR = "#rankings-city-options";
+const FIRM_OPTIONS_SELECTOR = "#rankings-firm-options";
+const STATE_OPTIONS_SELECTOR = "#rankings-state-options";
+const filterInputSelector = (name: string) => `input[name="${name}"]`;
+const CITY_FILTER_SELECTOR = filterInputSelector("city");
+const FIRM_FILTER_SELECTOR = filterInputSelector("firm");
+const STATE_FILTER_SELECTOR = filterInputSelector("state");
 const RAW_RANKINGS_LABELS = [
   "SOURCE BACKED",
   "MISSING SCALE",
@@ -114,6 +122,7 @@ async function readLoadedRankings(page: Page) {
     ...evidence,
     ...(await readRankingsDateEvidence(page)),
     ...(await readRankingsControlEvidence(page)),
+    ...(await readRankingsFacetEvidence(page)),
     ...(await readRankingsTableEvidence(page)),
   };
 }
@@ -175,6 +184,52 @@ async function readRankingsControlEvidence(page: Page) {
           table.getBoundingClientRect().top,
     };
   }, RANKINGS_TABLE_SELECTOR);
+}
+
+/**
+ * Reads discoverability facts for finite rankings filter facets.
+ * @param page - Browser page to inspect.
+ * @returns Facet input and suggestion evidence.
+ */
+async function readRankingsFacetEvidence(page: Page) {
+  return await page.evaluate(
+    () => {
+      const optionsFor = (selector: string) =>
+        [
+          ...document.querySelectorAll<HTMLOptionElement>(`${selector} option`),
+        ].map(option => option.value);
+      const firmInput = document.querySelector<HTMLInputElement>(
+        args.firmFilterSelector
+      );
+      const stateInput = document.querySelector<HTMLInputElement>(
+        args.stateFilterSelector
+      );
+      const cityInput = document.querySelector<HTMLInputElement>(
+        args.cityFilterSelector
+      );
+      return {
+        cityFacetOptions: optionsFor(args.cityOptionsSelector),
+        firmFacetOptions: optionsFor(args.firmOptionsSelector),
+        hasFacetLists:
+          firmInput?.getAttribute(args.listAttribute) ===
+            args.firmOptionsSelector.slice(1) &&
+          stateInput?.getAttribute(args.listAttribute) ===
+            args.stateOptionsSelector.slice(1) &&
+          cityInput?.getAttribute(args.listAttribute) ===
+            args.cityOptionsSelector.slice(1),
+        stateFacetOptions: optionsFor(args.stateOptionsSelector),
+      };
+    },
+    {
+      cityFilterSelector: CITY_FILTER_SELECTOR,
+      cityOptionsSelector: CITY_OPTIONS_SELECTOR,
+      firmFilterSelector: FIRM_FILTER_SELECTOR,
+      firmOptionsSelector: FIRM_OPTIONS_SELECTOR,
+      listAttribute: LIST_ATTRIBUTE,
+      stateFilterSelector: STATE_FILTER_SELECTOR,
+      stateOptionsSelector: STATE_OPTIONS_SELECTOR,
+    }
+  );
 }
 
 /**
@@ -333,6 +388,7 @@ function loadedRankingsChecks(loaded) {
       loaded.hasDataVolumeState,
       "rankings: sparse data volume state explains loaded dataset"
     ),
+    finiteFacetCheck(loaded),
     check(loaded.hasCoverageBucket, "rankings: coverage buckets render"),
     check(
       loaded.hasGapSample && loaded.hasGapSource,
@@ -374,6 +430,27 @@ function loadedRankingsChecks(loaded) {
       JSON.stringify(loaded.tableLayout)
     ),
   ];
+}
+
+/**
+ * Converts rankings facet DOM facts into a smoke check.
+ * @param loaded - Loaded page facts.
+ * @returns Facet discoverability check.
+ */
+function finiteFacetCheck(loaded) {
+  return check(
+    loaded.hasFacetLists &&
+      loaded.firmFacetOptions.length > 0 &&
+      loaded.stateFacetOptions.length > 0 &&
+      loaded.cityFacetOptions.length > 0,
+    "rankings: finite text filters expose native suggestions",
+    JSON.stringify({
+      cityFacetOptions: loaded.cityFacetOptions,
+      firmFacetOptions: loaded.firmFacetOptions,
+      hasFacetLists: loaded.hasFacetLists,
+      stateFacetOptions: loaded.stateFacetOptions,
+    })
+  );
 }
 
 /**
@@ -613,7 +690,10 @@ function noRankingRowsPayload() {
     },
     facets: {
       categories: [],
+      cities: [],
+      firms: [],
       years: [],
+      states: [],
     },
     coverage: {
       totalEntries: 0,

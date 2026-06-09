@@ -1549,6 +1549,8 @@ describe("Harper feed and profile builders", () => {
       },
       facets: {
         categories: [ADVISORS_TO_WATCH_LABEL, "Next Gen"],
+        cities: ["Atlanta", "Austin"],
+        firms: [EXAMPLE_WEALTH_LLC, UNRESOLVED_CAPITAL],
         years: [2025],
         states: ["GA", "TX"],
       },

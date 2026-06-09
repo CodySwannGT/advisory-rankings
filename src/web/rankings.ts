@@ -18,10 +18,14 @@ import {
   topFirmsCard,
 } from "./rankings-sections.js";
 import { coverageWorkbenchCard } from "./rankings-coverage.js";
+import {
+  filterCard,
+  viewOptionsCard,
+  type PublicRankingFilters,
+} from "./rankings-filters.js";
 import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 import type {
   RankingExplorerEntry,
-  RankingExplorerFilters,
   RankingsCoverage,
   RankingsFacets,
   RankingsSummary,
@@ -38,17 +42,6 @@ const FILTER_FIELDS: readonly string[] = [
   "sort",
 ];
 const DEFAULT_LIMIT = 50;
-
-/** Public-facing filter shape exposed by the rankings-explorer route. */
-interface PublicRankingFilters {
-  readonly category: RankingExplorerFilters["category"];
-  readonly year: RankingExplorerFilters["year"];
-  readonly firmQuery: RankingExplorerFilters["firmQuery"];
-  readonly state: RankingExplorerFilters["state"];
-  readonly city: RankingExplorerFilters["city"];
-  readonly resolved: RankingExplorerFilters["resolved"];
-  readonly sort: RankingExplorerFilters["sort"];
-}
 
 /** Successful rankings-explorer payload shape rendered by this page. */
 interface RankingsExplorerPayload {
@@ -69,8 +62,10 @@ interface RankingsProvenance {
   readonly sourceIds: readonly string[];
 }
 
-/** Tuple form used to seed a `<select>` option list. */
-type SelectOption = readonly [value: string, label: string];
+/** Runtime shape for older rankings facet payloads during rolling deploys. */
+interface LegacyRankingsFacets {
+  readonly cities?: unknown;
+}
 
 mountThreeColumnPage({
   active: "rankings",
@@ -153,7 +148,7 @@ function renderRankings(
   right: HTMLElement
 ): void {
   center.appendChild(headerCard(data));
-  center.appendChild(filterCard(data));
+  center.appendChild(filterCard(filterPayload(data)));
   center.appendChild(viewOptionsCard(data));
   center.appendChild(rankingsDataStateCard(data));
   center.appendChild(coverageWorkbenchCard(data.coverage));
@@ -170,6 +165,55 @@ function renderRankings(
   right.appendChild(summaryCard(data));
   right.appendChild(topFirmsCard(data.topFirms));
   right.appendChild(sourceCard(data));
+}
+
+/**
+ * Builds filter controls from current facets, tolerating older resource payloads
+ * while the deploy catches up with newly added facet fields.
+ * @param data - RankingsExplorer response.
+ * @returns Filter payload with complete facet lists.
+ */
+function filterPayload(data: RankingsExplorerPayload): RankingsExplorerPayload {
+  return {
+    ...data,
+    facets: {
+      ...data.facets,
+      cities: citiesFacet(data),
+    },
+  };
+}
+
+/**
+ * Reads city facets from the resource or derives them from loaded rows.
+ * @param data - RankingsExplorer response.
+ * @returns Sorted city facet values.
+ */
+function citiesFacet(data: RankingsExplorerPayload): readonly string[] {
+  return cityFacetValues(data.facets) ?? uniqueSortedCities(data.items);
+}
+
+/**
+ * Reads the optional city facet from payloads that may predate the field.
+ * @param facets - Rankings facet payload.
+ * @returns City facet values when present.
+ */
+function cityFacetValues(facets: RankingsFacets): readonly string[] | null {
+  const value = (facets as LegacyRankingsFacets).cities;
+  if (!Array.isArray(value)) return null;
+  return value.filter((city): city is string => typeof city === "string");
+}
+
+/**
+ * Derives unique city suggestions from currently loaded ranking rows.
+ * @param rows - Rendered rankings rows.
+ * @returns Sorted city names.
+ */
+function uniqueSortedCities(
+  rows: readonly RankingExplorerEntry[]
+): readonly string[] {
+  return [...new Set(rows.map(row => row.location?.city).filter(Boolean))]
+    .filter((city): city is string => typeof city === "string")
+    .sort((left, right) => left.localeCompare(right));
 }
 
 /**
@@ -195,166 +239,6 @@ function headerCard(data: RankingsExplorerPayload): HTMLElement {
       ]),
     ],
   });
-}
-
-/**
- * Renders the GET-driven filters.
- * @param data - RankingsExplorer response.
- * @returns Filter form card.
- */
-function filterCard(data: RankingsExplorerPayload): HTMLElement {
-  return SectionCard({
-    title: "Filters",
-    body: el(
-      "form",
-      { class: "rankings-filters", method: "get", action: "/rankings" },
-      selectField("Ranking list", "category", data.filters.category, [
-        ["", "All ranking lists"],
-        ...data.facets.categories.map((value): SelectOption => [value, value]),
-      ]),
-      selectField(
-        "Year",
-        "year",
-        data.filters.year === null ? null : String(data.filters.year),
-        [
-          ["", "All years"],
-          ...data.facets.years.map(
-            (value): SelectOption => [String(value), String(value)]
-          ),
-        ]
-      ),
-      labelInput("Firm", "firm", data.filters.firmQuery || ""),
-      labelInput("State", "state", data.filters.state || "", {
-        placeholder: "NY",
-        maxlength: 2,
-      }),
-      labelInput("City", "city", data.filters.city || ""),
-      selectField("Profile match", "resolved", data.filters.resolved, [
-        ["", "All profiles"],
-        ["resolved", "Matched to AdvisorBook profile"],
-        ["unresolved", "Needs AdvisorBook match"],
-      ]),
-      hiddenField("sort", data.filters.sort),
-      el("button", { class: "filter-button", type: "submit" }, "Apply")
-    ),
-  });
-}
-
-/**
- * Renders presentation controls that do not narrow the rankings dataset.
- * @param data - RankingsExplorer response.
- * @returns View-options form card.
- */
-function viewOptionsCard(data: RankingsExplorerPayload): HTMLElement {
-  return SectionCard({
-    title: "View options",
-    attrs: { class: "rankings-view-options" },
-    body: el(
-      "form",
-      {
-        class: "rankings-view-options-form",
-        method: "get",
-        action: "/rankings",
-      },
-      ...filterStateFields(data.filters),
-      selectField("Sort by", "sort", data.filters.sort, [
-        ["rank", "Rank"],
-        ["-rank", "Highest rank number"],
-        ["-scale", "Largest practices"],
-        ["-growth", "Fastest growing"],
-        ["firm", "Firm"],
-        ["location", "City/state"],
-        ["name", "Name"],
-      ]),
-      el("button", { class: "filter-button", type: "submit" }, "Apply")
-    ),
-  });
-}
-
-/**
- * Preserves narrowing filters when applying presentation controls.
- * @param filters - Current public rankings filters.
- * @returns Hidden form fields for active filters.
- */
-function filterStateFields(
-  filters: PublicRankingFilters
-): readonly HTMLElement[] {
-  return [
-    hiddenField("category", filters.category),
-    hiddenField("year", filters.year === null ? "" : String(filters.year)),
-    hiddenField("firm", filters.firmQuery),
-    hiddenField("state", filters.state),
-    hiddenField("city", filters.city),
-    hiddenField("resolved", filters.resolved),
-  ];
-}
-
-/**
- * Creates a hidden GET field when a query value should be preserved.
- * @param name - Query parameter name.
- * @param value - Query parameter value.
- * @returns Hidden input.
- */
-function hiddenField(name: string, value: string | null): HTMLElement {
-  return el("input", {
-    type: "hidden",
-    name,
-    value: value || "",
-  });
-}
-
-/**
- * Creates a compact label + input control.
- * @param label - Visible label.
- * @param name - Query parameter name.
- * @param value - Current query value.
- * @param attrs - Additional input attributes.
- * @returns Field wrapper.
- */
-function labelInput(
-  label: string,
-  name: string,
-  value: string,
-  attrs: Readonly<Record<string, string | number>> = {}
-): HTMLElement {
-  return el(
-    "label",
-    { class: "filter-field" },
-    el("span", {}, label),
-    el("input", { name, value, ...attrs })
-  );
-}
-
-/**
- * Creates a compact label + select control.
- * @param label - Visible label.
- * @param name - Query parameter name.
- * @param current - Current selected value.
- * @param options - Value/label options.
- * @returns Field wrapper.
- */
-function selectField(
-  label: string,
-  name: string,
-  current: string | null,
-  options: readonly SelectOption[]
-): HTMLElement {
-  return el(
-    "label",
-    { class: "filter-field" },
-    el("span", {}, label),
-    el(
-      "select",
-      { name },
-      ...options.map(([value, optionLabel]) =>
-        el(
-          "option",
-          { value, selected: String(value) === String(current || "") },
-          optionLabel
-        )
-      )
-    )
-  );
 }
 
 /**
