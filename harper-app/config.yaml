@@ -24,6 +24,7 @@ fastifyRoutes:
     - 'teams/index.js'
     - 'articles/index.js'
     - 'recruiting/index.js'
+    - 'research-freshness/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
