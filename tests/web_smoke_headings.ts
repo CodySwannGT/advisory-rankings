@@ -48,7 +48,7 @@ const HEADING_ROUTES: readonly HeadingRoute[] = [
     label: "rankings",
     path: "/rankings",
     readySelector: ".rankings-table",
-    title: "Interactive Rankings Explorer",
+    title: "Advisor Rankings Browser",
   },
   {
     label: "recruiting",
