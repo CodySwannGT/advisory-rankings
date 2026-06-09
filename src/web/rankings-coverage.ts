@@ -28,7 +28,7 @@ export function coverageWorkbenchCard(
       body: EmptyText({
         children:
           coverage?.emptyState ||
-          "Data-quality details are unavailable for this slice.",
+          "Ranking quality details are unavailable for this view.",
       }),
     });
   }
@@ -58,10 +58,10 @@ function coverageSummary(coverage: RankingsCoverage): HTMLElement {
   return el(
     "div",
     { class: "rankings-coverage-summary" },
-    coverageMetric("Rows in slice", fmtNumber(coverage.totalEntries)),
-    coverageMetric("Buckets", fmtNumber(coverage.buckets.length)),
-    coverageMetric("Gap types", fmtNumber(coverage.gapBuckets.length)),
-    coverageMetric("Latest loaded", displayDate(latestLoadedAt))
+    coverageMetric("Rankings in view", fmtNumber(coverage.totalEntries)),
+    coverageMetric("Ranking lists", fmtNumber(coverage.buckets.length)),
+    coverageMetric("Open match issues", fmtNumber(coverage.gapBuckets.length)),
+    coverageMetric("Latest import", displayDate(latestLoadedAt))
   );
 }
 
@@ -91,11 +91,11 @@ function coverageBucketPanel(
   if (!buckets.length) {
     return coveragePanel(
       "Category coverage",
-      EmptyText({ children: "No category/year coverage buckets loaded." })
+      EmptyText({ children: "No ranking-list coverage is loaded." })
     );
   }
   return coveragePanel(
-    "Category coverage",
+    "Ranking-list coverage",
     el(
       "div",
       { class: "rankings-coverage-buckets" },
@@ -123,19 +123,19 @@ function coverageBucketCard(bucket: CoverageBucket): HTMLElement {
           .filter(Boolean)
           .join(" ")
       ),
-      el("span", {}, `${fmtNumber(bucket.total)} rows`)
+      el("span", {}, `${fmtNumber(bucket.total)} rankings`)
     ),
     bucketStatGrid([
-      ["Resolved", bucket.resolved],
-      ["Unresolved", bucket.unresolved],
+      ["Matched", bucket.resolved],
+      ["Needs match", bucket.unresolved],
       ["Firm gaps", bucket.missingFirm],
       ["Market gaps", bucket.missingMarket],
-      ["Score gaps", bucket.missingScore],
+      ["Missing scores", bucket.missingScore],
     ]),
     el(
       "div",
       { class: "rankings-coverage-meta" },
-      el("span", {}, `Latest ${displayDate(bucket.latestLoadedAt)}`),
+      el("span", {}, `Latest import ${displayDate(bucket.latestLoadedAt)}`),
       sourceLabels(bucket.sourceLabels)
     ),
     sampleRows(bucket.sampleRows)
@@ -152,12 +152,14 @@ function gapBucketPanel(
 ): HTMLElement {
   if (!buckets.length) {
     return coveragePanel(
-      "Source-status gaps",
-      EmptyText({ children: "No source-status gaps found in this slice." })
+      "Profile and source issues",
+      EmptyText({
+        children: "No profile or source issues found in this view.",
+      })
     );
   }
   return coveragePanel(
-    "Source-status gaps",
+    "Profile and source issues",
     el(
       "div",
       { class: "rankings-gap-buckets" },
@@ -224,7 +226,9 @@ function bucketStatGrid(
  * @returns Source labels node.
  */
 function sourceLabels(labels: readonly string[] = []): HTMLElement {
-  if (!labels.length) return el("span", { class: "muted" }, "No source label");
+  if (!labels.length) {
+    return el("span", { class: "muted" }, "Source name unavailable");
+  }
   return el(
     "span",
     { class: "tag-list" },
@@ -238,7 +242,8 @@ function sourceLabels(labels: readonly string[] = []): HTMLElement {
  * @returns Sample row list.
  */
 function sampleRows(rows: readonly CoverageSampleRow[] = []): HTMLElement {
-  if (!rows.length) return EmptyText({ children: "No sample rows available." });
+  if (!rows.length)
+    return EmptyText({ children: "No sample rankings available." });
   return el(
     "ul",
     { class: "rankings-sample-rows" },

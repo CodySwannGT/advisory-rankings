@@ -93,7 +93,7 @@ function loadRankings(center: HTMLElement, right: HTMLElement): void {
   const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
     container: center,
     title: "Loading rankings",
-    body: "Still fetching ranking coverage and rows. Retry if this takes longer than expected.",
+    body: "Still fetching ranking coverage and ranked profiles. Retry if this takes longer than expected.",
     onRetry: () => loadRankings(center, right),
   });
   api<RankingsExplorerPayload>(`/RankingsExplorer${resourceQuery()}`)
@@ -157,7 +157,7 @@ function renderRankings(
   if (data.emptyState) {
     center.appendChild(
       EmptyCard({
-        title: "No matching ranking rows",
+        title: "No matching rankings",
         body: data.emptyState,
       })
     );
@@ -182,13 +182,13 @@ function headerCard(data: RankingsExplorerPayload): HTMLElement {
       el(
         "p",
         { class: "rankings-lede" },
-        "Browse public advisor and team ranking appearances, then filter by category, year, firm, market, and profile-match status to find source-backed rows."
+        "Browse public advisor and team ranking appearances, then filter by ranking list, year, firm, market, and AdvisorBook profile match."
       ),
       statGrid([
-        ["Rows", fmtNumber(data.summary.totalEntries)],
-        ["Resolved", fmtNumber(data.summary.resolvedEntries)],
-        ["Unresolved", fmtNumber(data.summary.unresolvedEntries)],
-        ["States", fmtNumber(data.summary.representedStates)],
+        ["Ranked profiles", fmtNumber(data.summary.totalEntries)],
+        ["Matched profiles", fmtNumber(data.summary.resolvedEntries)],
+        ["Needs match", fmtNumber(data.summary.unresolvedEntries)],
+        ["Markets", fmtNumber(data.summary.representedStates)],
       ]),
     ],
   });
@@ -205,8 +205,8 @@ function filterCard(data: RankingsExplorerPayload): HTMLElement {
     body: el(
       "form",
       { class: "rankings-filters", method: "get", action: "/rankings" },
-      selectField("Category", "category", data.filters.category, [
-        ["", "All categories"],
+      selectField("Ranking list", "category", data.filters.category, [
+        ["", "All ranking lists"],
         ...data.facets.categories.map((value): SelectOption => [value, value]),
       ]),
       selectField(
@@ -226,16 +226,16 @@ function filterCard(data: RankingsExplorerPayload): HTMLElement {
         maxlength: 2,
       }),
       labelInput("City", "city", data.filters.city || ""),
-      selectField("Resolved", "resolved", data.filters.resolved, [
-        ["", "All rows"],
-        ["resolved", "Resolved"],
-        ["unresolved", "Unresolved"],
+      selectField("Profile match", "resolved", data.filters.resolved, [
+        ["", "All profiles"],
+        ["resolved", "Matched to AdvisorBook profile"],
+        ["unresolved", "Needs AdvisorBook match"],
       ]),
       selectField("Sort", "sort", data.filters.sort, [
         ["rank", "Rank"],
-        ["-rank", "Rank descending"],
-        ["-scale", "Scale high"],
-        ["-growth", "Growth high"],
+        ["-rank", "Highest rank number"],
+        ["-scale", "Largest practices"],
+        ["-growth", "Fastest growing"],
         ["firm", "Firm"],
         ["location", "City/state"],
         ["name", "Name"],

@@ -26,7 +26,7 @@ export function rankingsCoverage(
     gapBuckets: sourceStatusBuckets(entries),
     emptyState:
       entries.length === 0
-        ? "No ranking rows are loaded for this coverage slice."
+        ? "No rankings are loaded for this coverage view."
         : null,
   };
 }
