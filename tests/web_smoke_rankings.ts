@@ -73,7 +73,7 @@ export async function smokeRankings(
  * @returns Loaded rankings DOM facts.
  */
 async function readLoadedRankings(page: Page) {
-  return await page.evaluate(
+  const evidence = await page.evaluate(
     args => {
       const pageText = document.body.innerText;
       const hasText = (label: string) =>
@@ -106,7 +106,6 @@ async function readLoadedRankings(page: Page) {
           0,
         hasGapSample: document.body.innerText.includes(args.unresolvedRowName),
         hasGapSource: document.body.innerText.includes(args.nextGenSourceLabel),
-        hasLatestLoaded: document.body.innerText.includes("Latest"),
         hasResolved: hasText("Matched to AdvisorBook profile"),
         hasSourceBacked: hasText("Verified source"),
         hasUnavailable: hasText("Missing score"),
@@ -144,6 +143,25 @@ async function readLoadedRankings(page: Page) {
       unresolvedRowName: UNRESOLVED_ROW_NAME,
     }
   );
+  return { ...evidence, ...(await readRankingsDateEvidence(page)) };
+}
+
+/**
+ * Reads rankings date-label evidence from visible page text.
+ * @param page - Browser page to inspect.
+ * @returns Date display facts.
+ */
+async function readRankingsDateEvidence(page: Page) {
+  const pageText = (await page.locator("body").innerText()) || "";
+  return {
+    hasHumanImportedDate: /Imported [A-Z][a-z]{2} \d{1,2}, \d{4}/.test(
+      pageText
+    ),
+    hasLatestImportHumanDate:
+      /Latest import\s+[A-Z][a-z]{2} \d{1,2}, \d{4}/.test(pageText),
+    rawDateLabels:
+      pageText.match(/\b(?:\d{4}-\d{2}-\d{2}T|\d{4}-\d{2}-\d{2}\b)/g) ?? [],
+  };
 }
 
 /**
@@ -241,7 +259,19 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
         drilldown.url.includes("resolved=unresolved"),
       "rankings: coverage gap drills into unresolved rows"
     ),
-    check(loaded.hasLatestLoaded, "rankings: latest loaded context renders"),
+    check(
+      loaded.hasHumanImportedDate && loaded.hasLatestImportHumanDate,
+      "rankings: import dates are human readable",
+      JSON.stringify({
+        hasHumanImportedDate: loaded.hasHumanImportedDate,
+        hasLatestImportHumanDate: loaded.hasLatestImportHumanDate,
+      })
+    ),
+    check(
+      loaded.rawDateLabels.length === 0,
+      "rankings: raw date strings are hidden",
+      loaded.rawDateLabels.join(", ")
+    ),
     check(loaded.rowCount > 0, "rankings: source-backed rows render"),
     check(loaded.hasResolved, "rankings: resolved status is visible"),
     check(loaded.hasSourceBacked, "rankings: source status is visible"),

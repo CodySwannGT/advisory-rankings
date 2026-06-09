@@ -269,7 +269,7 @@ function sourceCell(row: PublicRankingEntry): HTMLElement {
       "span",
       {},
       row.source?.loadedAt
-        ? `Imported ${row.source.loadedAt}`
+        ? `Imported ${fmtDate(row.source.loadedAt)}`
         : "Import date unavailable"
     )
   );
