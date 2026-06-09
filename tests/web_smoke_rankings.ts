@@ -73,34 +73,61 @@ async function readLoadedRankings(page: Page) {
       rankingsTableSelector,
       rawRankingsLabels,
       unresolvedRowName,
-    }) => ({
-      hasHeader: document.body.innerText.includes(
-        "Interactive Rankings Explorer"
-      ),
-      hasNextGen: document.body.innerText.includes("Next Gen"),
-      hasCoverageWorkbench:
-        document.body.innerText.includes("Coverage workbench"),
-      hasCoverageBucket:
-        document.querySelectorAll(".rankings-coverage-bucket[href]").length > 0,
-      hasGapSample: document.body.innerText.includes(unresolvedRowName),
-      hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
-      hasLatestLoaded: document.body.innerText.includes("Latest"),
-      hasResolved: document.body.innerText.includes("Matched profile"),
-      hasSourceBacked: document.body.innerText.includes("Source confirmed"),
-      hasUnavailable: document.body.innerText.includes("Unavailable"),
-      rawLabels: rawRankingsLabels.filter(label =>
-        document.body.innerText.includes(label)
-      ),
-      profileHref: document.querySelector<HTMLAnchorElement>(
-        ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
-      )?.href,
-      rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
-        .length,
-      tableLayout: readRankingsTableLayout(rankingsTableSelector),
-      unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
-        ".rankings-gap-bucket[href*='resolved=unresolved']"
-      )?.href,
-    }),
+    }) => {
+      const table = document.querySelector<HTMLElement>(rankingsTableSelector);
+      const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
+      const center = table?.closest<HTMLElement>(".center");
+      const right = document.querySelector<HTMLElement>(".right");
+      const scrollRect = scroll?.getBoundingClientRect();
+      const centerRect = center?.getBoundingClientRect();
+      const rightRect = right?.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const maxRight = Math.min(
+        rightRect?.left ?? viewportWidth,
+        viewportWidth
+      );
+      return {
+        hasHeader: document.body.innerText.includes(
+          "Interactive Rankings Explorer"
+        ),
+        hasNextGen: document.body.innerText.includes("Next Gen"),
+        hasCoverageWorkbench:
+          document.body.innerText.includes("Coverage workbench"),
+        hasCoverageBucket:
+          document.querySelectorAll(".rankings-coverage-bucket[href]").length >
+          0,
+        hasGapSample: document.body.innerText.includes(unresolvedRowName),
+        hasGapSource: document.body.innerText.includes(nextGenSourceLabel),
+        hasLatestLoaded: document.body.innerText.includes("Latest"),
+        hasResolved: document.body.innerText.includes("Matched profile"),
+        hasSourceBacked: document.body.innerText.includes("Source confirmed"),
+        hasUnavailable: document.body.innerText.includes("Unavailable"),
+        rawLabels: rawRankingsLabels.filter(label =>
+          document.body.innerText.includes(label)
+        ),
+        profileHref: document.querySelector<HTMLAnchorElement>(
+          ".rankings-table tbody a[href*='advisor.html'], .rankings-table tbody a[href*='team.html']"
+        )?.href,
+        rowCount: document.querySelectorAll(`${rankingsTableSelector} tbody tr`)
+          .length,
+        tableLayout: {
+          centerRight: Math.round(centerRect?.right ?? 0),
+          isContained:
+            Boolean(scrollRect && centerRect) &&
+            scrollRect.left >= centerRect.left - 1 &&
+            scrollRect.right <= centerRect.right + 1 &&
+            scrollRect.right <= maxRight + 1 &&
+            document.documentElement.scrollWidth <= viewportWidth,
+          rightRailLeft: Math.round(rightRect?.left ?? viewportWidth),
+          scrollRight: Math.round(scrollRect?.right ?? 0),
+          scrollWidth: document.documentElement.scrollWidth,
+          viewportWidth,
+        },
+        unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
+          ".rankings-gap-bucket[href*='resolved=unresolved']"
+        )?.href,
+      };
+    },
     {
       nextGenSourceLabel: NEXT_GEN_SOURCE_LABEL,
       rawRankingsLabels: RAW_RANKINGS_LABELS,
@@ -239,37 +266,6 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
     check(empty.hasCoverageEmpty, "rankings: empty coverage state renders"),
     check(empty.state === "ZZ", "rankings: empty state retains filter"),
   ];
-}
-
-/**
- * Reads desktop geometry evidence for the rankings table card.
- * @param rankingsTableSelector - Selector for the rankings table.
- * @returns Layout facts used by smoke assertions.
- */
-function readRankingsTableLayout(rankingsTableSelector: string) {
-  const table = document.querySelector<HTMLElement>(rankingsTableSelector);
-  const scroll = table?.closest<HTMLElement>(".snap-table-scroll");
-  const center = table?.closest<HTMLElement>(".center");
-  const right = document.querySelector<HTMLElement>(".right");
-  const scrollRect = scroll?.getBoundingClientRect();
-  const centerRect = center?.getBoundingClientRect();
-  const rightRect = right?.getBoundingClientRect();
-  const viewportWidth = document.documentElement.clientWidth;
-  const maxRight = Math.min(rightRect?.left ?? viewportWidth, viewportWidth);
-  const isContained =
-    Boolean(scrollRect && centerRect) &&
-    scrollRect.left >= centerRect.left - 1 &&
-    scrollRect.right <= centerRect.right + 1 &&
-    scrollRect.right <= maxRight + 1 &&
-    document.documentElement.scrollWidth <= viewportWidth;
-  return {
-    centerRight: Math.round(centerRect?.right ?? 0),
-    isContained,
-    rightRailLeft: Math.round(rightRect?.left ?? viewportWidth),
-    scrollRight: Math.round(scrollRect?.right ?? 0),
-    scrollWidth: document.documentElement.scrollWidth,
-    viewportWidth,
-  };
 }
 
 /**
