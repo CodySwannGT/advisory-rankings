@@ -269,6 +269,70 @@ browserDescribe("web async states", () => {
     await page.close();
   });
 
+  it("verifies research queue profile links preserve freshness context", async () => {
+    const queuePayload = researchQueuePayload();
+    const queueItem = queuePayload.items[0];
+
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      const page = await browser.newPage({
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      const queueRequests: string[] = [];
+      const profileRequests: string[] = [];
+
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+          queueRequests.push(new URL(route.request().url()).pathname);
+          await route.fulfill({ json: queuePayload });
+        });
+        await page.route("**/AdvisorProfile/avery-stone", async route => {
+          profileRequests.push(new URL(route.request().url()).pathname);
+          await route.fulfill({
+            json: advisorEvidenceProfile("avery-stone", queueItem),
+          });
+        });
+
+        await page.goto(`${baseUrl}/research/freshness`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page
+          .getByRole("heading", { name: queueItem.advisorName })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        await page
+          .getByRole("link", { name: RESEARCH_QUEUE_PROFILE_LINK })
+          .click();
+        await page
+          .getByRole("heading", { name: queueItem.advisorName })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+
+        await expectAnyVisibleText(page, [
+          "Evidence freshness",
+          "Stale",
+          "Last checked",
+          "May 2026",
+          "Next check",
+          "Jun 2026",
+          "No New Data",
+          "Web Research",
+        ]);
+        await page.screenshot({
+          path: evidencePath(
+            viewport.name,
+            "issue-1018-research-queue-profile-parity"
+          ),
+          fullPage: true,
+        });
+      } finally {
+        expect(queueRequests).toEqual(["/AdvisorResearchQueue"]);
+        expect(profileRequests).toEqual(["/AdvisorProfile/avery-stone"]);
+        await page.close();
+      }
+    }
+  }, 30_000);
+
   it("captures route retry request and recovery evidence", async () => {
     const requestLog = {
       feed: await captureFeedRetryEvidence(browser, baseUrl),
@@ -861,6 +925,32 @@ async function expectVisibleText(
   }
 }
 
+/**
+ * Waits until each text snippet has at least one visible matching node.
+ * @param page - Playwright page under test.
+ * @param snippets - Text snippets expected on the page.
+ */
+async function expectAnyVisibleText(
+  page: Page,
+  snippets: readonly string[]
+): Promise<void> {
+  for (const snippet of snippets) {
+    const matches = page.getByText(snippet);
+    await expect
+      .poll(
+        async () => {
+          const count = await matches.count();
+          for (let index = 0; index < count; index += 1) {
+            if (await matches.nth(index).isVisible()) return true;
+          }
+          return false;
+        },
+        { timeout: QUICK_TIMEOUT }
+      )
+      .toBe(true);
+  }
+}
+
 /** Minimal not-found envelope used by detail route regression checks. */
 type MissingDetailResponse = {
   readonly error: "not found";
@@ -879,9 +969,17 @@ function missingDetail(id: string): MissingDetailResponse {
 /**
  * Builds a minimal advisor profile payload that exercises retry recovery.
  * @param id - Advisor id requested by the route.
+ * @param queueItem - Optional research queue row used for parity checks.
  * @returns AdvisorProfile resource payload.
  */
-function advisorEvidenceProfile(id: string): unknown {
+function advisorEvidenceProfile(
+  id: string,
+  queueItem?: ResearchQueuePayload["items"][number]
+): unknown {
+  const lastCheckedAt = queueItem?.lastCheckedAt ?? "2026-05-25T12:00:00Z";
+  const nearestNextCheckAfter =
+    queueItem?.nextCheckAfter ?? "2026-06-01T00:00:00Z";
+
   return {
     advisor: {
       id,
@@ -918,15 +1016,10 @@ function advisorEvidenceProfile(id: string): unknown {
     brokerCheckSnapshot: null,
     evidenceFreshness: {
       hasData: true,
-      lastCheckedAt: "2026-05-25T12:00:00Z",
-      nearestNextCheckAfter: "2026-06-01T00:00:00Z",
-      statusCounts: { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 },
-      sourceTypeCoverage: {
-        web_research: 1,
-        firm_bio: 1,
-        rankings: 0,
-        press: 1,
-      },
+      lastCheckedAt,
+      nearestNextCheckAfter,
+      statusCounts: researchStatusCounts(queueItem),
+      sourceTypeCoverage: researchSourceCoverage(queueItem),
     },
     confidenceSummary: {
       hasData: true,
@@ -935,6 +1028,52 @@ function advisorEvidenceProfile(id: string): unknown {
       derived: 1,
       total: 4,
     },
+  };
+}
+
+/**
+ * Builds profile freshness status counts from a queue row.
+ * @param queueItem - Optional research queue row used for parity checks.
+ * @returns Evidence freshness status counts.
+ */
+function researchStatusCounts(
+  queueItem?: ResearchQueuePayload["items"][number]
+): Readonly<
+  Record<"success" | "no_new_data" | "ambiguous" | "failed", number>
+> {
+  if (!queueItem)
+    return { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 };
+  return {
+    success: 0,
+    no_new_data: Number(queueItem.status === "no_new_data"),
+    ambiguous: Number(queueItem.status === "ambiguous"),
+    failed: Number(queueItem.status === "failed"),
+  };
+}
+
+/**
+ * Builds profile source-type coverage from a queue row.
+ * @param queueItem - Optional research queue row used for parity checks.
+ * @returns Evidence freshness source coverage counts.
+ */
+function researchSourceCoverage(
+  queueItem?: ResearchQueuePayload["items"][number]
+): Readonly<
+  Record<"web_research" | "firm_bio" | "rankings" | "press", number>
+> {
+  if (!queueItem) {
+    return {
+      web_research: 1,
+      firm_bio: 1,
+      rankings: 0,
+      press: 1,
+    };
+  }
+  return {
+    web_research: Number(queueItem.sourceType === "web_research"),
+    firm_bio: Number(queueItem.sourceType === "firm_bio"),
+    rankings: Number(queueItem.sourceType === "rankings"),
+    press: Number(queueItem.sourceType === "press"),
   };
 }
 
