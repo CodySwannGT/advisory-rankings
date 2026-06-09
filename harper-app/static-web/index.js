@@ -21,9 +21,9 @@ const CACHEABLE = new Set([".css", ".ico", ".js", ".svg"]);
 export default async function staticWebRoutes(fastify) {
   const assets = await discoverAssets(WEB_ROOT);
 
-  registerAsset(fastify, "/", "index.html");
+  await registerAsset(fastify, "/", "index.html");
   for (const asset of assets) {
-    registerAsset(fastify, `/${asset}`, asset);
+    await registerAsset(fastify, `/${asset}`, asset);
   }
 }
 
@@ -67,14 +67,16 @@ function isWebAsset(path) {
  * @param routePath Public URL path to register.
  * @param assetPath Relative asset path under the web root.
  */
-function registerAsset(fastify, routePath, assetPath) {
+async function registerAsset(fastify, routePath, assetPath) {
   const assetUrl = new URL(assetPath, WEB_ROOT);
-  const cache = { body: undefined };
+  const body = await readFile(assetUrl);
+  const headers = headersFor(extname(assetPath));
 
   fastify.get(routePath, async (_request, reply) => {
-    cache.body ||= await readFile(assetUrl, "utf8");
-    const extension = extname(assetPath);
-    return reply.headers(headersFor(extension)).send(cache.body);
+    for (const [key, value] of Object.entries(headers)) {
+      reply.header(key, value);
+    }
+    return reply.send(body);
   });
 }
 
