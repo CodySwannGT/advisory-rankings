@@ -81,6 +81,10 @@ describe("resource pagination helpers", () => {
       cursor: "500",
       limit: 100,
     });
+    expect(resources.parsePagination({ limit: 12 })).toEqual({
+      cursor: null,
+      limit: 12,
+    });
   });
 
   it("sorts inverse dates newest first", () => {

@@ -188,7 +188,7 @@ async function firstFirmWithActiveAdvisors(
  * @param facts.restoredFacts - Filter facts captured after reload.
  * @returns Smoke assertions for the advisor filter journey.
  */
-function filterChecks(facts: {
+interface FilterCheckFacts {
   readonly desktopLayout: readonly FilterLayoutSweep[];
   readonly emptyFacts: AdvisorFilterFacts;
   readonly expectedFirm: string;
@@ -196,7 +196,9 @@ function filterChecks(facts: {
   readonly mobile320: ViewportOverflow;
   readonly mobile390: ViewportOverflow;
   readonly restoredFacts: AdvisorFilterFacts;
-}): readonly Check[] {
+}
+
+function filterChecks(facts: FilterCheckFacts): readonly Check[] {
   return [
     check(
       facts.filteredFacts.firm === facts.expectedFirm &&

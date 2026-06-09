@@ -67,15 +67,14 @@ export function parsePagination(
   target: RouteTarget | null | undefined
 ): PaginationOptions {
   const t = target as PaginationTargetShape | null | undefined;
-  const cursorRaw = t && typeof t.get === "function" ? t.get("cursor") : null;
+  const hasGetter = typeof t?.get === "function";
+  const cursorRaw = hasGetter ? t.get("cursor") : null;
   const cursor =
     typeof cursorRaw === "string" && cursorRaw.length > 0 ? cursorRaw : null;
-  const targetLimit = t && typeof t.get === "function" ? t.get("limit") : null;
+  const targetLimit = hasGetter ? t.get("limit") : null;
   // Harper also pre-parses `?limit=` onto target.limit as a number.
   const limitRaw =
-    targetLimit == null && t && typeof t.limit === "number"
-      ? t.limit
-      : targetLimit;
+    targetLimit ?? (typeof t?.limit === "number" ? t.limit : null);
   const parsed = parseInt(String(limitRaw ?? ""), 10);
   const limit = Math.min(parsed > 0 ? parsed : DEFAULT_LIMIT, MAX_LIMIT);
   return { cursor, limit };

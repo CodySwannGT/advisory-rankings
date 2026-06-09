@@ -247,24 +247,39 @@ function matchesCondition(row: unknown, condition: TableCondition): boolean {
   const candidate = rowValue(row, attribute);
   const target = condition.value;
   const comparator = stringValue(condition.comparator) ?? "equals";
-  if (comparator === "starts_with") {
-    return (
+  const comparatorMatches = {
+    greater_than: () => compareValues(candidate, target) > 0,
+    greater_than_equal: () => compareValues(candidate, target) >= 0,
+    ne: () => notEqual(candidate, target),
+    not_equal: () => notEqual(candidate, target),
+    starts_with: () =>
       typeof candidate === "string" &&
-      candidate.startsWith(String(condition.value ?? ""))
-    );
-  }
-  if (comparator === "ne" || comparator === "not_equal") {
-    return condition.value === null
-      ? candidate != null
-      : candidate !== condition.value;
-  }
-  if (comparator === "greater_than") {
-    return compareValues(candidate, target) > 0;
-  }
-  if (comparator === "greater_than_equal") {
-    return compareValues(candidate, target) >= 0;
-  }
+      candidate.startsWith(String(condition.value ?? "")),
+  } satisfies Record<string, () => boolean>;
+  return (
+    comparatorMatches[comparator as keyof typeof comparatorMatches]?.() ??
+    equal(candidate, target)
+  );
+}
+
+/**
+ * Checks Harper-style equality with null matching nullish values.
+ * @param candidate - Row value to test.
+ * @param target - Condition value to match.
+ * @returns Whether the candidate equals the target.
+ */
+function equal(candidate: unknown, target: unknown): boolean {
   return target === null ? candidate == null : candidate === target;
+}
+
+/**
+ * Checks Harper-style inequality with null excluding nullish values.
+ * @param candidate - Row value to test.
+ * @param target - Condition value to reject.
+ * @returns Whether the candidate differs from the target.
+ */
+function notEqual(candidate: unknown, target: unknown): boolean {
+  return target === null ? candidate != null : candidate !== target;
 }
 
 /**
