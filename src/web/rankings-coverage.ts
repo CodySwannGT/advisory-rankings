@@ -7,6 +7,7 @@ import type {
   RankingsCoverage,
   SourceStatusBucket,
 } from "../harper/resource-rankings-explorer-types.js";
+import { fmtDate } from "./app-formatters.js";
 import { el, EmptyText, SectionCard, Tag } from "./design-system/index.js";
 import { fmtNumber, statusLabel } from "./rankings-sections.js";
 
@@ -302,5 +303,5 @@ function latestCoverageDate(
  */
 function displayDate(value: HarperDate | null | undefined): string {
   if (!value) return "Unavailable";
-  return String(value).slice(0, 10);
+  return fmtDate(value);
 }
