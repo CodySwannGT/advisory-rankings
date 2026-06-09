@@ -746,7 +746,7 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Harper JWT for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/compare.js`, and `/AdvisorComparison` |
+| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/compare.js`, and `/AdvisorComparison` |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
 
@@ -760,19 +760,24 @@ are repo secrets, the workflow mints a fresh JWT per run, and the
 packages `harper-app/` into a tarball, base64-
 encodes it, logs into Studio over `:443`, POSTs `deploy_component`
 through Studio's operations proxy, and follows with an explicit bounded
-`restart`. The extra restart is intentional: Fabric can accept updated
+replicated `restart`. The component upload uses `restart: "rolling"`
+with `replicated: true`, matching Harper's documented clustered deploy
+shape. The extra restart is intentional: Fabric can accept updated
 component files while the public app still serves the previous
-static/resource module set. The restart request is timed out locally so a
-service restart cannot leave CI waiting on a dropped proxy response. A
-Studio `deploy_component` request can also drop after Fabric has accepted
-the upload but before the proxy returns; the deploy script treats that as
-indeterminate and continues to the data-plane freshness checks rather
-than aborting before recovery can run. When Fabric reports a replica
-failure, or when the data-plane freshness check still sees the previous
-bundle, the script mints a Harper JWT and deploys directly to the public
-node's `:9925` Operations API once. Same effect as the CLI below, while
-keeping the Studio path as the primary path for environments where direct
-ops are blocked.
+static/resource module set. Restart requests use a bounded restart-scale
+timeout so a service restart cannot leave CI waiting on a dropped proxy
+response. Component uploads use a longer deploy-scale timeout; aborting a
+deploy after only the restart budget can leave the server-side component
+replacement running, and an immediate retry can collide with that
+in-progress replacement. A Studio `deploy_component` request can also
+drop after Fabric has accepted the upload but before the proxy returns;
+the deploy script treats that as indeterminate and continues to the
+data-plane freshness checks rather than aborting before recovery can run.
+When Fabric reports a replica failure, or when the data-plane freshness
+check still sees the previous bundle, the script uses Basic auth and
+deploys directly to the public node's `:9925` Operations API once. Same
+effect as the CLI below, while keeping the Studio path as the primary
+path for environments where direct ops are blocked.
 
 ```bash
 # Reads HARPER_ADMIN_USERNAME / HARPER_ADMIN_PASSWORD from env,
@@ -904,24 +909,25 @@ Verify with `{"operation":"cluster_status"}`: the peer connection's
 `"connected": true`. This trust is stored in each node's cert store and
 survives restarts.
 
-**Why the deploy still reports a replica failure (and why that's OK).**
-`deploy_component` runs with `restart: true`, which restarts the node it
-deployed to (east) mid-push, so its immediate `replicated` array still
-shows the west replica as failed (`WebSocket was closed before the
-connection was established`). The component nonetheless propagates to west
-through the now-healthy **system-database replication** within a few
-seconds. `src/scripts/deploy.ts` therefore does not treat the
-`replicated` array as authoritative: it attempts a direct public-node
-deploy (best-effort — `:9925` is firewalled from CI, so this is a no-op
-there). Fabric public-node operations can exceed the former 15-second
-abort budget while still completing successfully, so `deploy.ts` defaults
-`HARPER_RESTART_TIMEOUT_MS` to 60 seconds. The Studio
-`deploy_component` response can also exceed the proxy's response window
-after the payload has been accepted; `deploy.ts` continues from that
-disconnect into the same data-plane freshness gate. It then **polls
-`/version.js` on the public URL until it matches the freshly built
-`package.json` version** (`verifyRuntimeFreshness`). The
-deploy passes when the served node reports the new version and fails only
+**Why the deploy can report a replica failure (and why that's OK).**
+Older deploys used `restart: true`, which could restart the node it
+deployed to (east) mid-push, so its immediate `replicated` array showed
+the west replica as failed (`WebSocket was closed before the connection
+was established`). Current deploys use `restart: "rolling"` with
+`replicated: true`, but `src/scripts/deploy.ts` still treats the
+`replicated` array as an early signal rather than the final truth: it
+attempts a direct public-node deploy when useful, then lets the
+data-plane freshness gate decide. Fabric public-node deployments can
+take several minutes while still completing successfully, so `deploy.ts`
+uses `HARPER_DEPLOY_TIMEOUT_MS` (default 420 seconds) for direct
+`deploy_component` calls and keeps `HARPER_RESTART_TIMEOUT_MS` (default
+60 seconds) for restart calls. The Studio `deploy_component` response
+can also exceed the proxy's response window after the payload has been
+accepted; `deploy.ts` continues from that disconnect into the same
+data-plane freshness gate. It then **polls `/version.js` on the public
+URL until it matches the freshly built `package.json` version**
+(`verifyRuntimeFreshness`). The deploy passes when the served node
+reports the new version and fails only
 if replication never propagates it. Set `SKIP_DIRECT_PUBLIC_DEPLOY=1` to
 exercise the CI-only path (Studio deploy + replication + freshness poll)
 from a local network.
