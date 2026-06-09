@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   emptyFirmSourceRows,
   firmSourceFixtureDir,
+  FirmSourceRows,
+  FirmSourceRunOptions,
   firmSourceScriptName,
   firmSourceScriptPath,
+  DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
+  DEFAULT_FIRM_SOURCE_PAGE_SIZE,
   FIRM_SOURCE_SAMPLE_LIMIT,
   FIRM_SOURCE_TABLES,
 } from "../src/lib/firm-source-adapter.js";
@@ -37,5 +41,24 @@ describe("firm source adapter contract", () => {
       "tests/fixtures/firm-sources/raymond-james"
     );
     expect(FIRM_SOURCE_SAMPLE_LIMIT).toBe(5);
+  });
+
+  it("initializes empty adapter rows for each Harper table", () => {
+    const rows = new FirmSourceRows();
+
+    for (const tableName of FIRM_SOURCE_TABLES) {
+      expect(rows[tableName]).toEqual([]);
+    }
+  });
+
+  it("defaults scraper run options to a bounded dry run", () => {
+    expect(new FirmSourceRunOptions()).toEqual({
+      checkedAt: "",
+      json: false,
+      maxAdvisors: DEFAULT_FIRM_SOURCE_MAX_ADVISORS,
+      pageSize: DEFAULT_FIRM_SOURCE_PAGE_SIZE,
+      queries: [],
+      write: false,
+    });
   });
 });

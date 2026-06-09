@@ -118,7 +118,7 @@ function normalizeFirmName(value: string): string {
     " corp",
   ].find(suffix => compact.endsWith(suffix));
   const withoutSuffix = token ? compact.slice(0, -token.length) : compact;
-  return withoutSuffix.split(/\s+/u).join(" ");
+  return withoutSuffix.trim().split(/\s+/u).join(" ");
 }
 
 /**
