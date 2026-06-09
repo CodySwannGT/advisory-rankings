@@ -46,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
  */
 export interface RankingsExplorerData {
   readonly generatedAt: string;
+  readonly filters?: RankingsDataStateFilters;
   readonly summary: RankingsSummary;
   readonly provenance: RankingsProvenance;
 }
@@ -53,6 +54,16 @@ export interface RankingsExplorerData {
 /** Provenance block embedded in the rankings-explorer payload. */
 export interface RankingsProvenance {
   readonly sourceTables: readonly string[];
+}
+
+/** Filter fields needed for data-volume explanations. */
+interface RankingsDataStateFilters {
+  readonly category: string | null;
+  readonly year: number | null;
+  readonly firmQuery: string | null;
+  readonly state: string | null;
+  readonly city: string | null;
+  readonly resolved: "resolved" | "unresolved" | null;
 }
 
 /**
@@ -95,6 +106,37 @@ export function rankingsTableCard(
         ])
       )
     ),
+  });
+}
+
+/**
+ * Builds an explicit explanation for sparse and filtered rankings states.
+ * @param data - RankingsExplorer response.
+ * @returns Data-state explanation card.
+ */
+export function rankingsDataStateCard(data: RankingsExplorerData): HTMLElement {
+  const activeFilters = activeFilterLabels(data.filters);
+  const isFiltered = activeFilters.length > 0;
+  const count = data.summary.totalEntries;
+  const title = isFiltered
+    ? `${fmtNumber(count)} rankings match these filters`
+    : `${fmtNumber(count)} rankings loaded`;
+  const body = isFiltered
+    ? `Filtered by ${activeFilters.join(", ")}. Broaden or reset the view to compare against the full loaded rankings dataset.`
+    : "This dev dataset is intentionally small while rankings ingestion is being expanded. Source coverage and profile-match gaps below explain what is loaded and what still needs ingestion or matching.";
+
+  return SectionCard({
+    title: "Data volume",
+    attrs: { class: "rankings-data-state" },
+    body: [
+      el("p", { class: "rankings-data-state-copy" }, body),
+      el(
+        "div",
+        { class: "rankings-data-state-actions" },
+        el("span", {}, title),
+        resetLink(isFiltered)
+      ),
+    ],
   });
 }
 
@@ -165,6 +207,52 @@ export function summaryCard(data: RankingsExplorerData): HTMLElement {
  */
 export function fmtNumber(value: number | string | null | undefined): string {
   return Number(value || 0).toLocaleString();
+}
+
+/**
+ * Lists active user-facing filters, excluding sort order.
+ * @param filters - Current public rankings filters.
+ * @returns Display labels for active filters.
+ */
+function activeFilterLabels(
+  filters: RankingsDataStateFilters | undefined
+): readonly string[] {
+  if (!filters) return [];
+  return [
+    filters.category ? `ranking list ${filters.category}` : "",
+    filters.year ? `year ${filters.year}` : "",
+    filters.firmQuery ? `firm ${filters.firmQuery}` : "",
+    filters.state ? `state ${filters.state}` : "",
+    filters.city ? `city ${filters.city}` : "",
+    filters.resolved ? profileMatchLabel(filters.resolved) : "",
+  ].filter((label): label is string => Boolean(label));
+}
+
+/**
+ * Converts profile-match filter values to reader-facing text.
+ * @param value - Current resolved filter value.
+ * @returns Human-readable filter label.
+ */
+function profileMatchLabel(
+  value: RankingsDataStateFilters["resolved"]
+): string {
+  return value === "resolved"
+    ? "matched profiles"
+    : value === "unresolved"
+      ? "profiles needing matches"
+      : "";
+}
+
+/**
+ * Builds a reset link when any narrowing filter is active.
+ * @param isFiltered - Whether the current view has narrowing filters.
+ * @returns Reset link or inert placeholder.
+ */
+function resetLink(isFiltered: boolean): HTMLElement {
+  if (!isFiltered) {
+    return el("span", { class: "rankings-reset-placeholder" }, "");
+  }
+  return el("a", { class: "rankings-reset-link", href: "/rankings" }, "Reset");
 }
 
 /**

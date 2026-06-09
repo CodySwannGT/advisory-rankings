@@ -11,6 +11,7 @@ import {
 } from "./design-system/index.js";
 import {
   fmtNumber,
+  rankingsDataStateCard,
   rankingsTableCard,
   sourceCard,
   summaryCard,
@@ -153,6 +154,7 @@ function renderRankings(
 ): void {
   center.appendChild(headerCard(data));
   center.appendChild(filterCard(data));
+  center.appendChild(rankingsDataStateCard(data));
   center.appendChild(coverageWorkbenchCard(data.coverage));
   if (data.emptyState) {
     center.appendChild(

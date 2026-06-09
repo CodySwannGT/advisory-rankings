@@ -1256,6 +1256,43 @@ body.drawer-open .nav .nav-scrim {
   display: grid;
   gap: 16px;
 }
+.rankings-data-state .card-body {
+  display: grid;
+  gap: 10px;
+}
+.rankings-data-state-copy {
+  margin: 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rankings-data-state-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.rankings-data-state-actions span {
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.rankings-reset-link {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+.rankings-reset-link:hover {
+  border-color: var(--brand);
+}
+.rankings-reset-placeholder {
+  display: none;
+}
 .rankings-coverage-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1740,6 +1777,10 @@ body.drawer-open .nav .nav-scrim {
   .rankings-coverage-bucket-head,
   .rankings-gap-head {
     align-items: flex-start;
+    flex-direction: column;
+  }
+  .rankings-data-state-actions {
+    align-items: stretch;
     flex-direction: column;
   }
   .filter-button,
