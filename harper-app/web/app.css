@@ -293,11 +293,17 @@ body.drawer-open .nav .nav-scrim {
 .layout.rankings-layout {
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(220px, 280px);
 }
+.layout.rankings-layout--focused {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+}
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: minmax(0, 590px) minmax(220px, 320px);
   }
   .layout.rankings-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  }
+  .layout.rankings-layout--focused {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
   }
   .layout > .left {
