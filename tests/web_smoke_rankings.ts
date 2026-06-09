@@ -87,6 +87,14 @@ async function readLoadedRankings(page: Page) {
       const hasText = (label: string) =>
         pageText.toLowerCase().includes(label.toLowerCase());
       return {
+        browseCardTitles: [
+          ...document.querySelectorAll<HTMLElement>(".left .card-title"),
+        ].map(title => title.textContent?.trim() ?? ""),
+        degradedBrowseIcons: [
+          ...document.querySelectorAll<HTMLElement>(".left .avatar"),
+        ]
+          .map(avatar => avatar.textContent?.trim() ?? "")
+          .filter(icon => ["?", "#", "!"].includes(icon)),
         hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
         hasPurposeLede: document.body.innerText.includes(
           "Browse public advisor and team ranking appearances"
@@ -389,6 +397,7 @@ function loadedRankingsChecks(loaded) {
       loaded.hasHeader && loaded.hasPurposeLede,
       "rankings: page purpose and primary workflow render"
     ),
+    ...rankingsNavigationChecks(loaded),
     check(loaded.hasNextGen, "rankings: category data renders"),
     check(
       loaded.hasSeparateSortControl && loaded.hasSortNearResults,
@@ -445,6 +454,26 @@ function loadedRankingsChecks(loaded) {
       loaded.tableLayout.isContained,
       "rankings: desktop table stays inside the content column",
       JSON.stringify(loaded.tableLayout)
+    ),
+  ];
+}
+
+/**
+ * Converts rankings navigation facts into checks.
+ * @param loaded - Loaded page facts.
+ * @returns Navigation regression checks.
+ */
+function rankingsNavigationChecks(loaded) {
+  return [
+    check(
+      !loaded.browseCardTitles.includes("Browse"),
+      "rankings: duplicate Browse rail is hidden on desktop",
+      loaded.browseCardTitles.join(", ")
+    ),
+    check(
+      loaded.degradedBrowseIcons.length === 0,
+      "rankings: no degraded Browse icon placeholders render",
+      loaded.degradedBrowseIcons.join(", ")
     ),
   ];
 }
