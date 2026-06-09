@@ -267,25 +267,6 @@ function logDeployResult(dep: DeployResult): number {
 }
 
 /**
- * Detects Fabric replication failures embedded in a successful deploy response.
- * @param dep - Fabric deployment response.
- * @returns True when at least one replica failed.
- */
-function hasReplicationFailures(dep: DeployResult): boolean {
-  if (dep.body === null || typeof dep.body !== "object") return false;
-  if (!("replicated" in dep.body) || !Array.isArray(dep.body.replicated)) {
-    return false;
-  }
-  return dep.body.replicated.some(
-    replica =>
-      replica !== null &&
-      typeof replica === "object" &&
-      "status" in replica &&
-      replica.status !== "success"
-  );
-}
-
-/**
  * Detects a timed-out restart request. Fabric can restart the service before
  * flushing the proxy response, so the deploy gate should move to data-plane
  * polling instead of hanging indefinitely.
@@ -658,49 +639,66 @@ async function pollDeployedVersion(
 }
 
 /**
- * Uploads the component and restarts the Harper runtime.
- * @param studio - Authenticated Studio session.
- * @returns Whether both control-plane operations succeeded.
+ * Deploys the component, preferring the instance's direct Operations API.
+ *
+ * The direct `:9925` path is primary because it lands straight on the public
+ * serving node (so the freshness gate never waits on east→west replication)
+ * and bypasses the Fabric Studio proxy, which intermittently loses its
+ * instance domain socket and then returns 500 ("Instance domain socket does
+ * not exist.") for every control op — failing deploys even though the runtime
+ * is healthy (see fabric-runbook §5). GitHub-hosted runners can reach `:9925`
+ * (verified), so this is the primary CI path too. The Studio proxy remains a
+ * fallback for any environment that cannot reach `:9925`; force it with
+ * `DEPLOY_VIA=studio`.
+ * @param studio - Authenticated Studio session, used only for the fallback.
+ * @returns Whether the component was deployed successfully.
  */
 async function deployAndRestart(studio: StudioSession): Promise<boolean> {
+  if (await tryDirectDeploy()) return true;
+  console.warn("  falling back to the Studio control-plane proxy deploy");
+  return deployViaStudio(studio);
+}
+
+/**
+ * Attempts the primary direct `:9925` deploy, reporting whether it succeeded.
+ * A non-200 status or an unreachable port resolves to `false` so the caller
+ * falls back to the Studio proxy; only unexpected errors propagate.
+ * @returns True when the direct deploy returned HTTP 200.
+ */
+async function tryDirectDeploy(): Promise<boolean> {
+  if (process.env.DEPLOY_VIA === "studio") {
+    console.log("▶ DEPLOY_VIA=studio — skipping the direct ops deploy");
+    return false;
+  }
+  try {
+    const status = await deployPublicRuntime();
+    if (status === 200) return true;
+    console.warn(`  direct ops deploy returned ${status}`);
+    return false;
+  } catch (error) {
+    if (!isFetchDisconnect(error) && !isAbortError(error)) throw error;
+    console.warn(`  direct ops API unreachable (${describeRouteError(error)})`);
+    return false;
+  }
+}
+
+/**
+ * Deploys and restarts through the Fabric Studio control-plane proxy. Used as
+ * a fallback when the direct `:9925` ops API is unavailable.
+ * @param studio - Authenticated Studio session.
+ * @returns Whether the Studio deploy succeeded.
+ */
+async function deployViaStudio(studio: StudioSession): Promise<boolean> {
   const result = await deployComponent(studio);
   if (result.status !== 200) return false;
-  // The explicit Studio restart is best-effort: deploy_component already
-  // restarts the runtime (restart: true), and verifyRuntimeFreshness is the
-  // real correctness guard. Fabric returns 500 for the cluster-level `restart`
-  // op, so a non-200 here must not abort before the direct public-node
-  // fallback — that fallback is what updates the node smoke tests actually hit
-  // when replication is disconnected.
+  // deploy_component already restarts the runtime (restart: "rolling"); the
+  // explicit restart is best-effort and Fabric can return 500 for the
+  // cluster-level `restart`, so a non-200 here must not abort — the freshness
+  // gate is the real correctness guard.
   const restartStatus = await restartDeployedService(studio);
   if (restartStatus !== 200) {
     console.warn(
       `  Studio restart returned ${restartStatus}; deploy_component already restarted the runtime, continuing`
-    );
-  }
-  if (!hasReplicationFailures(result)) return true;
-
-  // Replica push failed in the deploy_component response. Try to update the
-  // public node directly — this works from a network that can reach :9925, but
-  // that port is firewalled from datacenter egress (CI), so treat it as
-  // best-effort: if it's unreachable we fall through to the freshness gate,
-  // which waits for cluster replication to propagate the component to the
-  // serving node and fails the deploy only if it never does.
-  if (process.env.SKIP_DIRECT_PUBLIC_DEPLOY === "1") {
-    console.warn(
-      "  SKIP_DIRECT_PUBLIC_DEPLOY=1 — skipping direct public-node deploy; relying on cluster replication + freshness gate (simulates CI)"
-    );
-    return true;
-  }
-  console.warn(
-    "Fabric reported replica deployment failures; attempting direct public-node deploy"
-  );
-  try {
-    if ((await deployPublicRuntime()) === 200) {
-      await restartPublicRuntime();
-    }
-  } catch (error) {
-    console.warn(
-      `  direct public-node deploy unavailable from this network (${String(error)}); relying on cluster replication + freshness gate`
     );
   }
   return true;
@@ -760,7 +758,6 @@ async function main(): Promise<void> {
       deployPublicRuntime,
       restartPublicRuntime,
       verifyFeed: () => verifyFeed(creds.clusterUrl),
-      skipDirectDeploy: process.env.SKIP_DIRECT_PUBLIC_DEPLOY === "1",
     });
     if (!recovered) {
       process.exitCode = 1;

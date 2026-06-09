@@ -320,9 +320,22 @@ downtime.
 **Harper's Operations API listens on port 9925**. That's where
 `describe_all`, `sql`, `deploy_component`, user management, etc. all
 live. Harper Fabric's clusters expose `:9925` on the public internet,
-but **the sandbox we're running from has datacenter-egress firewalls
-that block outbound `:9925`**, so any tool that tries to talk to it
-directly times out at 15s.
+but **the original datacenter sandbox these notes were written from has
+egress firewalls that block outbound `:9925`**, so any tool that tries to
+talk to it directly times out at 15s.
+
+> **Correction (2026-06-09): this firewall is sandbox-specific, not
+> universal.** GitHub-hosted Actions runners have open outbound egress and
+> **can** reach `:9925` (verified from an `ubuntu-latest` runner: HTTPS connect
+> returns 200 in ~0.3 s). The deploy job therefore uses the direct `:9925`
+> Operations API as its **primary** path (Basic auth), bypassing the Studio
+> proxy entirely. This was driven by a chronic failure where the Studio proxy
+> lost its instance domain socket and returned 500 "Instance domain socket does
+> not exist." for every control op while the runtime stayed healthy (issue
+> #1075). Direct deploy also lands straight on the public serving node, so the
+> freshness gate no longer waits on east→west replication. The Studio proxy is
+> kept only as a fallback for networks that genuinely cannot reach `:9925`
+> (`DEPLOY_VIA=studio` forces it).
 
 What this means in practice:
 
@@ -754,35 +767,31 @@ CI gets the same: `HARPER_ADMIN_USERNAME` / `HARPER_ADMIN_PASSWORD`
 are repo secrets, the workflow mints a fresh JWT per run, and the
 30-day refresh token isn't stored anywhere.
 
-### Push-deploy from anywhere (`bun run deploy` → Studio proxy)
+### Push-deploy from anywhere (`bun run deploy` → direct `:9925`, Studio fallback)
 
 `bun run deploy` runs `bun run build`, then `src/scripts/deploy.ts`
-packages `harper-app/` into a tarball, base64-
-encodes it, logs into Studio over `:443`, POSTs `deploy_component`
-through Studio's operations proxy, and follows with an explicit bounded
-replicated `restart`. The component upload uses `restart: "rolling"`
-with `replicated: true`, matching Harper's documented clustered deploy
-shape. The extra restart is intentional: Fabric can accept updated
-component files while the public app still serves the previous
-static/resource module set. Restart requests use a bounded restart-scale
-timeout so a service restart cannot leave CI waiting on a dropped proxy
-response. Component uploads use a longer deploy-scale timeout; aborting a
-deploy after only the restart budget can leave the server-side component
-replacement running, and an immediate retry can collide with that
-in-progress replacement. A Studio `deploy_component` request can also
-drop after Fabric has accepted the upload but before the proxy returns;
-the deploy script treats that as indeterminate and continues to the
-data-plane freshness checks rather than aborting before recovery can run.
-When Fabric reports a replica failure, or when the data-plane freshness
-check still sees the previous bundle, the script uses Basic auth and
-deploys directly to the public node's `:9925` Operations API once. Same
-effect as the CLI below, while keeping the Studio path as the primary
-path for environments where direct ops are blocked. When
-`SKIP_DIRECT_PUBLIC_DEPLOY=1` (always set on CI — see below), the recovery
-path skips that firewalled direct deploy and simply re-runs the data-plane
-verification: the freshness gate has already proven the component
-propagated, so a verification error is treated as a transient cold-start
-blip and retried rather than triggering a deploy the runner cannot reach.
+packages `harper-app/` into a tarball, base64-encodes it, and deploys it.
+**The primary path is the instance's direct Operations API on `:9925`**
+(`deploy_component` with `restart: true`, Basic auth). It is preferred
+because it bypasses the Fabric Studio proxy — which chronically loses its
+instance domain socket and then returns 500 "Instance domain socket does
+not exist." for every control op while the runtime stays healthy (§5,
+issue #1075) — and because it lands straight on the public serving node,
+so the freshness gate never waits on east→west replication. GitHub-hosted
+runners can reach `:9925`, so this is the CI path too. Component uploads
+use a deploy-scale timeout; aborting after only the restart budget can
+leave the server-side component replacement running, and an immediate
+retry can collide with that in-progress replacement.
+
+If the direct ops API is unreachable (a network that genuinely blocks
+`:9925`, or `DEPLOY_VIA=studio`), the script falls back to the **Studio
+control-plane proxy**: log in over `:443`, POST `deploy_component` through
+`fabric.harper.fast`, then an explicit bounded `restart`. A Studio
+`deploy_component` request can drop after Fabric accepts the upload but
+before the proxy returns; the script treats that as indeterminate and
+continues to the data-plane freshness checks. If the post-deploy freshness
+check still sees a stale serving node, `recoverPublicRuntime` re-attempts
+the direct `:9925` deploy once and re-verifies.
 
 The public-route checks (`/`, `/app.css`, `/compare.js`, and
 `/AdvisorComparison`) poll with a short per-attempt timeout instead of a
@@ -923,35 +932,24 @@ Verify with `{"operation":"cluster_status"}`: the peer connection's
 survives restarts.
 
 **Why the deploy can report a replica failure (and why that's OK).**
-Older deploys used `restart: true`, which could restart the node it
-deployed to (east) mid-push, so its immediate `replicated` array showed
-the west replica as failed (`WebSocket was closed before the connection
-was established`). Current deploys use `restart: "rolling"` with
-`replicated: true`, but `src/scripts/deploy.ts` still treats the
-`replicated` array as an early signal rather than the final truth: it
-attempts a direct public-node deploy when useful, then lets the
-data-plane freshness gate decide. Fabric public-node deployments can
-take several minutes while still completing successfully, so `deploy.ts`
-uses `HARPER_DEPLOY_TIMEOUT_MS` (default 420 seconds) for direct
-`deploy_component` calls and keeps `HARPER_RESTART_TIMEOUT_MS` (default
-60 seconds) for restart calls. The Studio `deploy_component` response
-can also exceed the proxy's response window after the payload has been
-accepted; `deploy.ts` continues from that disconnect into the same
-data-plane freshness gate. It then **polls `/version.js` on the public
-URL until it matches the freshly built `package.json` version**
-(`verifyRuntimeFreshness`). The deploy passes when the served node
-reports the new version and fails only
-if replication never propagates it. `SKIP_DIRECT_PUBLIC_DEPLOY=1` selects
-the CI path (Studio deploy + replication + freshness poll, no direct
-`:9925` deploy); the deploy workflow sets it on every run because the
-runner cannot reach `:9925`, and you can set it locally to exercise the
-same path. When it is set, both the replica-failure branch and the
-post-deploy recovery branch skip the direct deploy — recovery re-verifies
-the public runtime instead of attempting a deploy the runner cannot
-complete. Before this was wired, a transient cold-start on a secondary
-route (`/AdvisorComparison`) would fail verification on a fully-propagated
-deploy and then burn the full `HARPER_DEPLOY_TIMEOUT_MS` against the
-firewalled port before failing the build (run `27203171950`, 2026-06-09).
+The direct `:9925` deploy lands on the public serving node and Fabric then
+tries to replicate the component to the other node; that replica push
+frequently fails (`read ECONNRESET` / `WebSocket was closed before the
+connection was established` / TLS disconnect). **This is harmless**: the
+node we deployed to is the one that serves `:443`, and the freshness gate
+proves it. Fabric public-node deployments can take several minutes while
+still completing, so `deploy.ts` uses `HARPER_DEPLOY_TIMEOUT_MS` (default
+420 seconds) for `deploy_component` and `HARPER_RESTART_TIMEOUT_MS`
+(default 60 seconds) for restarts. After deploy it **polls `/version.js`
+and `/index.js` on the public URL until both match the freshly built
+`package.json` version and bundle** (`verifyRuntimeFreshness`), then checks
+the static/resource routes. The deploy passes when the served node reports
+the new version and bundle. Before the route checks retried (above) and
+before the deploy moved to the direct `:9925` path, a transient cold-start
+on `/AdvisorComparison` failed verification on a fully-propagated deploy
+and then burned the full `HARPER_DEPLOY_TIMEOUT_MS` against the (then
+Studio-routed) recovery before failing the build (run `27203171950`,
+2026-06-09).
 
 **Secondary indexes do not replicate reliably to the served node
 (2026-06-03).** A subtler layer of the same east→west replication gap:

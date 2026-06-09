@@ -127,12 +127,11 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build and deploy harper-app to Fabric
-        # The cluster ops API (:9925) is firewalled from GitHub-hosted runners
-        # (fabric-runbook §5), so any direct public-node deploy can only burn the
-        # deploy timeout and then fail. Skip it: the Studio deploy + cluster
-        # replication + data-plane freshness gate is the supported CI path.
-        env:
-          SKIP_DIRECT_PUBLIC_DEPLOY: '1'
+        # Deploys via the instance's direct Operations API (:9925), which
+        # GitHub-hosted runners can reach. This bypasses the Fabric Studio proxy
+        # (chronically returns 500 "Instance domain socket does not exist.") and
+        # lands straight on the serving node. Set DEPLOY_VIA=studio to force the
+        # Studio proxy fallback. See fabric-runbook §5.
         run: bun run deploy
 
       - name: Seed public smoke fixture
