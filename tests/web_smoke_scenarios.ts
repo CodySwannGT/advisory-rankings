@@ -77,7 +77,9 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
       "/ feed: transition shows source and destination firms"
     ),
     check(
-      /\$1\.6B|1\.6|\$2B|2B|\$5\.94B|5\.94/.test(transitionText),
+      /(?:^|[^\d.])(?:\$1\.60?B|1\.60?B?|\$2B|2B|\$5\.94B|5\.94B?)(?=$|[^\d.])/.test(
+        transitionText
+      ),
       "/ feed: transition shows seeded AUM"
     ),
     check(

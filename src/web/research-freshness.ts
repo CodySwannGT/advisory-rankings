@@ -8,10 +8,19 @@ import {
   el,
   clear,
 } from "./design-system/index.js";
+import {
+  filterControlsCard,
+  queueResourcePath,
+  readQueueFilters,
+} from "./research-freshness-filters.js";
 import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-research-queue.js";
 
 /** One rendered queue item from the AdvisorResearchQueue resource. */
 type QueueItem = AdvisorResearchQueueResponse["items"][number];
+
+const queuePopstate: Readonly<
+  Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
+> = { reload: null as (() => void) | null, listenerInstalled: false };
 
 mountThreeColumnPage({
   active: "research",
@@ -20,9 +29,26 @@ mountThreeColumnPage({
   search,
   pageTitle: "Research freshness queue",
   build({ center, right }) {
+    installQueuePopstateReload(() => loadQueue(center, right));
     loadQueue(center, right);
   },
 });
+
+/**
+ * Installs one history navigation reload callback for queue filters.
+ * @param reloadQueue - Reloads the queue after browser history navigation.
+ */
+function installQueuePopstateReload(reloadQueue: () => void): void {
+  Object.assign(queuePopstate, { reload: reloadQueue });
+  if (queuePopstate.listenerInstalled) return;
+  window.addEventListener("popstate", onQueuePopstate);
+  Object.assign(queuePopstate, { listenerInstalled: true });
+}
+
+/** Reloads the research queue after browser history navigation. */
+function onQueuePopstate(): void {
+  queuePopstate.reload?.();
+}
 
 /**
  * Loads the public research freshness queue.
@@ -38,7 +64,7 @@ function loadQueue(center: HTMLElement, right: HTMLElement): void {
       body: "Fetching public-source advisor checks due for review.",
     })
   );
-  api<AdvisorResearchQueueResponse>("/AdvisorResearchQueue")
+  api<AdvisorResearchQueueResponse>(queueResourcePath(readQueueFilters()))
     .then(payload => renderQueue(payload, center, right))
     .catch((error: unknown) => renderError(error, center, right));
 }
@@ -68,6 +94,9 @@ function renderQueue(
   } else {
     center.append(...payload.items.map(queueCard));
   }
+  right.appendChild(
+    filterControlsCard(readQueueFilters(), () => loadQueue(center, right))
+  );
   right.appendChild(filterSummaryCard(payload));
   right.appendChild(statusCard(payload));
   right.appendChild(missingFieldsCard(payload));
