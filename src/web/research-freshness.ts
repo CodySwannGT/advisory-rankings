@@ -8,6 +8,11 @@ import {
   el,
   clear,
 } from "./design-system/index.js";
+import {
+  filterControlsCard,
+  queueResourcePath,
+  readQueueFilters,
+} from "./research-freshness-filters.js";
 import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-research-queue.js";
 
 /** One rendered queue item from the AdvisorResearchQueue resource. */
@@ -20,6 +25,7 @@ mountThreeColumnPage({
   search,
   pageTitle: "Research freshness queue",
   build({ center, right }) {
+    window.addEventListener("popstate", () => loadQueue(center, right));
     loadQueue(center, right);
   },
 });
@@ -38,7 +44,7 @@ function loadQueue(center: HTMLElement, right: HTMLElement): void {
       body: "Fetching public-source advisor checks due for review.",
     })
   );
-  api<AdvisorResearchQueueResponse>("/AdvisorResearchQueue")
+  api<AdvisorResearchQueueResponse>(queueResourcePath(readQueueFilters()))
     .then(payload => renderQueue(payload, center, right))
     .catch((error: unknown) => renderError(error, center, right));
 }
@@ -68,6 +74,9 @@ function renderQueue(
   } else {
     center.append(...payload.items.map(queueCard));
   }
+  right.appendChild(
+    filterControlsCard(readQueueFilters(), () => loadQueue(center, right))
+  );
   right.appendChild(filterSummaryCard(payload));
   right.appendChild(statusCard(payload));
   right.appendChild(missingFieldsCard(payload));

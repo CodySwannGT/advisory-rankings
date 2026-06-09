@@ -12,7 +12,7 @@ const SHOTS = resolve("tests/screenshots");
 const QUICK_TIMEOUT = 4_000;
 const ME_ROUTE = "**/Me";
 const FEED_ROUTE = "**/Feed";
-const ADVISOR_RESEARCH_QUEUE_ROUTE = "**/AdvisorResearchQueue";
+const ADVISOR_RESEARCH_QUEUE_ROUTE = "**/AdvisorResearchQueue**";
 const NO_ARTICLES_TEXT = "No articles yet";
 const FEED_ERROR_TITLE = "Could not load feed";
 const TEMPORARY_OUTAGE = "temporary outage";
@@ -266,6 +266,117 @@ browserDescribe("web async states", () => {
     expect(
       queueRequests.map(requestUrl => new URL(requestUrl).pathname)
     ).toEqual(["/AdvisorResearchQueue"]);
+    await page.close();
+  });
+
+  it("syncs research queue filters through the URL and resource request", async () => {
+    const page = await browser.newPage();
+    const queueRequests: string[] = [];
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+      queueRequests.push(route.request().url());
+      await route.fulfill({ json: researchQueuePayload() });
+    });
+
+    await page.goto(
+      `${baseUrl}/research/freshness?sourceType=firm_source&staleDays=7&status=no_new_data&missingField=businessPhone&limit=10`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    await expectFilterValue(page, "Source type", "firm_source");
+    await expectFilterValue(page, "Stale days", "7");
+    await expectFilterValue(page, "Status", "no_new_data");
+    await expectFilterValue(page, "Missing field", "businessPhone");
+    await expectFilterValue(page, "Limit", "10");
+
+    const filteredResponse = page.waitForResponse(
+      response =>
+        response.url().includes("/AdvisorResearchQueue?") &&
+        response.url().includes("limit=5")
+    );
+    await page.getByLabel("Limit").fill("5");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await filteredResponse;
+    await page.waitForURL("**/research/freshness?**limit=5**", {
+      timeout: QUICK_TIMEOUT,
+    });
+
+    const requestParams = queueRequests.map(requestUrl => {
+      const url = new URL(requestUrl);
+      return Object.fromEntries(url.searchParams);
+    });
+    expect(requestParams.at(0)).toMatchObject({
+      sourceType: "firm_source",
+      staleDays: "7",
+      status: "no_new_data",
+      missingField: "businessPhone",
+      limit: "10",
+    });
+    expect(requestParams.at(-1)).toMatchObject({
+      sourceType: "firm_source",
+      staleDays: "7",
+      status: "no_new_data",
+      missingField: "businessPhone",
+      limit: "5",
+    });
+    await page.close();
+  });
+
+  it("keeps research queue empty and retry states tied to filtered URLs", async () => {
+    const page = await browser.newPage();
+    const queueRequests: string[] = [];
+
+    await page.route(ME_ROUTE, async route => {
+      await route.fulfill({ json: { authenticated: false } });
+    });
+    await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+      queueRequests.push(route.request().url());
+      if (queueRequests.length === 1) {
+        await route.fulfill({ json: emptyResearchQueuePayload() });
+        return;
+      }
+      if (queueRequests.length === 2) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+        return;
+      }
+      await route.fulfill({ json: researchQueuePayload() });
+    });
+
+    await page.goto(
+      `${baseUrl}/research/freshness?sourceType=web_research&staleDays=1&status=failed&missingField=headshotUrl&limit=3`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await page.getByText("No due advisor checks").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    await page.getByLabel("Status").selectOption("no_new_data");
+    await page.getByText("Could not load research queue").waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await page.getByText(TEMPORARY_OUTAGE).count()).toBe(0);
+    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+
+    const searches = queueRequests.map(
+      requestUrl => new URL(requestUrl).search
+    );
+    expect(searches[0]).toContain("status=failed");
+    expect(searches[1]).toContain("status=no_new_data");
+    expect(searches[2]).toContain("status=no_new_data");
+    expect(searches[2]).toContain("missingField=headshotUrl");
     await page.close();
   });
 
@@ -845,6 +956,39 @@ function researchQueuePayload(): ResearchQueuePayload {
       },
     ],
   };
+}
+
+/**
+ * Builds an empty queue payload for filtered zero-result route checks.
+ * @returns AdvisorResearchQueue-shaped response with no due advisors.
+ */
+function emptyResearchQueuePayload(): Omit<ResearchQueuePayload, "items"> &
+  Readonly<Record<"items", readonly []>> {
+  return {
+    ...researchQueuePayload(),
+    summary: {
+      totalDue: 0,
+      returned: 0,
+      statusCounts: {},
+      missingFieldCounts: {},
+    },
+    items: [],
+  };
+}
+
+/**
+ * Asserts the current value for a labeled queue filter control.
+ * @param page - Browser page under test.
+ * @param label - Accessible control label.
+ * @param value - Expected form control value.
+ */
+async function expectFilterValue(
+  page: Page,
+  label: string,
+  value: string
+): Promise<void> {
+  await page.getByLabel(label).waitFor({ timeout: QUICK_TIMEOUT });
+  expect(await page.getByLabel(label).inputValue()).toBe(value);
 }
 
 /**
