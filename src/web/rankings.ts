@@ -15,7 +15,6 @@ import {
   rankingsTableCard,
   sourceCard,
   summaryCard,
-  topFirmsCard,
 } from "./rankings-sections.js";
 import { coverageWorkbenchCard } from "./rankings-coverage.js";
 import {
@@ -23,6 +22,7 @@ import {
   viewOptionsCard,
   type PublicRankingFilters,
 } from "./rankings-filters.js";
+import { topFirmsCard } from "./rankings-top-firms.js";
 import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 import type {
   RankingExplorerEntry,

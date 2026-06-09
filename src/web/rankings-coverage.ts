@@ -59,9 +59,21 @@ function coverageSummary(coverage: RankingsCoverage): HTMLElement {
   return el(
     "div",
     { class: "rankings-coverage-summary" },
-    coverageMetric("Rankings in view", fmtNumber(coverage.totalEntries)),
-    coverageMetric("Ranking lists", fmtNumber(coverage.buckets.length)),
-    coverageMetric("Open match issues", fmtNumber(coverage.gapBuckets.length)),
+    coverageMetric(
+      "Rankings in view",
+      fmtNumber(coverage.totalEntries),
+      "source-backed rows"
+    ),
+    coverageMetric(
+      "Ranking lists",
+      fmtNumber(coverage.buckets.length),
+      "category/year groups"
+    ),
+    coverageMetric(
+      "Open match issues",
+      fmtNumber(coverage.gapBuckets.length),
+      "profile or score gaps"
+    ),
     coverageMetric("Latest import", displayDate(latestLoadedAt))
   );
 }
@@ -70,14 +82,20 @@ function coverageSummary(coverage: RankingsCoverage): HTMLElement {
  * Builds a single coverage KPI.
  * @param label - KPI label.
  * @param value - KPI value.
+ * @param hint - Optional explanatory text shown under the value.
  * @returns KPI node.
  */
-function coverageMetric(label: string, value: string): HTMLElement {
+function coverageMetric(
+  label: string,
+  value: string,
+  hint: string | null = null
+): HTMLElement {
   return el(
     "div",
     { class: "rankings-coverage-metric" },
     el("span", {}, label),
-    el("strong", {}, value)
+    el("strong", {}, value),
+    hint ? el("small", {}, hint) : null
   );
 }
 
@@ -216,7 +234,7 @@ function bucketStatGrid(
     "div",
     { class: "rankings-bucket-stats" },
     ...pairs.map(([label, value]) =>
-      el("span", {}, el("em", {}, label), el("strong", {}, fmtNumber(value)))
+      el("span", {}, el("strong", {}, fmtNumber(value)), el("em", {}, label))
     )
   );
 }
