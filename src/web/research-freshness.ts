@@ -18,8 +18,9 @@ import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-re
 /** One rendered queue item from the AdvisorResearchQueue resource. */
 type QueueItem = AdvisorResearchQueueResponse["items"][number];
 
-let queuePopstateReload: (() => void) | null = null;
-let queuePopstateListenerInstalled = false;
+const queuePopstate: Readonly<
+  Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
+> = { reload: null as (() => void) | null, listenerInstalled: false };
 
 mountThreeColumnPage({
   active: "research",
@@ -38,15 +39,15 @@ mountThreeColumnPage({
  * @param reloadQueue - Reloads the queue after browser history navigation.
  */
 function installQueuePopstateReload(reloadQueue: () => void): void {
-  queuePopstateReload = reloadQueue;
-  if (queuePopstateListenerInstalled) return;
+  Object.assign(queuePopstate, { reload: reloadQueue });
+  if (queuePopstate.listenerInstalled) return;
   window.addEventListener("popstate", onQueuePopstate);
-  queuePopstateListenerInstalled = true;
+  Object.assign(queuePopstate, { listenerInstalled: true });
 }
 
 /** Reloads the research queue after browser history navigation. */
 function onQueuePopstate(): void {
-  queuePopstateReload?.();
+  queuePopstate.reload?.();
 }
 
 /**
