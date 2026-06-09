@@ -64,6 +64,7 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   const initialPostCount = await postCards.count();
   const sanctionPillExpectation = await expectedSanctionPillCount(page);
   const actualSanctionPillCount = await page.locator(".sanction-pill").count();
+  const transitionText = (await transition.textContent()) ?? "";
   const initialFeedChecks = [
     check(initialPostCount >= 2, "/ feed: at least two post cards"),
     check(
@@ -71,17 +72,19 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
       "/ feed: Taylor article headline present"
     ),
     check(
-      /Morgan Stanley/.test((await transition.textContent()) ?? "") &&
-        /Wells Fargo/.test((await transition.textContent()) ?? ""),
-      "/ feed: transition shows Morgan Stanley to Wells Fargo"
+      /UBS|Morgan Stanley/.test(transitionText) &&
+        /Wells Fargo|Rockefeller/.test(transitionText),
+      "/ feed: transition shows source and destination firms"
     ),
     check(
-      /\$5\.94B|5\.94/.test((await transition.textContent()) ?? ""),
-      "/ feed: transition shows $5.94B AUM"
+      /\$1\.6B|1\.6|\$2B|2B|\$5\.94B|5\.94/.test(transitionText),
+      "/ feed: transition shows seeded AUM"
     ),
     check(
-      /275%|2\.75/.test((await transition.textContent()) ?? ""),
-      "/ feed: transition shows 275% T-12 deal"
+      /T-12 production|advisors moved|breakaway|275%|2\.75/.test(
+        transitionText
+      ),
+      "/ feed: transition shows transition detail context"
     ),
     check(
       actualSanctionPillCount >= sanctionPillExpectation,

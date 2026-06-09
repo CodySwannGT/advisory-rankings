@@ -9,15 +9,18 @@ describe("seed data", () => {
       0
     );
     expect(tables).toHaveLength(29);
-    expect(total).toBe(119);
-    expect(seedData.Firm).toHaveLength(10);
+    expect(total).toBe(130);
+    expect(seedData.Firm).toHaveLength(11);
     expect(seedData.FirmAlias).toHaveLength(1);
     expect(seedData.FirmMergeAudit).toHaveLength(1);
     expect(seedData.Advisor).toHaveLength(12);
-    expect(seedData.Article).toHaveLength(2);
+    expect(seedData.Article).toHaveLength(4);
     expect(seedData.Ranking).toHaveLength(2);
     expect(seedData.RankingEntry).toHaveLength(3);
     expect(seedData.RegulatoryDiscrepancy).toHaveLength(1);
+    expect(seedData.TransitionEvent).toHaveLength(3);
+    expect(seedData.ArticleTransitionEventMention).toHaveLength(3);
+    expect(seedData.RecruitingDealQuote).toHaveLength(3);
     expect(seedData.Firm.some(firm => firm.name === "Morgan Stanley")).toBe(
       true
     );
@@ -26,6 +29,36 @@ describe("seed data", () => {
         firm => firm.name === "Morgan Stanley Wealth Management"
       )
     ).toBe(false);
+  });
+
+  describe("recruiting market fixtures (issue #1071)", () => {
+    it("seeds multiple public recruiting moves across multiple destination markets", () => {
+      const transitionIds = new Set(
+        seedData.ArticleTransitionEventMention.map(
+          mention => mention.transitionEventId
+        )
+      );
+      const destinationMarkets = new Set(
+        seedData.TransitionEvent.map(transition =>
+          seedData.Branch.find(branch => branch.id === transition.toBranchId)
+        )
+          .filter(Boolean)
+          .map(branch => `${branch?.city}, ${branch?.state}`)
+      );
+
+      expect(seedData.TransitionEvent).toHaveLength(3);
+      expect(transitionIds.size).toBe(seedData.TransitionEvent.length);
+      expect(destinationMarkets).toEqual(
+        new Set(["New York, NY", "Frisco, TX", "Palo Alto, CA"])
+      );
+      expect(
+        seedData.Article.filter(article =>
+          seedData.ArticleTransitionEventMention.some(
+            mention => mention.articleId === article.id
+          )
+        ).every(article => article.url.includes("advisorhub.com"))
+      ).toBe(true);
+    });
   });
 
   describe("regulatory discrepancy fixtures (issue #851)", () => {

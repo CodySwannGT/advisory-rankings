@@ -138,6 +138,32 @@
         1116,
         978
       ]
+    },
+    {
+      "authors": [
+        "Karmen Alexander"
+      ],
+      "category": "advisor_moves",
+      "headline": "$1.6 Billion UBS Team Decamps for Wells in Texas",
+      "id": "a2ba0f5b-c444-4a61-b876-9c1e23dced6c",
+      "modifiedDate": "2026-05-05",
+      "publishedDate": "2026-05-05",
+      "slug": "1-6-billion-ubs-team-decamps-for-wells-in-texas",
+      "url": "https://www.advisorhub.com/1-6-billion-ubs-team-decamps-for-wells-in-texas/",
+      "wpPostType": "post"
+    },
+    {
+      "authors": [
+        "Karmen Alexander"
+      ],
+      "category": "advisor_moves",
+      "headline": "Rockefeller Scoops $2B UBS Team in California",
+      "id": "95bd3163-b5b5-4c14-a753-6f0efdb45614",
+      "modifiedDate": "2026-04-29",
+      "publishedDate": "2026-04-29",
+      "slug": "rockefeller-scoops-2b-ubs-team-in-california",
+      "url": "https://www.advisorhub.com/rockefeller-scoops-2b-ubs-team-in-california/",
+      "wpPostType": "post"
     }
   ],
   "ArticleAdvisorMention": [
@@ -298,6 +324,16 @@
       "articleId": "0940d374-3476-56c8-9b1e-86701f84a9f2",
       "id": "a9c59dbb-4583-51df-a307-36e6d040a87a",
       "transitionEventId": "02763eb8-239f-5160-bde7-5ece39b0671f"
+    },
+    {
+      "articleId": "a2ba0f5b-c444-4a61-b876-9c1e23dced6c",
+      "id": "b15ba9a4-d125-4199-91cd-161c8e6a0635",
+      "transitionEventId": "d832cfe6-5f5c-432e-9b24-b1cb5bb12af1"
+    },
+    {
+      "articleId": "95bd3163-b5b5-4c14-a753-6f0efdb45614",
+      "id": "d4d64031-45a8-4c19-ad40-c3d89dcc2b93",
+      "transitionEventId": "cc384373-0586-4309-83ef-dd0bf71b9668"
     }
   ],
   "Branch": [
@@ -328,6 +364,22 @@
       "name": "Wells Fargo Advisors \u2013 GM Building",
       "parentBranchId": "acbcd2d4-4328-5092-a7f9-90f5aa8cd0d2",
       "state": "NY"
+    },
+    {
+      "city": "Frisco",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "e21f0c33-c203-45b8-bb2e-bd69597eeb30",
+      "level": "branch",
+      "name": "Wells Fargo Advisors Frisco",
+      "state": "TX"
+    },
+    {
+      "city": "Palo Alto",
+      "firmId": "491d343c-8fec-4e15-94e5-f5dac0e041f6",
+      "id": "5d4f2892-329e-4b73-be1f-f167cdd8e9eb",
+      "level": "branch",
+      "name": "Rockefeller Palo Alto",
+      "state": "CA"
     }
   ],
   "BranchAssignment": [
@@ -824,6 +876,14 @@
       "hqCountry": "US",
       "hqState": "NY",
       "subChannel": "Morgan_Stanley_Private_Wealth"
+    },
+    {
+      "channel": "ria",
+      "hqCity": "New York",
+      "hqState": "NY",
+      "id": "491d343c-8fec-4e15-94e5-f5dac0e041f6",
+      "name": "Rockefeller Capital Management",
+      "subChannel": "Rockefeller_Global_Family_Office"
     }
   ],
   "OutsideBusinessActivity": [
@@ -850,6 +910,22 @@
       "id": "66d1c92b-7e0c-58b4-b0ab-28d86b8795c8",
       "producerTier": "top_producer",
       "upfrontPctT12": 2.75
+    },
+    {
+      "appliesToTransitionEventId": "d832cfe6-5f5c-432e-9b24-b1cb5bb12af1",
+      "asOfDate": "2026-05-05",
+      "channelTarget": "wirehouse",
+      "firmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "id": "f933d581-3cf6-4fcb-a1df-17f91e81bf00",
+      "producerTier": "top_producer"
+    },
+    {
+      "appliesToTransitionEventId": "cc384373-0586-4309-83ef-dd0bf71b9668",
+      "asOfDate": "2026-04-29",
+      "channelTarget": "ria",
+      "firmId": "491d343c-8fec-4e15-94e5-f5dac0e041f6",
+      "id": "477f4d4d-6812-49b3-b98b-fff0340d6ebe",
+      "producerTier": "top_producer"
     }
   ],
   "RegistrationApplication": [
@@ -1075,6 +1151,36 @@
       "subjectTeamId": "255c0204-86d8-53f7-8d6f-e76482fbf621",
       "toBranchId": "500696fc-861b-545b-9fcf-b768742b4607",
       "toFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d"
+    },
+    {
+      "announcedDate": "2026-05-05",
+      "aumMoved": 1600000000,
+      "fromFirmId": "b34e7f24-cd14-5d1e-b9aa-c7a889f7f3ff",
+      "headcountMoved": 14,
+      "id": "d832cfe6-5f5c-432e-9b24-b1cb5bb12af1",
+      "isBreakaway": false,
+      "isReturn": false,
+      "moveDate": "2026-05-02",
+      "productionT12": 10800000,
+      "recruitingDealId": "f933d581-3cf6-4fcb-a1df-17f91e81bf00",
+      "subjectFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d",
+      "toBranchId": "e21f0c33-c203-45b8-bb2e-bd69597eeb30",
+      "toFirmId": "5da49e6c-adb7-5d75-b84f-fb36dd2d887d"
+    },
+    {
+      "announcedDate": "2026-04-29",
+      "aumMoved": 2000000000,
+      "fromFirmId": "b34e7f24-cd14-5d1e-b9aa-c7a889f7f3ff",
+      "headcountMoved": 4,
+      "id": "cc384373-0586-4309-83ef-dd0bf71b9668",
+      "isBreakaway": true,
+      "isReturn": false,
+      "moveDate": "2026-04-29",
+      "productionT12": 10000000,
+      "recruitingDealId": "477f4d4d-6812-49b3-b98b-fff0340d6ebe",
+      "subjectFirmId": "491d343c-8fec-4e15-94e5-f5dac0e041f6",
+      "toBranchId": "5d4f2892-329e-4b73-be1f-f167cdd8e9eb",
+      "toFirmId": "491d343c-8fec-4e15-94e5-f5dac0e041f6"
     }
   ],
   "FirmAlias": [
