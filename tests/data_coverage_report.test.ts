@@ -26,6 +26,7 @@ const TABLE_COUNTS: Record<string, number> = {
 };
 
 const SPARSE_ADVISOR_LABEL = "Sparse Advisor";
+const RECRUITING_GAP_HEADLINE = "Raymond James Snags $7M Team From RBC";
 type SqlRow = Readonly<Record<string, unknown>>;
 
 const QUERY_FIXTURES: ReadonlyArray<
@@ -77,6 +78,26 @@ const QUERY_FIXTURES: ReadonlyArray<
   },
   { includes: ["MAX(publishedDate)"], rows: [{ latest: "2026-06-01" }] },
   { includes: ["MAX(moveDate)"], rows: [{ latest: "2026-05-20" }] },
+  {
+    includes: ["SELECT id, headline, category FROM data.Article"],
+    rows: [
+      {
+        id: "a1",
+        headline: RECRUITING_GAP_HEADLINE,
+        category: "unknown",
+      },
+      { id: "a2", headline: "Quarterly Earnings Update", category: "unknown" },
+      {
+        id: "a3",
+        headline: "Wells Fargo Recruits Advisor",
+        category: "unknown",
+      },
+    ],
+  },
+  {
+    includes: ["SELECT articleId FROM data.ArticleTransitionEventMention"],
+    rows: [{ articleId: "a3" }],
+  },
   { includes: ["IS NOT NULL"], rows: [{ n: 1 }] },
 ];
 
@@ -125,6 +146,9 @@ describe("data coverage report", () => {
     expect(report.freshness.firmSourceChecks).toBe("2026-05-23");
     expect(report.sparseAdvisors[0]?.label).toBe(SPARSE_ADVISOR_LABEL);
     expect(report.freshness.articles).toBe("2026-06-01");
+    expect(report.unextractedRecruitingArticles).toEqual([
+      { id: "a1", headline: RECRUITING_GAP_HEADLINE },
+    ]);
 
     const rendered = renderDataCoverageReport(report, "test-target");
 
@@ -134,6 +158,9 @@ describe("data coverage report", () => {
     expect(rendered).toContain("transition_events");
     expect(rendered).toContain("Firm-source adapter coverage");
     expect(rendered).toContain("merrill_yext");
+    expect(rendered).toContain("Recruiting articles missing moves");
+    expect(rendered).toContain(RECRUITING_GAP_HEADLINE);
+    expect(rendered).toContain("recruiting extraction gap:");
     expect(rendered).toContain("Freshness warnings");
   });
 });

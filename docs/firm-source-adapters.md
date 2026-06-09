@@ -162,6 +162,21 @@ source counts, core field completeness, sparse advisor and firm rankings,
 recruiting coverage totals, and freshness warnings for deployed or local Harper
 data.
 
+It also reports a **Recruiting articles missing moves** section: articles whose
+headline reads like an advisor/team move (or whose category is `recruiting`) but
+which have no linked `TransitionEvent`. These are extraction gaps — a real move
+that never reached the recruiting "Recent Moves" surface because the article was
+ingested without being run through move extraction. The recruiting-shape
+heuristic lives in `src/lib/recruiting-article-gap.ts` and is shared with
+`bun run ingest` (which uses it to auto-label article `category`). Pass
+`--strict` to make the command exit non-zero when any such gap exists, so it can
+gate CI:
+
+```bash
+HDB_TARGET_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com \
+  bun run data:coverage -- --strict
+```
+
 `bun run firm-source:major-imports` attempts the production-ready major-firm
 adapter set in bounded mode: Morgan Stanley, Wells Fargo Advisors, Merrill /
 Bank of America, RBC Wealth Management, Raymond James, Edward Jones, Stifel,
