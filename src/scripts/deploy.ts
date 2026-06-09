@@ -38,8 +38,16 @@ const RESTART_TIMEOUT_MS =
   Number.isFinite(parsedRestartTimeoutMs) && parsedRestartTimeoutMs > 0
     ? parsedRestartTimeoutMs
     : 15000;
+const parsedDeployTimeoutMs = Number(
+  process.env.HARPER_DEPLOY_TIMEOUT_MS ?? 420000
+);
+const DEPLOY_TIMEOUT_MS =
+  Number.isFinite(parsedDeployTimeoutMs) && parsedDeployTimeoutMs > 0
+    ? parsedDeployTimeoutMs
+    : 420000;
 const FRESHNESS_POLL_ATTEMPTS = 18;
 const FRESHNESS_POLL_INTERVAL_MS = 5000;
+const FEED_READINESS_TIMEOUT_MS = 10000;
 const creds = loadCreds();
 
 /**
@@ -148,7 +156,7 @@ async function submitDeploy(
   return (await studio.clusterOp(creds.clusterId, "deploy_component", {
     project: PROJECT,
     payload,
-    restart: true,
+    restart: "rolling",
     replicated: true,
   })) as DeployResult;
 }
@@ -235,7 +243,7 @@ async function restartHarper(studio: StudioSession): Promise<DeployResult> {
   return (await studio.clusterOp(
     creds.clusterId,
     "restart",
-    {},
+    { replicated: true },
     { timeoutMs: RESTART_TIMEOUT_MS }
   )) as DeployResult;
 }
@@ -324,7 +332,7 @@ async function deployPublicRuntime(): Promise<number> {
         payload: deployPackage.payload,
         restart: true,
       },
-      RESTART_TIMEOUT_MS
+      DEPLOY_TIMEOUT_MS
     )
   );
 }
@@ -413,9 +421,13 @@ async function waitForFeed(
   if (attempt >= 30) return null;
 
   await new Promise(resolve => setTimeout(resolve, 2000));
-  const feed = await fetch(`${clusterUrl}/Feed`, {
-    headers: { Accept: "application/json" },
-  }).catch(() => null);
+  const feed = await fetchWithTimeout(
+    `${clusterUrl}/Feed`,
+    {
+      headers: { Accept: "application/json" },
+    },
+    FEED_READINESS_TIMEOUT_MS
+  ).catch(() => null);
   if (feed?.ok) {
     console.log(`  back up after ${attempt * 2 + 2}s`);
     return feed;

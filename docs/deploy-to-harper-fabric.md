@@ -110,7 +110,7 @@ Flags:
 | `package` | `bun run deploy` builds TypeScript, then packages `harper-app/`. |
 | `target` | Your cluster URL from Step 2. |
 | `username` / `password` | Admin credentials from Step 2. |
-| `restart=true` | Restart the cluster process after deploy so the new schema is loaded. |
+| `restart=rolling` | Restart clustered workers sequentially after deploy so the new schema and files are loaded without relying on a single-node restart. |
 | `replicated=true` | Replicate the deployed component across every node in the cluster. |
 
 ---
@@ -238,6 +238,6 @@ expect to land well inside an entry tier.
 |---|---|
 | `401 Unauthorized` on every script | Wrong `HDB_ADMIN_USERNAME` / `HDB_ADMIN_PASSWORD` — they default to `admin` / `admin-local` for local dev, which is **not** what your Fabric cluster has. |
 | Scripts still hit `localhost` | `HDB_TARGET_URL` not exported in the session. `echo $HDB_TARGET_URL` to confirm. |
-| `deploy_component` hangs at "Sending package" | Slow upstream; the component dir is small (~30 KB) so this should be sub-second. Check the cluster's region / your network. |
-| Schema didn't take effect after deploy | `restart=true` was missing or false on the `deploy_component` call. Re-run with it set. |
+| `deploy_component` hangs at "Sending package" | Slow upstream or an in-progress component replacement. Do not immediately retry with a short client timeout; let the deploy-scale timeout expire so overlapping replacements do not collide in the component directory. |
+| Schema didn't take effect after deploy | `restart=rolling` or `replicated=true` was missing on the `deploy_component` call. Re-run with both set. |
 | `describe_all` returns empty | The component didn't auto-mount. In Fabric → Applications, verify `advisor-app` is **Running** and the component path matched `harper-app`. |
