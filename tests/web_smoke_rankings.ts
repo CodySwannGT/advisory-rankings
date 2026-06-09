@@ -25,7 +25,7 @@ const FIRM_FILTER_SELECTOR = filterInputSelector("firm");
 const STATE_FILTER_SELECTOR = filterInputSelector("state");
 const RAW_RANKINGS_LABELS = [
   "SOURCE BACKED",
-  "MISSING SCALE",
+  "MISSING_SCALE",
   "UNRESOLVED ENTITY",
   "UNRESOLVED FIRM",
   "Rows",
@@ -61,10 +61,12 @@ export async function smokeRankings(
 
   await smokeGoto(page, `${BASE}/rankings?resolved=unresolved&state=TX`);
   await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
+  await waitForRankingsText(page, "1 rankings match these filters");
   const unresolved = await readUnresolvedRankings(page);
 
   await smokeGoto(page, `${BASE}/rankings?state=ZZ`);
   await smokeWaitForSelector(page, ".empty", QUICK_UI_TIMEOUT);
+  await waitForRankingsText(page, "0 rankings match these filters");
   const empty = await readEmptyRankings(page);
   await shot(page, "rankings-coverage-empty-state");
 
@@ -73,6 +75,22 @@ export async function smokeRankings(
     ...(await smokeRankingsMobile(browser, extraHTTPHeaders)),
     ...(await smokeRankingsNoRows(browser, extraHTTPHeaders)),
   ];
+}
+
+/**
+ * Waits for route-specific rankings copy after the async resource render.
+ * @param page - Browser page to inspect.
+ * @param expected - Visible text proving the target route rendered.
+ */
+async function waitForRankingsText(
+  page: Page,
+  expected: string
+): Promise<void> {
+  await page.waitForFunction(
+    text => document.body.innerText.includes(text),
+    expected,
+    { timeout: QUICK_UI_TIMEOUT }
+  );
 }
 
 /**
@@ -219,7 +237,7 @@ async function readRankingsControlEvidence(page: Page) {
  */
 async function readRankingsFacetEvidence(page: Page) {
   return await page.evaluate(
-    () => {
+    args => {
       const optionsFor = (selector: string) =>
         [
           ...document.querySelectorAll<HTMLOptionElement>(`${selector} option`),
@@ -329,9 +347,9 @@ async function readUnresolvedRankings(page: Page) {
   return await page.evaluate(
     unresolvedRowName => ({
       hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
-      hasUnresolvedStatus: document.body.innerText.includes(
-        "Advisor or team not matched yet"
-      ),
+      hasUnresolvedStatus: document.body.innerText
+        .toLowerCase()
+        .includes("advisor or team not matched yet"),
       hasFilteredCountState:
         document.body.innerText.includes("rankings match these filters") &&
         document.body.innerText.includes("Filtered by") &&
