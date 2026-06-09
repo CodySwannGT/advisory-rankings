@@ -88,7 +88,9 @@ async function readLoadedRankings(page: Page) {
         pageText.toLowerCase().includes(label.toLowerCase());
       return {
         browseCardTitles: [
-          ...document.querySelectorAll<HTMLElement>(".left .card-title"),
+          ...document.querySelectorAll<HTMLElement>(
+            ".left .card-title, .left .subtitle"
+          ),
         ].map(title => title.textContent?.trim() ?? ""),
         degradedBrowseIcons: [
           ...document.querySelectorAll<HTMLElement>(".left .avatar"),
