@@ -78,14 +78,19 @@ describe("static web route shells", () => {
     expect(paths).not.toContain("/*");
   });
 
-  it("serves static assets as string bodies for Harper Fastify replies", async () => {
+  it("serves static assets as buffered bodies for Harper Fastify replies", async () => {
     const handlers = new Map<string, RouteHandler>();
     const sent: unknown[] = [];
     const headerSets: Array<Record<string, string>> = [];
+    const headers: Record<string, string> = {};
     const fastify = {
       get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
     };
     const reply = {
+      header: (key: string, value: string) => {
+        headers[key] = value;
+        return reply;
+      },
       headers: (headers: Record<string, string>) => {
         headerSets.push(headers);
         return reply;
@@ -96,10 +101,10 @@ describe("static web route shells", () => {
     await staticWebRoutes(fastify);
     await handlers.get("/app.css")?.({}, reply);
 
-    expect(headerSets[0]).toMatchObject({
+    expect({ ...headerSets[0], ...headers }).toMatchObject({
       "content-type": "text/css; charset=utf-8",
     });
-    expect(typeof sent[0]).toBe("string");
+    expect(Buffer.isBuffer(sent[0])).toBe(true);
     expect(String(sent[0])).toContain(".ab-page-title");
   });
 });
