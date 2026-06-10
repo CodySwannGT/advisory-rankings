@@ -25,6 +25,9 @@ const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
 const STONE_GROUP_SLUG = "stone-group";
 const JORDAN_EXAMPLE_NAME = "Jordan Example";
+const MORGAN_STANLEY_ID = "8e106b7e-efcc-5aed-8827-fd0ea645b6df";
+const MORGAN_STANLEY_NAME = "Morgan Stanley";
+const MORGAN_ADVISOR_ID = "advisor-morgan";
 const UNRESOLVED_CAPITAL = "Unresolved Capital";
 const MORGAN_GAP_NAME = "Morgan Gap";
 const TAYLOR_MARKET_NAME = "Taylor Market";
@@ -65,6 +68,7 @@ const MISSING_PRODUCER_TIER_REASON = "missing-producer-tier";
 const MISSING_BACKEND_METRICS_REASON = "missing-backend-metrics";
 const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
+const CLIENT_EMAIL = "client@example.test";
 const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 const LOADED_STATUS = "loaded";
@@ -228,6 +232,8 @@ const routing = await import("../src/harper/resource-routing.js");
 const search = await import("../src/harper/resource-search.js");
 const feed = await import("../src/harper/resource-feed.js");
 const advisorResource = await import("../src/harper/resource-advisor.js");
+const advisorFirmResource =
+  await import("../src/harper/resource-directory-advisor-firm.js");
 const firmResource = await import("../src/harper/resource-firm.js");
 const firmDueDiligenceResource =
   await import("../src/harper/resource-firm-due-diligence.js");
@@ -1237,6 +1243,150 @@ describe("Harper feed and profile builders", () => {
     });
     expect(JSON.stringify(comparison)).not.toContain("private client note");
     expect(JSON.stringify(comparison)).not.toContain("ratingInt");
+  });
+
+  it("serves private advisor ratings only for the current user", async () => {
+    const endpoint = new (resources as any).AdvisorRating() as any;
+
+    await expect(endpoint.get(routeTarget("advisor-a"))).resolves.toEqual({
+      authenticated: false,
+      rating: null,
+    });
+    await expect(endpoint.get(routeTarget(""))).rejects.toMatchObject({
+      status: 400,
+    });
+
+    endpoint.getCurrentUser = () => ({ email: CLIENT_EMAIL });
+    const original = (globalThis as any).tables.UserRating;
+    (globalThis as any).tables.UserRating = {
+      search: (query: any) =>
+        (async function* () {
+          expect(query.conditions).toEqual([
+            { attribute: "userId", value: CLIENT_EMAIL },
+          ]);
+          yield {
+            id: "client%40example.test:advisor-other",
+            userId: CLIENT_EMAIL,
+            advisorId: "advisor-other",
+            ratingInt: 2,
+          };
+          yield {
+            id: "client%40example.test:advisor-a",
+            userId: CLIENT_EMAIL,
+            advisorId: "advisor-a",
+            ratingInt: 5,
+            responsiveness: 6,
+            reviewText: SOURCE_BACKED_REASON,
+          };
+        })(),
+    };
+
+    try {
+      await expect(endpoint.get(routeTarget("advisor-a"))).resolves.toEqual({
+        authenticated: true,
+        rating: {
+          advisorId: "advisor-a",
+          ratingInt: 5,
+          responsiveness: 6,
+          transparency: null,
+          performance: null,
+          planningDepth: null,
+          reviewText: SOURCE_BACKED_REASON,
+        },
+      });
+    } finally {
+      (globalThis as any).tables.UserRating = original;
+    }
+  });
+
+  it("sanitizes and writes private advisor ratings", async () => {
+    const endpoint = new (resources as any).AdvisorRating() as any;
+    await expect(
+      endpoint.post(routeTarget("advisor-a"), { ratingInt: 4 })
+    ).rejects.toMatchObject({ status: 401 });
+
+    endpoint.getCurrentUser = () => ({ id: "user:a" });
+    const writes: any[] = [];
+    const original = (globalThis as any).tables.UserRating;
+    (globalThis as any).tables.UserRating = {
+      get: async () => ({
+        id: "user%3Aa:advisor-a",
+        userId: "user:a",
+        advisorId: "advisor-a",
+        ratingInt: 2,
+        reviewText: "old",
+      }),
+      insert: async (row: any) => {
+        writes.push(row);
+      },
+    };
+
+    try {
+      const saved = await endpoint.post(routeTarget("advisor-a"), {
+        performance: "5",
+        planningDepth: "0",
+        ratingInt: "6",
+        responsiveness: "3",
+        reviewText: "  new note  ",
+        transparency: "4",
+      });
+
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toMatchObject({
+        id: "user%3Aa:advisor-a",
+        advisorId: "advisor-a",
+        userId: "user:a",
+        ratingInt: null,
+        responsiveness: 3,
+        transparency: 4,
+        performance: 5,
+        planningDepth: null,
+        reviewText: "new note",
+      });
+      expect(saved).toEqual({
+        authenticated: true,
+        rating: {
+          advisorId: "advisor-a",
+          ratingInt: null,
+          responsiveness: 3,
+          transparency: 4,
+          performance: 5,
+          planningDepth: null,
+          reviewText: "new note",
+        },
+      });
+    } finally {
+      (globalThis as any).tables.UserRating = original;
+    }
+  });
+
+  it("surfaces private rating table failures", async () => {
+    const endpoint = new (resources as any).AdvisorRating() as any;
+    endpoint.getCurrentUser = () => ({ username: "client" });
+    const original = (globalThis as any).tables.UserRating;
+    (globalThis as any).tables.UserRating = {
+      get: async () => {
+        throw new Error("read failed");
+      },
+    };
+
+    try {
+      await expect(
+        endpoint.get(routeTarget("advisor-a"))
+      ).rejects.toMatchObject({
+        message: "Failed to load private rating: read failed",
+        status: 500,
+      });
+      (globalThis as any).tables.UserRating = { get: async () => null };
+      await expect(
+        endpoint.post(routeTarget("advisor-a"), { ratingInt: 4 })
+      ).rejects.toMatchObject({
+        message: "UserRating writes are unavailable",
+        status: 503,
+      });
+    } finally {
+      (globalThis as any).tables.UserRating = original;
+    }
   });
 
   it("labels missing firm due-diligence source states explicitly", async () => {
@@ -3172,11 +3322,10 @@ describe("Harper directory and search resources", () => {
   });
 
   it("returns title-cased multi-word firm and team prefixes", async () => {
-    const morganStanley = "Morgan Stanley";
     const wellsFargoAdvisors = "Wells Fargo Advisors";
     const wellsTeam = "Wells Fargo Advisors - GM Building";
     setRows("Firm", [
-      { id: "firm-morgan", name: morganStanley, hqCity: "New York" },
+      { id: "firm-morgan", name: MORGAN_STANLEY_NAME, hqCity: "New York" },
       { id: "firm-wells", name: wellsFargoAdvisors, hqCity: "St. Louis" },
     ]);
     setRows("FirmAlias", []);
@@ -3201,7 +3350,7 @@ describe("Harper directory and search resources", () => {
 
     expect(morgan.items[0]).toMatchObject({
       kind: "firm",
-      name: morganStanley,
+      name: MORGAN_STANLEY_NAME,
     });
     expect(wells.items).toEqual(
       expect.arrayContaining([
@@ -3539,6 +3688,91 @@ describe("Harper directory and search resources", () => {
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }
+  });
+
+  it("adds context when firm-filter employment lookup fails", async () => {
+    const original = (globalThis as any).tables.EmploymentHistory;
+    (globalThis as any).tables.EmploymentHistory = {
+      search: () => {
+        throw new Error("index unavailable");
+      },
+    };
+
+    try {
+      await expect(
+        new (resources as any).PublicAdvisors().get(
+          routeTarget("", { firm: EXAMPLE_WEALTH_SHORT_NAME })
+        )
+      ).rejects.toThrow("Failed to resolve advisor firm filter");
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
+  it("adds context when firm-filter advisor lookup fails", async () => {
+    setRows("EmploymentHistory", [
+      {
+        id: EMPLOYMENT_A_ID,
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        startDate: DATE_2024_01_01,
+      },
+    ]);
+    const original = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = {
+      search: () => {
+        throw new Error("advisor index unavailable");
+      },
+    };
+
+    try {
+      await expect(
+        new (resources as any).PublicAdvisors().get(
+          routeTarget("", { firm: EXAMPLE_WEALTH_SHORT_NAME })
+        )
+      ).rejects.toThrow("Failed to load advisors for firm filter");
+    } finally {
+      (globalThis as any).tables.Advisor = original;
+    }
+  });
+
+  it("resolves displayed advisor firms through bounded advisor lookups", async () => {
+    const empty = await advisorFirmResource.resolveDisplayedAdvisorFirms(
+      [],
+      [],
+      [],
+      [],
+      new Map()
+    );
+    expect(empty.size).toBe(0);
+
+    const staleAliasId = "stale-morgan-stanley-wealth";
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-morgan",
+        advisorId: MORGAN_ADVISOR_ID,
+        firmId: staleAliasId,
+        startDate: DATE_2024_01_01,
+      },
+    ]);
+
+    const displayed = await advisorFirmResource.resolveDisplayedAdvisorFirms(
+      [MORGAN_ADVISOR_ID],
+      [
+        { id: MORGAN_STANLEY_ID, name: MORGAN_STANLEY_NAME },
+        { id: staleAliasId, name: "Morgan Stanley Wealth Management" },
+      ],
+      [],
+      [],
+      new Map([
+        [
+          MORGAN_STANLEY_ID,
+          { id: MORGAN_STANLEY_ID, name: MORGAN_STANLEY_NAME },
+        ],
+      ])
+    );
+
+    expect(displayed.get(MORGAN_ADVISOR_ID)).toBe(MORGAN_STANLEY_NAME);
   });
 
   it("filters firm and team directories while preserving cursor pagination", async () => {
