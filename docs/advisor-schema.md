@@ -716,6 +716,13 @@ checked profiles, and never-checked profiles. `status=never_checked` filters
 rows with no existing check for the selected source type. It does not read or
 return private user rating/watchlist tables.
 
+Priority groups are computed from the returned row slice and include stable
+ids, display labels, counts, replay filters, and up to three representative
+advisor ids. The replay filters preserve the active `sourceType`, `staleDays`,
+and `limit` while choosing a deterministic `missingField` or `status` for the
+group; the web workbench writes those filters back to the route URL before
+reloading `/AdvisorResearchQueue`.
+
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 
 | Field | Type |

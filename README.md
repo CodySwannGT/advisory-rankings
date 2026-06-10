@@ -11,5 +11,7 @@ This repository is operated through its Lisa LLM Wiki.
 - Major firm-source import artifacts: `bun run firm-source:major-imports`
 - Bounded recruiting article backfill: `bun run backfill:recruiting-articles -- --limit 5`
 - Advisor research queue: `bun run research:advisors -- due --max 5 --stale-days 30 --json`
-- Research freshness UI: `/research/freshness`, backed by
-  `/AdvisorResearchQueue?sourceType=web_research&staleDays=30&limit=25`
+- Research freshness workbench: `/research/freshness`, backed by
+  `/AdvisorResearchQueue?sourceType=web_research&staleDays=30&limit=25`.
+  The route keeps queue filters in the URL, exposes priority-group shortcuts,
+  and renders compact advisor rows for deployed-data replay.
