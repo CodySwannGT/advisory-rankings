@@ -24,6 +24,7 @@ const RESEARCH_QUEUE_SOURCE_TABLE = "AdvisorResearchCheck";
 const RESEARCH_QUEUE_PROFILE_LINK = "Open advisor profile";
 const RESEARCH_QUEUE_BUSINESS_PHONE_LABEL = "Business Phone";
 const RESEARCH_QUEUE_MISSING_FIELD_LABEL = "Missing field";
+const RESEARCH_QUEUE_ROW_SELECTOR = ".research-queue-row";
 const ROUTE_RETRY_LOG = join(SHOTS, "issue-279-route-retry-requests.json");
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
@@ -325,19 +326,24 @@ browserDescribe("web async states", () => {
       .getByRole("heading", { name: "Research freshness queue" })
       .waitFor({ timeout: QUICK_TIMEOUT });
 
-    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
+    await page
+      .locator(RESEARCH_QUEUE_ROW_SELECTOR, { hasText: ADVISOR_RECOVERY_NAME })
+      .waitFor({ timeout: QUICK_TIMEOUT });
     await expectVisibleText(page, [
       "Due advisor research",
       "Public-safe queue rows",
+      "Advisor queue rows",
       RESEARCH_QUEUE_FIRM_NAME,
       "Headshot Url",
       RESEARCH_QUEUE_BUSINESS_PHONE_LABEL,
       RESEARCH_QUEUE_SOURCE_TABLE,
+      "FINRA CRD 1234567",
     ]);
 
-    const profileLink = page.getByRole("link", {
+    const row = page.locator(RESEARCH_QUEUE_ROW_SELECTOR);
+    await expectCompactQueueRows(page);
+    expect(await row.locator(".details-card").count()).toBe(0);
+    const profileLink = row.getByRole("link", {
       name: RESEARCH_QUEUE_PROFILE_LINK,
     });
     expect(await profileLink.getAttribute("href")).toBe(
@@ -379,7 +385,9 @@ browserDescribe("web async states", () => {
           waitUntil: "domcontentloaded",
         });
         await page
-          .getByRole("heading", { name: queueItem.advisorName })
+          .locator(RESEARCH_QUEUE_ROW_SELECTOR, {
+            hasText: queueItem.advisorName,
+          })
           .waitFor({ timeout: QUICK_TIMEOUT });
         await page
           .getByRole("link", { name: RESEARCH_QUEUE_PROFILE_LINK })
@@ -390,11 +398,8 @@ browserDescribe("web async states", () => {
 
         await expectAnyVisibleText(page, [
           "Evidence freshness",
-          "Stale",
           "Last checked",
-          "May 2026",
           "Next check",
-          "Jun 2026",
           "No New Data",
           "Web Research",
         ]);
@@ -480,15 +485,16 @@ browserDescribe("web async states", () => {
         });
         expect(
           await page
-            .locator(".research-queue-card")
+            .locator(RESEARCH_QUEUE_ROW_SELECTOR)
             .evaluateAll(
-              (cards, missingFieldLabel) =>
-                cards.every(
-                  card => card.textContent?.includes(missingFieldLabel) ?? false
+              (rows, missingFieldLabel) =>
+                rows.every(
+                  row => row.textContent?.includes(missingFieldLabel) ?? false
                 ),
               RESEARCH_QUEUE_BUSINESS_PHONE_LABEL
             )
         ).toBe(true);
+        await expectCompactQueueRows(page);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth)
         ).toBeLessThanOrEqual(
@@ -508,7 +514,9 @@ browserDescribe("web async states", () => {
           timeout: QUICK_TIMEOUT,
         });
         await page
-          .getByRole("heading", { name: queueItem.advisorName })
+          .locator(RESEARCH_QUEUE_ROW_SELECTOR, {
+            hasText: queueItem.advisorName,
+          })
           .waitFor({ timeout: QUICK_TIMEOUT });
         await expectFilterValue(
           page,
@@ -546,9 +554,9 @@ browserDescribe("web async states", () => {
       `${baseUrl}/research/freshness?sourceType=firm_source&staleDays=7&status=no_new_data&missingField=businessPhone&limit=10`,
       { waitUntil: "domcontentloaded" }
     );
-    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
+    await page
+      .locator(RESEARCH_QUEUE_ROW_SELECTOR, { hasText: ADVISOR_RECOVERY_NAME })
+      .waitFor({ timeout: QUICK_TIMEOUT });
 
     await expectFilterValue(page, "Source type", "firm_source");
     await expectFilterValue(page, "Stale days", "7");
@@ -632,9 +640,9 @@ browserDescribe("web async states", () => {
     });
     expect(await page.getByText(TEMPORARY_OUTAGE).count()).toBe(0);
     await page.getByRole("button", { name: "Retry" }).click();
-    await page.getByRole("heading", { name: ADVISOR_RECOVERY_NAME }).waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
+    await page
+      .locator(RESEARCH_QUEUE_ROW_SELECTOR, { hasText: ADVISOR_RECOVERY_NAME })
+      .waitFor({ timeout: QUICK_TIMEOUT });
 
     const searches = queueRequests.map(
       requestUrl => new URL(requestUrl).search
@@ -1294,8 +1302,8 @@ function researchQueuePayload(): ResearchQueuePayload {
         },
         sourceType: "web_research",
         status: "no_new_data",
-        lastCheckedAt: "2026-05-01T00:00:00.000Z",
-        nextCheckAfter: "2026-06-01T00:00:00.000Z",
+        lastCheckedAt: "2026-05-15T12:00:00.000Z",
+        nextCheckAfter: "2026-06-15T12:00:00.000Z",
         daysSinceLastCheck: 38,
         missingFields: ["headshotUrl", "businessPhone"],
         provenance: {
@@ -1340,6 +1348,30 @@ async function expectFilterValue(
   const control = page.getByLabel(label);
   await control.waitFor({ state: "attached", timeout: QUICK_TIMEOUT });
   expect(await control.inputValue()).toBe(value);
+}
+
+/**
+ * Asserts research queue rows stay compact and expose required scan fields.
+ * @param page - Browser page under test.
+ */
+async function expectCompactQueueRows(page: Page): Promise<void> {
+  const rows = page.locator(RESEARCH_QUEUE_ROW_SELECTOR);
+  await expect.poll(() => rows.count()).toBe(1);
+  const rowText = (await rows.first().textContent()) ?? "";
+  expect(rowText).toContain(ADVISOR_RECOVERY_NAME);
+  expect(rowText).toContain(RESEARCH_QUEUE_FIRM_NAME);
+  expect(rowText).toContain("No New Data");
+  expect(rowText).toContain("Headshot Url, Business Phone");
+  expect(rowText).toContain("(38 days); next");
+  expect(rowText).toMatch(/May\s+\d{1,2},\s+2026/);
+  expect(rowText).toMatch(/next\s+Jun\s+\d{1,2},\s+2026/);
+  expect(rowText).toContain(`${RESEARCH_QUEUE_SOURCE_TABLE}: research-check-1`);
+  expect(await rows.locator(".details-card").count()).toBe(0);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth)
+  ).toBeLessThanOrEqual(
+    await page.evaluate(() => document.documentElement.clientWidth)
+  );
 }
 
 /**

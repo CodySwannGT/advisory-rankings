@@ -601,6 +601,116 @@ body.drawer-open .nav .nav-scrim {
   color: var(--accent-green);
 }
 
+/* ── Research freshness queue rows ──────────────────────────── */
+
+.research-queue-list {
+  display: grid;
+  gap: 10px;
+}
+
+.research-queue-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    max-content;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.research-queue-row:last-child {
+  border-bottom: 0;
+}
+
+.research-queue-row-identity,
+.research-queue-row-field {
+  min-width: 0;
+}
+
+.research-queue-row-identity {
+  display: grid;
+  gap: 3px;
+}
+
+.research-queue-row-name {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.research-queue-row-name:hover {
+  text-decoration: underline;
+}
+
+.research-queue-row-firm,
+.research-queue-row-crd,
+.research-queue-row-label,
+.research-queue-row-value {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.research-queue-row-firm,
+.research-queue-row-crd,
+.research-queue-row-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.research-queue-row-status {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.research-queue-row-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.research-queue-row-value {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.research-queue-row-action {
+  justify-self: end;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .research-queue-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .research-queue-row-identity,
+  .research-queue-row-status,
+  .research-queue-row-action {
+    grid-column: 1 / -1;
+  }
+
+  .research-queue-row-action {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 700px) {
+  .research-queue-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ── Profile pages ──────────────────────────────────────────── */
 
 .team-mobile-details {
