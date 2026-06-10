@@ -27,7 +27,7 @@ const ROUTES = [
   "/regulatory",
   "/login",
 ] as const;
-const WIDTHS = [768, 900] as const;
+const WIDTHS = [768, 900, 1280] as const;
 const SEARCH_KIND_SELECTOR = ".gs-kind-controls .gs-kind-toggle";
 
 interface TabletHeaderMetrics {
@@ -36,6 +36,7 @@ interface TabletHeaderMetrics {
   readonly separated: boolean;
   readonly searchWidth: number;
   readonly scrollWidth: number;
+  readonly textFits: boolean;
   readonly visibleCount: number;
 }
 
@@ -78,6 +79,7 @@ browserDescribe("tablet header layout", () => {
           ).toBeLessThanOrEqual(metrics.clientWidth);
           expect(metrics.visibleCount, `${width}px ${route}`).toBe(4);
           expect(metrics.separated, `${width}px ${route}`).toBe(true);
+          expect(metrics.textFits, `${width}px ${route}`).toBe(true);
           expect(
             metrics.searchWidth,
             `${width}px ${route}`
@@ -100,6 +102,10 @@ async function tabletHeaderMetrics(page: Page): Promise<TabletHeaderMetrics> {
     const boxes = [...document.querySelectorAll(selector)].map(button =>
       button.getBoundingClientRect()
     );
+    const textFits = [...document.querySelectorAll(selector)].every(button => {
+      if (!(button instanceof HTMLElement)) return false;
+      return button.scrollWidth <= button.clientWidth;
+    });
     const searchBox = document
       .querySelector(".nav .search")
       ?.getBoundingClientRect();
@@ -115,6 +121,7 @@ async function tabletHeaderMetrics(page: Page): Promise<TabletHeaderMetrics> {
       }),
       searchWidth: searchBox?.width ?? 0,
       scrollWidth: document.documentElement.scrollWidth,
+      textFits,
       visibleCount: boxes.filter(box => box.width >= 36).length,
     };
   }, SEARCH_KIND_SELECTOR);

@@ -37,6 +37,8 @@ const NAV_LINKS: readonly NavLink[] = [
   { active: "regulatory", href: "/regulatory", label: "Compliance" },
 ];
 
+const NAV_DRAWER_MEDIA = "(max-width: 1300px)";
+
 /** Render context for auth controls in the navigation drawer. */
 interface MeRenderContext {
   readonly meSpot: HTMLElement;
@@ -87,7 +89,7 @@ export function Navbar({
     class: "nav-scrim",
     onClick: () => toggleDrawer(burger, drawer, false),
   });
-  const mobileDrawerQuery = window.matchMedia("(max-width: 700px)");
+  const mobileDrawerQuery = window.matchMedia(NAV_DRAWER_MEDIA);
   syncDrawerFocusState({ drawer, open: false });
   mobileDrawerQuery.addEventListener("change", () =>
     syncDrawerFocusState({ drawer, open: isDrawerOpen(burger) })
@@ -265,7 +267,7 @@ function isDrawerOpen(burger: HTMLElement): boolean {
  * @param root0.open - Whether the drawer is currently open.
  */
 function syncDrawerFocusState({ drawer, open }: DrawerFocusContext): void {
-  const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const mobile = window.matchMedia(NAV_DRAWER_MEDIA).matches;
   const hidden = mobile && !open;
   drawer.toggleAttribute("inert", hidden);
   drawer.setAttribute("aria-hidden", String(hidden));

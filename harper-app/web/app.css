@@ -110,7 +110,7 @@ a:hover {
   color: var(--brand);
 }
 
-@media (min-width: 901px) and (max-width: 1100px) {
+@media (min-width: 901px) and (max-width: 1300px) {
   .nav {
     gap: 10px;
     padding: 8px 12px;
@@ -220,10 +220,10 @@ body.drawer-open .nav .nav-scrim {
   display: block;
 }
 
-/* Compact breakpoint (≤1100px): the entire .nav-drawer (links + me-spot)
+/* Compact breakpoint (≤1300px): the entire .nav-drawer (links + me-spot)
    collapses into a right-side sliding panel. The navbar keeps the
    hamburger + logo row compact and gives search a readable full row. */
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
   .nav {
     flex-wrap: wrap;
     gap: 8px;
