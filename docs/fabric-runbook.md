@@ -662,7 +662,7 @@ Endpoints (implemented in `src/harper/resources.ts` and emitted to
 | `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. |
 | `/Me` | GET | `allowRead=true` | Returns `{authenticated, username, role}` if `getCurrentUser()` resolves a user, otherwise `{authenticated:false}`. The frontend hits this on every page load to render the navbar's sign-in/sign-out affordance. |
 | `/RegulatoryDiscrepancyQueue` | GET | `allowRead=true`, details require session | Returns `{authenticated:false, items:[]}` for anonymous users and open source-conflict review rows for authenticated analyst sessions. |
-| `/AdvisorResearchQueue` | GET | `allowRead=true` | Returns public-safe due advisor research rows for `sourceType`, `staleDays`, `status`, `missingField`, and `limit` filters. Rows reuse `selectDueAdvisors` semantics and omit user-private rating/watchlist data. |
+| `/AdvisorResearchQueue` | GET | `allowRead=true` | Returns public-safe due advisor research rows and returned-slice priority groups for `sourceType`, `staleDays`, `status`, `missingField`, and `limit` filters. Rows reuse `selectDueAdvisors` semantics and omit user-private rating/watchlist data. |
 
 Browser flow:
 
@@ -732,7 +732,7 @@ Everything else still requires auth.
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
-| `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows only: advisor identity, firm context, source/check status, missing public fields, and profile URLs. No private user tables are loaded. |
+| `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, and group filter mappings. No private user tables are loaded. |
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
