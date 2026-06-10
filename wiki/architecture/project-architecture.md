@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-08
+updated: 2026-06-10
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -10,6 +10,7 @@ sources:
   - ../sources/git/2026-05-23-advisory-rankings-git.md
   - ../sources/git/2026-06-06-advisory-rankings-git.md
   - ../sources/git/2026-06-08-advisory-rankings-git.md
+  - ../sources/git/2026-06-10-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -54,3 +55,9 @@ The 2026-06-08 git ingest shows continued architecture work around user-private 
 watchlist table discovery and runtime binding, root static asset serving, advisor research queue
 resources, and bounded fetch attempts so deploy cutovers cannot indefinitely stall the UI. Source:
 wiki/sources/git/2026-06-08-advisory-rankings-git.md.
+
+The 2026-06-10 git ingest shows the current deployment architecture favoring direct `:9925`
+operations API deploys, with the Studio proxy documented as fallback. It also records hardened
+Fabric static-route and cold-start checks, continued rankings UI/resource polish, recruiting-market
+verification replay coverage, and deployed smoke selector stabilization. Source:
+wiki/sources/git/2026-06-10-advisory-rankings-git.md.
