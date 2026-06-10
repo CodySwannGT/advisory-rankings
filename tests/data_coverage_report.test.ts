@@ -163,4 +163,36 @@ describe("data coverage report", () => {
     expect(rendered).toContain("recruiting extraction gap:");
     expect(rendered).toContain("Freshness warnings");
   });
+
+  it("keeps operator output usable when optional coverage queries fail", async () => {
+    const report = await buildDataCoverageReport(async query => {
+      if (
+        query.includes("SELECT id, headline, category") ||
+        query.includes("MAX(publishedDate)")
+      ) {
+        throw new Error(`simulated read failure for ${query}`);
+      }
+      return mockCoverageQuery(query);
+    });
+
+    expect(report.freshness.articles).toBeNull();
+    expect(report.unextractedRecruitingArticles).toEqual([]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "simulated read failure for SELECT id, headline, category"
+        ),
+        expect.stringContaining(
+          "simulated read failure for SELECT MAX(publishedDate)"
+        ),
+      ])
+    );
+
+    const rendered = renderDataCoverageReport(report, "resilient-target");
+
+    expect(rendered).toContain("[data-coverage] target: resilient-target");
+    expect(rendered).toContain("Recruiting articles missing moves\n  none");
+    expect(rendered).toContain("articles: no dated rows");
+    expect(rendered).not.toContain("recruiting extraction gap:");
+  });
 });
