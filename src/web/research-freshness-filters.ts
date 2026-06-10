@@ -2,7 +2,7 @@ import { humanize } from "./app-formatters.js";
 import { Button, FormLabel, SectionCard, el } from "./design-system/index.js";
 
 /** URL-backed filter state for the public research queue. */
-type QueueFilters = Readonly<
+export type QueueFilters = Readonly<
   Record<
     "sourceType" | "staleDays" | "status" | "missingField" | "limit",
     string
@@ -225,7 +225,7 @@ function readQueueFilterForm(form: HTMLFormElement): QueueFilters {
  * Writes queue filters into the browser URL without a full navigation.
  * @param filters - Normalized filters.
  */
-function writeQueueFilters(filters: QueueFilters): void {
+export function writeQueueFilters(filters: QueueFilters): void {
   const nextParams = new URLSearchParams(location.search);
   for (const field of FILTER_FIELDS) nextParams.delete(field);
   for (const [field, value] of queueFilterParams(filters)) {

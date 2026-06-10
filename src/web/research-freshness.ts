@@ -4,6 +4,7 @@ import {
   SectionCard,
   AsyncStateCard,
   DetailsCard,
+  Button,
   Tag,
   el,
   clear,
@@ -12,6 +13,7 @@ import {
   filterControlsCard,
   queueResourcePath,
   readQueueFilters,
+  writeQueueFilters,
 } from "./research-freshness-filters.js";
 import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-research-queue.js";
 
@@ -83,6 +85,9 @@ function renderQueue(
   clear(center);
   clear(right);
   center.appendChild(summaryCard(payload));
+  center.appendChild(
+    priorityGroupsCard(payload, () => loadQueue(center, right))
+  );
   if (payload.items.length === 0) {
     center.appendChild(
       AsyncStateCard({
@@ -199,6 +204,46 @@ function filterSummaryCard(payload: AdvisorResearchQueueResponse): HTMLElement {
         ["Limit", String(payload.filters.limit)],
       ],
     }),
+  });
+}
+
+/**
+ * Builds shortcut controls for replaying priority queue slices.
+ * @param payload - Queue response from the resource.
+ * @param onChange - Reloads the queue after URL-backed filters change.
+ * @returns Priority group card.
+ */
+function priorityGroupsCard(
+  payload: AdvisorResearchQueueResponse,
+  onChange: () => void
+): HTMLElement {
+  return SectionCard({
+    title: "Priority groups",
+    body: payload.summary.priorityGroups.map(group =>
+      el(
+        "p",
+        { class: "research-priority-group" },
+        Button({
+          variant: "ghost",
+          children: group.label,
+          attrs: {
+            class: "research-priority-group-button",
+            disabled: group.count === 0 ? "true" : undefined,
+          },
+          onClick: () => {
+            writeQueueFilters({
+              sourceType: group.filters.sourceType,
+              staleDays: String(group.filters.staleDays),
+              status: group.filters.status ?? "",
+              missingField: group.filters.missingField ?? "",
+              limit: String(group.filters.limit),
+            });
+            onChange();
+          },
+        }),
+        `: ${group.count}`
+      )
+    ),
   });
 }
 
