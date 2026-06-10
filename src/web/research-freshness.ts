@@ -97,7 +97,7 @@ function renderQueue(
       })
     );
   } else {
-    center.append(...payload.items.map(queueCard));
+    center.appendChild(queueRowsCard(payload.items));
   }
   right.appendChild(
     filterControlsCard(readQueueFilters(), () => loadQueue(center, right))
@@ -135,55 +135,76 @@ function summaryCard(payload: AdvisorResearchQueueResponse): HTMLElement {
 }
 
 /**
- * Builds one advisor queue row card.
- * @param item - Due advisor queue item.
- * @returns Advisor queue card.
+ * Builds the compact advisor queue row list.
+ * @param items - Due advisor queue items.
+ * @returns Queue rows section.
  */
-function queueCard(item: QueueItem): HTMLElement {
+function queueRowsCard(items: readonly QueueItem[]): HTMLElement {
   return SectionCard({
-    title: item.advisorName,
-    attrs: {
-      class: "research-queue-card",
-      "data-advisor-id": item.advisorId,
-    },
-    body: [
-      el(
-        "div",
-        { class: "chip-row" },
-        Tag({ children: label(item.sourceType), kind: "ok" }),
-        Tag({ children: label(item.status ?? "never_checked") }),
-        item.firm ? Tag({ children: item.firm.name }) : null
-      ),
-      DetailsCard({
-        title: "Check timing",
-        pairs: [
-          ["Last checked", fmtDate(item.lastCheckedAt)],
-          ["Next check after", fmtDate(item.nextCheckAfter)],
-          [
-            "Days since check",
-            item.daysSinceLastCheck === null
-              ? "Never checked"
-              : String(item.daysSinceLastCheck),
-          ],
-          ["FINRA CRD", item.finraCrd ?? "Not available"],
-        ],
-      }),
-      DetailsCard({
-        title: "Research gaps",
-        pairs: [
-          ["Missing fields", missingFields(item)],
-          ["Firm context", firmContext(item)],
-          ["Provenance table", item.provenance.sourceTable],
-          ["Provenance ids", item.provenance.sourceIds.join(", ") || "None"],
-        ],
-      }),
-      el(
-        "p",
-        { class: "research-queue-profile-link" },
-        el("a", { href: item.profileUrl }, "Open advisor profile")
-      ),
-    ],
+    title: "Advisor queue rows",
+    attrs: { class: "research-queue-rows-card" },
+    body: el("div", { class: "research-queue-list" }, ...items.map(queueRow)),
   });
+}
+
+/**
+ * Builds one compact advisor research queue row.
+ * @param item - Due advisor queue item.
+ * @returns Advisor queue row.
+ */
+function queueRow(item: QueueItem): HTMLElement {
+  return el(
+    "article",
+    {
+      class: "research-queue-row",
+      "data-advisor-id": item.advisorId,
+      "aria-label": `${item.advisorName} research queue row`,
+    },
+    el(
+      "div",
+      { class: "research-queue-row-identity" },
+      el(
+        "a",
+        { class: "research-queue-row-name", href: item.profileUrl },
+        item.advisorName
+      ),
+      el("span", { class: "research-queue-row-firm" }, firmContext(item)),
+      el(
+        "span",
+        { class: "research-queue-row-crd" },
+        `FINRA CRD ${item.finraCrd ?? "Not available"}`
+      )
+    ),
+    el(
+      "div",
+      { class: "research-queue-row-status" },
+      Tag({ children: label(item.sourceType), kind: "ok" }),
+      Tag({ children: label(item.status ?? "never_checked") })
+    ),
+    queueRowField("Missing fields", missingFields(item)),
+    queueRowField("Freshness", freshnessText(item)),
+    queueRowField("Provenance", provenanceText(item)),
+    el(
+      "a",
+      { class: "research-queue-row-action", href: item.profileUrl },
+      "Open advisor profile"
+    )
+  );
+}
+
+/**
+ * Builds one labeled compact row field.
+ * @param name - Field label.
+ * @param value - Field value.
+ * @returns Row field.
+ */
+function queueRowField(name: string, value: string): HTMLElement {
+  return el(
+    "div",
+    { class: "research-queue-row-field" },
+    el("span", { class: "research-queue-row-label" }, name),
+    el("span", { class: "research-queue-row-value" }, value)
+  );
 }
 
 /**
@@ -310,6 +331,29 @@ function missingFields(item: QueueItem): string {
 function firmContext(item: QueueItem): string {
   if (!item.firm) return "No current firm";
   return [item.firm.name, item.firm.roleTitle].filter(Boolean).join(" - ");
+}
+
+/**
+ * Formats freshness timing into one scan-friendly row value.
+ * @param item - Due advisor queue item.
+ * @returns Freshness summary.
+ */
+function freshnessText(item: QueueItem): string {
+  const lastChecked =
+    item.daysSinceLastCheck === null
+      ? "Never checked"
+      : `${fmtDate(item.lastCheckedAt)} (${item.daysSinceLastCheck} days)`;
+  return `${lastChecked}; next ${fmtDate(item.nextCheckAfter)}`;
+}
+
+/**
+ * Formats provenance into one scan-friendly row value.
+ * @param item - Due advisor queue item.
+ * @returns Provenance summary.
+ */
+function provenanceText(item: QueueItem): string {
+  const sourceIds = item.provenance.sourceIds.join(", ") || "None";
+  return `${item.provenance.sourceTable}: ${sourceIds}`;
 }
 
 /**
