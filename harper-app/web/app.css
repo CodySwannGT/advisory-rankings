@@ -611,12 +611,12 @@ body.drawer-open .nav .nav-scrim {
 .research-queue-row {
   display: grid;
   grid-template-columns:
-    minmax(180px, 1.4fr)
-    minmax(120px, 0.8fr)
-    minmax(150px, 1fr)
-    minmax(160px, 1fr)
-    minmax(170px, 1fr)
-    minmax(108px, auto);
+    minmax(0, 1.4fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    max-content;
   gap: 10px 12px;
   align-items: center;
   padding: 12px 0;

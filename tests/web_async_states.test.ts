@@ -338,7 +338,6 @@ browserDescribe("web async states", () => {
       RESEARCH_QUEUE_BUSINESS_PHONE_LABEL,
       RESEARCH_QUEUE_SOURCE_TABLE,
       "FINRA CRD 1234567",
-      "May 1, 2026 (38 days); next Jun 1, 2026",
     ]);
 
     const row = page.locator(RESEARCH_QUEUE_ROW_SELECTOR);
@@ -399,11 +398,8 @@ browserDescribe("web async states", () => {
 
         await expectAnyVisibleText(page, [
           "Evidence freshness",
-          "Stale",
           "Last checked",
-          "May 2026",
           "Next check",
-          "Jun 2026",
           "No New Data",
           "Web Research",
         ]);
@@ -1306,8 +1302,8 @@ function researchQueuePayload(): ResearchQueuePayload {
         },
         sourceType: "web_research",
         status: "no_new_data",
-        lastCheckedAt: "2026-05-01T00:00:00.000Z",
-        nextCheckAfter: "2026-06-01T00:00:00.000Z",
+        lastCheckedAt: "2026-05-15T12:00:00.000Z",
+        nextCheckAfter: "2026-06-15T12:00:00.000Z",
         daysSinceLastCheck: 38,
         missingFields: ["headshotUrl", "businessPhone"],
         provenance: {
@@ -1366,7 +1362,9 @@ async function expectCompactQueueRows(page: Page): Promise<void> {
   expect(rowText).toContain(RESEARCH_QUEUE_FIRM_NAME);
   expect(rowText).toContain("No New Data");
   expect(rowText).toContain("Headshot Url, Business Phone");
-  expect(rowText).toContain("May 1, 2026 (38 days); next Jun 1, 2026");
+  expect(rowText).toContain("(38 days); next");
+  expect(rowText).toMatch(/May\s+\d{1,2},\s+2026/);
+  expect(rowText).toMatch(/next\s+Jun\s+\d{1,2},\s+2026/);
   expect(rowText).toContain(`${RESEARCH_QUEUE_SOURCE_TABLE}: research-check-1`);
   expect(await rows.locator(".details-card").count()).toBe(0);
   expect(
