@@ -17,10 +17,13 @@ const NO_ARTICLES_TEXT = "No articles yet";
 const FEED_ERROR_TITLE = "Could not load feed";
 const TEMPORARY_OUTAGE = "temporary outage";
 const RETRY_RECOVERY_ARTICLE = "Retry recovery article";
+const ADVISOR_PROFILE_ID = "advisor-loaded";
 const ADVISOR_RECOVERY_NAME = "Avery Stone";
 const RESEARCH_QUEUE_FIRM_NAME = "Acme Advisory";
 const RESEARCH_QUEUE_SOURCE_TABLE = "AdvisorResearchCheck";
 const RESEARCH_QUEUE_PROFILE_LINK = "Open advisor profile";
+const RESEARCH_QUEUE_BUSINESS_PHONE_LABEL = "Business Phone";
+const RESEARCH_QUEUE_MISSING_FIELD_LABEL = "Missing field";
 const ROUTE_RETRY_LOG = join(SHOTS, "issue-279-route-retry-requests.json");
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
@@ -72,12 +75,13 @@ browserDescribe("web async states", () => {
       });
     });
 
-    await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
     await page.locator('input[name="email"]').fill("user@example.com");
     await page.locator('input[name="password"]').fill("bad-password");
-    await page.locator("form").evaluate(form => {
-      (form as HTMLFormElement).requestSubmit();
-    });
+    await page
+      .locator('form:has(input[name="password"])')
+      .getByRole("button", { name: "Sign in" })
+      .click();
 
     await page
       .getByText("Email or password is incorrect.")
@@ -113,12 +117,13 @@ browserDescribe("web async states", () => {
       });
     });
 
-    await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
     await page.locator('input[name="email"]').fill("qa-invalid@example.com");
     await page.locator('input[name="password"]').fill("bad-password");
-    await page.locator("form").evaluate(form => {
-      (form as HTMLFormElement).requestSubmit();
-    });
+    await page
+      .locator('form:has(input[name="password"])')
+      .getByRole("button", { name: "Sign in" })
+      .click();
 
     await page
       .getByText("Email or password is incorrect.")
@@ -328,7 +333,7 @@ browserDescribe("web async states", () => {
       "Public-safe queue rows",
       RESEARCH_QUEUE_FIRM_NAME,
       "Headshot Url",
-      "Business Phone",
+      RESEARCH_QUEUE_BUSINESS_PHONE_LABEL,
       RESEARCH_QUEUE_SOURCE_TABLE,
     ]);
 
@@ -408,6 +413,123 @@ browserDescribe("web async states", () => {
     }
   }, 30_000);
 
+  it("replays the research workbench priority flow across viewports", async () => {
+    const queuePayload = researchQueuePayload();
+    const queueItem = queuePayload.items[0];
+    const priorityGroup = queuePayload.summary.priorityGroups[0];
+    if (!priorityGroup) throw new Error("Expected a priority group fixture");
+
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      const page = await browser.newPage({
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      const queueRequests: string[] = [];
+      const profileRequests: string[] = [];
+
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+          queueRequests.push(route.request().url());
+          await route.fulfill({ json: queuePayload });
+        });
+        await page.route("**/AdvisorProfile/avery-stone", async route => {
+          profileRequests.push(new URL(route.request().url()).pathname);
+          await route.fulfill({
+            json: advisorEvidenceProfile("avery-stone", queueItem),
+          });
+        });
+
+        await page.goto(`${baseUrl}/research/freshness`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page.getByText("Priority groups").waitFor({
+          timeout: QUICK_TIMEOUT,
+        });
+
+        const filteredResponse = page.waitForResponse(response =>
+          response.url().includes("/AdvisorResearchQueue?")
+        );
+        await page.getByRole("button", { name: priorityGroup.label }).click();
+        await filteredResponse;
+        await page.waitForURL("**/research/freshness?**missingField=**", {
+          timeout: QUICK_TIMEOUT,
+        });
+
+        await expectFilterValue(
+          page,
+          RESEARCH_QUEUE_MISSING_FIELD_LABEL,
+          priorityGroup.filters.missingField ?? ""
+        );
+        await expectVisibleText(page, [
+          "Priority groups",
+          `${priorityGroup.label}`,
+          queueItem.advisorName,
+          RESEARCH_QUEUE_FIRM_NAME,
+          RESEARCH_QUEUE_BUSINESS_PHONE_LABEL,
+        ]);
+
+        const filteredRequest = new URL(queueRequests.at(-1) ?? "");
+        expect(Object.fromEntries(filteredRequest.searchParams)).toMatchObject({
+          sourceType: priorityGroup.filters.sourceType,
+          staleDays: String(priorityGroup.filters.staleDays),
+          status: priorityGroup.filters.status ?? "",
+          missingField: priorityGroup.filters.missingField ?? "",
+          limit: String(priorityGroup.filters.limit),
+        });
+        expect(
+          await page
+            .locator(".research-queue-card")
+            .evaluateAll(
+              (cards, missingFieldLabel) =>
+                cards.every(
+                  card => card.textContent?.includes(missingFieldLabel) ?? false
+                ),
+              RESEARCH_QUEUE_BUSINESS_PHONE_LABEL
+            )
+        ).toBe(true);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth)
+        ).toBeLessThanOrEqual(
+          await page.evaluate(() => document.documentElement.clientWidth)
+        );
+
+        await page
+          .getByRole("link", { name: RESEARCH_QUEUE_PROFILE_LINK })
+          .click();
+        await page
+          .getByRole("heading", { name: queueItem.advisorName })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        expect(profileRequests).toEqual(["/AdvisorProfile/avery-stone"]);
+
+        await page.goBack({ waitUntil: "domcontentloaded" });
+        await page.waitForURL("**/research/freshness?**missingField=**", {
+          timeout: QUICK_TIMEOUT,
+        });
+        await page
+          .getByRole("heading", { name: queueItem.advisorName })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        await expectFilterValue(
+          page,
+          RESEARCH_QUEUE_MISSING_FIELD_LABEL,
+          priorityGroup.filters.missingField ?? ""
+        );
+        expect(queueRequests.length).toBeGreaterThanOrEqual(2);
+
+        await page.screenshot({
+          path: evidencePath(
+            viewport.name,
+            "issue-1118-research-workbench-priority-flow"
+          ),
+          fullPage: true,
+        });
+      } finally {
+        await page.close();
+      }
+    }
+  }, 30_000);
+
   it("syncs research queue filters through the URL and resource request", async () => {
     const page = await browser.newPage();
     const queueRequests: string[] = [];
@@ -431,7 +553,11 @@ browserDescribe("web async states", () => {
     await expectFilterValue(page, "Source type", "firm_source");
     await expectFilterValue(page, "Stale days", "7");
     await expectFilterValue(page, "Status", "no_new_data");
-    await expectFilterValue(page, "Missing field", "businessPhone");
+    await expectFilterValue(
+      page,
+      RESEARCH_QUEUE_MISSING_FIELD_LABEL,
+      "businessPhone"
+    );
     await expectFilterValue(page, "Limit", "10");
 
     const filteredResponse = page.waitForResponse(
@@ -534,8 +660,8 @@ browserDescribe("web async states", () => {
 
     expect(requestLog.feed).toEqual(["/Feed", "/Feed"]);
     expect(requestLog.advisorProfile).toEqual([
-      "/AdvisorProfile/advisor-loaded",
-      "/AdvisorProfile/advisor-loaded",
+      `/AdvisorProfile/${ADVISOR_PROFILE_ID}`,
+      `/AdvisorProfile/${ADVISOR_PROFILE_ID}`,
     ]);
     expect(requestLog.firmDirectory).toEqual(["/PublicFirms", "/PublicFirms"]);
     expect(existsSync(ROUTE_RETRY_LOG)).toBe(true);
@@ -841,7 +967,7 @@ async function captureAdvisorRetryEvidence(
     await page.route(ME_ROUTE, async route => {
       await route.fulfill({ json: { authenticated: false } });
     });
-    await page.route("**/AdvisorProfile/advisor-loaded", async route => {
+    await page.route(`**/AdvisorProfile/${ADVISOR_PROFILE_ID}`, async route => {
       requests.push(new URL(route.request().url()).pathname);
       if (requests.length === 1) {
         await route.fulfill({
@@ -851,10 +977,10 @@ async function captureAdvisorRetryEvidence(
         });
         return;
       }
-      await route.fulfill({ json: advisorEvidenceProfile("advisor-loaded") });
+      await route.fulfill({ json: advisorEvidenceProfile(ADVISOR_PROFILE_ID) });
     });
 
-    await page.goto(`${baseUrl}/advisor.html?id=advisor-loaded`, {
+    await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_PROFILE_ID}`, {
       waitUntil: "domcontentloaded",
     });
     await page.getByText("Could not load advisor").waitFor({
@@ -1041,6 +1167,7 @@ type ResearchQueuePayload = {
     readonly returned: number;
     readonly statusCounts: Readonly<Record<string, number>>;
     readonly missingFieldCounts: Readonly<Record<string, number>>;
+    readonly priorityGroups: readonly ResearchPriorityGroup[];
   };
   readonly items: readonly [
     {
@@ -1067,6 +1194,19 @@ type ResearchQueuePayload = {
   ];
 };
 
+/** Minimal priority group summary returned with research queue payloads. */
+type ResearchPriorityGroup = {
+  readonly id: string;
+  readonly label: string;
+  readonly count: number;
+  readonly filters: Readonly<
+    Record<"sourceType", string> &
+      Record<"staleDays" | "limit", number> &
+      Record<"status" | "missingField", string | null>
+  >;
+  readonly representativeAdvisorIds: readonly string[];
+};
+
 /**
  * Builds a deterministic research queue payload for route rendering checks.
  * @returns AdvisorResearchQueue-shaped response with one due advisor.
@@ -1086,10 +1226,64 @@ function researchQueuePayload(): ResearchQueuePayload {
       returned: 1,
       statusCounts: { no_new_data: 1 },
       missingFieldCounts: { headshotUrl: 1, businessPhone: 1 },
+      priorityGroups: [
+        {
+          id: "missing_contact_data",
+          label: "Missing contact data",
+          count: 1,
+          filters: {
+            sourceType: "web_research",
+            staleDays: 30,
+            status: null,
+            missingField: "businessPhone",
+            limit: 25,
+          },
+          representativeAdvisorIds: [ADVISOR_PROFILE_ID],
+        },
+        {
+          id: "missing_profile_substance",
+          label: "Missing profile substance",
+          count: 1,
+          filters: {
+            sourceType: "web_research",
+            staleDays: 30,
+            status: null,
+            missingField: "headshotUrl",
+            limit: 25,
+          },
+          representativeAdvisorIds: [ADVISOR_PROFILE_ID],
+        },
+        {
+          id: "stale_checked_profiles",
+          label: "Stale checked profiles",
+          count: 1,
+          filters: {
+            sourceType: "web_research",
+            staleDays: 30,
+            status: "no_new_data",
+            missingField: null,
+            limit: 25,
+          },
+          representativeAdvisorIds: [ADVISOR_PROFILE_ID],
+        },
+        {
+          id: "never_checked_profiles",
+          label: "Never-checked profiles",
+          count: 0,
+          filters: {
+            sourceType: "web_research",
+            staleDays: 30,
+            status: "never_checked",
+            missingField: null,
+            limit: 25,
+          },
+          representativeAdvisorIds: [],
+        },
+      ],
     },
     items: [
       {
-        advisorId: "advisor-loaded",
+        advisorId: ADVISOR_PROFILE_ID,
         advisorName: ADVISOR_RECOVERY_NAME,
         finraCrd: "1234567",
         profileUrl: "/advisor.html?id=avery-stone",
@@ -1126,6 +1320,7 @@ function emptyResearchQueuePayload(): Omit<ResearchQueuePayload, "items"> &
       returned: 0,
       statusCounts: {},
       missingFieldCounts: {},
+      priorityGroups: [],
     },
     items: [],
   };
@@ -1142,8 +1337,9 @@ async function expectFilterValue(
   label: string,
   value: string
 ): Promise<void> {
-  await page.getByLabel(label).waitFor({ timeout: QUICK_TIMEOUT });
-  expect(await page.getByLabel(label).inputValue()).toBe(value);
+  const control = page.getByLabel(label);
+  await control.waitFor({ state: "attached", timeout: QUICK_TIMEOUT });
+  expect(await control.inputValue()).toBe(value);
 }
 
 /**
