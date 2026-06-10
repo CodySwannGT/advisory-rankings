@@ -1566,6 +1566,60 @@ describe("Harper feed and profile builders", () => {
       summary: {
         returned: 1,
         statusCounts: { never_checked: 1 },
+        priorityGroups: [
+          {
+            id: "missing_contact_data",
+            label: "Missing contact data",
+            count: 1,
+            filters: {
+              sourceType: "web_research",
+              staleDays: 1,
+              status: null,
+              missingField: "businessEmail",
+              limit: 5,
+            },
+            representativeAdvisorIds: ["advisor-b"],
+          },
+          {
+            id: "missing_profile_substance",
+            label: "Missing profile substance",
+            count: 1,
+            filters: {
+              sourceType: "web_research",
+              staleDays: 1,
+              status: null,
+              missingField: "bioText",
+              limit: 5,
+            },
+            representativeAdvisorIds: ["advisor-b"],
+          },
+          {
+            id: "stale_checked_profiles",
+            label: "Stale checked profiles",
+            count: 0,
+            filters: {
+              sourceType: "web_research",
+              staleDays: 1,
+              status: null,
+              missingField: null,
+              limit: 5,
+            },
+            representativeAdvisorIds: [],
+          },
+          {
+            id: "never_checked_profiles",
+            label: "Never-checked profiles",
+            count: 1,
+            filters: {
+              sourceType: "web_research",
+              staleDays: 1,
+              status: "never_checked",
+              missingField: null,
+              limit: 5,
+            },
+            representativeAdvisorIds: ["advisor-b"],
+          },
+        ],
       },
       items: [
         {
@@ -1631,6 +1685,19 @@ describe("Harper feed and profile builders", () => {
       lastCheckedAt: RESEARCH_B_CHECKED_AT,
       provenance: { sourceIds: ["research-b"] },
     });
+    expect(payload.summary.priorityGroups).toContainEqual({
+      id: "stale_checked_profiles",
+      label: "Stale checked profiles",
+      count: 1,
+      filters: {
+        sourceType: "firm_bio",
+        staleDays: 1,
+        status: "ambiguous",
+        missingField: null,
+        limit: 10,
+      },
+      representativeAdvisorIds: ["advisor-a"],
+    });
   });
 
   it("preserves the requested source on never-checked research rows", async () => {
@@ -1638,10 +1705,13 @@ describe("Harper feed and profile builders", () => {
       routeTarget("", {
         sourceType: "firm_bio",
         staleDays: "1",
+        status: "never_checked",
         missingField: "businessEmail",
       })
     );
 
+    expect(payload.filters.status).toBe("never_checked");
+    expect(payload.summary.statusCounts).toEqual({ never_checked: 1 });
     expect(payload.items[0]).toMatchObject({
       advisorId: "advisor-b",
       sourceType: "firm_bio",

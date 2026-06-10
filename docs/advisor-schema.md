@@ -710,7 +710,10 @@ the same `selectDueAdvisors` semantics as `bun run research:advisors due`.
 The resource supports `sourceType`, `staleDays`, `status`, `missingField`,
 and `limit` query filters and returns public-safe advisor identity, current
 firm context, source/check status, missing public fields, next-check dates,
-profile URLs, and `AdvisorResearchCheck` provenance ids. It does not read or
+profile URLs, `AdvisorResearchCheck` provenance ids, and returned-slice
+priority groups for missing contact data, missing profile substance, stale
+checked profiles, and never-checked profiles. `status=never_checked` filters
+rows with no existing check for the selected source type. It does not read or
 return private user rating/watchlist tables.
 
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
