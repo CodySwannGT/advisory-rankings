@@ -28,6 +28,9 @@ const ENTITY_ROW_SELECTOR = ".center .entity-list .row";
 const WATCHLIST_SIGN_IN_COPY =
   "Sign in to create and manage private watchlists";
 const WATCHLIST_SIGN_IN_LINK_SELECTOR = '.watchlist-signin-link[href="/login"]';
+const LOGIN_ACCESS_HEADING = "Need account access?";
+const LOGIN_ACCESS_COPY = "AdvisorBook accounts are provisioned by your team.";
+const LOGIN_RECOVERY_COPY = "Forgot your password or cannot sign in?";
 const hasActiveClass = (className: string | null): boolean =>
   className?.split(/\s+/).includes("active") ?? false;
 
@@ -185,12 +188,15 @@ export async function smokeWatchlists(
     .locator(WATCHLIST_SIGN_IN_LINK_SELECTOR)
     .first()
     .getAttribute("href");
+  const watchlistsPath = new URL(page.url()).pathname;
+  await page.locator(WATCHLIST_SIGN_IN_LINK_SELECTOR).first().click();
+  await page
+    .getByRole("heading", { name: LOGIN_ACCESS_HEADING })
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await shot(page, "06-watchlists-login-access-path");
 
   return await closeWithChecks(context, [
-    check(
-      new URL(page.url()).pathname === "/watchlists",
-      "watchlists: clean URL"
-    ),
+    check(watchlistsPath === "/watchlists", "watchlists: clean URL"),
     check(
       await page
         .getByRole("heading", { level: 1, name: "Watchlists" })
@@ -205,6 +211,19 @@ export async function smokeWatchlists(
       signInHref === "/login",
       "watchlists: sign-in action points to login",
       signInHref ?? "missing href"
+    ),
+    check(
+      new URL(page.url()).pathname === "/login",
+      "watchlists: sign-in action opens login",
+      page.url()
+    ),
+    check(
+      await page.getByText(LOGIN_ACCESS_COPY).isVisible(),
+      "login: request-access guidance visible"
+    ),
+    check(
+      await page.getByText(LOGIN_RECOVERY_COPY).isVisible(),
+      "login: recovery guidance visible"
     ),
     check(
       overflow.scrollWidth <= overflow.clientWidth,

@@ -28,6 +28,11 @@ interface CenteredBuildContext {
 /** Attribute subset used by the login form's text inputs. */
 type SignInTextInputAttrs = Readonly<Record<string, string | boolean>>;
 
+const ACCESS_HELP_STYLE =
+  "border-top: 1px solid var(--ab-color-border); margin-top: 18px; padding-top: 16px;";
+const ACCESS_HELP_TEXT_STYLE =
+  "color: var(--ab-color-text-muted); margin: 8px 0 0; font-size: var(--ab-font-size-sm); line-height: 1.5;";
+
 mountCenteredNarrowPage({
   active: "home",
   pageTitle: "Sign in",
@@ -107,7 +112,34 @@ function signInForm(controls: SignInControls): HTMLElement {
     LabeledField({ label: "Email", input: controls.email }),
     LabeledField({ label: "Password", input: controls.password }),
     el("div", { style: "margin-top: 16px;" }, controls.submit),
-    controls.error
+    controls.error,
+    accountAccessHelp()
+  );
+}
+
+/**
+ * Gives users a next step when credentials are missing or forgotten.
+ * @returns Account access and recovery guidance for the sign-in form.
+ */
+function accountAccessHelp(): HTMLElement {
+  return el(
+    "div",
+    { class: "login-access-help", style: ACCESS_HELP_STYLE },
+    Heading({
+      level: 3,
+      attrs: { class: "card-subtitle" },
+      children: "Need account access?",
+    }),
+    el(
+      "p",
+      { style: ACCESS_HELP_TEXT_STYLE },
+      "AdvisorBook accounts are provisioned by your team. Ask your AdvisorBook administrator or firm contact to request access."
+    ),
+    el(
+      "p",
+      { style: ACCESS_HELP_TEXT_STYLE },
+      "Forgot your password or cannot sign in? Use the same administrator or firm contact to reset access."
+    )
   );
 }
 
