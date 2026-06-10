@@ -662,7 +662,7 @@ Endpoints (implemented in `src/harper/resources.ts` and emitted to
 | `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. |
 | `/Me` | GET | `allowRead=true` | Returns `{authenticated, username, role}` if `getCurrentUser()` resolves a user, otherwise `{authenticated:false}`. The frontend hits this on every page load to render the navbar's sign-in/sign-out affordance. |
 | `/RegulatoryDiscrepancyQueue` | GET | `allowRead=true`, details require session | Returns `{authenticated:false, items:[]}` for anonymous users and open source-conflict review rows for authenticated analyst sessions. |
-| `/AdvisorResearchQueue` | GET | `allowRead=true` | Returns public-safe due advisor research rows and returned-slice priority groups for `sourceType`, `staleDays`, `status`, `missingField`, and `limit` filters. Rows reuse `selectDueAdvisors` semantics and omit user-private rating/watchlist data. |
+| `/AdvisorResearchQueue` | GET | `allowRead=true` | Returns public-safe due advisor research rows and returned-slice priority groups for `sourceType`, `staleDays`, `status`, `missingField`, and `limit` filters. Rows reuse `selectDueAdvisors` semantics, `status=never_checked` selects advisors with no check for the active source type, and the payload omits user-private rating/watchlist data. |
 
 Browser flow:
 
@@ -732,7 +732,7 @@ Everything else still requires auth.
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
-| `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, and group filter mappings. No private user tables are loaded. |
+| `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, returned-slice counts, and group filter mappings. No private user tables are loaded. |
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
@@ -1303,7 +1303,30 @@ The deployed operator surface has two matching entrypoints:
 `GET /AdvisorResearchQueue` returns the public-safe queue payload, and
 `/research/freshness` renders the same rows in the browser. Both support
 `sourceType`, `staleDays`, `status`, `missingField`, and `limit`; the web UI
-keeps those filters in the URL and forwards them to the resource.
+keeps those filters in the URL and forwards them to the resource. The browser
+workbench renders a priority summary above the queue with four fixed shortcut
+groups: `missing_contact_data`, `missing_profile_substance`,
+`stale_checked_profiles`, and `never_checked_profiles`. Each shortcut uses the
+resource-provided replay filters, pushes them into the `/research/freshness`
+query string, and reloads `/AdvisorResearchQueue` in place.
+
+Compact queue rows are the operator scan surface. Each row exposes advisor
+name, current firm/role, FINRA CRD, source type, check status, missing fields,
+freshness timing, provenance ids, and an advisor-profile link without nesting
+the older details-card layout per row.
+
+Deployed replay path:
+
+1. Open
+   `https://advisory-rankings-de.cody-swann-org.harperfabric.com/research/freshness?sourceType=web_research&staleDays=30&limit=25`.
+2. Confirm the summary loads with priority-group buttons and compact
+   `Advisor queue rows`.
+3. Click `Missing contact data` when its count is nonzero.
+4. Confirm the route URL and the `/AdvisorResearchQueue` request include the
+   group filters, usually `missingField=businessEmail` for the contact group,
+   while the visible rows stay compact and expose the selected missing-field
+   evidence.
+5. Repeat at a mobile width and confirm there is no horizontal overflow.
 
 ```bash
 export HDB_TARGET_URL=<HARPER_CLUSTER_APP_URL>
@@ -1420,7 +1443,7 @@ organisms / templates) — see `docs/design-system.md`.
 | `/rankings` (`rankings.html` still works) | Advisor Rankings Browser: category/year/firm/state/city filters, resolved/unresolved profile-match status, source URLs, unavailable score labels, ranking data-quality context, and ranking rows from `/RankingsExplorer`. |
 | `/regulatory` (`regulatory.html` still works) | Compliance events page: recent disclosure cards sourced from `/Feed`, with regulatory context and load-error fallback. |
 | `/regulatory/discrepancies` (`regulatory-discrepancies.html`) | Authenticated analyst queue for open `RegulatoryDiscrepancy` rows, showing compared source values, event clues, provenance, severity, status, and available review actions from `/RegulatoryDiscrepancyQueue`. |
-| `/research/freshness` (`research-freshness.html`) | Public research freshness queue for advisors due for source checks, showing advisor identity, firm context, source lane, stale/missing fields, status counts, provenance ids, and profile links from `/AdvisorResearchQueue`. |
+| `/research/freshness` (`research-freshness.html`) | Public research freshness workbench for advisors due for source checks, showing URL-backed filters, priority-group shortcuts, compact advisor rows, status/missing-field counts, provenance ids, and profile links from `/AdvisorResearchQueue`. |
 | `/report-packet?ids=<id>,<id>` (`report-packet.html?ids=…` still works) | Public report packet shell that replays the comparison selection, shows generated metadata, selected advisors, and normalized selection caveats from `/AdvisorComparison`. |
 
 ### How the joins happen
