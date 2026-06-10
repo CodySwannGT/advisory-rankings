@@ -33,7 +33,7 @@ const TABLET_ROUTE_PATHS = [
   "/regulatory",
   "/login",
 ] as const;
-const TABLET_ROUTE_WIDTHS = [768, 900] as const;
+const TABLET_ROUTE_WIDTHS = [768, 900, 1280] as const;
 
 /**
  * Expected visible shell state at a named responsive breakpoint.
@@ -47,7 +47,10 @@ interface BreakpointExpectation {
 
 const breakpointMatrix: readonly BreakpointExpectation[] = [
   railBreakpoint(1440, true, true, "desktop"),
-  railBreakpoint(1101, true, true, "desktop"),
+  railBreakpoint(1301, true, true, "desktop"),
+  railBreakpoint(1300, true, true, "mobile"),
+  railBreakpoint(1280, true, true, "mobile"),
+  railBreakpoint(1101, true, true, "mobile"),
   railBreakpoint(1100, false, true, "mobile"),
   railBreakpoint(1099, false, true, "mobile"),
   railBreakpoint(901, false, true, "mobile"),
@@ -235,7 +238,13 @@ async function openedDrawerChecks(
   burger: Locator,
   width: number
 ): Promise<readonly Check[]> {
-  if (width !== 1100 && width !== 900 && width !== 700 && width !== 320)
+  if (
+    width !== 1300 &&
+    width !== 1100 &&
+    width !== 900 &&
+    width !== 700 &&
+    width !== 320
+  )
     return [];
 
   await burger.click();
@@ -435,6 +444,11 @@ async function smokeTabletHeaderRoute(
       metrics.kindButtonBoxes
     ),
     check(
+      metrics.kindButtonTextFits,
+      `tablet header ${width}px ${path}: search kind labels are not clipped`,
+      metrics.kindButtonTextWidths
+    ),
+    check(
       metrics.searchWidth >= 280,
       `tablet header ${width}px ${path}: search remains readable`,
       `width ${Math.round(metrics.searchWidth)}px`
@@ -451,6 +465,10 @@ async function tabletHeaderMetrics(page: Page) {
   return await page.evaluate(selector => {
     const buttons = [...document.querySelectorAll(selector)];
     const boxes = buttons.map(button => button.getBoundingClientRect());
+    const textWidths = buttons.map(button => {
+      if (!(button instanceof HTMLElement)) return "non-html";
+      return `${button.textContent?.trim() ?? ""}:${button.clientWidth}/${button.scrollWidth}`;
+    });
     const searchBox = document
       .querySelector(".nav .search")
       ?.getBoundingClientRect();
@@ -459,6 +477,11 @@ async function tabletHeaderMetrics(page: Page) {
       kindButtonBoxes: boxes
         .map(box => `${Math.round(box.left)}-${Math.round(box.right)}`)
         .join(", "),
+      kindButtonTextFits: buttons.every(button => {
+        if (!(button instanceof HTMLElement)) return false;
+        return button.scrollWidth <= button.clientWidth;
+      }),
+      kindButtonTextWidths: textWidths.join(", "),
       kindButtonsSeparated: boxes.every((box, index) => {
         const previous = boxes[index - 1];
         return !previous || previous.right <= box.left;
