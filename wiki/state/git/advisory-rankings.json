@@ -1,12 +1,12 @@
 {
   "connector": "git",
   "profile": "advisory-rankings",
-  "lastSuccessfulRunAt": "2026-06-09T07:00:00.000Z",
+  "lastSuccessfulRunAt": "2026-06-10T07:05:28.707Z",
   "cursor": {
-    "lastCommit": "e1b44fde0ff6d47e66b54c6279581628ab7fbbba",
-    "lastPr": 1074
+    "lastCommit": "326d9bcc750ea5c2b2421435b5488b2a7d787c2f",
+    "lastPr": 1102
   },
-  "sourceNotes": ["wiki/sources/git/2026-06-09-advisory-rankings-git.md"],
+  "sourceNotes": ["wiki/sources/git/2026-06-10-advisory-rankings-git.md"],
   "synthesisPages": [
     "wiki/architecture/project-architecture.md",
     "wiki/projects/git-history.md"

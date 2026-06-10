@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-09
+updated: 2026-06-10
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -16,6 +16,7 @@ sources:
   - ../sources/git/2026-06-07-advisory-rankings-git.md
   - ../sources/git/2026-06-08-advisory-rankings-git.md
   - ../sources/git/2026-06-09-advisory-rankings-git.md
+  - ../sources/git/2026-06-10-advisory-rankings-git.md
 ---
 
 # Git history
@@ -79,6 +80,11 @@ commits since the 2026-06-08 cursor, bringing the branch total to 1321 commits, 
 PR metadata through #1074, with #1059 also merged after #1074. Source:
 wiki/sources/git/2026-06-09-advisory-rankings-git.md.
 
+The 2026-06-10 git ingest ran at HEAD `326d9bcc750ea5c2b2421435b5488b2a7d787c2f`. It added 77
+commits since the 2026-06-09 cursor, bringing the branch total to 1398 commits, and refreshed recent
+merged PR metadata through #1102, "Stabilize deployed smoke selectors." Source:
+wiki/sources/git/2026-06-10-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -125,6 +131,17 @@ wiki/sources/git/2026-06-09-advisory-rankings-git.md.
   filter validation work, compare-selection preservation, static asset response fixes, comparator
   transition mention loading, research freshness and URL-filter routes, bounded recruiting article
   backfill, recruiting market seed-depth restoration, and research-queue profile parity coverage.
+- The 2026-06-09 wiki ingest PR merged, followed by rankings page usability work across purpose copy,
+  humanized labels and dates, sparse-data explanations, sort controls, facet suggestions, panel
+  legibility, duplicate rail removal, and browse-rail smoke hardening.
+- Deploy work in this window corrected the runbook to make direct `:9925` operations API deployment
+  the primary path, demoted the Studio proxy to fallback, and hardened Fabric static-route and
+  cold-start recovery checks.
+- Recruiting and article polish added detection for recruiting articles without extracted moves,
+  replay verification for recruiting-market behavior, and hiding of contextless article facts.
+- CI/test work raised coverage and complexity thresholds, covered recruiting query and runtime
+  recovery edges, stabilized deployed smoke selectors, and documented the research queue
+  verification path.
 
 ## Use
 
@@ -139,4 +156,5 @@ wiki/sources/git/2026-06-03-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-06-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-07-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-08-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-09-advisory-rankings-git.md.
+wiki/sources/git/2026-06-09-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-10-advisory-rankings-git.md.
