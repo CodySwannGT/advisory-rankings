@@ -132,6 +132,35 @@ browserDescribe("web async states", () => {
     await page.close();
   }, 30_000);
 
+  it("shows account access and recovery guidance on login", async () => {
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      const page = await browser.newPage({ viewport });
+
+      await page.route(ME_ROUTE, async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+
+      await page.goto(`${baseUrl}/login`, { waitUntil: "domcontentloaded" });
+      await page
+        .getByRole("heading", { name: "Need account access?" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await page
+          .getByText("AdvisorBook accounts are provisioned by your team.")
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await page
+          .getByText("Forgot your password or cannot sign in?")
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth)
+      ).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+      await page.close();
+    }
+  }, 30_000);
+
   it("shows feed loading skeletons before a delayed response resolves", async () => {
     const page = await browser.newPage();
     let releaseFeed: () => void = () => {};
