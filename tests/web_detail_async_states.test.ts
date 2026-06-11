@@ -37,6 +37,7 @@ const CORRECTION_FIXTURE_ID = "correction-a";
 const ANALYST_FIXTURE_EMAIL = "analyst@example.test";
 const FIRM_BIO_REVIEW_NOTE = "Firm bio supports the update.";
 const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
+const CORRECTION_REVIEWED_AT = "2026-06-11T12:00:00Z";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -924,6 +925,40 @@ describe("detail async states", () => {
     }
   });
 
+  it("renders reviewed correction notes without exposing pending submitter copy", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await routeAdvisorEvidence(page);
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", { name: "Reviewed discrepancy notes (1)" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await page.getByText("Legal name correction: accepted").count()
+      ).toBe(1);
+      expect(await page.getByText(FIRM_BIO_REVIEW_NOTE).isVisible()).toBe(true);
+      expect(
+        await page.getByText(`Proposed ${CORRECTED_ADVISOR_NAME}`).count()
+      ).toBe(1);
+      expect(await page.getByText(FIRM_BIO_SUBMITTER_NOTE).count()).toBe(0);
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth
+        )
+      ).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
   it("renders the analyst correction inbox and submits dispositions", async () => {
     const page = await browser.newPage({
       viewport: { width: 390, height: 900 },
@@ -962,7 +997,7 @@ describe("detail async states", () => {
                 status: "accepted",
                 reviewerNote: FIRM_BIO_REVIEW_NOTE,
                 reviewerId: ANALYST_FIXTURE_EMAIL,
-                reviewedAt: "2026-06-11T12:00:00Z",
+                reviewedAt: CORRECTION_REVIEWED_AT,
               },
             },
           });
@@ -1592,6 +1627,21 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
     designations: [],
     education: [],
     brokerCheckSnapshot: null,
+    reviewedRegulatoryDiscrepancies: [],
+    reviewedCorrectionRequests: [
+      {
+        id: CORRECTION_FIXTURE_ID,
+        fieldName: "legalName",
+        status: "accepted",
+        reviewerNote: FIRM_BIO_REVIEW_NOTE,
+        reviewedAt: CORRECTION_REVIEWED_AT,
+        displayedValue: ADVISOR_NAME,
+        proposedValue: CORRECTED_ADVISOR_NAME,
+        sourceType: "firm_bio",
+        sourceRef: "https://example.com/avery",
+        sourceContext: "firm profile",
+      },
+    ],
     ...state,
   };
 }

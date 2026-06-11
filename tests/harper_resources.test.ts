@@ -25,6 +25,9 @@ const AVERY_STONE_FIRM_BIO_URL = "https://example.com/avery";
 const AVERY_STONE_CORRECTED_NAME = "Avery Stone CFP";
 const FIRM_BIO_SUPPORTS_UPDATE_NOTE = "Firm bio supports the update.";
 const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
+const CORRECTION_REVIEWED_ID = "correction-reviewed";
+const CORRECTION_PENDING_ID = "correction-pending";
+const CORRECTION_UNSOURCED_ID = "correction-unsourced";
 const CORRECTION_OLD_ID = "correction-old";
 const CORRECTION_TIE_ID = "correction-tie";
 const CORRECTION_UNKNOWN_ID = "correction-unknown";
@@ -2696,6 +2699,73 @@ describe("Harper resource endpoints", () => {
     expect(
       JSON.stringify(advisor.reviewedRegulatoryDiscrepancies)
     ).not.toContain(REGULATORY_DISCREPANCY_A_ID);
+  });
+
+  it("surfaces only reviewed and sourced correction request notes on advisor profiles", async () => {
+    setRows(ADVISOR_CORRECTION_REQUEST_TABLE, [
+      {
+        id: CORRECTION_REVIEWED_ID,
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        submitterId: CLIENT_EMAIL,
+        submitterNote: FIRM_BIO_SUBMITTER_NOTE,
+        sourceType: "firm_bio",
+        sourceRef: AVERY_STONE_FIRM_BIO_URL,
+        sourceContext: JSON.stringify({ field: "legalName" }),
+        status: "accepted",
+        reviewerId: "analyst-a",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+        reviewedAt: DATE_2026_05_25,
+      },
+      {
+        id: CORRECTION_PENDING_ID,
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: "Pending Name",
+        submitterId: CLIENT_EMAIL,
+        submitterNote: "Pending private submitter note.",
+        sourceType: "firm_bio",
+        sourceRef: AVERY_STONE_FIRM_BIO_URL,
+        status: "pending",
+      },
+      {
+        id: CORRECTION_UNSOURCED_ID,
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: "Unsourced Name",
+        submitterId: CLIENT_EMAIL,
+        status: "accepted",
+        reviewerNote: "Reviewed but source-less.",
+        reviewedAt: DATE_2026_05_25,
+      },
+    ]);
+
+    const advisor = await new (resources as any).AdvisorProfile().get(
+      routeTarget(AVERY_STONE_SLUG)
+    );
+
+    expect(advisor.reviewedCorrectionRequests).toEqual([
+      {
+        id: CORRECTION_REVIEWED_ID,
+        fieldName: "legalName",
+        status: "accepted",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+        reviewedAt: DATE_2026_05_25,
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        sourceType: "firm_bio",
+        sourceRef: AVERY_STONE_FIRM_BIO_URL,
+        sourceContext: JSON.stringify({ field: "legalName" }),
+      },
+    ]);
+    const publicPayload = JSON.stringify(advisor);
+    expect(publicPayload).not.toContain(FIRM_BIO_SUBMITTER_NOTE);
+    expect(publicPayload).not.toContain(CORRECTION_PENDING_ID);
+    expect(publicPayload).not.toContain(CORRECTION_UNSOURCED_ID);
   });
 
   it("persists regulatory discrepancy reviews without mutating source facts", async () => {

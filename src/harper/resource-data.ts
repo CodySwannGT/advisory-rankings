@@ -2,6 +2,7 @@ import type {
   AdvisorMetricSnapshotRow,
   AdvisorResearchCheckRow,
   AdvisorRow,
+  AdvisorCorrectionRequestRow,
   ArticleAdvisorMentionRow,
   ArticleDisclosureMentionRow,
   ArticleFirmMentionRow,
@@ -53,6 +54,7 @@ export const RESOURCE_TABLE_SPECS = [
   ["deals", "RecruitingDealQuote"],
   ["disclosures", "Disclosure"],
   ["regulatoryDiscrepancies", "RegulatoryDiscrepancy", true],
+  ["correctionRequests", "AdvisorCorrectionRequest", true],
   ["sanctions", "Sanction"],
   ["obas", "OutsideBusinessActivity"],
   ["clusters", "DisclosureCluster"],
@@ -98,6 +100,7 @@ export interface ResourceTableRows {
   readonly deals: readonly RecruitingDealQuoteRow[];
   readonly disclosures: readonly DisclosureRow[];
   readonly regulatoryDiscrepancies: readonly RegulatoryDiscrepancyRow[];
+  readonly correctionRequests: readonly AdvisorCorrectionRequestRow[];
   readonly sanctions: readonly SanctionRow[];
   readonly obas: readonly OutsideBusinessActivityRow[];
   readonly clusters: readonly DisclosureClusterRow[];
@@ -271,6 +274,7 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
     regulatoryDiscrepancies: at<RegulatoryDiscrepancyRow>(
       "regulatoryDiscrepancies"
     ),
+    correctionRequests: at<AdvisorCorrectionRequestRow>("correctionRequests"),
     sanctions: at<SanctionRow>("sanctions"),
     obas: at<OutsideBusinessActivityRow>("obas"),
     clusters: at<DisclosureClusterRow>("clusters"),
