@@ -33,6 +33,10 @@ const LAYOUT_TOLERANCE_PX = 0.5;
 const EVIDENCE_HELP_COPY = "public-source checks last ran";
 const CORRECTED_ADVISOR_NAME = "Avery Stone CFP";
 const DISPLAYED_VALUE_SELECTOR = 'input[name="displayedValue"]';
+const CORRECTION_FIXTURE_ID = "correction-a";
+const ANALYST_FIXTURE_EMAIL = "analyst@example.test";
+const FIRM_BIO_REVIEW_NOTE = "Firm bio supports the update.";
+const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -919,6 +923,98 @@ describe("detail async states", () => {
       await page.close();
     }
   });
+
+  it("renders the analyst correction inbox and submits dispositions", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+    const reviewPosts: Readonly<Record<string, unknown>>[] = [];
+    let pending = true;
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({
+          json: {
+            authenticated: true,
+            username: ANALYST_FIXTURE_EMAIL,
+          },
+        });
+      });
+      await page.route("**/AdvisorCorrectionRequest", async route => {
+        if (route.request().method() === "GET") {
+          await route.fulfill({
+            json: correctionInboxPayload(pending),
+          });
+          return;
+        }
+        await route.fallback();
+      });
+      await page.route(
+        `**/AdvisorCorrectionRequest/${CORRECTION_FIXTURE_ID}`,
+        async route => {
+          reviewPosts.push((await route.request().postDataJSON()) as any);
+          pending = false;
+          await route.fulfill({
+            json: {
+              authenticated: true,
+              request: {
+                id: CORRECTION_FIXTURE_ID,
+                status: "accepted",
+                reviewerNote: FIRM_BIO_REVIEW_NOTE,
+                reviewerId: ANALYST_FIXTURE_EMAIL,
+                reviewedAt: "2026-06-11T12:00:00Z",
+              },
+            },
+          });
+        }
+      );
+
+      await page.goto(`${baseUrl}/correction-inbox.html`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", { name: "Correction request inbox" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .getByRole("heading", { name: ADVISOR_NAME })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await page.getByText(CORRECTED_ADVISOR_NAME).isVisible()).toBe(
+        true
+      );
+      expect(await page.getByText(FIRM_BIO_SUBMITTER_NOTE).isVisible()).toBe(
+        true
+      );
+      expect(await page.getByText("Example Wealth").isVisible()).toBe(true);
+
+      await page
+        .locator('textarea[name="reviewerNote"]')
+        .fill(FIRM_BIO_REVIEW_NOTE);
+      await page.getByRole("button", { name: "Submit disposition" }).click();
+      expect(reviewPosts).toEqual([]);
+      await page.locator('select[name="status"]').selectOption("accepted");
+      await page.getByRole("button", { name: "Submit disposition" }).click();
+
+      await page
+        .getByText("No pending correction requests")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(reviewPosts).toEqual([
+        {
+          status: "accepted",
+          reviewerNote: FIRM_BIO_REVIEW_NOTE,
+        },
+      ]);
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth
+        )
+      ).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 /**
@@ -1290,7 +1386,7 @@ async function routeAdvisorCorrectionProfile(
   await page.route("**/Me", async route => {
     await route.fulfill({
       json: authenticated
-        ? { authenticated: true, username: "analyst@example.test" }
+        ? { authenticated: true, username: ANALYST_FIXTURE_EMAIL }
         : { authenticated: false },
     });
   });
@@ -1570,6 +1666,41 @@ function emptyConfidenceSummary() {
     inferred: 0,
     derived: 0,
     total: 0,
+  };
+}
+
+function correctionInboxPayload(pending: boolean) {
+  return {
+    authenticated: true,
+    authorized: true,
+    generatedAt: "2026-06-11T12:00:00Z",
+    summary: {
+      pending: pending ? 1 : 0,
+      oldestAgeDays: pending ? 2 : null,
+    },
+    items: pending
+      ? [
+          {
+            id: CORRECTION_FIXTURE_ID,
+            advisorId: ADVISOR_LOADED_ID,
+            advisorName: ADVISOR_NAME,
+            advisorUrl: `/advisor.html?id=${ADVISOR_LOADED_ID}`,
+            firmName: EXAMPLE_WEALTH_SHORT,
+            fieldName: "legalName",
+            displayedValue: ADVISOR_NAME,
+            proposedValue: CORRECTED_ADVISOR_NAME,
+            submitterId: "client@example.test",
+            submitterNote: FIRM_BIO_SUBMITTER_NOTE,
+            sourceType: "firm_bio",
+            sourceRef: "https://example.com/avery",
+            sourceContext: "Profile heading",
+            status: "pending",
+            createdAt: "2026-06-09T12:00:00Z",
+            updatedAt: null,
+            ageDays: 2,
+          },
+        ]
+      : [],
   };
 }
 

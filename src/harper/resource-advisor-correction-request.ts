@@ -1,6 +1,11 @@
 import type { AdvisorCorrectionRequestRow } from "../types/harper-schema.js";
 import type { JsonBody, RouteTarget } from "../types/harper-resource.js";
 
+import {
+  correctionRequestQueue,
+  emptyCorrectionRequestQueue,
+  type AdvisorCorrectionRequestQueueResponse,
+} from "./resource-advisor-correction-queue.js";
 import { normalizeId } from "./resource-routing.js";
 import {
   currentUserId,
@@ -52,6 +57,13 @@ interface CorrectionRequestResponse {
   readonly request: AdvisorCorrectionRequestRow;
 }
 
+/**
+ *
+ */
+type CorrectionRequestGetResponse =
+  | CorrectionRequestResponse
+  | AdvisorCorrectionRequestQueueResponse;
+
 /** Authenticated submission and analyst review surface for advisor corrections. */
 export class AdvisorCorrectionRequest extends Resource {
   /**
@@ -71,25 +83,17 @@ export class AdvisorCorrectionRequest extends Resource {
   }
 
   /**
-   * Returns one persisted correction request by id for signed-in reviewers.
+   * Returns one persisted correction request by id, or the analyst pending inbox.
    * @param target Route target containing the correction request id.
-   * @returns Stored correction request row.
+   * @returns Stored correction request row or pending queue payload.
    */
-  async get(target?: RouteTarget): Promise<CorrectionRequestResponse> {
+  async get(target?: RouteTarget): Promise<CorrectionRequestGetResponse> {
     const resource = this as CurrentUserResource;
     const userId = currentUserId(resource);
-    if (!userId) throwStatus("Sign in required", 401);
-    const request = await requireCorrectionRequest(normalizeId(target));
-    if (
-      request.submitterId !== userId &&
-      !hasAnalystRole(currentUser(resource))
-    ) {
-      throwStatus("Correction request access denied", 403);
-    }
-    return {
-      authenticated: true,
-      request,
-    };
+    const requestId = normalizeId(target);
+    if (!userId) return unauthenticatedCorrectionRead(requestId);
+    if (!requestId) return correctionQueueForUser(resource);
+    return correctionRequestForUser(requestId, userId, resource);
   }
 
   /**
@@ -118,6 +122,56 @@ export class AdvisorCorrectionRequest extends Resource {
     }
     return { authenticated: true, request: await createRequest(body, userId) };
   }
+}
+
+/**
+ * Handles anonymous correction reads without leaking item existence.
+ * @param requestId Optional route id.
+ * @returns Empty public queue envelope for list reads.
+ */
+function unauthenticatedCorrectionRead(
+  requestId: string
+): AdvisorCorrectionRequestQueueResponse {
+  if (requestId) throwStatus("Sign in required", 401);
+  return emptyCorrectionRequestQueue(false, false);
+}
+
+/**
+ * Returns the pending analyst queue or an authorized empty envelope.
+ * @param resource Current Harper resource instance.
+ * @returns Pending queue payload for analysts, empty payload otherwise.
+ */
+async function correctionQueueForUser(
+  resource: CurrentUserResource
+): Promise<AdvisorCorrectionRequestQueueResponse> {
+  return hasAnalystRole(currentUser(resource))
+    ? correctionRequestQueue(correctionRequestTable())
+    : emptyCorrectionRequestQueue(true, false);
+}
+
+/**
+ * Returns one correction request when the caller may read it.
+ * @param requestId Persisted correction request id.
+ * @param userId Current session user id.
+ * @param resource Current Harper resource instance.
+ * @returns Stored correction request row.
+ */
+async function correctionRequestForUser(
+  requestId: string,
+  userId: string,
+  resource: CurrentUserResource
+): Promise<CorrectionRequestResponse> {
+  const request = await requireCorrectionRequest(requestId);
+  if (
+    request.submitterId !== userId &&
+    !hasAnalystRole(currentUser(resource))
+  ) {
+    throwStatus("Correction request access denied", 403);
+  }
+  return {
+    authenticated: true,
+    request,
+  };
 }
 
 /**
