@@ -11,6 +11,7 @@
 import type { AdvisorRow } from "../types/harper-schema.js";
 import type {
   AdvisorDirectoryFilters,
+  AdvisorDirectoryRow,
   DirectoryPage,
 } from "./resource-directory-types.js";
 import { encodeOffsetCursor } from "./resource-pagination.js";
@@ -43,7 +44,7 @@ export async function runAdvisorDirectoryQuery(
   filters: AdvisorDirectoryFilters,
   offset: number,
   limit: number
-): Promise<TruncatedDirectoryPage<AdvisorRow>> {
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> {
   if (filters.q && filters.firm) {
     return tokenFirmQuery(filters, offset, limit);
   }
@@ -78,7 +79,7 @@ function buildAdvisorConditions(
     : null;
   const hasCrdCondition: HarperCondition | null =
     filters.hasCrd === true
-      ? { attribute: "finraCrd", comparator: "ne", value: null }
+      ? { attribute: "finraCrd", comparator: "greater_than", value: "" }
       : filters.hasCrd === false
         ? { attribute: "finraCrd", comparator: "equals", value: null }
         : null;
@@ -91,7 +92,7 @@ const harperNativeQuery = async (
   filters: AdvisorDirectoryFilters,
   offset: number,
   limit: number
-): Promise<TruncatedDirectoryPage<AdvisorRow>> => {
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
   const conditions = buildAdvisorConditions(filters);
   const { items, total } = await advisorDirectoryPage(
     conditions,
@@ -105,7 +106,7 @@ const tokenOnlyQuery = async (
   filters: AdvisorDirectoryFilters,
   offset: number,
   limit: number
-): Promise<TruncatedDirectoryPage<AdvisorRow>> => {
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
   const tokenResult = await searchAdvisorsByTokens(
     tables.AdvisorSearchIndex,
     filters.q
@@ -124,7 +125,7 @@ const firmOnlyQuery = async (
   filters: AdvisorDirectoryFilters,
   offset: number,
   limit: number
-): Promise<TruncatedDirectoryPage<AdvisorRow>> => {
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
   const matched = await advisorsMatchingFirm(filters, filters.firm);
   return finalizeInMemory(matched, offset, limit, false);
 };
@@ -133,7 +134,7 @@ const tokenFirmQuery = async (
   filters: AdvisorDirectoryFilters,
   offset: number,
   limit: number
-): Promise<TruncatedDirectoryPage<AdvisorRow>> => {
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
   const filtersWithoutQ: AdvisorDirectoryFilters = { ...filters, q: "" };
   const [tokenResult, firmAdvisors] = await Promise.all([
     searchAdvisorsByTokens(tables.AdvisorSearchIndex, filters.q),
@@ -151,12 +152,16 @@ const finalizePage = (
   total: number,
   offset: number,
   truncated: boolean
-): TruncatedDirectoryPage<AdvisorRow> => {
+): TruncatedDirectoryPage<AdvisorDirectoryRow> => {
   const nextCursor =
     offset + items.length < total
       ? encodeOffsetCursor(offset + items.length)
       : null;
-  const base: DirectoryPage<AdvisorRow> = { items, nextCursor, total };
+  const base: DirectoryPage<AdvisorDirectoryRow> = {
+    items: items.map(publicAdvisorDirectoryRow),
+    nextCursor,
+    total,
+  };
   return truncated ? { ...base, truncated: true } : base;
 };
 
@@ -165,8 +170,15 @@ const finalizeInMemory = (
   offset: number,
   limit: number,
   truncated: boolean
-): TruncatedDirectoryPage<AdvisorRow> => {
+): TruncatedDirectoryPage<AdvisorDirectoryRow> => {
   const sorted = [...matched].sort(compareAdvisorDirectoryRows);
   const page = sorted.slice(offset, offset + limit);
   return finalizePage(page, sorted.length, offset, truncated);
+};
+
+const publicAdvisorDirectoryRow = (
+  advisor: AdvisorRow
+): AdvisorDirectoryRow => {
+  const finraCrd = advisor.finraCrd || null;
+  return { ...advisor, finraCrd, hasCrd: finraCrd !== null };
 };

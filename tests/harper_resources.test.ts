@@ -3564,8 +3564,63 @@ describe("Harper directory and search resources", () => {
 
     expect(result).toMatchObject({
       total: 1,
-      items: [expect.objectContaining({ id: "advisor-a" })],
+      items: [
+        expect.objectContaining({
+          finraCrd: "1234567",
+          hasCrd: true,
+          id: "advisor-a",
+        }),
+      ],
       nextCursor: null,
+    });
+  });
+
+  it("exposes verifiable CRD state on advisor directory rows", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: AVERY_STONE_NAME,
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Young",
+        legalName: BLAKE_YOUNG_NAME,
+        careerStatus: "active",
+        finraCrd: null,
+      },
+    ]);
+
+    const withCrd = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", { careerStatus: "active", hasCrd: "true" })
+    );
+    const withoutCrd = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", { careerStatus: "active", hasCrd: "false" })
+    );
+
+    expect(withCrd).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          finraCrd: "1234567",
+          hasCrd: true,
+          id: "advisor-a",
+        }),
+      ],
+    });
+    expect(withoutCrd).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          finraCrd: null,
+          hasCrd: false,
+          id: "advisor-b",
+        }),
+      ],
     });
   });
 

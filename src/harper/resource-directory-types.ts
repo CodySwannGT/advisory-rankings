@@ -43,6 +43,12 @@ export interface TeamDirectoryRow extends TeamRow {
   readonly currentFirmName: string | null;
 }
 
+/** Advisor row with explicit CRD presence for public directory verification. */
+export interface AdvisorDirectoryRow extends Omit<AdvisorRow, "finraCrd"> {
+  readonly finraCrd: string | null;
+  readonly hasCrd: boolean;
+}
+
 /** Canonicalized firm rows returned by the firm alias normalizer. */
 export interface CanonicalFirmRows {
   readonly firms: ReadonlyArray<FirmRow>;
