@@ -2449,6 +2449,47 @@ describe("Harper resource endpoints", () => {
     });
   });
 
+  it("finds regulatory discrepancy tables nested in the Fabric database registry", async () => {
+    const registry = tables as Record<string, unknown>;
+    const directTable = registry[REGULATORY_DISCREPANCY_TABLE];
+    const previousDatabases = (globalThis as any).databases;
+    delete registry[REGULATORY_DISCREPANCY_TABLE];
+    (globalThis as any).databases = {
+      fabric: {
+        resources: {
+          [REGULATORY_DISCREPANCY_TABLE]: directTable,
+        },
+      },
+    };
+    const endpoint = new (resources as any).RegulatoryDiscrepancyReview();
+    endpoint.getCurrentUser = () => ({ id: "analyst-a" });
+
+    try {
+      const response = await endpoint.post(
+        routeTarget(REGULATORY_DISCREPANCY_A_ID),
+        {
+          status: "accepted_brokercheck",
+          reviewerNote: BROKERCHECK_REVIEWED_NOTE,
+        }
+      );
+
+      expect(response).toMatchObject({
+        authenticated: true,
+        discrepancy: {
+          id: REGULATORY_DISCREPANCY_A_ID,
+          status: "accepted_brokercheck",
+          reviewerId: "analyst-a",
+          reviewerNote: BROKERCHECK_REVIEWED_NOTE,
+          advisorHubValue: ADVISORHUB_FINE_AMOUNT,
+          brokerCheckValue: REVIEWED_FINE_AMOUNT,
+        },
+      });
+    } finally {
+      registry[REGULATORY_DISCREPANCY_TABLE] = directTable;
+      (globalThis as any).databases = previousDatabases;
+    }
+  });
+
   it("filters feed responses by signal mode and source category", async () => {
     setRows("Article", [
       ...(tableRows.get("Article") ?? []),
