@@ -189,6 +189,12 @@ export async function smokeWatchlists(
     .first()
     .getAttribute("href");
   const watchlistsPath = new URL(page.url()).pathname;
+  const watchlistsHeadingVisible = await page
+    .getByRole("heading", { level: 1, name: "Watchlists" })
+    .isVisible();
+  const signInGuidanceVisible = await page
+    .getByText(WATCHLIST_SIGN_IN_COPY)
+    .isVisible();
   await page.locator(WATCHLIST_SIGN_IN_LINK_SELECTOR).first().click();
   await page
     .getByRole("heading", { name: LOGIN_ACCESS_HEADING })
@@ -197,14 +203,9 @@ export async function smokeWatchlists(
 
   return await closeWithChecks(context, [
     check(watchlistsPath === "/watchlists", "watchlists: clean URL"),
+    check(watchlistsHeadingVisible, "watchlists: heading visible"),
     check(
-      await page
-        .getByRole("heading", { level: 1, name: "Watchlists" })
-        .isVisible(),
-      "watchlists: heading visible"
-    ),
-    check(
-      await page.getByText(WATCHLIST_SIGN_IN_COPY).isVisible(),
+      signInGuidanceVisible,
       "watchlists: anonymous sign-in guidance visible"
     ),
     check(

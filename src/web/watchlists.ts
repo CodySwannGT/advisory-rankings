@@ -62,10 +62,7 @@ async function load(center: HTMLElement): Promise<void> {
       renderSignedOut(center);
       return;
     }
-    renderWatchlists(
-      { center, me, reload: () => void load(center) },
-      view.lists
-    );
+    renderWatchlists({ center, me, reload: () => load(center) }, view.lists);
   } catch {
     renderError(
       center,

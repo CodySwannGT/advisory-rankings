@@ -30,12 +30,14 @@ import {
 
 /** Resource path for all watchlist mutations. */
 const WATCHLISTS_PATH = "/UserWatchlists";
+/** Shared class for watchlist status/help copy. */
+const WATCHLIST_NOTE_CLASS = "watchlist-note";
 
 /** Render context shared by the page handlers. */
 export interface WatchlistRenderContext {
   readonly center: HTMLElement;
   readonly me: MeEnvelope | null;
-  readonly reload: () => void;
+  readonly reload: () => Promise<void>;
 }
 
 /**
@@ -51,7 +53,7 @@ export function renderSignedOut(center: HTMLElement): void {
       body: elC(
         "div",
         { class: "watchlist-signed-out" },
-        elC("p", { class: "watchlist-note" }, guidance.message),
+        elC("p", { class: WATCHLIST_NOTE_CLASS }, guidance.message),
         elC(
           "a",
           {
@@ -149,7 +151,7 @@ function listCard(
       ? [
           elC(
             "p",
-            { class: "watchlist-note" },
+            { class: WATCHLIST_NOTE_CLASS },
             "No advisors yet. Add one from an advisor profile."
           ),
         ]
@@ -299,6 +301,7 @@ async function persistReorder(
     );
     return previous?.rank !== entry.rank;
   });
+  renderLoading(ctx.center);
   await Promise.all(
     changed.map(entry =>
       postJsonC(
@@ -307,7 +310,7 @@ async function persistReorder(
       )
     )
   );
-  ctx.reload();
+  await ctx.reload();
 }
 
 /**
@@ -348,8 +351,19 @@ async function mutate(
   status.replaceChildren("Saving…");
   try {
     await postJsonC(WATCHLISTS_PATH, body);
-    ctx.reload();
+    await ctx.reload();
   } catch {
     status.replaceChildren(failure);
   }
+}
+
+/**
+ * Replaces interactive rows while an ordered mutation is settling.
+ * @param center - Main content column.
+ */
+function renderLoading(center: HTMLElement): void {
+  clearC(center);
+  center.appendChild(
+    elC("p", { class: WATCHLIST_NOTE_CLASS }, "Loading watchlists…")
+  );
 }
