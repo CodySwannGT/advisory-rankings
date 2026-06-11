@@ -1,11 +1,7 @@
-import type {
-  AdvisorRow,
-  FirmAliasRow,
-  FirmRow,
-  TeamRow,
-} from "../types/harper-schema.js";
+import type { FirmAliasRow, FirmRow, TeamRow } from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
 import type {
+  AdvisorDirectoryRow,
   DirectoryPage,
   SearchResponse,
   TeamDirectoryRow,
@@ -105,7 +101,7 @@ export class PublicAdvisors extends Resource {
    * @returns Advisor page, next cursor, total row count, and an
    *   optional `truncated` flag when the `q` intersection hit the cap.
    */
-  async get(target?: RouteTarget): Promise<DirectoryPage<AdvisorRow>> {
+  async get(target?: RouteTarget): Promise<DirectoryPage<AdvisorDirectoryRow>> {
     const filters = parseAdvisorDirectoryFilters(target);
     const { cursor, limit } = parsePagination(target);
     const offset = decodeOffsetCursor(cursor);
