@@ -31,6 +31,13 @@ interface EvidenceState {
   readonly body: string;
 }
 
+/** Mount targets for responsive evidence card placement. */
+interface ResponsiveEvidenceSections {
+  readonly desktopRoot: HTMLElement;
+  readonly mobileRoot: HTMLElement;
+  readonly sections: readonly HTMLElement[];
+}
+
 /** Keys printed in the confidence distribution grid. */
 type ConfidenceLevel = "asserted" | "inferred" | "derived";
 
@@ -53,21 +60,6 @@ const CONFIDENCE_LEVELS: readonly ConfidenceLevel[] = [
 ];
 
 /**
- * Builds mobile advisor evidence cards for the center column.
- * @param profile - AdvisorProfile payload.
- * @returns Mobile-only evidence cards.
- */
-export function mobileEvidenceProfileSections(
-  profile: AdvisorProfilePayload
-): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-mobile-evidence" },
-    ...advisorEvidenceProfileSections(profile)
-  );
-}
-
-/**
  * Builds advisor evidence cards shared by desktop rail and mobile center flow.
  * @param profile - AdvisorProfile payload.
  * @returns Evidence freshness and confidence sections.
@@ -79,6 +71,28 @@ export function advisorEvidenceProfileSections(
     evidenceFreshnessSection(profile.evidenceFreshness),
     factConfidenceSection(profile.confidenceSummary),
   ];
+}
+
+/**
+ * Moves one advisor evidence DOM set between desktop and mobile slots.
+ * @param options - Responsive evidence mount targets.
+ * @param options.desktopRoot - Desktop right-rail evidence slot.
+ * @param options.mobileRoot - Mobile center-column evidence slot.
+ * @param options.sections - Evidence cards to move between slots.
+ */
+export function mountResponsiveEvidenceSections({
+  desktopRoot,
+  mobileRoot,
+  sections,
+}: ResponsiveEvidenceSections): void {
+  const mobileQuery = window.matchMedia("(max-width: 800px)");
+  const syncEvidencePlacement = (): void => {
+    const target = mobileQuery.matches ? mobileRoot : desktopRoot;
+    sections.forEach(section => target.appendChild(section));
+  };
+
+  syncEvidencePlacement();
+  mobileQuery.addEventListener("change", syncEvidencePlacement);
 }
 
 /**
