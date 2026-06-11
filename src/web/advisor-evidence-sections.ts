@@ -148,7 +148,7 @@ function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
           ]
         : [
             evidenceStateHeader({
-              label: "No data",
+              label: "No confidence data",
               tone: "warn",
               body: "No confidence rows yet. Fact confidence will appear after source-backed assertions are loaded.",
             }),
@@ -188,7 +188,7 @@ function helpText(label: string, explanation: string): HTMLElement {
   return el(
     "details",
     { class: "advisor-evidence-help" },
-    el("summary", { "aria-label": `${label} explanation` }, "?"),
+    el("summary", { "aria-label": `${label} explanation` }, "i"),
     el("p", {}, explanation)
   );
 }

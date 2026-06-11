@@ -683,6 +683,18 @@ describe("detail async states", () => {
           .filter({ hasText: /^Current$/ })
           .isVisible()
       ).toBe(true);
+      expect(
+        await desktopEvidence
+          .locator(".advisor-evidence-help summary")
+          .textContent()
+      ).toBe("i");
+      expect(
+        (
+          (await desktopEvidence
+            .locator(".advisor-evidence-title")
+            .textContent()) ?? ""
+        ).includes("?")
+      ).toBe(false);
       await expectHelpDisclosureDoesNotShiftLayout(
         page,
         ".right .advisor-evidence-help",
@@ -763,7 +775,20 @@ describe("detail async states", () => {
           .locator(".tag")
           .filter({ hasText: "No data" })
           .count()
-      ).toBe(2);
+      ).toBe(1);
+      expect(
+        await mobileEvidence
+          .locator(".tag")
+          .filter({ hasText: "No confidence data" })
+          .count()
+      ).toBe(1);
+      expect(
+        (
+          await mobileEvidence
+            .locator(".advisor-evidence-title")
+            .evaluateAll(nodes => nodes.map(node => node.textContent ?? ""))
+        ).some(text => text.includes("?"))
+      ).toBe(false);
       const mobileLabels = await mobileEvidence
         .locator(".advisor-evidence-metric span")
         .evaluateAll(nodes =>
