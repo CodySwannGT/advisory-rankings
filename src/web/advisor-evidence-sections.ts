@@ -58,6 +58,7 @@ const CONFIDENCE_LEVELS: readonly ConfidenceLevel[] = [
   "inferred",
   "derived",
 ];
+const responsiveEvidenceCleanup = new WeakMap<Document, () => void>();
 
 /**
  * Builds advisor evidence cards shared by desktop rail and mobile center flow.
@@ -79,20 +80,26 @@ export function advisorEvidenceProfileSections(
  * @param options.desktopRoot - Desktop right-rail evidence slot.
  * @param options.mobileRoot - Mobile center-column evidence slot.
  * @param options.sections - Evidence cards to move between slots.
+ * @returns Cleanup callback that removes the responsive placement listener.
  */
 export function mountResponsiveEvidenceSections({
   desktopRoot,
   mobileRoot,
   sections,
-}: ResponsiveEvidenceSections): void {
+}: ResponsiveEvidenceSections): () => void {
   const mobileQuery = window.matchMedia("(max-width: 800px)");
   const syncEvidencePlacement = (): void => {
     const target = mobileQuery.matches ? mobileRoot : desktopRoot;
     sections.forEach(section => target.appendChild(section));
   };
+  const cleanup = (): void =>
+    mobileQuery.removeEventListener("change", syncEvidencePlacement);
 
+  responsiveEvidenceCleanup.get(desktopRoot.ownerDocument)?.();
   syncEvidencePlacement();
   mobileQuery.addEventListener("change", syncEvidencePlacement);
+  responsiveEvidenceCleanup.set(desktopRoot.ownerDocument, cleanup);
+  return cleanup;
 }
 
 /**
