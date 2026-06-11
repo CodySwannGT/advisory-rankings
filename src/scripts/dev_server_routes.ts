@@ -106,9 +106,9 @@ export async function handleMcpRoute(
 }
 
 const NO_ARG_RESOURCE =
-  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue|AdvisorResearchQueue)$/;
+  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue|AdvisorResearchQueue|AdvisorCorrectionRequest)$/;
 const PROFILE_RESOURCE =
-  /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors|RegulatoryDiscrepancyReview)\/(.+)$/;
+  /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors|RegulatoryDiscrepancyReview|AdvisorCorrectionRequest)\/(.+)$/;
 
 /**
  * Serves the AdvisorBook HTML shell for browser document navigations to the

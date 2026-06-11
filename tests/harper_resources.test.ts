@@ -21,6 +21,9 @@ const EXAMPLE_WM_SHORT = "Example WM";
 const BETA_ADVISORS = "Beta Advisors";
 const AVERY_STONE_NAME = "Avery Stone";
 const AVERY_STONE_SLUG = "avery-stone";
+const AVERY_STONE_FIRM_BIO_URL = "https://example.com/avery";
+const AVERY_STONE_CORRECTED_NAME = "Avery Stone CFP";
+const FIRM_BIO_SUPPORTS_UPDATE_NOTE = "Firm bio supports the update.";
 const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
 const STONE_GROUP_SLUG = "stone-group";
@@ -73,6 +76,7 @@ const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 const LOADED_STATUS = "loaded";
 const REGULATORY_DISCREPANCY_TABLE = "RegulatoryDiscrepancy";
+const ADVISOR_CORRECTION_REQUEST_TABLE = "AdvisorCorrectionRequest";
 const ANALYST_EMAIL = "analyst@example.test";
 const DATE_2018_01_01 = "2018-01-01";
 const DATE_2020_01_01 = "2020-01-01";
@@ -215,6 +219,7 @@ const table = (name: string) => ({
   Ranking: table("Ranking"),
   RankingEntry: table("RankingEntry"),
   RegulatoryDiscrepancy: table(REGULATORY_DISCREPANCY_TABLE),
+  AdvisorCorrectionRequest: table(ADVISOR_CORRECTION_REQUEST_TABLE),
   AdvisorResearchCheck: table("AdvisorResearchCheck"),
   RecruitingDealQuote: table("RecruitingDealQuote"),
   RegistrationApplication: table("RegistrationApplication"),
@@ -658,7 +663,7 @@ const baseRows = () => {
       sourceType: "web_research",
       checkedAt: "2026-05-24T10:00:00Z",
       status: "success",
-      sourcesChecked: ["https://example.com/avery"],
+      sourcesChecked: [AVERY_STONE_FIRM_BIO_URL],
       nextCheckAfter: "2026-06-15T00:00:00Z",
     },
     {
@@ -672,6 +677,7 @@ const baseRows = () => {
     },
   ]);
   setRows("UserRating", []);
+  setRows(ADVISOR_CORRECTION_REQUEST_TABLE, []);
 };
 
 beforeEach(() => {
@@ -1097,7 +1103,7 @@ describe("Harper feed and profile builders", () => {
             researchSources: [
               expect.objectContaining({
                 sourceType: "web_research",
-                sourcesChecked: ["https://example.com/avery"],
+                sourcesChecked: [AVERY_STONE_FIRM_BIO_URL],
               }),
               expect.objectContaining({ sourceType: "firm_bio" }),
             ],
@@ -1387,6 +1393,163 @@ describe("Harper feed and profile builders", () => {
     } finally {
       (globalThis as any).tables.UserRating = original;
     }
+  });
+
+  it("stores signed-in advisor correction requests without changing profile facts", async () => {
+    const endpoint = new (resources as any).AdvisorCorrectionRequest() as any;
+    await expect(
+      endpoint.post({
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+      })
+    ).rejects.toMatchObject({ status: 401 });
+
+    endpoint.getCurrentUser = () => ({ email: CLIENT_EMAIL });
+    const beforeAdvisor = structuredClone(
+      tableRows.get("Advisor")?.find(row => row.id === "advisor-a")
+    );
+    const beforeProfile = await new (resources as any).AdvisorProfile().get(
+      routeTarget("advisor-a")
+    );
+
+    const response = await endpoint.post({
+      advisorId: "advisor-a",
+      fieldName: "legalName",
+      displayedValue: `  ${AVERY_STONE_NAME}  `,
+      proposedValue: `  ${AVERY_STONE_CORRECTED_NAME}  `,
+      submitterNote: " Public profile omits CFP mark. ",
+      sourceType: "firm_bio",
+      sourceRef: AVERY_STONE_FIRM_BIO_URL,
+      sourceContext: JSON.stringify({ field: "legalName" }),
+    });
+
+    expect(response).toMatchObject({
+      authenticated: true,
+      request: {
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        submitterId: CLIENT_EMAIL,
+        submitterNote: "Public profile omits CFP mark.",
+        sourceType: "firm_bio",
+        sourceRef: AVERY_STONE_FIRM_BIO_URL,
+        sourceContext: JSON.stringify({ field: "legalName" }),
+        status: "pending",
+      },
+    });
+    expect(response.request.id).toMatch(/^correction:client%40example\.test:/);
+    expect(tableRows.get(ADVISOR_CORRECTION_REQUEST_TABLE)).toContainEqual(
+      response.request
+    );
+    expect(
+      tableRows.get("Advisor")?.find(row => row.id === "advisor-a")
+    ).toEqual(beforeAdvisor);
+    await expect(
+      new (resources as any).AdvisorProfile().get(routeTarget("advisor-a"))
+    ).resolves.toMatchObject({
+      advisor: {
+        legalName: beforeProfile.advisor.legalName,
+      },
+    });
+  });
+
+  it("persists correction request review fields", async () => {
+    const endpoint = new (resources as any).AdvisorCorrectionRequest() as any;
+    endpoint.getCurrentUser = () => ({ id: "submitter-a" });
+    const created = await endpoint.post({
+      advisorId: "advisor-a",
+      fieldName: "legalName",
+      displayedValue: AVERY_STONE_NAME,
+      proposedValue: AVERY_STONE_CORRECTED_NAME,
+      note: "Needs analyst review.",
+    });
+
+    await expect(
+      endpoint.post(routeTarget(created.request.id), {
+        status: "accepted",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+      })
+    ).rejects.toMatchObject({
+      message: "Analyst role required",
+      status: 403,
+    });
+
+    endpoint.getCurrentUser = () => ({ id: "analyst-a", role: "analyst" });
+    const reviewed = await endpoint.post(routeTarget(created.request.id), {
+      status: "accepted",
+      reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+    });
+
+    expect(reviewed).toMatchObject({
+      authenticated: true,
+      request: {
+        ...created.request,
+        status: "accepted",
+        reviewerId: "analyst-a",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+      },
+    });
+    expect(reviewed.request.reviewedAt).toEqual(expect.any(String));
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).resolves.toEqual({
+      authenticated: true,
+      request: reviewed.request,
+    });
+    await expect(
+      endpoint.post(routeTarget(created.request.id), {
+        status: "rejected",
+        reviewerNote: "Changed my mind.",
+      })
+    ).rejects.toMatchObject({
+      message: "correction request is already reviewed",
+      status: 409,
+    });
+    expect(
+      tableRows
+        .get(ADVISOR_CORRECTION_REQUEST_TABLE)
+        ?.find(row => row.id === created.request.id)
+    ).toEqual(reviewed.request);
+  });
+
+  it("limits correction request reads to submitters and analysts", async () => {
+    const endpoint = new (resources as any).AdvisorCorrectionRequest() as any;
+    endpoint.getCurrentUser = () => ({ email: CLIENT_EMAIL });
+    const created = await endpoint.post({
+      advisorId: "advisor-a",
+      fieldName: "legalName",
+      displayedValue: AVERY_STONE_NAME,
+      proposedValue: AVERY_STONE_CORRECTED_NAME,
+    });
+
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).resolves.toEqual({
+      authenticated: true,
+      request: created.request,
+    });
+
+    endpoint.getCurrentUser = () => ({ email: "other@example.test" });
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).rejects.toMatchObject({
+      message: "Correction request access denied",
+      status: 403,
+    });
+
+    endpoint.getCurrentUser = () => ({
+      email: ANALYST_EMAIL,
+      role: { role: "analyst" },
+    });
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).resolves.toEqual({
+      authenticated: true,
+      request: created.request,
+    });
   });
 
   it("labels missing firm due-diligence source states explicitly", async () => {

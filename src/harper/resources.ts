@@ -5,6 +5,7 @@ export * from "./resource-directory-endpoints.js";
 export * from "./resource-auth-endpoints.js";
 export * from "./resource-user-rating.js";
 export * from "./resource-user-watchlists.js";
+export * from "./resource-advisor-correction-request.js";
 export * from "./resource-regulatory-discrepancy-review.js";
 export * from "./resource-mcp.js";
 export * from "./resource-recruiting-market.js";

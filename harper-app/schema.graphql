@@ -572,6 +572,25 @@ type UserRating @table {
   createdAt: Date @createdTime
 }
 
+type AdvisorCorrectionRequest @table {
+  id: ID @primaryKey
+  advisorId: ID! @indexed
+  fieldName: String! @indexed
+  displayedValue: String
+  proposedValue: String!
+  submitterId: ID! @indexed
+  submitterNote: String
+  sourceType: String @indexed
+  sourceRef: String
+  sourceContext: String
+  status: String! @indexed
+  reviewerId: ID @indexed
+  reviewerNote: String
+  reviewedAt: Date
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
 # The active watchlist resource (`UserWatchlists`) stores rows in
 # `UserWatchlist`/`UserWatchlistEntry`, resolved through the `tables` global.
 # These are per-user PRIVATE tables, so like `User`/`UserRating` they are

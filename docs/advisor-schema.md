@@ -733,16 +733,24 @@ reloading `/AdvisorResearchQueue`.
 | `year` | int |
 | `rank?` | int |
 
-### 4.23 `UserRating` & `UserWatchlist` (your product layer)
+### 4.23 `UserRating`, `AdvisorCorrectionRequest` & `UserWatchlist` (your product layer)
 
 Kept separate from AdvisorHub-sourced ground truth.
 
-**Privacy:** `User`, `UserRating`, `UserWatchlist`, and
-`UserWatchlistEntry` hold per-user private data. Harper's table-level RBAC
-is not row-scoped, so a regular role with direct table read could enumerate
-every user's private rows. All UI access is funneled through the scoped
-resources (`AdvisorRating`, `UserWatchlists`), which run elevated and
-enforce per-user ownership in code.
+**Privacy:** `User`, `UserRating`, `AdvisorCorrectionRequest`,
+`UserWatchlist`, and `UserWatchlistEntry` hold per-user private or
+operator-review data. Harper's table-level RBAC is not row-scoped, so a
+regular role with direct table read could enumerate every user's private
+rows. All UI access is funneled through scoped resources
+(`AdvisorRating`, `AdvisorCorrectionRequest`, `UserWatchlists`), which run
+elevated and enforce auth and ownership/workflow rules in code.
+
+Correction requests store proposed edits as review work without mutating the
+source-backed advisor facts shown on public profiles. Submission captures the
+advisor id, field name, displayed value, proposed value, submitter identity,
+submitter note, source type/ref/context, and `pending` status. Analyst review
+updates only disposition fields: status (`accepted` or `rejected`), reviewer
+identity, reviewer note, and reviewed timestamp.
 
 Watchlist reads and writes use `UserWatchlist` and `UserWatchlistEntry`,
 resolved through the jsResource `tables` global. Like the other user-private
@@ -757,6 +765,7 @@ from the schema.
 
 ```
 UserRating(advisor_id, user_id, rating_int, dimensions: {responsiveness, transparency, performance, planning_depth}, review_text, created_at)
+AdvisorCorrectionRequest(advisor_id, field_name, displayed_value, proposed_value, submitter_id, submitter_note, source_type, source_ref, source_context, status, reviewer_id, reviewer_note, reviewed_at)
 UserWatchlist(user_id, name)
 UserWatchlistEntry(list_id, advisor_id, rank, note)
 AdvisorAggregateRating  -- materialised view

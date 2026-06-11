@@ -602,6 +602,26 @@ export interface UserRatingRow {
   readonly createdAt?: HarperDate;
 }
 
+/** Advisor correction request row. */
+export interface AdvisorCorrectionRequestRow {
+  readonly id: string;
+  readonly advisorId: string;
+  readonly fieldName: string;
+  readonly displayedValue?: string;
+  readonly proposedValue: string;
+  readonly submitterId: string;
+  readonly submitterNote?: string;
+  readonly sourceType?: string;
+  readonly sourceRef?: string;
+  readonly sourceContext?: string;
+  readonly status: string;
+  readonly reviewerId?: string;
+  readonly reviewerNote?: string;
+  readonly reviewedAt?: HarperDate;
+  readonly createdAt?: HarperDate;
+  readonly updatedAt?: HarperDate;
+}
+
 /** User watchlist row. */
 export interface UserWatchlistRow {
   readonly id: string;

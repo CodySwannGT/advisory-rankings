@@ -25,6 +25,7 @@
  *   - GET /RecruitingMarket        → resources.js RecruitingMarket.get()
  *   - GET /RankingsExplorer        → resources.js RankingsExplorer.get()
  *   - GET /AdvisorResearchQueue    → resources.js AdvisorResearchQueue.get()
+ *   - POST /AdvisorCorrectionRequest → resources.js AdvisorCorrectionRequest.post()
  *   - POST /RegulatoryDiscrepancyReview/<id> → resources.js RegulatoryDiscrepancyReview.post()
  *   - POST /mcp                    → resources.js mcp.post(body)
  *   - GET /<TableName>/            → operations-API SQL passthrough
