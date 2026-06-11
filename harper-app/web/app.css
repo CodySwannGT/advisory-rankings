@@ -337,6 +337,9 @@ body.drawer-open .nav .nav-scrim {
   max-height: calc(100vh - 80px);
   overflow-y: auto;
 }
+.rail:has(.advisor-evidence-help, .firm-dd-help) {
+  overflow: visible;
+}
 
 .ab-page-title {
   position: absolute;
@@ -359,6 +362,9 @@ body.drawer-open .nav .nav-scrim {
   box-shadow: var(--shadow);
   margin-bottom: 16px;
   overflow: hidden;
+}
+.card:has(.advisor-evidence-help, .firm-dd-help) {
+  overflow: visible;
 }
 .card .card-body {
   padding: 16px;
@@ -912,12 +918,25 @@ body.drawer-open .nav .nav-scrim {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--card);
   box-shadow: var(--shadow);
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .advisor-evidence-help p,
+  .firm-dd-help p {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+  }
 }
 
 /* ── Firm due diligence summary ─────────────────────────────── */

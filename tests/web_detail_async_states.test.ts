@@ -1488,6 +1488,8 @@ async function expectHelpDisclosureDoesNotShiftLayout(
   expect(Math.abs(open.followingTop - closed.followingTop)).toBeLessThanOrEqual(
     LAYOUT_TOLERANCE_PX
   );
+  expect(open.panelBackgroundAlpha).toBe(1);
+  expect(open.panelClipped).toBe(false);
 }
 
 async function helpDisclosureMetrics(
@@ -1496,21 +1498,66 @@ async function helpDisclosureMetrics(
   followingContentSelector: string
 ): Promise<{
   readonly followingTop: number;
+  readonly panelBackgroundAlpha: number;
+  readonly panelClipped: boolean;
   readonly summaryHeight: number;
   readonly summaryWidth: number;
 }> {
   return await page.evaluate(
     ({ helpSelector: helpQuery, followingContentSelector: contentQuery }) => {
+      const backgroundAlpha = (element: HTMLElement): number => {
+        const match = /rgba?\(([^)]+)\)/u
+          .exec(getComputedStyle(element).backgroundColor)
+          ?.at(1)
+          ?.split(",")
+          .map(part => part.trim());
+        return match?.at(3) ? Number(match.at(3)) : 1;
+      };
+      const isElementClipped = (
+        element: HTMLElement,
+        rect: DOMRect
+      ): boolean => {
+        if (
+          rect.left < 0 ||
+          rect.top < 0 ||
+          rect.right > window.innerWidth ||
+          rect.bottom > window.innerHeight
+        ) {
+          return true;
+        }
+
+        let ancestor = element.parentElement;
+        while (ancestor) {
+          const overflow = getComputedStyle(ancestor).overflow;
+          if (/(auto|hidden|clip|scroll)/u.test(overflow)) {
+            const ancestorRect = ancestor.getBoundingClientRect();
+            if (
+              rect.left < ancestorRect.left ||
+              rect.top < ancestorRect.top ||
+              rect.right > ancestorRect.right ||
+              rect.bottom > ancestorRect.bottom
+            ) {
+              return true;
+            }
+          }
+          ancestor = ancestor.parentElement;
+        }
+        return false;
+      };
       const summary = document.querySelector<HTMLElement>(
         `${helpQuery} summary`
       );
       const followingContent =
         document.querySelector<HTMLElement>(contentQuery);
+      const panel = document.querySelector<HTMLElement>(`${helpQuery} p`);
       const summaryRect = summary?.getBoundingClientRect();
       const contentRect = followingContent?.getBoundingClientRect();
+      const panelRect = panel?.getBoundingClientRect();
 
       return {
         followingTop: contentRect?.top ?? 0,
+        panelBackgroundAlpha: panel ? backgroundAlpha(panel) : 0,
+        panelClipped: panelRect ? isElementClipped(panel, panelRect) : true,
         summaryHeight: summaryRect?.height ?? 0,
         summaryWidth: summaryRect?.width ?? 0,
       };
