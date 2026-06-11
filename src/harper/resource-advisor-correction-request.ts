@@ -57,6 +57,13 @@ interface CorrectionRequestResponse {
   readonly request: AdvisorCorrectionRequestRow;
 }
 
+/**
+ *
+ */
+type CorrectionRequestGetResponse =
+  | CorrectionRequestResponse
+  | AdvisorCorrectionRequestQueueResponse;
+
 /** Authenticated submission and analyst review surface for advisor corrections. */
 export class AdvisorCorrectionRequest extends Resource {
   /**
@@ -80,31 +87,13 @@ export class AdvisorCorrectionRequest extends Resource {
    * @param target Route target containing the correction request id.
    * @returns Stored correction request row or pending queue payload.
    */
-  async get(
-    target?: RouteTarget
-  ): Promise<
-    CorrectionRequestResponse | AdvisorCorrectionRequestQueueResponse
-  > {
+  async get(target?: RouteTarget): Promise<CorrectionRequestGetResponse> {
     const resource = this as CurrentUserResource;
     const userId = currentUserId(resource);
     const requestId = normalizeId(target);
-    if (!userId) return emptyCorrectionRequestQueue(false, false);
-    if (!requestId) {
-      return hasAnalystRole(currentUser(resource))
-        ? correctionRequestQueue(correctionRequestTable())
-        : emptyCorrectionRequestQueue(true, false);
-    }
-    const request = await requireCorrectionRequest(requestId);
-    if (
-      request.submitterId !== userId &&
-      !hasAnalystRole(currentUser(resource))
-    ) {
-      throwStatus("Correction request access denied", 403);
-    }
-    return {
-      authenticated: true,
-      request,
-    };
+    if (!userId) return unauthenticatedCorrectionRead(requestId);
+    if (!requestId) return correctionQueueForUser(resource);
+    return correctionRequestForUser(requestId, userId, resource);
   }
 
   /**
@@ -133,6 +122,56 @@ export class AdvisorCorrectionRequest extends Resource {
     }
     return { authenticated: true, request: await createRequest(body, userId) };
   }
+}
+
+/**
+ * Handles anonymous correction reads without leaking item existence.
+ * @param requestId Optional route id.
+ * @returns Empty public queue envelope for list reads.
+ */
+function unauthenticatedCorrectionRead(
+  requestId: string
+): AdvisorCorrectionRequestQueueResponse {
+  if (requestId) throwStatus("Sign in required", 401);
+  return emptyCorrectionRequestQueue(false, false);
+}
+
+/**
+ * Returns the pending analyst queue or an authorized empty envelope.
+ * @param resource Current Harper resource instance.
+ * @returns Pending queue payload for analysts, empty payload otherwise.
+ */
+async function correctionQueueForUser(
+  resource: CurrentUserResource
+): Promise<AdvisorCorrectionRequestQueueResponse> {
+  return hasAnalystRole(currentUser(resource))
+    ? correctionRequestQueue(correctionRequestTable())
+    : emptyCorrectionRequestQueue(true, false);
+}
+
+/**
+ * Returns one correction request when the caller may read it.
+ * @param requestId Persisted correction request id.
+ * @param userId Current session user id.
+ * @param resource Current Harper resource instance.
+ * @returns Stored correction request row.
+ */
+async function correctionRequestForUser(
+  requestId: string,
+  userId: string,
+  resource: CurrentUserResource
+): Promise<CorrectionRequestResponse> {
+  const request = await requireCorrectionRequest(requestId);
+  if (
+    request.submitterId !== userId &&
+    !hasAnalystRole(currentUser(resource))
+  ) {
+    throwStatus("Correction request access denied", 403);
+  }
+  return {
+    authenticated: true,
+    request,
+  };
 }
 
 /**

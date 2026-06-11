@@ -991,6 +991,9 @@ describe("detail async states", () => {
         .locator('textarea[name="reviewerNote"]')
         .fill(FIRM_BIO_REVIEW_NOTE);
       await page.getByRole("button", { name: "Submit disposition" }).click();
+      expect(reviewPosts).toEqual([]);
+      await page.locator('select[name="status"]').selectOption("accepted");
+      await page.getByRole("button", { name: "Submit disposition" }).click();
 
       await page
         .getByText("No pending correction requests")

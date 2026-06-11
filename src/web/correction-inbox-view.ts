@@ -207,6 +207,11 @@ function dispositionForm(
   const decision = el(
     "select",
     { name: "status", required: true },
+    el(
+      "option",
+      { value: "", selected: true, disabled: true },
+      "Choose decision..."
+    ),
     el("option", { value: "accepted" }, "Accept"),
     el("option", { value: "rejected" }, "Reject")
   ) as HTMLSelectElement;

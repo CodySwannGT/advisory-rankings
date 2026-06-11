@@ -1539,6 +1539,14 @@ describe("Harper feed and profile builders", () => {
       request: created.request,
     });
 
+    endpoint.getCurrentUser = () => null;
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).rejects.toMatchObject({
+      message: "Sign in required",
+      status: 401,
+    });
+
     endpoint.getCurrentUser = () => ({ email: "other@example.test" });
     await expect(
       endpoint.get(routeTarget(created.request.id))
@@ -1593,7 +1601,6 @@ describe("Harper feed and profile builders", () => {
         proposedValue: "Corrected missing advisor",
         submitterId: CLIENT_EMAIL,
         status: "pending",
-        createdAt: "not-a-date",
       },
       {
         id: "correction-reviewed",
@@ -1639,8 +1646,16 @@ describe("Harper feed and profile builders", () => {
     expect(queue).toMatchObject({
       authenticated: true,
       authorized: true,
-      summary: { pending: 3 },
+      summary: { pending: 3, oldestAgeDays: expect.any(Number) },
       items: [
+        {
+          id: CORRECTION_UNKNOWN_ID,
+          advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
+          advisorName: CORRECTION_UNKNOWN_ADVISOR_ID,
+          firmName: null,
+          createdAt: null,
+          ageDays: null,
+        },
         {
           id: CORRECTION_OLD_ID,
           advisorId: "advisor-a",
@@ -1664,20 +1679,12 @@ describe("Harper feed and profile builders", () => {
           advisorName: AVERY_STONE_NAME,
           createdAt: DATE_2024_04_01,
         },
-        {
-          id: CORRECTION_UNKNOWN_ID,
-          advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
-          advisorName: CORRECTION_UNKNOWN_ADVISOR_ID,
-          firmName: null,
-          createdAt: "not-a-date",
-          ageDays: null,
-        },
       ],
     });
     expect(queue.items.map((item: any) => item.id)).toEqual([
+      CORRECTION_UNKNOWN_ID,
       CORRECTION_OLD_ID,
       CORRECTION_TIE_ID,
-      CORRECTION_UNKNOWN_ID,
     ]);
 
     await analystEndpoint.post(routeTarget(CORRECTION_OLD_ID), {

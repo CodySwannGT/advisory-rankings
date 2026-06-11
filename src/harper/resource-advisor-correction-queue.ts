@@ -61,13 +61,14 @@ export async function correctionRequestQueue(
     .sort(comparePendingRequests);
   const db = await loadAll();
   const items = rows.map(row => queueItem(row, db));
+  const datedItems = items.filter(item => item.createdAt !== null);
   return {
     authenticated: true,
     authorized: true,
     generatedAt: new Date().toISOString(),
     summary: {
       pending: items.length,
-      oldestAgeDays: items[0]?.ageDays ?? null,
+      oldestAgeDays: datedItems[0]?.ageDays ?? null,
     },
     items,
   };
