@@ -33,6 +33,7 @@ const STATIC_EXACT_PATHS: ReadonlyMap<string, string> = new Map([
   ["/rankings", "/rankings.html"],
   ["/regulatory", "/regulatory.html"],
   ["/regulatory/discrepancies", "/regulatory-discrepancies.html"],
+  ["/corrections", "/correction-inbox.html"],
   ["/compare", "/compare.html"],
   ["/report-packet", "/report-packet.html"],
   ["/advisors", "/advisors.html"],

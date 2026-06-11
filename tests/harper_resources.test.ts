@@ -24,6 +24,11 @@ const AVERY_STONE_SLUG = "avery-stone";
 const AVERY_STONE_FIRM_BIO_URL = "https://example.com/avery";
 const AVERY_STONE_CORRECTED_NAME = "Avery Stone CFP";
 const FIRM_BIO_SUPPORTS_UPDATE_NOTE = "Firm bio supports the update.";
+const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
+const CORRECTION_OLD_ID = "correction-old";
+const CORRECTION_TIE_ID = "correction-tie";
+const CORRECTION_UNKNOWN_ID = "correction-unknown";
+const CORRECTION_UNKNOWN_ADVISOR_ID = "advisor-missing";
 const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
 const STONE_GROUP_SLUG = "stone-group";
@@ -1397,6 +1402,8 @@ describe("Harper feed and profile builders", () => {
 
   it("stores signed-in advisor correction requests without changing profile facts", async () => {
     const endpoint = new (resources as any).AdvisorCorrectionRequest() as any;
+    expect(endpoint.allowRead()).toBe(true);
+    expect(endpoint.allowCreate()).toBe(true);
     await expect(
       endpoint.post({
         advisorId: "advisor-a",
@@ -1549,6 +1556,144 @@ describe("Harper feed and profile builders", () => {
     ).resolves.toEqual({
       authenticated: true,
       request: created.request,
+    });
+  });
+
+  it("lists pending correction requests for analysts without exposing them to other users", async () => {
+    setRows(ADVISOR_CORRECTION_REQUEST_TABLE, [
+      {
+        id: CORRECTION_OLD_ID,
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        submitterId: CLIENT_EMAIL,
+        submitterNote: FIRM_BIO_SUBMITTER_NOTE,
+        sourceType: "firm_bio",
+        sourceRef: AVERY_STONE_FIRM_BIO_URL,
+        sourceContext: "Profile heading",
+        status: "pending",
+        createdAt: DATE_2024_04_01,
+      },
+      {
+        id: CORRECTION_TIE_ID,
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        submitterId: CLIENT_EMAIL,
+        status: "pending",
+        createdAt: DATE_2024_04_01,
+      },
+      {
+        id: CORRECTION_UNKNOWN_ID,
+        advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
+        fieldName: "legalName",
+        displayedValue: "Missing advisor",
+        proposedValue: "Corrected missing advisor",
+        submitterId: CLIENT_EMAIL,
+        status: "pending",
+        createdAt: "not-a-date",
+      },
+      {
+        id: "correction-reviewed",
+        advisorId: "advisor-a",
+        fieldName: "legalName",
+        displayedValue: AVERY_STONE_NAME,
+        proposedValue: AVERY_STONE_CORRECTED_NAME,
+        submitterId: CLIENT_EMAIL,
+        status: "accepted",
+        createdAt: DATE_2026_05_25,
+      },
+    ]);
+
+    const anonymous = await new (
+      resources as any
+    ).AdvisorCorrectionRequest().get();
+    expect(anonymous).toMatchObject({
+      authenticated: false,
+      authorized: false,
+      summary: { pending: 0, oldestAgeDays: null },
+      items: [],
+    });
+
+    const clientEndpoint = new (
+      resources as any
+    ).AdvisorCorrectionRequest() as any;
+    clientEndpoint.getCurrentUser = () => ({ email: CLIENT_EMAIL });
+    await expect(clientEndpoint.get()).resolves.toMatchObject({
+      authenticated: true,
+      authorized: false,
+      items: [],
+    });
+
+    const analystEndpoint = new (
+      resources as any
+    ).AdvisorCorrectionRequest() as any;
+    analystEndpoint.getCurrentUser = () => ({
+      email: ANALYST_EMAIL,
+      role: "analyst",
+    });
+    const queue = await analystEndpoint.get();
+
+    expect(queue).toMatchObject({
+      authenticated: true,
+      authorized: true,
+      summary: { pending: 3 },
+      items: [
+        {
+          id: CORRECTION_OLD_ID,
+          advisorId: "advisor-a",
+          advisorName: AVERY_STONE_NAME,
+          advisorUrl: "/advisor.html?id=advisor-a",
+          firmName: EXAMPLE_WEALTH_MANAGEMENT,
+          fieldName: "legalName",
+          displayedValue: AVERY_STONE_NAME,
+          proposedValue: AVERY_STONE_CORRECTED_NAME,
+          submitterId: CLIENT_EMAIL,
+          submitterNote: FIRM_BIO_SUBMITTER_NOTE,
+          sourceType: "firm_bio",
+          sourceRef: AVERY_STONE_FIRM_BIO_URL,
+          sourceContext: "Profile heading",
+          status: "pending",
+          createdAt: DATE_2024_04_01,
+          ageDays: expect.any(Number),
+        },
+        {
+          id: CORRECTION_TIE_ID,
+          advisorName: AVERY_STONE_NAME,
+          createdAt: DATE_2024_04_01,
+        },
+        {
+          id: CORRECTION_UNKNOWN_ID,
+          advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
+          advisorName: CORRECTION_UNKNOWN_ADVISOR_ID,
+          firmName: null,
+          createdAt: "not-a-date",
+          ageDays: null,
+        },
+      ],
+    });
+    expect(queue.items.map((item: any) => item.id)).toEqual([
+      CORRECTION_OLD_ID,
+      CORRECTION_TIE_ID,
+      CORRECTION_UNKNOWN_ID,
+    ]);
+
+    await analystEndpoint.post(routeTarget(CORRECTION_OLD_ID), {
+      status: "rejected",
+      reviewerNote: "Firm page does not match current profile standard.",
+    });
+    await expect(analystEndpoint.get()).resolves.toMatchObject({
+      summary: { pending: 2 },
+    });
+    await expect(
+      analystEndpoint.post(routeTarget(CORRECTION_TIE_ID), {
+        status: "unsupported",
+      })
+    ).rejects.toMatchObject({
+      message: "unsupported correction request status",
+      status: 400,
     });
   });
 

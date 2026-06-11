@@ -28,6 +28,7 @@ fastifyRoutes:
     - 'rankings/index.js'
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
+    - 'corrections/index.js'
     - 'compare/index.js'
     - 'report-packet/index.js'
     - 'watchlists/index.js'

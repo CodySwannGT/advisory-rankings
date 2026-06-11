@@ -1,6 +1,11 @@
 import type { AdvisorCorrectionRequestRow } from "../types/harper-schema.js";
 import type { JsonBody, RouteTarget } from "../types/harper-resource.js";
 
+import {
+  correctionRequestQueue,
+  emptyCorrectionRequestQueue,
+  type AdvisorCorrectionRequestQueueResponse,
+} from "./resource-advisor-correction-queue.js";
 import { normalizeId } from "./resource-routing.js";
 import {
   currentUserId,
@@ -71,15 +76,25 @@ export class AdvisorCorrectionRequest extends Resource {
   }
 
   /**
-   * Returns one persisted correction request by id for signed-in reviewers.
+   * Returns one persisted correction request by id, or the analyst pending inbox.
    * @param target Route target containing the correction request id.
-   * @returns Stored correction request row.
+   * @returns Stored correction request row or pending queue payload.
    */
-  async get(target?: RouteTarget): Promise<CorrectionRequestResponse> {
+  async get(
+    target?: RouteTarget
+  ): Promise<
+    CorrectionRequestResponse | AdvisorCorrectionRequestQueueResponse
+  > {
     const resource = this as CurrentUserResource;
     const userId = currentUserId(resource);
-    if (!userId) throwStatus("Sign in required", 401);
-    const request = await requireCorrectionRequest(normalizeId(target));
+    const requestId = normalizeId(target);
+    if (!userId) return emptyCorrectionRequestQueue(false, false);
+    if (!requestId) {
+      return hasAnalystRole(currentUser(resource))
+        ? correctionRequestQueue(correctionRequestTable())
+        : emptyCorrectionRequestQueue(true, false);
+    }
+    const request = await requireCorrectionRequest(requestId);
     if (
       request.submitterId !== userId &&
       !hasAnalystRole(currentUser(resource))

@@ -35,6 +35,7 @@ const NAV_LINKS: readonly NavLink[] = [
   { active: "teams", href: "/teams", label: "Teams" },
   { active: "watchlists", href: "/watchlists", label: "Watchlists" },
   { active: "regulatory", href: "/regulatory", label: "Compliance" },
+  { active: "corrections", href: "/corrections", label: "Corrections" },
 ];
 
 const NAV_DRAWER_MEDIA = "(max-width: 1300px)";

@@ -2175,6 +2175,51 @@ body.drawer-open .nav .nav-scrim {
   justify-self: start;
 }
 
+.correction-inbox-card {
+  overflow-wrap: anywhere;
+}
+
+.correction-inbox-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.correction-inbox-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.correction-inbox-field select,
+.correction-inbox-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+}
+
+.correction-inbox-field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.correction-inbox-status {
+  min-height: 20px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .comparison-status {
   display: flex;
   align-items: center;
