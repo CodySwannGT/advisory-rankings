@@ -1277,7 +1277,7 @@ async function routeAdvisorEvidence(page: Page) {
     await route.fulfill({ json: { authenticated: false } });
   });
   await page.route("**/AdvisorProfile/*", async route => {
-    const id = route.request().url().split("/").pop() || ADVISOR_LOADED_ID;
+    const id = advisorIdFromRouteUrl(route.request().url());
     await route.fulfill({ json: advisorEvidenceProfile(id) });
   });
 }
@@ -1295,7 +1295,7 @@ async function routeAdvisorCorrectionProfile(
     });
   });
   await page.route("**/AdvisorProfile/*", async route => {
-    const id = route.request().url().split("/").pop() || ADVISOR_LOADED_ID;
+    const id = advisorIdFromRouteUrl(route.request().url());
     await route.fulfill({ json: advisorEvidenceProfile(id) });
   });
   await page.route("**/AdvisorRating/**", async route => {
@@ -1320,6 +1320,11 @@ async function routeAdvisorCorrectionProfile(
       },
     });
   });
+}
+
+function advisorIdFromRouteUrl(url: string): string {
+  const parts = new URL(url).pathname.split("/").filter(Boolean);
+  return parts.at(-1) ?? ADVISOR_LOADED_ID;
 }
 
 async function expectHelpDisclosureDoesNotShiftLayout(

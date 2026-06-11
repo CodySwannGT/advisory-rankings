@@ -2,9 +2,7 @@ import { fmts } from "./app.js";
 import { compareEntryAction } from "./compare-entry.js";
 import { SectionCard, TransitionEventCard } from "./design-system/index.js";
 
-/**
- *
- */
+/** Uniform adapter signature for untyped design-system components. */
 type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
 
 const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;

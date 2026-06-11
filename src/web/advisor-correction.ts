@@ -10,22 +10,20 @@ import {
   clear,
   el,
 } from "./design-system/index.js";
+import {
+  correctionFields,
+  type CorrectionField,
+} from "./advisor-correction-fields.js";
 
 const NOTE_CLASS = "advisor-correction-note";
-
-/** Candidate source-backed profile field that can be corrected. */
-interface CorrectionField {
-  readonly name: string;
-  readonly label: string;
-  readonly value: string;
-}
 
 /** Form controls used by the correction submit handler. */
 type CorrectionControls = Readonly<
   Record<"field", HTMLSelectElement> &
     Record<"displayed", HTMLInputElement> &
     Record<"proposed", HTMLTextAreaElement> &
-    Record<"note", HTMLTextAreaElement>
+    Record<"note", HTMLTextAreaElement> &
+    Record<"submit", HTMLButtonElement>
 >;
 
 /** Minimal successful correction resource response. */
@@ -158,28 +156,32 @@ function renderCorrectionForm(
   }
 
   const controls = correctionControls(fields);
-  const form = el(
-    "form",
-    {
-      class: "advisor-correction-form",
-      onSubmit: (event: Event): void => {
-        void submitCorrection(event, advisorId, controls, fields, status);
-      },
-    },
-    correctionField("Field", controls.field),
-    correctionField("Displayed value", controls.displayed),
-    correctionField("Proposed value", controls.proposed),
-    correctionField("Note", controls.note),
+  const submit = asHtmlButtonElement(
     Button({
       variant: "primary",
       type: "submit",
       children: "Submit correction",
       attrs: { class: "advisor-correction-submit" },
-    }),
+    })
+  );
+  const formControls: CorrectionControls = { ...controls, submit };
+  const form = el(
+    "form",
+    {
+      class: "advisor-correction-form",
+      onSubmit: (event: Event): void => {
+        void submitCorrection(event, advisorId, formControls, fields, status);
+      },
+    },
+    correctionField("Field", formControls.field),
+    correctionField("Displayed value", formControls.displayed),
+    correctionField("Proposed value", formControls.proposed),
+    correctionField("Note", formControls.note),
+    formControls.submit,
     status
   );
-  controls.field.addEventListener("change", () => {
-    syncDisplayedValue(controls, fields);
+  formControls.field.addEventListener("change", () => {
+    syncDisplayedValue(formControls, fields);
   });
   clear(body);
   body.append(
@@ -199,7 +201,7 @@ function renderCorrectionForm(
  */
 function correctionControls(
   fields: readonly CorrectionField[]
-): CorrectionControls {
+): Omit<CorrectionControls, "submit"> {
   const field = asHtmlSelectElement(
     el(
       "select",
@@ -248,7 +250,10 @@ async function submitCorrection(
   status: HTMLElement
 ): Promise<void> {
   const field = selectedField(controls.field.value, fields);
+  const isSubmitting = controls.submit.disabled;
   event.preventDefault();
+  if (isSubmitting) return;
+  setCorrectionControlsDisabled(controls, true);
   status.replaceChildren("Submitting...");
   try {
     const response = await postJson("/AdvisorCorrectionRequest", {
@@ -279,43 +284,24 @@ async function submitCorrection(
         ? "Sign in again to submit corrections."
         : "Could not queue correction request."
     );
+  } finally {
+    setCorrectionControlsDisabled(controls, false);
   }
 }
 
 /**
- * Returns selectable fields from profile facts already rendered on the page.
- * @param profile - Advisor profile resource payload.
- * @returns Source-backed correction fields.
+ * Toggles mutation controls while a correction request is in flight.
+ * @param controls - Form controls to update.
+ * @param disabled - Whether controls should be disabled.
  */
-function correctionFields(
-  profile: AdvisorProfilePayload
-): readonly CorrectionField[] {
-  const currentCareer = profile.career.find(row => !row.endDate);
-  return [
-    field("legalName", "Legal name", profile.advisor.legalName),
-    field("preferredName", "Preferred name", profile.advisor.preferredName),
-    field("finraCrd", "FINRA CRD", profile.advisor.finraCrd),
-    field("secIard", "SEC IARD", profile.advisor.secIard),
-    field("careerStatus", "Career status", profile.advisor.careerStatus),
-    field("currentRole", "Current role", currentCareer?.roleTitle),
-    field("currentFirm", "Current firm", firmNameOf(currentCareer?.firm)),
-  ].filter((candidate): candidate is CorrectionField => candidate !== null);
-}
-
-/**
- * Builds one selectable field when the displayed value exists.
- * @param name - Resource field key.
- * @param label - Human-readable field label.
- * @param value - Displayed profile value.
- * @returns Correction field or null.
- */
-function field(
-  name: string,
-  label: string,
-  value: unknown
-): CorrectionField | null {
-  const normalized = typeof value === "string" ? value.trim() : "";
-  return normalized ? { name, label, value: normalized } : null;
+function setCorrectionControlsDisabled(
+  controls: CorrectionControls,
+  disabled: boolean
+): void {
+  Object.assign(controls.field, { disabled });
+  Object.assign(controls.proposed, { disabled });
+  Object.assign(controls.note, { disabled });
+  Object.assign(controls.submit, { disabled });
 }
 
 /**
@@ -345,19 +331,6 @@ function selectedField(
   const fallback = fields[0];
   if (!fallback) throw new Error("Expected at least one correction field");
   return fields.find(field => field.name === name) ?? fallback;
-}
-
-/**
- * Reads a firm display name from the opaque firm chip.
- * @param firm - Opaque firm chip from the AdvisorProfile resource.
- * @returns Firm name when present.
- */
-function firmNameOf(firm: unknown): string | undefined {
-  if (firm && typeof firm === "object" && "name" in firm) {
-    const name = firm.name;
-    if (typeof name === "string") return name;
-  }
-  return undefined;
 }
 
 /**
@@ -414,6 +387,18 @@ function asHtmlSelectElement(node: HTMLElement): HTMLSelectElement {
 function asHtmlTextAreaElement(node: HTMLElement): HTMLTextAreaElement {
   if (!(node instanceof HTMLTextAreaElement)) {
     throw new Error("Expected HTMLTextAreaElement");
+  }
+  return node;
+}
+
+/**
+ * Runtime guard for generated buttons.
+ * @param node - Element to narrow.
+ * @returns HTML button element.
+ */
+function asHtmlButtonElement(node: HTMLElement): HTMLButtonElement {
+  if (!(node instanceof HTMLButtonElement)) {
+    throw new Error("Expected HTMLButtonElement");
   }
   return node;
 }
