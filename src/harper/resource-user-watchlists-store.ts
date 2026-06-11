@@ -42,10 +42,7 @@ export interface SearchableTable<Row> {
 export function userListTable(
   candidate: unknown = tables.UserWatchlist
 ): SearchableTable<UserWatchlistRow> {
-  return requiredTable<UserWatchlistRow>(
-    "UserWatchlist",
-    candidate ?? databaseTable("UserWatchlist")
-  );
+  return tableByName<UserWatchlistRow>("UserWatchlist", candidate);
 }
 
 /**
@@ -56,10 +53,20 @@ export function userListTable(
 export function userListEntryTable(
   candidate: unknown = tables.UserWatchlistEntry
 ): SearchableTable<UserWatchlistEntryRow> {
-  return requiredTable<UserWatchlistEntryRow>(
-    "UserWatchlistEntry",
-    candidate ?? databaseTable("UserWatchlistEntry")
-  );
+  return tableByName<UserWatchlistEntryRow>("UserWatchlistEntry", candidate);
+}
+
+/**
+ * Resolves a Harper table by registered name, including nested Fabric database registries.
+ * @param name Harper table name.
+ * @param candidate Resource-module static table binding, when Harper exposes one.
+ * @returns The searchable table.
+ */
+export function tableByName<Row>(
+  name: string,
+  candidate: unknown
+): SearchableTable<Row> {
+  return requiredTable<Row>(name, candidate ?? databaseTable(name));
 }
 
 /**

@@ -4,6 +4,7 @@ import type { JsonBody, RouteTarget } from "../types/harper-resource.js";
 import {
   currentUserId,
   rowsFor,
+  tableByName,
   textValue,
   throwStatus,
   type CurrentUserResource,
@@ -143,26 +144,10 @@ async function writeDiscrepancy(row: RegulatoryDiscrepancyRow): Promise<void> {
  * @returns Searchable and writable Harper table facade.
  */
 function regulatoryDiscrepancyTable(): SearchableTable<RegulatoryDiscrepancyRow> {
-  const candidate =
-    (tables as Readonly<Record<string, unknown>>).RegulatoryDiscrepancy ??
-    databaseTable("RegulatoryDiscrepancy");
-  if (isSearchableTable<RegulatoryDiscrepancyRow>(candidate)) {
-    return candidate;
-  }
-  throwStatus("RegulatoryDiscrepancy table is unavailable", 503);
-}
-
-/**
- * Finds a table by name from registered Harper databases when the table registry is absent.
- * @param name Table name.
- * @returns Matching database table candidate.
- */
-function databaseTable(name: string): unknown {
-  for (const database of Object.values(databases)) {
-    const candidate = Reflect.get(database, name);
-    if (candidate) return candidate;
-  }
-  return undefined;
+  return tableByName<RegulatoryDiscrepancyRow>(
+    "RegulatoryDiscrepancy",
+    (tables as Readonly<Record<string, unknown>>).RegulatoryDiscrepancy
+  );
 }
 
 /**
@@ -219,17 +204,4 @@ function isRouteTarget(value: unknown): value is RouteTarget {
  */
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
-}
-
-/**
- * Verifies the minimum table surface needed by the review resource.
- * @param value Candidate table.
- * @returns True when the candidate can be searched.
- */
-function isSearchableTable<Row>(value: unknown): value is SearchableTable<Row> {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    typeof Reflect.get(value, "search") === "function"
-  );
 }

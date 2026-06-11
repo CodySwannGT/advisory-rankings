@@ -290,8 +290,12 @@ describe("UserWatchlists resource", () => {
     expect(resourceSource).toContain("tables.UserWatchlist");
     expect(resourceSource).toContain("tables.UserWatchlistEntry");
     expect(resourceSource).not.toContain("watchlistTableBindings");
-    expect(storeSource).toContain('databaseTable("UserWatchlist")');
-    expect(storeSource).toContain('databaseTable("UserWatchlistEntry")');
+    expect(storeSource).toContain(
+      'tableByName<UserWatchlistRow>("UserWatchlist"'
+    );
+    expect(storeSource).toContain(
+      'tableByName<UserWatchlistEntryRow>("UserWatchlistEntry"'
+    );
     expect(storeSource).not.toContain("Reflect.get(tables");
   });
 
