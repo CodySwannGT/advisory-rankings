@@ -16,6 +16,7 @@ import {
   ScrollableTableC,
   formatInlineLabelFn,
 } from "./organisms-events-adapters.js";
+import { formatTimelineRange } from "./organisms-events-profile-ranges.js";
 import {
   defaultFmtMoney,
   identityHumanize,
@@ -183,14 +184,7 @@ function formatCareerRange(
   c: CareerTimelineStep,
   fmtDate: FmtDate | undefined
 ): string {
-  const start =
-    c.startDate && fmtDate ? fmtDate(c.startDate, { mode: "short" }) : null;
-  const end =
-    c.endDate && fmtDate ? fmtDate(c.endDate, { mode: "short" }) : null;
-  if (start && end) return `${start} – ${end}`;
-  if (start) return `${start} – present`;
-  if (end) return `Ended ${end}`;
-  return "Present";
+  return formatTimelineRange(c.startDate, c.endDate, fmtDate);
 }
 
 // ─── SnapshotTable ────────────────────────────────────────────

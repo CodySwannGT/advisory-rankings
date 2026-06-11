@@ -4,31 +4,9 @@
 // Pages should import these via the `app.js` barrel re-exports (or
 // directly from this module) — both paths point at the same functions.
 
-/** Optional compaction flag for {@link fmtMoney}. */
-export interface FmtMoneyOptions {
-  readonly compact?: boolean;
-}
+import { fmtMoney, type FmtMoneyOptions } from "./app-money-formatters.js";
 
-/**
- * Formats a number as USD, optionally using K/M/B suffixes.
- * @param n - Raw numeric value, or null/undefined for "—".
- * @param options - Formatting options.
- * @param options.compact - When true (the default), large numbers
- *                          collapse to K/M/B suffixes.
- * @returns Display string suitable for direct DOM insertion.
- */
-export function fmtMoney(
-  n: number | null | undefined,
-  { compact = true }: FmtMoneyOptions = {}
-): string {
-  if (n == null) return "—";
-  if (compact) {
-    if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-    if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-    if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
-  }
-  return `$${Math.round(n).toLocaleString()}`;
-}
+export { fmtMoney, type FmtMoneyOptions };
 
 /**
  * Formats a 0–1 fraction as a whole-percent string.

@@ -135,20 +135,40 @@ function isSeedFirm(firm: string): boolean {
 }
 
 function richnessFields(profile: AdvisorProfilePayload): readonly string[] {
-  return [
-    profile.advisor?.headshotUrl ? "headshot" : "",
-    profile.advisor?.bioText || currentRoleTitle(profile) ? "title/bio" : "",
-    profile.advisor?.businessEmail || profile.advisor?.businessPhone
-      ? "contact"
-      : "",
-    profile.advisor?.finraCrd || profile.brokerCheckSnapshot
-      ? "crd/brokercheck"
-      : "",
-    (profile.career ?? []).length > 1 ? "employment-history" : "",
-    (profile.teams ?? []).length ? "team" : "",
-    (profile.articles ?? []).length ? "source-coverage" : "",
-    hasSuccessfulSourceCheck(profile) ? "source-check" : "",
-  ].filter(Boolean);
+  const fields: string[] = [];
+  addRichnessField(fields, profile.advisor?.headshotUrl, "headshot");
+  addRichnessField(
+    fields,
+    profile.advisor?.bioText || currentRoleTitle(profile),
+    "title/bio"
+  );
+  addRichnessField(
+    fields,
+    profile.advisor?.businessEmail || profile.advisor?.businessPhone,
+    "contact"
+  );
+  addRichnessField(
+    fields,
+    profile.advisor?.finraCrd || profile.brokerCheckSnapshot,
+    "crd/brokercheck"
+  );
+  addRichnessField(
+    fields,
+    (profile.career ?? []).length > 1,
+    "employment-history"
+  );
+  addRichnessField(fields, (profile.teams ?? []).length, "team");
+  addRichnessField(fields, (profile.articles ?? []).length, "source-coverage");
+  addRichnessField(fields, hasSuccessfulSourceCheck(profile), "source-check");
+  return fields;
+}
+
+function addRichnessField(
+  fields: string[],
+  value: unknown,
+  label: string
+): void {
+  if (value) fields.push(label);
 }
 
 function currentRoleTitle(profile: AdvisorProfilePayload): string {

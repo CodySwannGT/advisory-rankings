@@ -12,6 +12,7 @@ import {
   smokeWaitForSelector,
   type Check,
 } from "./web_smoke_support.js";
+import { globalSearchChecks } from "./web_smoke_search_checks.js";
 
 /** Search result kinds that map directly to public profile route segments. */
 type SearchKind = "advisor" | "firm" | "team";
@@ -87,43 +88,16 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
     "desktop"
   );
 
-  return [
-    check(
-      namedInputCount === 1,
-      "global search: combobox exposes accessible name"
-    ),
-    check(dropdownExpanded, "global search: suggestions dropdown opens"),
-    check(resultCount >= 1, "global search: selectable suggestions render"),
-    check(
-      supportedKinds >= 1,
-      "global search: advisor, firm, or team result renders"
-    ),
-    ...multiWordFirmChecks,
-    check(
-      kindMode.firmModePressed === "true",
-      "global search: kind mode toggle reflects selected mode"
-    ),
-    check(
-      kindMode.visibleKinds.every(kind => kind === "firm"),
-      "global search: firm mode renders firm-only rows",
-      kindMode.visibleKinds.join(",")
-    ),
-    check(
-      /firm matches/i.test(kindMode.countHint),
-      "global search: count hint reflects selected kind",
-      kindMode.countHint
-    ),
-    check(
-      navigation.activeRows === 1,
-      "global search: ArrowDown selects one result"
-    ),
-    check(
-      navigation.enterOpenedCleanPath,
-      "global search: Enter opens clean profile route",
-      navigation.enteredUrl
-    ),
-    ...emptySearchChecks,
-  ];
+  return globalSearchChecks({
+    dropdownExpanded,
+    emptySearchChecks,
+    kindMode,
+    multiWordFirmChecks,
+    namedInputCount,
+    navigation,
+    resultCount,
+    supportedKinds,
+  });
 }
 
 async function searchNavigationEvidence(
