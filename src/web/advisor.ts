@@ -49,7 +49,7 @@ import {
 import { reviewedDiscrepancyNotesSection } from "./advisor-discrepancy-notes-section.js";
 import {
   advisorEvidenceProfileSections,
-  mobileEvidenceProfileSections,
+  mountResponsiveEvidenceSections,
 } from "./advisor-evidence-sections.js";
 import {
   isAdvisorTeamRow,
@@ -161,9 +161,32 @@ function render(
     tags: advisorTags(a),
   });
 
+  const mobileEvidenceRoot = el("div", { class: "advisor-mobile-evidence" });
+  const desktopEvidenceRoot = el("div", { class: "advisor-desktop-evidence" });
+  const evidenceSections = advisorEvidenceProfileSections(d);
+  const rightSectionsAfterEvidence = [
+    registrationApplicationsSection(
+      narrowRows(
+        resourceRows(d.registrationApplications),
+        isRegistrationApplicationRow
+      )
+    ),
+    PartialFailureCard("Registration applications", d.registrationApplications),
+  ];
+
   canonicalizeEntityRoute("advisor", { ...a, name: d.displayName });
-  appendSections(center, [profile, ...advisorCenterSections(d)]);
-  appendSections(right, advisorRightSections(d));
+  appendSections(center, [
+    profile,
+    ...advisorCenterSections(d, mobileEvidenceRoot),
+  ]);
+  right.appendChild(identityCard(d.advisor));
+  right.appendChild(desktopEvidenceRoot);
+  mountResponsiveEvidenceSections({
+    desktopRoot: desktopEvidenceRoot,
+    mobileRoot: mobileEvidenceRoot,
+    sections: evidenceSections,
+  });
+  appendSections(right, rightSectionsAfterEvidence);
 }
 
 /**
@@ -289,10 +312,12 @@ interface BranchNamePart {
 /**
  * Builds center-column advisor sections.
  * @param d - AdvisorProfile payload.
+ * @param mobileEvidenceRoot - Responsive evidence slot for narrow viewports.
  * @returns Ordered center-column sections.
  */
 function advisorCenterSections(
-  d: AdvisorProfilePayload
+  d: AdvisorProfilePayload,
+  mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
@@ -303,7 +328,7 @@ function advisorCenterSections(
     addToWatchlistCard(d.advisor.id),
     privateRatingCard(d.advisor.id),
     advisorCorrectionCard(d),
-    mobileEvidenceProfileSections(d),
+    mobileEvidenceRoot,
     careerSection(d),
     teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
     PartialFailureCard("Teams", d.teams),
@@ -348,26 +373,5 @@ function advisorCenterSections(
       body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
     }),
     PartialFailureCard("Coverage", d.articles),
-  ];
-}
-
-/**
- * Builds right-rail advisor sections.
- * @param d - AdvisorProfile payload.
- * @returns Ordered right-rail sections.
- */
-function advisorRightSections(
-  d: AdvisorProfilePayload
-): readonly (HTMLElement | null)[] {
-  return [
-    identityCard(d.advisor),
-    ...advisorEvidenceProfileSections(d),
-    registrationApplicationsSection(
-      narrowRows(
-        resourceRows(d.registrationApplications),
-        isRegistrationApplicationRow
-      )
-    ),
-    PartialFailureCard("Registration applications", d.registrationApplications),
   ];
 }

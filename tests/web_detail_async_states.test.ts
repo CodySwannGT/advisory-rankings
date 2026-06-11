@@ -739,6 +739,10 @@ describe("detail async states", () => {
           .locator(".advisor-confidence-bar")
           .getAttribute("aria-label")
       ).toBe("Fact confidence distribution");
+      expect(await helpSummaryCounts(page, ".advisor-evidence-help")).toEqual({
+        total: 2,
+        visible: 2,
+      });
 
       await page.goto(`${baseUrl}/advisor.html?id=advisor-warning`, {
         waitUntil: "domcontentloaded",
@@ -778,6 +782,12 @@ describe("detail async states", () => {
       expect(
         await mobileEvidence.getByText("No confidence rows yet").isVisible()
       ).toBe(true);
+      expect(
+        await helpSummaryCounts(mobilePage, ".advisor-evidence-help")
+      ).toEqual({
+        total: 2,
+        visible: 2,
+      });
       expect(
         await mobileEvidence
           .locator(".tag")
@@ -1577,6 +1587,30 @@ async function lowerHeadingCountAfterFirstH1(page: Page): Promise<number> {
         0
     ).length;
   });
+}
+
+async function helpSummaryCounts(
+  page: Page,
+  helpSelector: string
+): Promise<{ readonly total: number; readonly visible: number }> {
+  return await page.evaluate(selector => {
+    const summaries = [
+      ...document.querySelectorAll<HTMLElement>(`${selector} summary`),
+    ];
+    return {
+      total: summaries.length,
+      visible: summaries.filter(summary => {
+        const rect = summary.getBoundingClientRect();
+        const style = getComputedStyle(summary);
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          style.display !== "none" &&
+          style.visibility !== "hidden"
+        );
+      }).length,
+    };
+  }, helpSelector);
 }
 
 function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
