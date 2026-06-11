@@ -3403,16 +3403,9 @@ describe("Harper directory and search resources", () => {
       total: 2,
     });
     expect(advisors.nextCursor).toBeTruthy();
-    expect(teams).toMatchObject({
-      total: 1,
-      items: [
-        expect.objectContaining({
-          id: "team-a",
-          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
-        }),
-      ],
-    });
+    expect(teams.total).toBe(1);
     expect(teams.nextCursor).toBeNull();
+    expect(teams.items).toHaveLength(1);
     expect(teams.items[0]).toMatchObject({
       id: "team-a",
       currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
@@ -3710,6 +3703,70 @@ describe("Harper directory and search resources", () => {
       nextCursor: null,
     });
     expect(unfiltered.items.map((advisor: any) => advisor.id)).toEqual([
+      "advisor-a",
+      "advisor-c",
+      "advisor-b",
+    ]);
+  });
+
+  it("filters advisor directories by missing CRD without treating invalid values as false", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-a",
+        firstName: "Avery",
+        lastName: "Stone",
+        legalName: AVERY_STONE_NAME,
+        careerStatus: "active",
+        finraCrd: "1234567",
+      },
+      {
+        id: "advisor-b",
+        firstName: "Blake",
+        lastName: "Young",
+        legalName: BLAKE_YOUNG_NAME,
+        careerStatus: "active",
+      },
+      {
+        id: "advisor-c",
+        firstName: "Casey",
+        lastName: "Stone",
+        legalName: CASEY_STONE_NAME,
+        careerStatus: "active",
+        finraCrd: null,
+      },
+    ]);
+
+    const first = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        careerStatus: "active",
+        hasCrd: "false",
+        limit: "1",
+      })
+    );
+    const second = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        careerStatus: "active",
+        cursor: first.nextCursor,
+        hasCrd: "false",
+        limit: "1",
+      })
+    );
+    const invalidBoolean = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", { careerStatus: "active", hasCrd: "missing", limit: "5" })
+    );
+
+    expect(first).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "advisor-c" })],
+    });
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(second).toMatchObject({
+      total: 2,
+      items: [expect.objectContaining({ id: "advisor-b" })],
+      nextCursor: null,
+    });
+    expect(invalidBoolean).toMatchObject({ total: 3, nextCursor: null });
+    expect(invalidBoolean.items.map((advisor: any) => advisor.id)).toEqual([
       "advisor-a",
       "advisor-c",
       "advisor-b",
@@ -4017,21 +4074,17 @@ describe("Harper directory and search resources", () => {
       items: [expect.objectContaining({ id: "firm-c" })],
       nextCursor: null,
     });
-    expect(teamsFirst).toMatchObject({
-      total: 2,
-      items: [
-        expect.objectContaining({
-          id: "team-a",
-          currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
-        }),
-      ],
+    expect(teamsFirst.total).toBe(2);
+    expect(teamsFirst.items).toHaveLength(1);
+    expect(teamsFirst.items[0]).toMatchObject({
+      id: "team-a",
+      currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
     });
     expect(teamsFirst.nextCursor).toBeTruthy();
-    expect(teamsSecond).toMatchObject({
-      total: 2,
-      items: [expect.objectContaining({ id: "team-b" })],
-      nextCursor: null,
-    });
+    expect(teamsSecond.total).toBe(2);
+    expect(teamsSecond.items).toHaveLength(1);
+    expect(teamsSecond.items[0]).toMatchObject({ id: "team-b" });
+    expect(teamsSecond.nextCursor).toBeNull();
     expect(teamsSecond.items[0].id).not.toBe(teamsFirst.items[0].id);
   });
 
