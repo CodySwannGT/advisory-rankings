@@ -6,8 +6,7 @@ import type {
   TeamRow,
 } from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
-
-const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+import { normalizeRouteTarget } from "./resource-routing-normalization.js";
 
 // Robust date comparator. Harper returns dates as Date instances when
 // queried via `tables.X.search({})` (production path), but as ISO-8601
@@ -77,11 +76,6 @@ interface SlugBearing {
  * methods. Used by `normalizeId` to read `.id` without forcing callers
  * to import `RequestTarget` from harperdb.
  */
-interface IdBearingTarget {
-  readonly id?: unknown;
-  readonly toString?: () => string;
-}
-
 /**
  * Minimal slice of the resource-index `db` consumed by the routing
  * resolvers. Mirrors the shape produced by `buildDb` in
@@ -106,28 +100,7 @@ export interface ResourceIndex {
  * @returns The normalized value.
  */
 export function normalizeId(target: RouteTarget | null | undefined): string {
-  if (target == null) return "";
-  // Harper's RequestTarget extends URLSearchParams and exposes the
-  // pre-parsed path id at `target.id`. Prefer that when present, fall
-  // back to toString() for the dev_server bridge and any older callers.
-  if (typeof target === "object") {
-    const objTarget = target as IdBearingTarget;
-    if (objTarget.id != null) return normalizeSluggedId(String(objTarget.id));
-    const s = objTarget.toString?.() ?? "";
-    return normalizeSluggedId(s.startsWith("/") ? s.slice(1) : s);
-  }
-  const s = typeof target === "string" ? target : String(target);
-  return normalizeSluggedId(s.startsWith("/") ? s.slice(1) : s);
-}
-
-/**
- * Normalizes slugged id for consistent comparisons.
- * @param value - Raw value to normalize or parse.
- * @returns The normalized value.
- */
-function normalizeSluggedId(value: string): string {
-  const match = UUID_RE.exec(decodeURIComponent(value || ""));
-  return match ? match[0] : value;
+  return normalizeRouteTarget(target);
 }
 
 /**

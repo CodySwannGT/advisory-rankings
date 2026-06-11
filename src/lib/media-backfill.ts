@@ -165,6 +165,25 @@ async function search(query: string): Promise<ReadonlyArray<string>> {
 }
 
 /**
+ * Extracts and validates the best media candidate from one source page.
+ * @param sourceUrl - Source page URL to fetch and inspect.
+ * @param name - Entity display name used for candidate scoring.
+ * @param mode - Entity media mode.
+ * @returns Reachable media candidate or null when none qualify.
+ */
+async function discoverMediaFromSource(
+  sourceUrl: string,
+  name: string,
+  mode: MediaMode
+): Promise<MediaCandidate | null> {
+  const html = await fetchText(sourceUrl);
+  if (!html) return null;
+  const candidate = extractMediaCandidates(html, sourceUrl, name, mode)[0];
+  if (!candidate || candidate.score < DEFAULT_MIN_SCORE) return null;
+  return (await isReachableImage(candidate.url)) ? candidate : null;
+}
+
+/**
  * Searches source pages and returns the first reachable high-confidence media URL.
  * @param row - Advisor or firm row from Harper.
  * @param mode - Entity media mode.
@@ -181,11 +200,8 @@ export async function discoverMedia(
     ? [explicitSourceUrl]
     : await search(searchQuery(row, mode));
   for (const sourceUrl of urls) {
-    const html = await fetchText(sourceUrl);
-    if (!html) continue;
-    const candidate = extractMediaCandidates(html, sourceUrl, name, mode)[0];
-    if (!candidate || candidate.score < DEFAULT_MIN_SCORE) continue;
-    if (!(await isReachableImage(candidate.url))) continue;
+    const candidate = await discoverMediaFromSource(sourceUrl, name, mode);
+    if (!candidate) continue;
     return candidate;
   }
   return null;

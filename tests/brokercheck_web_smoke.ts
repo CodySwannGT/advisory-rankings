@@ -260,34 +260,33 @@ async function checkFirmProfile(page, request) {
     console.log(
       "  (no firm-level BrokerCheckSnapshot in DB — skipping firm checks)"
     );
-  } else {
-    await page.goto(`${BASE}/firm.html?id=${encodeURIComponent(firm.id)}`);
-    await page.waitForSelector(PROFILE_HEADING_SELECTOR, { timeout: 10000 });
-    const title = await page.locator(PROFILE_HEADING_SELECTOR).textContent();
-    ok(`firm.html: title "${title.trim()}"`);
-    const firmAttr = await page.locator(SOURCE_ATTR_SELECTOR).count();
-    firmAttr >= 1
-      ? ok(`firm.html: ${firmAttr} BrokerCheck attribution footer(s)`)
-      : fail("firm.html: BrokerCheck attribution footer missing");
-    const firmTosLink = await page
-      .locator(`${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/terms"]`)
-      .count();
-    firmTosLink >= 1
-      ? ok("firm.html: attribution links to BrokerCheck ToU")
-      : fail("firm.html: attribution missing ToU link");
-
-    // Right-rail "Regulatory record" block we added with disclosure
-    // counts and the SourceAttribution.
-    const regCard = await page
-      .locator(".card")
-      .filter({ hasText: /Regulatory record/i })
-      .count();
-    regCard >= 1
-      ? ok('firm.html: "Regulatory record" right-rail card present')
-      : fail('firm.html: missing "Regulatory record" card');
-
-    await page.screenshot({ path: `${SHOTS}/bc-firm.png`, fullPage: true });
+    return;
   }
+
+  await page.goto(`${BASE}/firm.html?id=${encodeURIComponent(firm.id)}`);
+  await page.waitForSelector(PROFILE_HEADING_SELECTOR, { timeout: 10000 });
+  const title = await page.locator(PROFILE_HEADING_SELECTOR).textContent();
+  const firmAttr = await page.locator(SOURCE_ATTR_SELECTOR).count();
+  const firmTosLink = await page
+    .locator(`${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/terms"]`)
+    .count();
+  const regCard = await page
+    .locator(".card")
+    .filter({ hasText: /Regulatory record/i })
+    .count();
+
+  ok(`firm.html: title "${title.trim()}"`);
+  firmAttr >= 1
+    ? ok(`firm.html: ${firmAttr} BrokerCheck attribution footer(s)`)
+    : fail("firm.html: BrokerCheck attribution footer missing");
+  firmTosLink >= 1
+    ? ok("firm.html: attribution links to BrokerCheck ToU")
+    : fail("firm.html: attribution missing ToU link");
+  regCard >= 1
+    ? ok('firm.html: "Regulatory record" right-rail card present')
+    : fail('firm.html: missing "Regulatory record" card');
+
+  await page.screenshot({ path: `${SHOTS}/bc-firm.png`, fullPage: true });
 }
 
 /**

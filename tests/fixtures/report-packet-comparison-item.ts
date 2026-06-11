@@ -38,22 +38,7 @@ export function comparisonItem(id: string, index: number): unknown {
 
 function featuredComparisonDetails(index: number): Record<string, unknown> {
   if (index !== 0) {
-    return {
-      brokerCheck: null,
-      career: [],
-      rankings: [],
-      articles: [],
-      confidenceSummary: {
-        hasData: false,
-        asserted: 0,
-        inferred: 0,
-        derived: 0,
-        total: 0,
-      },
-      evidenceFreshness: { hasData: false, lastCheckedAt: null },
-      assertions: [],
-      researchSources: [],
-    };
+    return emptyComparisonDetails();
   }
   return {
     brokerCheck: { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT },
@@ -107,5 +92,24 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
         sourcesChecked: ["FINRA BrokerCheck"],
       },
     ],
+  };
+}
+
+function emptyComparisonDetails(): Record<string, unknown> {
+  return {
+    brokerCheck: null,
+    career: [],
+    rankings: [],
+    articles: [],
+    confidenceSummary: {
+      hasData: false,
+      asserted: 0,
+      inferred: 0,
+      derived: 0,
+      total: 0,
+    },
+    evidenceFreshness: { hasData: false, lastCheckedAt: null },
+    assertions: [],
+    researchSources: [],
   };
 }

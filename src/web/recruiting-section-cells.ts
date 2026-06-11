@@ -4,9 +4,10 @@
 // builders below the `max-lines` cap while preserving the original
 // table/cell/tag composition behavior.
 
-import { fmtMoney, humanize, entityPath, articlePath } from "./app.js";
+import { fmtMoney, humanize, entityPath } from "./app.js";
 import { el, Tag } from "./design-system/index.js";
 import type { DomChild } from "./design-system/dom.js";
+import { moveArticleSource } from "./recruiting-source-cell.js";
 import type { TransitionSubject } from "../harper/resource-feed-types.js";
 import type {
   MoveArticle,
@@ -276,18 +277,7 @@ export function moveCell(row: PublicMove): HTMLElement {
  */
 export function sourceCell(row: PublicMove): HTMLElement {
   const article: MoveArticle | null = row.article;
-  const source: DomChild =
-    article && (article.id || article.url)
-      ? el(
-          "a",
-          {
-            href: article.id ? articlePath(article) : article.url,
-            target: article.id ? null : "_blank",
-            rel: article.id ? null : "noreferrer",
-          },
-          article.headline || "Source"
-        )
-      : statusTag("missing-source");
+  const source = moveArticleSource(article, statusTag("missing-source"));
   return el(
     "div",
     { class: STACKED_CELL_CLASS },
