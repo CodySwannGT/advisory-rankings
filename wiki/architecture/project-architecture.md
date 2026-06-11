@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-10
+updated: 2026-06-11
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -11,6 +11,7 @@ sources:
   - ../sources/git/2026-06-06-advisory-rankings-git.md
   - ../sources/git/2026-06-08-advisory-rankings-git.md
   - ../sources/git/2026-06-10-advisory-rankings-git.md
+  - ../sources/git/2026-06-11-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -61,3 +62,9 @@ operations API deploys, with the Studio proxy documented as fallback. It also re
 Fabric static-route and cold-start checks, continued rankings UI/resource polish, recruiting-market
 verification replay coverage, and deployed smoke selector stabilization. Source:
 wiki/sources/git/2026-06-10-advisory-rankings-git.md.
+
+The 2026-06-11 git ingest shows architecture work around Fabric table-shape compatibility in
+regulatory discrepancy review, CRD state exposure for the public advisor directory, and research
+workbench resource/UI behavior. It also records desktop header-search layout hardening, login
+account-access guidance, and continued resource/test coverage threshold work. Source:
+wiki/sources/git/2026-06-11-advisory-rankings-git.md.
