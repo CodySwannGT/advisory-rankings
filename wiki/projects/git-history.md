@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-10
+updated: 2026-06-11
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -17,6 +17,7 @@ sources:
   - ../sources/git/2026-06-08-advisory-rankings-git.md
   - ../sources/git/2026-06-09-advisory-rankings-git.md
   - ../sources/git/2026-06-10-advisory-rankings-git.md
+  - ../sources/git/2026-06-11-advisory-rankings-git.md
 ---
 
 # Git history
@@ -85,6 +86,11 @@ commits since the 2026-06-09 cursor, bringing the branch total to 1398 commits, 
 merged PR metadata through #1102, "Stabilize deployed smoke selectors." Source:
 wiki/sources/git/2026-06-10-advisory-rankings-git.md.
 
+The 2026-06-11 git ingest ran at HEAD `9296809b565dcbf8339d8a32eff856b977a2f714`. It added 39
+commits since the 2026-06-10 cursor, bringing the branch total to 1437 commits, and refreshed recent
+merged PR metadata through #1131, "fix: expose advisor directory CRD state." Source:
+wiki/sources/git/2026-06-11-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -142,6 +148,11 @@ wiki/sources/git/2026-06-10-advisory-rankings-git.md.
 - CI/test work raised coverage and complexity thresholds, covered recruiting query and runtime
   recovery edges, stabilized deployed smoke selectors, and documented the research queue
   verification path.
+- The 2026-06-10 wiki ingest PR merged, followed by research workbench priority groups, compact
+  research queue rows, workbench operations documentation, desktop header-search overlap prevention,
+  login account-access guidance, regulatory discrepancy review table/fixture fixes, public advisor
+  directory CRD-state exposure, and additional test coverage for data coverage fallback and research
+  workbench priority behavior.
 
 ## Use
 
@@ -157,4 +168,5 @@ wiki/sources/git/2026-06-06-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-07-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-08-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-09-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-10-advisory-rankings-git.md.
+wiki/sources/git/2026-06-10-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-11-advisory-rankings-git.md.
