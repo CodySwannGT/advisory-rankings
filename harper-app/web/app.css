@@ -2113,6 +2113,68 @@ body.drawer-open .nav .nav-scrim {
   font-weight: 500;
 }
 
+.advisor-correction {
+  display: grid;
+  gap: 12px;
+}
+.advisor-correction-note,
+.advisor-correction-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.advisor-correction-note--error {
+  color: var(--accent-red);
+}
+.advisor-correction-open,
+.advisor-correction-link {
+  justify-self: start;
+  text-decoration: none;
+}
+.advisor-correction-guidance {
+  display: grid;
+  gap: 10px;
+}
+.advisor-correction-guidance[hidden] {
+  display: none;
+}
+.advisor-correction-form {
+  display: grid;
+  gap: 10px;
+}
+.advisor-correction-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.advisor-correction-field input,
+.advisor-correction-field select,
+.advisor-correction-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+}
+.advisor-correction-field textarea {
+  resize: vertical;
+}
+.advisor-correction-field input[readonly] {
+  color: var(--text-muted);
+}
+.advisor-correction-submit,
+.advisor-correction-status {
+  justify-self: start;
+}
+
 .comparison-status {
   display: flex;
   align-items: center;
