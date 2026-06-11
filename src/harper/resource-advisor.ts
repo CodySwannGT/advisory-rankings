@@ -1,7 +1,10 @@
 import { cmpAsc, cmpDesc, dateMs } from "./resource-pagination.js";
 import { advisorDisplayName } from "./resource-routing.js";
 import type { ResolvableAdvisor } from "./resource-routing.js";
-import { advisorReviewedRegulatoryDiscrepancies } from "./resource-advisor-discrepancy-notes.js";
+import {
+  advisorReviewedCorrectionRequests,
+  advisorReviewedRegulatoryDiscrepancies,
+} from "./resource-advisor-discrepancy-notes.js";
 import {
   articleStub,
   disclosureRow,
@@ -33,6 +36,7 @@ import type {
   AdvisorMetricSnapshotRow,
   AdvisorResearchCheckRow,
   AdvisorRow,
+  AdvisorCorrectionRequestRow,
   ArticleAdvisorMentionRow,
   ArticleRow,
   BranchRow,
@@ -79,6 +83,7 @@ export interface AdvisorProfileDb extends CredentialSource {
   readonly memberships: readonly TeamMembershipRow[];
   readonly disclosures: readonly DisclosureRow[];
   readonly regulatoryDiscrepancies: readonly RegulatoryDiscrepancyRow[];
+  readonly correctionRequests?: readonly AdvisorCorrectionRequestRow[];
   readonly sanctions: readonly SanctionRow[];
   readonly obas: readonly OutsideBusinessActivityRow[];
   readonly regApps: readonly RegistrationApplicationRow[];
@@ -123,6 +128,10 @@ export function advisorProfilePayload(
     ...advisorCredentials(db, advisorId),
     brokerCheckSnapshot: advisorBrokerCheckSnapshot(db, advisorId),
     reviewedRegulatoryDiscrepancies: advisorReviewedRegulatoryDiscrepancies(
+      db,
+      advisorId
+    ),
+    reviewedCorrectionRequests: advisorReviewedCorrectionRequests(
       db,
       advisorId
     ),

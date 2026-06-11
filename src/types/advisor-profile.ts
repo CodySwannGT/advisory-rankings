@@ -17,6 +17,7 @@ import type { ResolvableAdvisor } from "../harper/resource-routing.js";
 import type {
   BrokerCheckSnapshotRow,
   EmploymentHistoryRow,
+  AdvisorCorrectionRequestRow,
   OutsideBusinessActivityRow,
   RegistrationApplicationRow,
   RegulatoryDiscrepancyRow,
@@ -98,6 +99,20 @@ export interface ReviewedRegulatoryDiscrepancyNote {
   readonly brokerCheckSourceRef: RegulatoryDiscrepancyRow["brokerCheckSourceRef"];
 }
 
+/** Reviewed advisor correction request note surfaced on public profiles. */
+export interface ReviewedAdvisorCorrectionNote {
+  readonly id: AdvisorCorrectionRequestRow["id"];
+  readonly fieldName: AdvisorCorrectionRequestRow["fieldName"];
+  readonly status: AdvisorCorrectionRequestRow["status"];
+  readonly reviewerNote: string;
+  readonly reviewedAt: AdvisorCorrectionRequestRow["reviewedAt"];
+  readonly displayedValue: AdvisorCorrectionRequestRow["displayedValue"];
+  readonly proposedValue: AdvisorCorrectionRequestRow["proposedValue"];
+  readonly sourceType: AdvisorCorrectionRequestRow["sourceType"];
+  readonly sourceRef: AdvisorCorrectionRequestRow["sourceRef"];
+  readonly sourceContext: AdvisorCorrectionRequestRow["sourceContext"];
+}
+
 /** Research-status keys reported by `advisorEvidenceFreshness`. */
 export type ResearchStatusKey =
   | "success"
@@ -143,6 +158,7 @@ export interface AdvisorProfilePayload extends AdvisorCredentialGroups {
   readonly articles: readonly unknown[];
   readonly brokerCheckSnapshot: BrokerCheckSnapshotSlice | null;
   readonly reviewedRegulatoryDiscrepancies: readonly ReviewedRegulatoryDiscrepancyNote[];
+  readonly reviewedCorrectionRequests: readonly ReviewedAdvisorCorrectionNote[];
   readonly evidenceFreshness: EvidenceFreshness;
   readonly confidenceSummary: ConfidenceSummary;
 }

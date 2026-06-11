@@ -752,6 +752,11 @@ submitter note, source type/ref/context, and `pending` status. Analyst review
 updates only disposition fields: status (`accepted` or `rejected`), reviewer
 identity, reviewer note, and reviewed timestamp.
 
+Public advisor profiles may show reviewed correction request notes only after
+disposition, `reviewer_note`, `reviewed_at`, and public source attribution are
+present. Pending request rows and submitter identity/note fields remain private
+to the scoped correction resource and analyst inbox.
+
 Watchlist reads and writes use `UserWatchlist` and `UserWatchlistEntry`,
 resolved through the jsResource `tables` global. Like the other user-private
 tables, they are `@table` **without** `@export` — Harper's table-level RBAC is
