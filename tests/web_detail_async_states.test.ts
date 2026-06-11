@@ -21,6 +21,7 @@ const FIRM_PROFILE_ROUTE = "**/FirmProfile/firm-1";
 const COULD_NOT_LOAD_FIRM = "Could not load firm";
 const FIRM_DUE_DILIGENCE = "Firm due diligence";
 const RECRUITING_MOMENTUM = "Recruiting momentum";
+const ADVISOR_LOADED_ID = "advisor-loaded";
 const NEEDS_DATA = "Needs data";
 const RIGHT_CARD_SELECTOR = ".right .card";
 const EVIDENCE_FRESHNESS = "Evidence freshness";
@@ -30,6 +31,8 @@ const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
 const LAYOUT_TOLERANCE_PX = 0.5;
 const EVIDENCE_HELP_COPY = "public-source checks last ran";
+const CORRECTED_ADVISOR_NAME = "Avery Stone CFP";
+const DISPLAYED_VALUE_SELECTOR = 'input[name="displayedValue"]';
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -175,11 +178,11 @@ describe("detail async states", () => {
         payload: articleWithPartialFailures(),
       },
       {
-        path: "/advisor.html?id=advisor-loaded",
-        resource: "/AdvisorProfile/advisor-loaded",
+        path: `/advisor.html?id=${ADVISOR_LOADED_ID}`,
+        resource: `/AdvisorProfile/${ADVISOR_LOADED_ID}`,
         title: "Could not load advisor",
         successText: ADVISOR_NAME,
-        payload: advisorEvidenceProfile("advisor-loaded"),
+        payload: advisorEvidenceProfile(ADVISOR_LOADED_ID),
       },
       {
         path: "/team.html?id=team-1",
@@ -663,7 +666,7 @@ describe("detail async states", () => {
 
     try {
       await routeAdvisorEvidence(page);
-      await page.goto(`${baseUrl}/advisor.html?id=advisor-loaded`, {
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`, {
         waitUntil: "domcontentloaded",
       });
 
@@ -817,6 +820,103 @@ describe("detail async states", () => {
     } finally {
       await page.close();
       await mobilePage.close();
+    }
+  });
+
+  it("keeps advisor profile visible when signed-out visitors request corrections", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await routeAdvisorCorrectionProfile(page, false, () => undefined);
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", { level: 1, name: ADVISOR_NAME })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator(".advisor-correction-card")
+        .getByRole("button", { name: "Request a correction" })
+        .click();
+
+      await page
+        .getByText("Sign in to queue profile corrections.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await page
+          .getByRole("heading", { level: 1, name: ADVISOR_NAME })
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await page.locator(".advisor-correction-card a[href='/login']").count()
+      ).toBe(1);
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth
+        )
+      ).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("queues signed-in advisor correction requests without changing displayed facts", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1180, height: 900 },
+    });
+    const correctionPosts: Readonly<Record<string, unknown>>[] = [];
+
+    try {
+      await routeAdvisorCorrectionProfile(page, true, body => {
+        correctionPosts.push(body);
+      });
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      const card = page.locator(".advisor-correction-card");
+      await card
+        .locator(DISPLAYED_VALUE_SELECTOR)
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await card.locator(DISPLAYED_VALUE_SELECTOR).inputValue()).toBe(
+        ADVISOR_NAME
+      );
+
+      await card
+        .locator('textarea[name="proposedValue"]')
+        .fill(CORRECTED_ADVISOR_NAME);
+      await card
+        .locator('textarea[name="submitterNote"]')
+        .fill("Name suffix appears in the firm profile.");
+      await card.getByRole("button", { name: "Submit correction" }).click();
+
+      await card
+        .getByText("Correction request queued for review")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(correctionPosts).toContainEqual(
+        expect.objectContaining({
+          advisorId: ADVISOR_LOADED_ID,
+          fieldName: "legalName",
+          displayedValue: ADVISOR_NAME,
+          proposedValue: CORRECTED_ADVISOR_NAME,
+          sourceType: "advisor_profile",
+        })
+      );
+      expect(
+        await page
+          .getByRole("heading", { level: 1, name: ADVISOR_NAME })
+          .isVisible()
+      ).toBe(true);
+      expect(await card.locator(DISPLAYED_VALUE_SELECTOR).inputValue()).toBe(
+        ADVISOR_NAME
+      );
+    } finally {
+      await page.close();
     }
   });
 });
@@ -1177,8 +1277,48 @@ async function routeAdvisorEvidence(page: Page) {
     await route.fulfill({ json: { authenticated: false } });
   });
   await page.route("**/AdvisorProfile/*", async route => {
-    const id = route.request().url().split("/").pop() || "advisor-loaded";
+    const id = route.request().url().split("/").pop() || ADVISOR_LOADED_ID;
     await route.fulfill({ json: advisorEvidenceProfile(id) });
+  });
+}
+
+async function routeAdvisorCorrectionProfile(
+  page: Page,
+  authenticated: boolean,
+  onCorrectionPost: (body: Readonly<Record<string, unknown>>) => void
+): Promise<void> {
+  await page.route("**/Me", async route => {
+    await route.fulfill({
+      json: authenticated
+        ? { authenticated: true, username: "analyst@example.test" }
+        : { authenticated: false },
+    });
+  });
+  await page.route("**/AdvisorProfile/*", async route => {
+    const id = route.request().url().split("/").pop() || ADVISOR_LOADED_ID;
+    await route.fulfill({ json: advisorEvidenceProfile(id) });
+  });
+  await page.route("**/AdvisorRating/**", async route => {
+    await route.fulfill({ json: { authenticated, rating: null } });
+  });
+  await page.route("**/UserWatchlists", async route => {
+    await route.fulfill({ json: { authenticated, lists: [] } });
+  });
+  await page.route("**/AdvisorCorrectionRequest", async route => {
+    const body = route.request().postDataJSON() as Readonly<
+      Record<string, unknown>
+    >;
+    onCorrectionPost(body);
+    await route.fulfill({
+      json: {
+        authenticated: true,
+        request: {
+          id: "correction:test",
+          ...body,
+          status: "pending",
+        },
+      },
+    });
   });
 }
 
@@ -1258,7 +1398,7 @@ async function lowerHeadingCountAfterFirstH1(page: Page): Promise<number> {
 
 function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
   const states = {
-    "advisor-loaded": {
+    [ADVISOR_LOADED_ID]: {
       evidenceFreshness: {
         hasData: true,
         lastCheckedAt: "2026-05-25T12:00:00Z",
@@ -1315,7 +1455,7 @@ function advisorEvidenceProfile(id: string): AdvisorEvidenceProfile {
       confidenceSummary: emptyConfidenceSummary(),
     },
   } as const;
-  const state = states[id as keyof typeof states] || states["advisor-loaded"];
+  const state = states[id as keyof typeof states] || states[ADVISOR_LOADED_ID];
 
   return {
     advisor: {

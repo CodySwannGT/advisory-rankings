@@ -1,6 +1,3 @@
-// Advisor profile page.
-// All UI comes from the design system — see docs/design-system.md.
-
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import type { AdvisorRow } from "../types/harper-schema.js";
 import {
@@ -8,7 +5,6 @@ import {
   refreshMe,
   logout,
   search,
-  fmts,
   fmtDate,
   humanize,
   initials,
@@ -23,12 +19,15 @@ import {
   ProfileHead,
   SectionCard,
   ArticleListBlock,
-  TransitionEventCard,
   clear,
 } from "./design-system/index.js";
 import { privateRatingCard } from "./advisor-rating.js";
+import { advisorCorrectionCard } from "./advisor-correction.js";
 import { addToWatchlistCard } from "./add-to-watchlist.js";
-import { compareEntryAction } from "./compare-entry.js";
+import {
+  compareAdvisorCard,
+  transitionEventCard,
+} from "./advisor-compare-card.js";
 import {
   DetailNotFoundCard,
   PartialFailureCard,
@@ -76,8 +75,6 @@ const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
 const ProfileHeadComponent = ProfileHead as unknown as DesignSystemComponent;
 const ArticleListBlockComponent =
   ArticleListBlock as unknown as DesignSystemComponent;
-const TransitionEventCardComponent =
-  TransitionEventCard as unknown as DesignSystemComponent;
 
 /** Tag descriptor accepted by `ProfileHead.tags`. */
 interface ProfileTag {
@@ -304,6 +301,7 @@ function advisorCenterSections(
     compareAdvisorCard(d.advisor.id),
     addToWatchlistCard(d.advisor.id),
     privateRatingCard(d.advisor.id),
+    advisorCorrectionCard(d),
     mobileEvidenceProfileSections(d),
     careerSection(d),
     teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
@@ -336,11 +334,7 @@ function advisorCenterSections(
     transitions.length
       ? SectionCardComponent({
           title: "Transitions involving this advisor",
-          body: el(
-            "div",
-            {},
-            ...transitions.map(t => TransitionEventCardComponent(t, fmts))
-          ),
+          body: el("div", {}, ...transitions.map(transitionEventCard)),
         })
       : null,
     PartialFailureCard("Transitions involving this advisor", d.transitions),
@@ -350,23 +344,6 @@ function advisorCenterSections(
     }),
     PartialFailureCard("Coverage", d.articles),
   ];
-}
-
-/**
- * Builds the public comparison entry point for this advisor.
- * @param advisorId - Advisor id to add to `/compare?ids=...`.
- * @returns Compare action card.
- */
-function compareAdvisorCard(advisorId: string): HTMLElement {
-  return SectionCardComponent({
-    title: "Compare advisor",
-    attrs: { class: "compare-entry-card" },
-    body: compareEntryAction({
-      advisorId,
-      label: "Add to comparison",
-      className: "compare-entry-button--profile",
-    }),
-  });
 }
 
 /**
