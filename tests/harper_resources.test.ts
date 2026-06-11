@@ -23,6 +23,7 @@ const AVERY_STONE_NAME = "Avery Stone";
 const AVERY_STONE_SLUG = "avery-stone";
 const AVERY_STONE_FIRM_BIO_URL = "https://example.com/avery";
 const AVERY_STONE_CORRECTED_NAME = "Avery Stone CFP";
+const FIRM_BIO_SUPPORTS_UPDATE_NOTE = "Firm bio supports the update.";
 const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
 const STONE_GROUP_SLUG = "stone-group";
@@ -1466,10 +1467,20 @@ describe("Harper feed and profile builders", () => {
       note: "Needs analyst review.",
     });
 
-    endpoint.getCurrentUser = () => ({ id: "analyst-a" });
+    await expect(
+      endpoint.post(routeTarget(created.request.id), {
+        status: "accepted",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
+      })
+    ).rejects.toMatchObject({
+      message: "Analyst role required",
+      status: 403,
+    });
+
+    endpoint.getCurrentUser = () => ({ id: "analyst-a", role: "analyst" });
     const reviewed = await endpoint.post(routeTarget(created.request.id), {
       status: "accepted",
-      reviewerNote: "Firm bio supports the update.",
+      reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
     });
 
     expect(reviewed).toMatchObject({
@@ -1478,7 +1489,7 @@ describe("Harper feed and profile builders", () => {
         ...created.request,
         status: "accepted",
         reviewerId: "analyst-a",
-        reviewerNote: "Firm bio supports the update.",
+        reviewerNote: FIRM_BIO_SUPPORTS_UPDATE_NOTE,
       },
     });
     expect(reviewed.request.reviewedAt).toEqual(expect.any(String));
@@ -1488,11 +1499,57 @@ describe("Harper feed and profile builders", () => {
       authenticated: true,
       request: reviewed.request,
     });
+    await expect(
+      endpoint.post(routeTarget(created.request.id), {
+        status: "rejected",
+        reviewerNote: "Changed my mind.",
+      })
+    ).rejects.toMatchObject({
+      message: "correction request is already reviewed",
+      status: 409,
+    });
     expect(
       tableRows
         .get(ADVISOR_CORRECTION_REQUEST_TABLE)
         ?.find(row => row.id === created.request.id)
     ).toEqual(reviewed.request);
+  });
+
+  it("limits correction request reads to submitters and analysts", async () => {
+    const endpoint = new (resources as any).AdvisorCorrectionRequest() as any;
+    endpoint.getCurrentUser = () => ({ email: CLIENT_EMAIL });
+    const created = await endpoint.post({
+      advisorId: "advisor-a",
+      fieldName: "legalName",
+      displayedValue: AVERY_STONE_NAME,
+      proposedValue: AVERY_STONE_CORRECTED_NAME,
+    });
+
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).resolves.toEqual({
+      authenticated: true,
+      request: created.request,
+    });
+
+    endpoint.getCurrentUser = () => ({ email: "other@example.test" });
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).rejects.toMatchObject({
+      message: "Correction request access denied",
+      status: 403,
+    });
+
+    endpoint.getCurrentUser = () => ({
+      email: ANALYST_EMAIL,
+      role: { role: "analyst" },
+    });
+    await expect(
+      endpoint.get(routeTarget(created.request.id))
+    ).resolves.toEqual({
+      authenticated: true,
+      request: created.request,
+    });
   });
 
   it("labels missing firm due-diligence source states explicitly", async () => {

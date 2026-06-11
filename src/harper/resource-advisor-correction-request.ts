@@ -19,6 +19,7 @@ const MAX_VALUE_LENGTH = 2_000;
 const MAX_NOTE_LENGTH = 2_000;
 const MAX_SOURCE_LENGTH = 500;
 const MAX_CONTEXT_LENGTH = 4_000;
+const ANALYST_ROLES = ["analyst", "super_user", "super", "admin"] as const;
 
 /**
  *
@@ -75,11 +76,19 @@ export class AdvisorCorrectionRequest extends Resource {
    * @returns Stored correction request row.
    */
   async get(target?: RouteTarget): Promise<CorrectionRequestResponse> {
-    const userId = currentUserId(this as CurrentUserResource);
+    const resource = this as CurrentUserResource;
+    const userId = currentUserId(resource);
     if (!userId) throwStatus("Sign in required", 401);
+    const request = await requireCorrectionRequest(normalizeId(target));
+    if (
+      request.submitterId !== userId &&
+      !hasAnalystRole(currentUser(resource))
+    ) {
+      throwStatus("Correction request access denied", 403);
+    }
     return {
       authenticated: true,
-      request: await requireCorrectionRequest(normalizeId(target)),
+      request,
     };
   }
 
@@ -89,7 +98,8 @@ export class AdvisorCorrectionRequest extends Resource {
    * @returns The created or updated correction request row.
    */
   async post(...args: readonly unknown[]): Promise<CorrectionRequestResponse> {
-    const userId = currentUserId(this as CurrentUserResource);
+    const resource = this as CurrentUserResource;
+    const userId = currentUserId(resource);
     if (!userId) throwStatus("Sign in required", 401);
 
     const body = findBody(args);
@@ -98,7 +108,12 @@ export class AdvisorCorrectionRequest extends Resource {
     if (id || status !== "pending") {
       return {
         authenticated: true,
-        request: await reviewRequest(id, body, userId),
+        request: await reviewRequest(
+          id,
+          body,
+          userId,
+          hasAnalystRole(currentUser(resource))
+        ),
       };
     }
     return { authenticated: true, request: await createRequest(body, userId) };
@@ -148,14 +163,20 @@ async function createRequest(
  * @param id Correction request id.
  * @param body Review body containing status and optional reviewer note.
  * @param userId Stable reviewer identifier from the session.
+ * @param canReview Whether the current user has analyst review permissions.
  * @returns Updated correction request row.
  */
 async function reviewRequest(
   id: string,
   body: CorrectionRequestBody,
-  userId: string
+  userId: string,
+  canReview: boolean
 ): Promise<AdvisorCorrectionRequestRow> {
+  if (!canReview) throwStatus("Analyst role required", 403);
   const existing = await requireCorrectionRequest(id);
+  if (existing.status !== "pending") {
+    throwStatus("correction request is already reviewed", 409);
+  }
   const status = correctionStatus(body.status);
   if (status === "pending") throwStatus("review status required", 400);
   const updated: AdvisorCorrectionRequestRow = {
@@ -248,6 +269,42 @@ function isRouteTarget(value: unknown): value is RouteTarget {
     typeof value === "object" &&
     typeof Reflect.get(value, "get") === "function"
   );
+}
+
+/**
+ * Reads the current Harper user object from a resource instance.
+ * @param resource Harper resource exposing `getCurrentUser`.
+ * @returns Current user object or null.
+ */
+function currentUser(resource: CurrentUserResource): unknown {
+  return resource.getCurrentUser?.() ?? null;
+}
+
+/**
+ * Checks whether a signed-in user can perform analyst review actions.
+ * @param user Current Harper user object.
+ * @returns True when the user role is analyst or elevated.
+ */
+function hasAnalystRole(user: unknown): boolean {
+  return ANALYST_ROLES.includes(
+    roleValue(user) as (typeof ANALYST_ROLES)[number]
+  );
+}
+
+/**
+ * Extracts a role string from Harper's flat or nested role shapes.
+ * @param value Current user object.
+ * @returns Role name or empty string.
+ */
+function roleValue(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const role = Reflect.get(value, "role");
+  if (typeof role === "string") return role;
+  if (role && typeof role === "object") {
+    const nested = Reflect.get(role, "role");
+    return typeof nested === "string" ? nested : "";
+  }
+  return "";
 }
 
 /**
