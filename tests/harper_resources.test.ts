@@ -2456,8 +2456,10 @@ describe("Harper resource endpoints", () => {
     delete registry[REGULATORY_DISCREPANCY_TABLE];
     (globalThis as any).databases = {
       fabric: {
-        resources: {
-          [REGULATORY_DISCREPANCY_TABLE]: directTable,
+        component: {
+          tables: {
+            [REGULATORY_DISCREPANCY_TABLE]: directTable,
+          },
         },
       },
     };
