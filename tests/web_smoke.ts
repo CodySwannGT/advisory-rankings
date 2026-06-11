@@ -51,6 +51,7 @@ import { smokeComparison } from "./web_smoke_comparison.js";
 import { smokeDiscrepancyQueue } from "./web_smoke_discrepancy_queue.js";
 import { smokeAuthenticatedWatchlists } from "./web_smoke_watchlists.js";
 import { smokeFeedStallRecovery } from "./web_smoke_feed_stall_recovery.js";
+import { smokeCorrectionWorkflow } from "./web_smoke_correction_workflow.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -412,6 +413,12 @@ async function runScenarios(
       ...(await smokeRootBootResilience(page)),
       ...(await smokeWatchlists(browser)),
       ...(await smokeAuthenticatedWatchlists(browser, extraHTTPHeaders)),
+    ];
+  }
+  if (process.env.SMOKE_SCOPE === "corrections") {
+    return [
+      ...(await smokeRootBootResilience(page)),
+      ...(await smokeCorrectionWorkflow(browser, extraHTTPHeaders)),
     ];
   }
   return [
