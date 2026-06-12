@@ -52,6 +52,7 @@ import { smokeDiscrepancyQueue } from "./web_smoke_discrepancy_queue.js";
 import { smokeAuthenticatedWatchlists } from "./web_smoke_watchlists.js";
 import { smokeFeedStallRecovery } from "./web_smoke_feed_stall_recovery.js";
 import { smokeCorrectionWorkflow } from "./web_smoke_correction_workflow.js";
+import { smokeCoverageDashboard } from "./web_smoke_coverage.js";
 
 const DRAWER_OPEN_CLASS = "drawer-open";
 const DRAWER_SELECTOR = ".nav-drawer";
@@ -421,6 +422,9 @@ async function runScenarios(
       ...(await smokeCorrectionWorkflow(browser, extraHTTPHeaders)),
     ];
   }
+  if (process.env.SMOKE_SCOPE === "coverage") {
+    return await smokeCoverageDashboard(page, browser, extraHTTPHeaders);
+  }
   return [
     ...(await smokeRootBootResilience(page)),
     ...(await smokeFavicon(page)),
@@ -438,6 +442,7 @@ async function runScenarios(
     ...(await smokeCompliance(page)),
     ...(await smokeWatchlists(browser)),
     ...(await smokeAuthenticatedWatchlists(browser, extraHTTPHeaders)),
+    ...(await smokeCoverageDashboard(page, browser, extraHTTPHeaders)),
     ...(await smokeDirectories(page)),
     ...(await smokePublicPageHeadings(page)),
     ...(await smokeNotFoundRecovery(page)),
