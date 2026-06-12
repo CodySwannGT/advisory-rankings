@@ -16,7 +16,6 @@ import {
   sourceCard,
   summaryCard,
 } from "./rankings-sections.js";
-import { coverageWorkbenchCard } from "./rankings-coverage.js";
 import {
   filterCard,
   viewOptionsCard,
@@ -42,6 +41,7 @@ const FILTER_FIELDS: readonly string[] = [
   "sort",
 ];
 const DEFAULT_LIMIT = 50;
+const PLACEHOLDER_NAMES = new Set(["Jordan Example", "Example Independent"]);
 
 /** Successful rankings-explorer payload shape rendered by this page. */
 interface RankingsExplorerPayload {
@@ -88,7 +88,7 @@ function loadRankings(center: HTMLElement, right: HTMLElement): void {
   const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
     container: center,
     title: "Loading rankings",
-    body: "Still fetching ranking coverage and ranked profiles. Retry if this takes longer than expected.",
+    body: "Still fetching ranked profiles. Retry if this takes longer than expected.",
     onRetry: () => loadRankings(center, right),
   });
   api<RankingsExplorerPayload>(`/RankingsExplorer${resourceQuery()}`)
@@ -146,24 +146,102 @@ function renderRankings(
   center: HTMLElement,
   right: HTMLElement
 ): void {
-  center.appendChild(headerCard(data));
-  center.appendChild(filterCard(filterPayload(data)));
-  center.appendChild(viewOptionsCard(data));
-  center.appendChild(rankingsDataStateCard(data));
-  center.appendChild(coverageWorkbenchCard(data.coverage));
-  if (data.emptyState) {
+  const publicData = publicRankingsData(data);
+  center.appendChild(headerCard(publicData));
+  center.appendChild(filterCard(filterPayload(publicData)));
+  center.appendChild(viewOptionsCard(publicData));
+  center.appendChild(rankingsDataStateCard(publicData));
+  if (publicData.emptyState) {
     center.appendChild(
       EmptyCard({
         title: "No matching rankings",
-        body: data.emptyState,
+        body: publicData.emptyState,
       })
     );
   } else {
-    center.appendChild(rankingsTableCard(data.items));
+    center.appendChild(rankingsTableCard(publicData.items));
   }
-  right.appendChild(summaryCard(data));
-  right.appendChild(topFirmsCard(data.topFirms));
-  right.appendChild(sourceCard(data));
+  right.appendChild(summaryCard(publicData));
+  right.appendChild(topFirmsCard(publicData.topFirms));
+  right.appendChild(sourceCard(publicData));
+}
+
+/**
+ * Builds the reader-facing data shape from the resource payload.
+ * @param data - RankingsExplorer response.
+ * @returns Payload with known seed placeholders removed from visible rows.
+ */
+function publicRankingsData(
+  data: RankingsExplorerPayload
+): RankingsExplorerPayload {
+  const items = data.items.filter(
+    row => !isPlaceholderName(row.subject?.displayName)
+  );
+  return {
+    ...data,
+    emptyState: publicEmptyState(data, items),
+    items,
+    summary: publicSummary(items),
+    topFirms: publicTopFirms(data.topFirms),
+  };
+}
+
+/**
+ * Computes the visible-row empty state without changing the resource contract.
+ * @param data - Original resource payload.
+ * @param items - Publicly rendered ranking rows.
+ * @returns Empty-state copy when no public rows remain.
+ */
+function publicEmptyState(
+  data: RankingsExplorerPayload,
+  items: readonly RankingExplorerEntry[]
+): string | null {
+  if (data.emptyState) return data.emptyState;
+  return items.length ? null : "No matching public rankings are available.";
+}
+
+/**
+ * Recomputes the public summary from the rows the page actually renders.
+ * @param items - Publicly rendered ranking rows.
+ * @returns Visible-row summary counts.
+ */
+function publicSummary(
+  items: readonly RankingExplorerEntry[]
+): RankingsSummary {
+  return {
+    totalEntries: items.length,
+    resolvedEntries: items.filter(row => row.resolutionStatus === "resolved")
+      .length,
+    unresolvedEntries: items.filter(row => row.resolutionStatus !== "resolved")
+      .length,
+    representedFirms: new Set(
+      items.map(row => row.firm?.id || row.firmText).filter(Boolean)
+    ).size,
+    representedStates: new Set(
+      items.map(row => row.location?.state).filter(Boolean)
+    ).size,
+  };
+}
+
+/**
+ * Removes known seed placeholders from public top-firm aggregates.
+ * @param rows - Top-firm aggregate rows.
+ * @returns Rows safe for reader-facing display.
+ */
+function publicTopFirms(rows: readonly TopFirmRow[]): readonly TopFirmRow[] {
+  return rows.filter(
+    row =>
+      !isPlaceholderName(row.firm?.name) && !isPlaceholderName(row.firmText)
+  );
+}
+
+/**
+ * Detects the intentional sample rows that should not render publicly.
+ * @param value - Candidate person, team, or firm label.
+ * @returns Whether the label is a known placeholder.
+ */
+function isPlaceholderName(value: string | null | undefined): boolean {
+  return PLACEHOLDER_NAMES.has(String(value || "").trim());
 }
 
 /**
@@ -228,12 +306,12 @@ function headerCard(data: RankingsExplorerPayload): HTMLElement {
       el(
         "p",
         { class: "rankings-lede" },
-        "Browse public advisor and team ranking appearances, then filter by ranking list, year, firm, market, and AdvisorBook profile match."
+        "Browse public advisor and team ranking appearances, then filter by ranking list, year, firm, market, and linked AdvisorBook profile."
       ),
       statGrid([
         ["Ranked profiles", fmtNumber(data.summary.totalEntries)],
-        ["Matched profiles", fmtNumber(data.summary.resolvedEntries)],
-        ["Needs match", fmtNumber(data.summary.unresolvedEntries)],
+        ["Linked profiles", fmtNumber(data.summary.resolvedEntries)],
+        ["Profiles to link", fmtNumber(data.summary.unresolvedEntries)],
         ["Markets", fmtNumber(data.summary.representedStates)],
       ]),
     ],

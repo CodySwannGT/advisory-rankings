@@ -20,20 +20,20 @@ import type {
 const STACKED_CELL_CLASS = "stacked-cell";
 const RANKED_PROFILES_LABEL = "Ranked profiles";
 const SOURCE_TABLE_LABELS: Record<string, string> = {
-  Ranking: "Ranking definitions",
-  RankingEntry: "Imported rankings",
-  RankingList: "Ranking list definitions",
+  Ranking: "Ranking lists",
+  RankingEntry: "Ranking appearances",
+  RankingList: "Ranking list details",
   RankingSource: "Public ranking sources",
 };
 const STATUS_LABELS: Record<string, string> = {
-  "missing-market": "Market not matched yet",
+  "missing-market": "Market not listed yet",
   "missing-scale": "Missing scale score",
   "missing-source": "Source unavailable",
-  resolved: "Matched to AdvisorBook profile",
+  resolved: "Linked AdvisorBook profile",
   "source-backed": "Verified source",
   unavailable: "Missing score",
-  "unresolved-entity": "Advisor or team not matched yet",
-  "unresolved-firm": "Firm not matched yet",
+  "unresolved-entity": "Profile not linked yet",
+  "unresolved-firm": "Firm not linked yet",
 };
 
 /**
@@ -121,7 +121,7 @@ export function rankingsDataStateCard(data: RankingsExplorerData): HTMLElement {
     : `${fmtNumber(count)} rankings loaded`;
   const body = isFiltered
     ? `Filtered by ${activeFilters.join(", ")}. Broaden or reset the view to compare against the full loaded rankings dataset.`
-    : "This dev dataset is intentionally small while rankings ingestion is being expanded. Source coverage and profile-match gaps below explain what is loaded and what still needs ingestion or matching.";
+    : "Use filters to focus the public rankings list by ranking, year, firm, market, and profile link status.";
 
   return SectionCard({
     title: "Data volume",
@@ -149,7 +149,7 @@ export function sourceCard(data: RankingsExplorerData): HTMLElement {
     body: [
       EmptyText({
         children:
-          "Imported rankings keep public source URLs, import dates, profile-match status, and missing score details visible.",
+          "Rankings include public source links, published list dates, profile link status, and score availability.",
       }),
       el(
         "div",
@@ -172,8 +172,8 @@ export function summaryCard(data: RankingsExplorerData): HTMLElement {
     title: "Ranking summary",
     pairs: [
       ["Ranked profiles", fmtNumber(data.summary.totalEntries)],
-      ["Matched profiles", fmtNumber(data.summary.resolvedEntries)],
-      ["Needs match", fmtNumber(data.summary.unresolvedEntries)],
+      ["Linked profiles", fmtNumber(data.summary.resolvedEntries)],
+      ["Profiles to link", fmtNumber(data.summary.unresolvedEntries)],
       ["Firms", fmtNumber(data.summary.representedFirms)],
       ["Markets", fmtNumber(data.summary.representedStates)],
       ["Generated", fmtDate(data.generatedAt, { mode: "rel" })],
@@ -218,9 +218,9 @@ function profileMatchLabel(
   value: RankingsDataStateFilters["resolved"]
 ): string {
   return value === "resolved"
-    ? "matched profiles"
+    ? "linked profiles"
     : value === "unresolved"
-      ? "profiles needing matches"
+      ? "profiles to link"
       : "";
 }
 
@@ -338,8 +338,8 @@ function sourceCell(row: PublicRankingEntry): HTMLElement {
       "span",
       {},
       row.source?.loadedAt
-        ? `Imported ${fmtDate(row.source.loadedAt)}`
-        : "Import date unavailable"
+        ? `Updated ${fmtDate(row.source.loadedAt)}`
+        : "Source date unavailable"
     )
   );
 }
