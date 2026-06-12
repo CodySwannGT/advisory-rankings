@@ -415,9 +415,10 @@ re-reads files on reload; no special handling.
 > `web/**` (`/app.css`, generated `/*.js`, and nested `design-system/*`) so
 > clean shells can boot even on Fabric nodes where the built-in static
 > extension does not expose root-level asset paths. The recoverable unknown
-> document shell is registered as a Fastify `/*` route; Fabric did not dispatch
-> `setNotFoundHandler` or a single-segment `/:unknownRoute` fallback for
-> deployed top-level misses, even though direct `/404.html` assets were live.
+> document shell is also configured as the built-in `static.notFound` response;
+> Fabric did not dispatch `setNotFoundHandler`, `/:unknownRoute`, or Fastify
+> `/*` fallback routes for deployed top-level misses before the static miss
+> handler returned bare `Not found`.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
