@@ -74,7 +74,7 @@ describe("static web route shells", () => {
     expect(config).not.toContain("wildcard: false");
   });
 
-  it("registers only the unknown-document fallback", async () => {
+  it("registers root web assets explicitly without catching API resources", async () => {
     const paths: string[] = [];
     const fastify = {
       get: (path: string) => paths.push(path),
@@ -83,9 +83,77 @@ describe("static web route shells", () => {
 
     await staticWebRoutes(fastify);
 
-    expect(paths).toEqual([UNKNOWN_ROUTE_PATTERN]);
-    expect(paths).not.toContain("/");
-    expect(paths).not.toContain("/app.css");
+    expect(paths).toContain("/");
+    expect(paths).toContain("/404.html");
+    expect(paths).toContain("/app.css");
+    expect(paths).toContain("/index.html");
+    expect(paths).toContain("/compare.html");
+    expect(paths).toContain("/design-system/components.css");
+    expect(paths).toContain(UNKNOWN_ROUTE_PATTERN);
+    expect(paths).not.toContain("/Feed");
+    expect(paths).not.toContain("/:asset");
+  });
+
+  it("serves static assets as string bodies for Harper Fastify replies", async () => {
+    const handlers = new Map<string, RouteHandler>();
+    const sent: unknown[] = [];
+    const headerSets: Array<Record<string, string>> = [];
+    const fastify = {
+      get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+      setNotFoundHandler: () => undefined,
+    };
+    const reply = {
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
+        return reply;
+      },
+      send: (body: unknown) => sent.push(body),
+    };
+
+    await staticWebRoutes(fastify);
+    await handlers.get("/app.css")?.({}, reply);
+
+    expect(headerSets[0]).toMatchObject({
+      "content-type": "text/css; charset=utf-8",
+    });
+    expect(typeof sent[0]).toBe("string");
+    expect(String(sent[0])).toContain(".ab-page-title");
+  });
+
+  it("serves binary static assets as buffered bodies", async () => {
+    const handlers = new Map<string, RouteHandler>();
+    const sent: unknown[] = [];
+    const headerSets: Array<Record<string, string>> = [];
+    const fastify = {
+      get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+      setNotFoundHandler: () => undefined,
+    };
+    const reply = {
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
+        return reply;
+      },
+      send: (body: unknown) => sent.push(body),
+    };
+
+    await staticWebRoutes(fastify);
+    await handlers.get("/favicon.ico")?.({}, reply);
+
+    expect(headerSets[0]).toMatchObject({
+      "content-type": "image/x-icon",
+    });
+    expect(Buffer.isBuffer(sent[0])).toBe(true);
+  });
+
+  it("does not register resource routes as static assets", async () => {
+    const paths: string[] = [];
+    const fastify = {
+      get: (path: string) => paths.push(path),
+      setNotFoundHandler: () => undefined,
+    };
+
+    await staticWebRoutes(fastify);
+
     expect(paths).not.toContain("/Feed");
     expect(paths).not.toContain("/:asset");
   });

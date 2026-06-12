@@ -166,10 +166,11 @@ That gives us, on `:443`:
 - A Facebook-style activity-feed UI under `/` (HTML + CSS tracked in
   `web/`, JavaScript generated from `src/web/**/*.ts`).
 - Harper static serving owns `/`, built `web/**` assets, and its own wildcard
-  miss handler. The wildcard keeps `/app.css`, generated root JS modules, and
-  nested `design-system/` files healthy, but deployed top-level unknown routes
-  currently return Harper's bare `Not found` response before app-level fallback
-  routes can run.
+  miss handler. `static-web/index.js` also registers exact root and asset routes
+  for the generated web files; deployed recovery showed those explicit routes
+  are needed to avoid HTTP 500 responses on misses after the unknown-route
+  experiments. Top-level unknown routes currently return Harper's bare
+  `Not found` response before app-level fallback routes can run.
 - Clean data coverage route `/coverage`, served by
   `data-coverage/index.js` and backed by `/DataCoverage`.
 - Clean comparison packet route `/report-packet?ids=...`, served by
@@ -417,15 +418,17 @@ re-reads files on reload; no special handling.
 > same HTML files. `/login` serves `login/shell.html`, while `/login.html`
 > redirects to `/login` for old bookmarks instead of serving a static file.
 > Harper static serves `/`, built assets from `web/**` (`/app.css`, generated
-> `/*.js`, and nested `design-system/*`), and its wildcard miss handler. Earlier
-> deployed attempts showed the static wildcard miss handler consumed top-level
-> unknown routes before `setNotFoundHandler`, a single-segment `/:unknownRoute`,
-> the `/*` wildcard, or the root `*` wildcard could run, even though direct
-> `/404.html` assets were live. A later `wildcard: false` attempt restored exact
-> assets locally but made deployed misses return HTTP 500
+> `/*.js`, and nested `design-system/*`), and its wildcard miss handler.
+> `static-web/index.js` also registers exact root and built-asset routes; do not
+> remove them as duplicate-looking code without deployed replay. Earlier deployed
+> attempts showed the static wildcard miss handler consumed top-level unknown
+> routes before `setNotFoundHandler`, a single-segment `/:unknownRoute`, the
+> `/*` wildcard, or the root `*` wildcard could run, even though direct
+> `/404.html` assets were live. A later `wildcard: false` attempt, followed by
+> removing explicit static-web asset routes, made deployed misses return HTTP 500
 > `Cannot read properties of undefined (reading 'length')`; keep the deploy-safe
-> wildcard mode until Harper's missing-document path can be handled without
-> regressing static or API routes.
+> wildcard mode and explicit asset routes until Harper's missing-document path
+> can be handled without regressing static or API routes.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
