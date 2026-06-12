@@ -13,6 +13,7 @@ const MIME = {
 
 const CACHEABLE = new Set([".css", ".ico", ".js", ".svg"]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
+const UNKNOWN_DOCUMENT_ROUTE = "/*";
 
 /**
  * Register root-level static web routes for Fabric nodes that do not expose
@@ -31,7 +32,7 @@ export default async function staticWebRoutes(fastify) {
   for (const asset of assets) {
     await registerAsset(fastify, `/${asset}`, asset);
   }
-  fastify.get("/:unknownRoute", async (request, reply) =>
+  fastify.get(UNKNOWN_DOCUMENT_ROUTE, async (request, reply) =>
     sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
   );
   fastify.setNotFoundHandler?.((request, reply) =>
