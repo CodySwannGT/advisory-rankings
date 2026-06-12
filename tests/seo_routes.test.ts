@@ -64,11 +64,15 @@ describe("SEO route shells", () => {
 describe("static web route shells", () => {
   it("registers root web assets explicitly without catching API resources", async () => {
     const paths: string[] = [];
-    const fastify = { get: (path: string) => paths.push(path) };
+    const fastify = {
+      get: (path: string) => paths.push(path),
+      setNotFoundHandler: () => undefined,
+    };
 
     await staticWebRoutes(fastify);
 
     expect(paths).toContain("/");
+    expect(paths).toContain("/404.html");
     expect(paths).toContain("/app.css");
     expect(paths).toContain("/index.html");
     expect(paths).toContain("/compare.html");
@@ -84,6 +88,7 @@ describe("static web route shells", () => {
     const headerSets: Array<Record<string, string>> = [];
     const fastify = {
       get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+      setNotFoundHandler: () => undefined,
     };
     const reply = {
       headers: (headers: Record<string, string>) => {
@@ -109,6 +114,7 @@ describe("static web route shells", () => {
     const headerSets: Array<Record<string, string>> = [];
     const fastify = {
       get: (path: string, handler: RouteHandler) => handlers.set(path, handler),
+      setNotFoundHandler: () => undefined,
     };
     const reply = {
       headers: (headers: Record<string, string>) => {
@@ -125,5 +131,46 @@ describe("static web route shells", () => {
       "content-type": "image/x-icon",
     });
     expect(Buffer.isBuffer(sent[0])).toBe(true);
+  });
+
+  it("serves the 404 app shell for unknown document routes only", async () => {
+    let notFoundHandler: RouteHandler | undefined;
+    const sent: unknown[] = [];
+    const statuses: number[] = [];
+    const headerSets: Array<Record<string, string>> = [];
+    const fastify = {
+      get: () => undefined,
+      setNotFoundHandler: (handler: RouteHandler) => {
+        notFoundHandler = handler;
+      },
+    };
+    const reply = {
+      code: (status: number) => {
+        statuses.push(status);
+        return reply;
+      },
+      headers: (headers: Record<string, string>) => {
+        headerSets.push(headers);
+        return reply;
+      },
+      send: (body: unknown) => sent.push(body),
+    };
+
+    await staticWebRoutes(fastify);
+    await notFoundHandler?.(
+      { url: "/this-page-does-not-exist", headers: { accept: "text/html" } },
+      reply
+    );
+    await notFoundHandler?.(
+      { url: "/missing.js", headers: { accept: "*/*" } },
+      reply
+    );
+
+    expect(statuses).toEqual([404, 404]);
+    expect(headerSets[0]).toMatchObject({
+      "content-type": "text/html; charset=utf-8",
+    });
+    expect(String(sent[0])).toContain("/not-found.js");
+    expect(sent[1]).toBe("Not found");
   });
 });
