@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { parse } from "yaml";
-import { readFileSync } from "node:fs";
 
 import advisorsRoutes from "../harper-app/advisors/index.js";
 import articlesRoutes from "../harper-app/articles/index.js";
@@ -14,19 +12,6 @@ import teamsRoutes from "../harper-app/teams/index.js";
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
 
 const UNKNOWN_ROUTE_PATTERN = "/*";
-
-const harperConfig = parse(
-  readFileSync(new URL("../harper-app/config.yaml", import.meta.url), "utf8")
-) as {
-  readonly static?: {
-    readonly files?: string;
-    readonly fallthrough?: boolean;
-    readonly notFound?: {
-      readonly file?: string;
-      readonly statusCode?: number;
-    };
-  };
-};
 
 describe("SEO route shells", () => {
   it("registers explicit entity routes without catching root assets", async () => {
@@ -79,17 +64,6 @@ describe("SEO route shells", () => {
 });
 
 describe("static web route shells", () => {
-  it("configures Harper static misses to serve the recoverable 404 shell", () => {
-    expect(harperConfig.static).toMatchObject({
-      files: "web/**",
-      fallthrough: false,
-      notFound: {
-        file: "web/404.html",
-        statusCode: 404,
-      },
-    });
-  });
-
   it("registers root web assets explicitly without catching API resources", async () => {
     const paths: string[] = [];
     const fastify = {

@@ -40,7 +40,3 @@ fastifyRoutes:
 # `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
   files: 'web/**'
-  notFound:
-    file: 'web/404.html'
-    statusCode: 404
-  fallthrough: false
