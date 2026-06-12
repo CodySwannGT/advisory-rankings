@@ -84,8 +84,8 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
       }),
       selectField("Profile match", "resolved", data.filters.resolved, [
         ["", "All profiles"],
-        ["resolved", "Matched to AdvisorBook profile"],
-        ["unresolved", "Needs AdvisorBook match"],
+        ["resolved", "Linked AdvisorBook profiles"],
+        ["unresolved", "Profiles to link"],
       ]),
       hiddenField("sort", data.filters.sort),
       el("button", { class: "filter-button", type: "submit" }, "Apply")

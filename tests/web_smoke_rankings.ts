@@ -13,7 +13,6 @@ import {
 } from "./web_smoke_support.js";
 
 const RANKINGS_TABLE_SELECTOR = ".rankings-table";
-const UNRESOLVED_ROW_NAME = "Jordan Example";
 const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
 const LIST_ATTRIBUTE = "list";
 const CITY_OPTIONS_SELECTOR = "#rankings-city-options";
@@ -23,18 +22,26 @@ const filterInputSelector = (name: string) => `input[name="${name}"]`;
 const CITY_FILTER_SELECTOR = filterInputSelector("city");
 const FIRM_FILTER_SELECTOR = filterInputSelector("firm");
 const STATE_FILTER_SELECTOR = filterInputSelector("state");
+const ZERO_RANKINGS_FILTER_TEXT = "0 rankings match these filters";
 const RAW_RANKINGS_LABELS = [
   "SOURCE BACKED",
   "MISSING_SCALE",
   "UNRESOLVED ENTITY",
   "UNRESOLVED FIRM",
+  "Needs match",
   "Rows",
   "Rows in slice",
   "Buckets",
   "Gap types",
   "Source confirmed",
   "Loaded rows",
+  "source-backed rows",
+  "source rows",
+  "dev dataset",
+  "ingestion",
+  "matching pipelines",
 ];
+const PLACEHOLDER_NAMES = ["Jordan Example", "Example Independent"];
 const MOBILE_VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 320, height: 740 },
@@ -58,21 +65,19 @@ export async function smokeRankings(
   await shot(page, "11-rankings-desktop");
   const sortChange = await changeSortAndReadEvidence(page);
 
-  const drilldown = await followUnresolvedGap(page);
-
   await smokeGoto(page, `${BASE}/rankings?resolved=unresolved&state=TX`);
-  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
-  await waitForRankingsText(page, "1 rankings match these filters");
+  await smokeWaitForSelector(page, ".empty", QUICK_UI_TIMEOUT);
+  await waitForRankingsText(page, ZERO_RANKINGS_FILTER_TEXT);
   const unresolved = await readUnresolvedRankings(page);
 
   await smokeGoto(page, `${BASE}/rankings?state=ZZ`);
   await smokeWaitForSelector(page, ".empty", QUICK_UI_TIMEOUT);
-  await waitForRankingsText(page, "0 rankings match these filters");
+  await waitForRankingsText(page, ZERO_RANKINGS_FILTER_TEXT);
   const empty = await readEmptyRankings(page);
-  await shot(page, "rankings-coverage-empty-state");
+  await shot(page, "rankings-empty-state");
 
   return [
-    ...rankingsChecks(loaded, sortChange, drilldown, unresolved, empty),
+    ...rankingsChecks(loaded, sortChange, unresolved, empty),
     ...(await smokeRankingsMobile(browser, extraHTTPHeaders)),
     ...(await smokeRankingsNoRows(browser, extraHTTPHeaders)),
   ];
@@ -119,46 +124,35 @@ async function readLoadedRankings(page: Page) {
           "Browse public advisor and team ranking appearances"
         ),
         hasNextGen: document.body.innerText.includes("Next Gen"),
-        hasDataQualityPanel: document.body.innerText.includes(
+        hasPublicRankingsOnly: !document.body.innerText.includes(
           "Ranking data quality"
         ),
         hasSummaryMetricLabels:
           document.body.innerText.includes("Ranked profiles") &&
-          document.body.innerText.includes("Matched profiles") &&
-          document.body.innerText.includes("Needs match") &&
+          document.body.innerText.includes("Linked profiles") &&
+          document.body.innerText.includes("Profiles to link") &&
           document.body.innerText.includes("Markets"),
-        hasCoverageBucket:
-          document.querySelectorAll(".rankings-coverage-bucket[href]").length >
-          0,
-        hasCoverageMetricHints:
-          document.body.innerText.includes("source-backed rows") &&
-          document.body.innerText.includes("category/year groups") &&
-          document.body.innerText.includes("profile or score gaps"),
-        hasGapSample: document.body.innerText.includes(args.unresolvedRowName),
         hasGapSource: document.body.innerText.includes(args.nextGenSourceLabel),
-        hasResolved: hasText("Matched to AdvisorBook profile"),
+        hasResolved: hasText("Linked AdvisorBook profile"),
         hasSourceBacked: hasText("Verified source"),
         hasTopFirmCountLabels:
           document.body.innerText.includes("Wells Fargo Advisors") &&
-          document.body.innerText.includes("Example Independent") &&
-          document.body.innerText.includes("2 rankings") &&
           document.body.innerText.includes("1 ranking") &&
-          document.body.innerText.includes("Matched AdvisorBook firm") &&
-          document.body.innerText.includes("Source firm name awaiting match"),
+          document.body.innerText.includes("Matched AdvisorBook firm"),
         hasUnavailable: hasText("Missing score"),
+        placeholderNames: args.placeholderNames.filter(name =>
+          document.body.innerText.includes(name)
+        ),
         rawLabels: args.rawRankingsLabels.filter(label =>
           document.body.innerText.includes(label)
         ),
-        unresolvedGapHref: document.querySelector<HTMLAnchorElement>(
-          ".rankings-gap-bucket[href*='resolved=unresolved']"
-        )?.href,
       };
     },
     {
       nextGenSourceLabel: NEXT_GEN_SOURCE_LABEL,
+      placeholderNames: PLACEHOLDER_NAMES,
       rawRankingsLabels: RAW_RANKINGS_LABELS,
       rankingsTableSelector: RANKINGS_TABLE_SELECTOR,
-      unresolvedRowName: UNRESOLVED_ROW_NAME,
     }
   );
   return {
@@ -181,13 +175,9 @@ async function readRankingsDateEvidence(page: Page) {
     hasDataVolumeState: [
       "Data volume",
       "rankings loaded",
-      "intentionally small",
+      "Use filters to focus the public rankings list",
     ].every(label => pageText.includes(label)),
-    hasHumanImportedDate: /Imported [A-Z][a-z]{2} \d{1,2}, \d{4}/.test(
-      pageText
-    ),
-    hasLatestImportHumanDate:
-      /Latest import\s+[A-Z][a-z]{2} \d{1,2}, \d{4}/.test(pageText),
+    hasHumanImportedDate: /Updated [A-Z][a-z]{2} \d{1,2}, \d{4}/.test(pageText),
     rawDateLabels:
       pageText.match(/\b(?:\d{4}-\d{2}-\d{2}T|\d{4}-\d{2}-\d{2}\b)/g) ?? [],
   };
@@ -352,56 +342,35 @@ async function readRankingsTableEvidence(page: Page) {
 }
 
 /**
- * Opens the unresolved source-status gap drill-down.
- * @param page - Browser page to drive.
- * @returns Drill-down DOM facts.
- */
-async function followUnresolvedGap(page: Page) {
-  await page
-    .locator(".rankings-gap-bucket[href*='resolved=unresolved']")
-    .first()
-    .click();
-  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
-  return await page.evaluate(
-    unresolvedRowName => ({
-      hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
-      resolvedFilter: document.querySelector<HTMLSelectElement>(
-        'select[name="resolved"]'
-      )?.value,
-      url: window.location.href,
-    }),
-    UNRESOLVED_ROW_NAME
-  );
-}
-
-/**
  * Reads filtered unresolved rankings page evidence.
  * @param page - Browser page to inspect.
  * @returns Unresolved rankings DOM facts.
  */
 async function readUnresolvedRankings(page: Page) {
   return await page.evaluate(
-    unresolvedRowName => ({
-      hasUnresolvedRow: document.body.innerText.includes(unresolvedRowName),
-      hasUnresolvedStatus: document.body.innerText
-        .toLowerCase()
-        .includes("advisor or team not matched yet"),
+    args => ({
+      placeholderNames: args.placeholderNames.filter(name =>
+        document.body.innerText.includes(name)
+      ),
+      hasFilteredEmpty: document.body.innerText.includes(
+        "No matching public rankings"
+      ),
       hasFilteredCountState:
-        document.body.innerText.includes("rankings match these filters") &&
+        document.body.innerText.includes(args.zeroRankingsFilterText) &&
         document.body.innerText.includes("Filtered by") &&
         Boolean(
           document.querySelector(".rankings-reset-link[href='/rankings']")
         ),
-      hasUnresolvedDataQuality: document.body.innerText.includes(
-        "Ranking data quality"
-      ),
       state: document.querySelector<HTMLInputElement>('input[name="state"]')
         ?.value,
       noOverflow:
         document.documentElement.scrollWidth <=
         document.documentElement.clientWidth,
     }),
-    UNRESOLVED_ROW_NAME
+    {
+      placeholderNames: PLACEHOLDER_NAMES,
+      zeroRankingsFilterText: ZERO_RANKINGS_FILTER_TEXT,
+    }
   );
 }
 
@@ -411,33 +380,33 @@ async function readUnresolvedRankings(page: Page) {
  * @returns Empty rankings DOM facts.
  */
 async function readEmptyRankings(page: Page) {
-  return await page.evaluate(() => ({
-    hasEmpty: document.body.innerText.includes("No matching public rankings"),
-    hasCoverageEmpty: document.body.innerText.includes(
-      "No rankings are loaded for this coverage view."
-    ),
-    hasFilteredCountState:
-      document.body.innerText.includes("0 rankings match these filters") &&
-      document.body.innerText.includes("Broaden or reset the view") &&
-      Boolean(document.querySelector(".rankings-reset-link[href='/rankings']")),
-    state: document.querySelector<HTMLInputElement>('input[name="state"]')
-      ?.value,
-  }));
+  return await page.evaluate(
+    zeroRankingsFilterText => ({
+      hasEmpty: document.body.innerText.includes("No matching public rankings"),
+      hasFilteredCountState:
+        document.body.innerText.includes(zeroRankingsFilterText) &&
+        document.body.innerText.includes("Broaden or reset the view") &&
+        Boolean(
+          document.querySelector(".rankings-reset-link[href='/rankings']")
+        ),
+      state: document.querySelector<HTMLInputElement>('input[name="state"]')
+        ?.value,
+    }),
+    ZERO_RANKINGS_FILTER_TEXT
+  );
 }
 
 /**
  * Converts rankings DOM facts into smoke checks.
  * @param loaded - Loaded page facts.
  * @param sortChange - Sort-change behavior facts.
- * @param drilldown - Coverage drill-down page facts.
  * @param unresolved - Filtered unresolved page facts.
  * @param empty - Empty page facts.
  * @returns Smoke assertions.
  */
-function rankingsChecks(loaded, sortChange, drilldown, unresolved, empty) {
+function rankingsChecks(loaded, sortChange, unresolved, empty) {
   return [
     ...loadedRankingsChecks(loaded, sortChange),
-    ...drilldownRankingsChecks(drilldown),
     ...unresolvedRankingsChecks(unresolved),
     ...emptyRankingsChecks(empty),
   ];
@@ -458,28 +427,21 @@ function loadedRankingsChecks(loaded, sortChange) {
     ...rankingsNavigationChecks(loaded),
     check(loaded.hasNextGen, "rankings: category data renders"),
     ...rankingsSortChecks(loaded, sortChange),
-    check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
+    check(
+      loaded.hasPublicRankingsOnly,
+      "rankings: public page hides analyst data-quality workbench"
+    ),
     ...lowInformationPanelChecks(loaded),
     check(
       loaded.hasDataVolumeState,
-      "rankings: sparse data volume state explains loaded dataset"
+      "rankings: public data volume state explains visible rankings"
     ),
     finiteFacetCheck(loaded),
-    check(loaded.hasCoverageBucket, "rankings: coverage buckets render"),
     check(
-      loaded.hasGapSample && loaded.hasGapSource,
-      "rankings: gap samples include row and source labels"
-    ),
-    check(
-      Boolean(loaded.unresolvedGapHref),
-      "rankings: unresolved gap exposes drill-down link"
-    ),
-    check(
-      loaded.hasHumanImportedDate && loaded.hasLatestImportHumanDate,
-      "rankings: import dates are human readable",
+      loaded.hasHumanImportedDate,
+      "rankings: source dates are human readable",
       JSON.stringify({
         hasHumanImportedDate: loaded.hasHumanImportedDate,
-        hasLatestImportHumanDate: loaded.hasLatestImportHumanDate,
       })
     ),
     check(
@@ -487,14 +449,19 @@ function loadedRankingsChecks(loaded, sortChange) {
       "rankings: raw date strings are hidden",
       loaded.rawDateLabels.join(", ")
     ),
-    check(loaded.rowCount > 0, "rankings: source-backed rows render"),
+    check(loaded.rowCount > 0, "rankings: public ranking rows render"),
     check(loaded.hasResolved, "rankings: resolved status is visible"),
     check(loaded.hasSourceBacked, "rankings: source status is visible"),
     check(loaded.hasUnavailable, "rankings: missing score is explicit"),
     check(
       loaded.rawLabels.length === 0,
-      "rankings: raw enum-style labels are hidden",
+      "rankings: pipeline and raw enum labels are hidden",
       loaded.rawLabels.join(", ")
+    ),
+    check(
+      loaded.placeholderNames.length === 0,
+      "rankings: placeholder entities are hidden",
+      loaded.placeholderNames.join(", ")
     ),
     check(
       Boolean(loaded.profileHref),
@@ -565,10 +532,6 @@ function lowInformationPanelChecks(loaded) {
       "rankings: summary metrics expose labeled values"
     ),
     check(
-      loaded.hasCoverageMetricHints,
-      "rankings: coverage metrics explain what counts mean"
-    ),
-    check(
       loaded.hasTopFirmCountLabels,
       "rankings: top firms name firms and explain ranking counts"
     ),
@@ -597,22 +560,6 @@ function finiteFacetCheck(loaded) {
 }
 
 /**
- * Converts coverage drill-down DOM facts into checks.
- * @param drilldown - Drill-down page facts.
- * @returns Drill-down checks.
- */
-function drilldownRankingsChecks(drilldown) {
-  return [
-    check(
-      drilldown.resolvedFilter === "unresolved" &&
-        drilldown.hasUnresolvedRow &&
-        drilldown.url.includes("resolved=unresolved"),
-      "rankings: coverage gap drills into unresolved rows"
-    ),
-  ];
-}
-
-/**
  * Converts unresolved filter DOM facts into checks.
  * @param unresolved - Filtered unresolved page facts.
  * @returns Unresolved-page checks.
@@ -620,14 +567,11 @@ function drilldownRankingsChecks(drilldown) {
 function unresolvedRankingsChecks(unresolved) {
   return [
     check(
-      unresolved.hasUnresolvedRow && unresolved.hasUnresolvedStatus,
-      "rankings: unresolved row remains visible"
+      unresolved.hasFilteredEmpty && unresolved.placeholderNames.length === 0,
+      "rankings: unresolved placeholder row stays hidden",
+      unresolved.placeholderNames.join(", ")
     ),
     check(unresolved.state === "TX", "rankings: state filter is retained"),
-    check(
-      unresolved.hasUnresolvedDataQuality,
-      "rankings: filtered data quality panel remains visible"
-    ),
     check(
       unresolved.hasFilteredCountState,
       "rankings: filtered state shows result count and reset action"
@@ -647,7 +591,6 @@ function unresolvedRankingsChecks(unresolved) {
 function emptyRankingsChecks(empty) {
   return [
     check(empty.hasEmpty, "rankings: empty filter explains missing data"),
-    check(empty.hasCoverageEmpty, "rankings: empty coverage state renders"),
     check(
       empty.hasFilteredCountState,
       "rankings: empty filter shows zero-count reset action"
@@ -657,7 +600,7 @@ function emptyRankingsChecks(empty) {
 }
 
 /**
- * Verifies rankings coverage at narrow mobile widths.
+ * Verifies rankings at narrow mobile widths.
  * @param browser - Browser used to create isolated mobile contexts.
  * @param extraHTTPHeaders - Optional auth headers for deployed checks.
  * @returns Mobile rankings smoke assertions.
@@ -675,7 +618,7 @@ async function smokeRankingsMobile(
 }
 
 /**
- * Verifies rankings coverage at one mobile width.
+ * Verifies rankings at one mobile width.
  * @param browser - Browser used to create an isolated mobile context.
  * @param extraHTTPHeaders - Optional auth headers for deployed checks.
  * @param viewport - Viewport dimensions to inspect.
@@ -689,18 +632,14 @@ async function smokeRankingsMobileViewport(
   const context = await newContext(browser, viewport, extraHTTPHeaders);
   const page = await context.newPage();
   await smokeGoto(page, `${BASE}/rankings`);
-  await smokeWaitForSelector(
-    page,
-    ".rankings-coverage-workbench",
-    QUICK_UI_TIMEOUT
-  );
-  await shot(page, `rankings-coverage-mobile-${viewport.width}`);
+  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
+  await shot(page, `rankings-mobile-${viewport.width}`);
   const evidence = await readMobileRankings(page);
 
   return await closeWithChecks(context, [
     check(
       evidence.hasCounts && evidence.hasLabels && evidence.hasDrilldown,
-      `rankings: mobile coverage content readable at ${viewport.width}px`,
+      `rankings: mobile public content readable at ${viewport.width}px`,
       evidence.text.slice(0, 180)
     ),
     check(
@@ -722,14 +661,13 @@ async function smokeRankingsMobileViewport(
 }
 
 /**
- * Reads mobile rankings coverage facts.
+ * Reads mobile rankings facts.
  * @param page - Browser page to inspect.
- * @returns Mobile coverage facts.
+ * @returns Mobile rankings facts.
  */
 async function readMobileRankings(page: Page) {
   return await page.evaluate(rankingsTableSelector => {
-    const workbench = document.querySelector(".rankings-coverage-workbench");
-    const text = workbench?.textContent || "";
+    const pageText = document.body.innerText;
     const table = document.querySelector(rankingsTableSelector);
     const tableText = table?.textContent || "";
     const statusTags = [
@@ -749,17 +687,18 @@ async function readMobileRankings(page: Page) {
       .map(tag => tag.textContent?.trim() || "empty status");
     return {
       clientWidth: document.documentElement.clientWidth,
-      hasCounts: /Rankings in view|Ranking lists|Open match issues/i.test(text),
+      hasCounts: /Ranked profiles|Linked profiles|Profiles to link/i.test(
+        pageText
+      ),
       hasDrilldown:
-        document.querySelectorAll(
-          ".rankings-coverage-bucket[href], .rankings-gap-bucket[href]"
-        ).length > 0,
+        document.querySelectorAll(`${rankingsTableSelector} tbody a[href]`)
+          .length > 0,
       hasLabels:
-        /Ranking-list coverage|Profile and source issues|Latest import/i.test(
-          text
+        /Advisor Rankings Browser|Ranking summary|Source transparency/i.test(
+          pageText
         ),
       hasReadableRowStatus:
-        tableText.toLowerCase().includes("advisor or team not matched yet") &&
+        tableText.toLowerCase().includes("linked advisorbook profile") &&
         tableText.toLowerCase().includes("verified source"),
       noOverflow:
         document.documentElement.scrollWidth <=
@@ -768,7 +707,7 @@ async function readMobileRankings(page: Page) {
       clippedStatusLabels,
       scrollWidth: document.documentElement.scrollWidth,
       tableText,
-      text,
+      text: pageText,
     };
   }, RANKINGS_TABLE_SELECTOR);
 }
@@ -796,16 +735,12 @@ async function smokeRankingsNoRows(
     });
   });
   await smokeGoto(page, `${BASE}/rankings`);
-  await smokeWaitForSelector(page, ".rankings-coverage-workbench .empty");
-  await shot(page, "rankings-coverage-no-rows");
+  await smokeWaitForSelector(page, ".empty");
+  await shot(page, "rankings-no-rows");
   const evidence = await readEmptyRankings(page);
 
   return await closeWithChecks(context, [
     check(evidence.hasEmpty, "rankings: no-row state explains missing rows"),
-    check(
-      evidence.hasCoverageEmpty,
-      "rankings: no-row data quality panel renders explicit empty state"
-    ),
   ]);
 }
 
