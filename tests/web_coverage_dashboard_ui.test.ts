@@ -20,7 +20,7 @@ const browserDescribe =
     ? describe.sequential
     : describe.skip;
 
-browserDescribe("coverage dashboard route (#1193)", () => {
+browserDescribe("coverage dashboard route (#1194)", () => {
   let browser: Browser;
   let server: Server;
   let baseUrl: string;
@@ -78,7 +78,7 @@ browserDescribe("coverage dashboard route (#1193)", () => {
       await page
         .getByRole("link", { name: "Open rankings" })
         .getAttribute("href")
-    ).toBe("/rankings");
+    ).toBe("/rankings?resolved=unresolved");
     expect(
       await page
         .getByRole("link", { name: "Open recruiting" })
@@ -88,7 +88,9 @@ browserDescribe("coverage dashboard route (#1193)", () => {
       await page
         .getByRole("link", { name: "Open research queue" })
         .getAttribute("href")
-    ).toBe("/research/freshness");
+    ).toBe(
+      "/research/freshness?sourceType=web_research&staleDays=30&status=&missingField=&limit=25"
+    );
     await page.getByText("Coverage caveats").waitFor({
       timeout: QUICK_TIMEOUT,
     });
