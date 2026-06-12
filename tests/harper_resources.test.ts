@@ -80,6 +80,8 @@ const MISSING_PRODUCER_TIER_REASON = "missing-producer-tier";
 const MISSING_BACKEND_METRICS_REASON = "missing-backend-metrics";
 const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
+const DATA_COVERAGE_RANKINGS_EMPTY =
+  "No rankings are loaded for this coverage view.";
 const CLIENT_EMAIL = "client@example.test";
 const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
@@ -288,6 +290,11 @@ const routeTarget = (
   },
   toString: () => id,
 });
+
+const metricById = (payload: any, id: string): any =>
+  payload.sections
+    .flatMap((section: any) => section.metrics)
+    .find((metric: any) => metric.id === id);
 
 const baseRows = () => {
   setRows("Firm", [
@@ -2039,6 +2046,100 @@ describe("Harper feed and profile builders", () => {
     });
   });
 
+  it("returns public DataCoverage sections with source context and limitations", async () => {
+    const payload = await new (resources as any).DataCoverage().get();
+
+    expect(new (resources as any).DataCoverage().allowRead()).toBe(true);
+    expect(payload.sections.map((section: any) => section.id)).toEqual([
+      "public-entity-groups",
+      "rankings",
+      "recruiting",
+      "research-freshness",
+      "source-context",
+    ]);
+    expect(payload.provenance.publicResources).toEqual([
+      "/PublicAdvisors",
+      "/PublicFirms",
+      "/PublicTeams",
+      "/RankingsExplorer",
+      "/RecruitingMarket",
+      "/AdvisorResearchQueue",
+    ]);
+    expect(metricById(payload, "advisors")).toMatchObject({
+      value: 2,
+      source: "Advisor",
+      publicResource: "/PublicAdvisors",
+      limitation: null,
+    });
+    expect(metricById(payload, "ranking-entries")).toMatchObject({
+      value: 2,
+      source: "RankingEntry",
+      publicResource: "/RankingsExplorer",
+    });
+    expect(metricById(payload, "ranking-gap-buckets")).toMatchObject({
+      value: expect.any(Number),
+      limitation:
+        "Some ranking entries still need resolution or source fields.",
+    });
+    expect(metricById(payload, "moves")).toMatchObject({
+      value: 3,
+      source: "TransitionEvent",
+      publicResource: "/RecruitingMarket",
+    });
+    expect(metricById(payload, "latest-research-check")).toMatchObject({
+      value: "2026-05-25T12:00:00.000Z",
+      source: "AdvisorResearchCheck.checkedAt",
+      publicResource: "/AdvisorResearchQueue",
+      limitation: null,
+    });
+    expect(metricById(payload, "field-assertions")).toMatchObject({
+      value: 3,
+      source: "FieldAssertion",
+      publicResource: null,
+    });
+    expect(payload.limitations).toEqual(
+      expect.arrayContaining([
+        "Some ranking entries still need resolution or source fields.",
+      ])
+    );
+    expect(JSON.stringify(payload)).not.toContain("UserRating");
+    expect(JSON.stringify(payload)).not.toContain("UserWatchlist");
+    expect(JSON.stringify(payload)).not.toContain(
+      ADVISOR_CORRECTION_REQUEST_TABLE
+    );
+  });
+
+  it("represents missing DataCoverage values as limitations", async () => {
+    setRows("Ranking", []);
+    setRows("RankingEntry", []);
+    setRows("TransitionEvent", []);
+    setRows("AdvisorResearchCheck", []);
+    setRows("FieldAssertion", []);
+
+    const payload = await new (resources as any).DataCoverage().get();
+
+    expect(metricById(payload, "ranking-lists")).toMatchObject({
+      value: 0,
+      limitation: "No ranking-list rows are loaded.",
+    });
+    expect(metricById(payload, "ranking-entries")).toMatchObject({
+      value: 0,
+      limitation: DATA_COVERAGE_RANKINGS_EMPTY,
+    });
+    expect(metricById(payload, "moves")).toMatchObject({
+      value: 0,
+      limitation: "No public recruiting moves are loaded.",
+    });
+    expect(metricById(payload, "latest-research-check")).toMatchObject({
+      value: null,
+      limitation: "Research freshness is unavailable.",
+    });
+    expect(metricById(payload, "field-assertions")).toMatchObject({
+      value: 0,
+      limitation: "No field-level source assertions are loaded.",
+    });
+  });
+
   it("builds a source-backed rankings explorer payload", async () => {
     const payload = await new (resources as any).RankingsExplorer().get(
       routeTarget("", { category: "Next Gen", year: "2025" })
@@ -2348,7 +2449,7 @@ describe("Harper feed and profile builders", () => {
       totalEntries: 0,
       buckets: [],
       gapBuckets: [],
-      emptyState: "No rankings are loaded for this coverage view.",
+      emptyState: DATA_COVERAGE_RANKINGS_EMPTY,
     });
     expect(payload.items).toEqual([]);
     expect(payload.emptyState).toBe(
@@ -2467,7 +2568,7 @@ describe("Harper feed and profile builders", () => {
         totalEntries: 0,
         buckets: [],
         gapBuckets: [],
-        emptyState: "No rankings are loaded for this coverage view.",
+        emptyState: DATA_COVERAGE_RANKINGS_EMPTY,
       },
       emptyState: "No matching public rankings are loaded for these filters.",
     });
