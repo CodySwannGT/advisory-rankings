@@ -66,12 +66,12 @@ describe("SEO route shells", () => {
 });
 
 describe("static web route shells", () => {
-  it("configures Harper static serving to fall through on missing documents", async () => {
+  it("keeps Harper static serving on the deploy-safe wildcard mode", async () => {
     const config = await readFile("harper-app/config.yaml", "utf8");
 
     expect(config).toContain("static:");
     expect(config).toContain("files: 'web/**'");
-    expect(config).toContain("wildcard: false");
+    expect(config).not.toContain("wildcard: false");
   });
 
   it("registers only the unknown-document fallback", async () => {
