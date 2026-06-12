@@ -25,6 +25,10 @@ import type {
   CanonicalSearchRows,
   CanonicalTeamRows,
 } from "./resource-directory-types.js";
+import {
+  publicTeamDisplayName,
+  publicTeamIdentityKey,
+} from "./resource-team-display.js";
 
 /** Single row pulled from a Harper table read; values are field-keyed. */
 type RawRow = Readonly<Record<string, unknown>>;
@@ -104,20 +108,27 @@ const FIRM_REFERENCE_FIELDS: FirmReferenceFieldMap = {
  * @returns Rows with stale alias firm IDs resolved to their canonical firm IDs.
  */
 export function canonicalizeFirmResourceRows(rows: RawRowsByKey): RawRowsByKey {
-  const firms = rows.firms ?? [];
+  const rowsWithPublicTeamNames: RawRowsByKey = {
+    ...rows,
+    teams: publicTeamRows(rows.teams),
+  };
+  const firms = rowsWithPublicTeamNames.firms ?? [];
   const staleAliasRows = firms.filter(isMorganStanleyAliasFirm);
   const replacements = new Map<string, string>(
     staleAliasRows.map(firm => [String(firm.id), MORGAN_STANLEY_ID])
   );
   if (!staleAliasRows.length) {
-    return { ...rows, firmAliases: aliasRows(rows.firmAliases) };
+    return {
+      ...rowsWithPublicTeamNames,
+      firmAliases: aliasRows(rowsWithPublicTeamNames.firmAliases),
+    };
   }
 
   return rewriteFirmReferences(
     {
-      ...rows,
+      ...rowsWithPublicTeamNames,
       firms: canonicalFirmRows(firms, staleAliasRows),
-      firmAliases: aliasRows(rows.firmAliases),
+      firmAliases: aliasRows(rowsWithPublicTeamNames.firmAliases),
     },
     replacements
   );
@@ -169,7 +180,7 @@ export function canonicalizeForTeamsDirectory(
 ): CanonicalTeamRows {
   const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
   return {
-    teams: narrowRowArray<TeamRow>(raw.teams),
+    teams: dedupePublicTeams(narrowRowArray<TeamRow>(raw.teams)),
     firms: narrowRowArray<FirmRow>(raw.firms),
   };
 }
@@ -187,7 +198,7 @@ export function canonicalizeForSearch(
   const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
   return {
     firms: narrowRowArray<FirmRow>(raw.firms),
-    teams: narrowRowArray<TeamRow>(raw.teams),
+    teams: dedupePublicTeams(narrowRowArray<TeamRow>(raw.teams)),
     employments: narrowRowArray<EmploymentHistoryRow>(raw.employments),
   };
 }
@@ -236,6 +247,40 @@ function asRawRowArray(value: unknown): readonly RawRow[] {
  */
 function isRawRow(value: unknown): value is RawRow {
   return typeof value === "object" && value !== null;
+}
+
+/**
+ * Converts raw team rows to the public team-name contract.
+ * @param rows - Raw `teams` array from a public-resource load.
+ * @returns Rows with internal markers removed from public names.
+ */
+function publicTeamRows(
+  rows: readonly RawRow[] | undefined
+): readonly RawRow[] {
+  return (rows ?? []).map(row => {
+    const name = publicTeamDisplayName(row.name);
+    return name === row.name ? row : { ...row, name };
+  });
+}
+
+/**
+ * Collapses public team-directory duplicates by cleaned name plus firm.
+ * @param teams - Canonicalized and display-sanitized team rows.
+ * @returns Stable list with one row per public team identity.
+ */
+function dedupePublicTeams(
+  teams: ReadonlyArray<TeamRow>
+): ReadonlyArray<TeamRow> {
+  const sorted = [...teams].sort(
+    (a, b) =>
+      publicTeamIdentityKey(a).localeCompare(publicTeamIdentityKey(b)) ||
+      a.id.localeCompare(b.id)
+  );
+  return sorted.filter(
+    (team, index) =>
+      index === 0 ||
+      publicTeamIdentityKey(team) !== publicTeamIdentityKey(sorted[index - 1])
+  );
 }
 
 /**
