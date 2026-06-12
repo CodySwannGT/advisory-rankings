@@ -11,7 +11,7 @@ import teamsRoutes from "../harper-app/teams/index.js";
 
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
 
-const UNKNOWN_ROUTE_PATTERN = "/*";
+const UNKNOWN_ROUTE_PATTERN = "*";
 
 describe("SEO route shells", () => {
   it("registers explicit entity routes without catching root assets", async () => {
@@ -165,6 +165,10 @@ describe("static web route shells", () => {
       reply
     );
     await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
+      { url: "/other-missing-route", headers: { accept: "*/*" } },
+      reply
+    );
+    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
       { url: "/missing.js", headers: { accept: "*/*" } },
       reply
     );
@@ -173,12 +177,13 @@ describe("static web route shells", () => {
       reply
     );
 
-    expect(statuses).toEqual([404, 404, 404]);
+    expect(statuses).toEqual([404, 404, 404, 404]);
     expect(headerSets[0]).toMatchObject({
       "content-type": "text/html; charset=utf-8",
     });
     expect(String(sent[0])).toContain("/not-found.js");
     expect(sent[1]).toBe("Not found");
-    expect(String(sent[2])).toContain("/not-found.js");
+    expect(sent[2]).toBe("Not found");
+    expect(String(sent[3])).toContain("/not-found.js");
   });
 });

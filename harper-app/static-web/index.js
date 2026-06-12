@@ -13,7 +13,7 @@ const MIME = {
 
 const CACHEABLE = new Set([".css", ".ico", ".js", ".svg"]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
-const UNKNOWN_DOCUMENT_ROUTE = "/*";
+const UNKNOWN_DOCUMENT_ROUTE = "*";
 
 /**
  * Register root-level static web routes for Fabric nodes that do not expose
@@ -65,7 +65,7 @@ function shouldServeNotFoundShell(request) {
   const accept = String(request?.headers?.accept || "");
   const url = String(request?.url || "");
   if (url && isWebAsset(url.split("?")[0])) return false;
-  return accept.includes("text/html") || accept.includes("*/*");
+  return accept.includes("text/html");
 }
 
 /**

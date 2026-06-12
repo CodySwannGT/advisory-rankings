@@ -420,9 +420,11 @@ re-reads files on reload; no special handling.
 > `web/**` (`/app.css`, generated `/*.js`, and nested `design-system/*`) so
 > clean shells can boot even on Fabric nodes where the built-in static
 > extension does not expose root-level asset paths. The recoverable unknown
-> document shell is registered as a Fastify `/*` route; Fabric did not dispatch
-> `setNotFoundHandler` or a single-segment `/:unknownRoute` fallback for
-> deployed top-level misses, even though direct `/404.html` assets were live.
+> document shell is registered as Fastify's root wildcard `*`; Fabric did not
+> dispatch `setNotFoundHandler`, a single-segment `/:unknownRoute`, or the `/*`
+> wildcard for deployed top-level misses, even though direct `/404.html` assets
+> were live. The fallback only serves the HTML shell for document requests with
+> `Accept: text/html`, so API/resource misses do not become browser pages.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one
