@@ -787,14 +787,28 @@ Capture desktop and mobile screenshots from the deployed page with:
 mkdir -p artifacts/coverage-replay
 node --input-type=module -e 'import { chromium } from "playwright";
 const url = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/coverage";
+const dataUrl = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/DataCoverage";
 const cases = [{name:"desktop",width:1280,height:900},{name:"mobile",width:390,height:844}];
+const data = await fetch(dataUrl).then((response) => {
+  if (!response.ok) throw new Error(`/DataCoverage returned ${response.status}`);
+  return response.json();
+});
+const expectedLimitations = data.limitations.length;
 const browser = await chromium.launch({headless:true});
 for (const c of cases) {
   const page = await browser.newPage({viewport:{width:c.width,height:c.height}});
   await page.goto(url,{waitUntil:"domcontentloaded"});
   await page.waitForSelector("[data-coverage-section]",{timeout:30000});
+  const title = (await page.locator("h1").first().textContent())?.trim();
+  if (title !== "Data coverage") throw new Error(`${c.name}: unexpected title ${title}`);
+  const sections = await page.locator("[data-coverage-section]").count();
+  if (sections !== 5) throw new Error(`${c.name}: expected 5 sections, got ${sections}`);
+  const limitations = await page.locator(".coverage-limitation-list li").count();
+  if (limitations !== expectedLimitations) {
+    throw new Error(`${c.name}: expected ${expectedLimitations} limitations, got ${limitations}`);
+  }
   await page.screenshot({path:`artifacts/coverage-replay/${c.name}.png`,fullPage:true});
-  console.log(`${c.name}: sections=${await page.locator("[data-coverage-section]").count()}`);
+  console.log(`${c.name}: title=${title} sections=${sections} limitations=${limitations}`);
   await page.close();
 }
 await browser.close();'
