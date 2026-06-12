@@ -280,16 +280,17 @@ async function advisorEvidenceChecks(page: Page): Promise<readonly Check[]> {
     check(
       (await page
         .locator(".card")
-        .filter({ hasText: "Evidence freshness" })
+        .filter({ hasText: "Profile provenance" })
         .count()) >= 1,
-      "advisor.html: evidence freshness panel rendered"
+      "advisor.html: profile provenance panel rendered"
     ),
     check(
-      (await page
-        .locator(".card")
-        .filter({ hasText: "Fact confidence" })
-        .count()) >= 1,
-      "advisor.html: fact confidence panel rendered"
+      (await page.getByText("Status counts", { exact: true }).count()) === 0,
+      "advisor.html: public profile hides status count telemetry"
+    ),
+    check(
+      (await page.locator(".advisor-confidence-bar").count()) === 0,
+      "advisor.html: public profile hides confidence distribution telemetry"
     ),
   ];
 }

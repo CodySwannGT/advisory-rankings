@@ -1243,9 +1243,10 @@ side SQL.
 
 `seed-data.json` carries `AdvisorResearchCheck` rows and
 advisor-targeted `FieldAssertion` rows so the advisor-profile
-**Evidence freshness** and **Fact confidence** panels are empirically
-verifiable against real data, not just in unit tests. The fixtures
-intentionally cover three states:
+public **Profile provenance** summary and analyst-only **Evidence
+freshness** / **Fact confidence** detail panels are empirically verifiable
+against real data, not just in unit tests. The fixtures intentionally
+cover three states:
 
 - **Loaded** — advisor `4fbd3720-bde5-5cd5-b1a2-7b37424ad7ea`
   (C. James Taylor): research checks across all four source types
@@ -1257,8 +1258,8 @@ intentionally cover three states:
   `ambiguous`), driving the degraded-evidence tone.
 - **No data** — advisor `906ecafe-f925-5704-ade3-bf10e94f0b60`
   (Michaella Irvine): intentionally left with zero checks and zero
-  advisor-targeted assertions so the explicit "No evidence checks yet"
-  / "No confidence rows yet" empty states render.
+  advisor-targeted assertions so the explicit public provenance empty
+  state renders.
 
 **Served public read store.** `GET /AdvisorProfile/<id>` reads the
 deployed component's table store. After editing `seed-data.json`, the

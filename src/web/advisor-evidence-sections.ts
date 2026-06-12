@@ -5,10 +5,10 @@ import type {
   ConfidenceSummary,
   EvidenceFreshness,
   ResearchSourceTypeKey,
-  ResearchStatusKey,
 } from "../types/advisor-profile.js";
 import { fmtDate, humanize } from "./app.js";
-import { el, Heading, SectionCard, Tag } from "./design-system/index.js";
+import { analystEvidenceProfileSections } from "./advisor-evidence-analyst-sections.js";
+import { el, SectionCard, Tag } from "./design-system/index.js";
 
 /**
  * Narrow callable type for design-system helpers whose source files still opt
@@ -38,39 +38,38 @@ interface ResponsiveEvidenceSections {
   readonly sections: readonly HTMLElement[];
 }
 
-/** Keys printed in the confidence distribution grid. */
-type ConfidenceLevel = "asserted" | "inferred" | "derived";
+/** Rendering options for public vs. analyst profile evidence. */
+interface AdvisorEvidenceProfileSectionOptions {
+  readonly showAnalystDetails?: boolean;
+}
 
-const RESEARCH_STATUSES: readonly ResearchStatusKey[] = [
-  "success",
-  "no_new_data",
-  "ambiguous",
-  "failed",
-];
 const RESEARCH_SOURCE_TYPES: readonly ResearchSourceTypeKey[] = [
   "web_research",
   "firm_bio",
   "rankings",
   "press",
 ];
-const CONFIDENCE_LEVELS: readonly ConfidenceLevel[] = [
-  "asserted",
-  "inferred",
-  "derived",
-];
+const PUBLIC_SOURCE_LABEL = "public sources";
 const responsiveEvidenceCleanup = new WeakMap<Document, () => void>();
 
 /**
  * Builds advisor evidence cards shared by desktop rail and mobile center flow.
  * @param profile - AdvisorProfile payload.
- * @returns Evidence freshness and confidence sections.
+ * @param options - Evidence rendering options.
+ * @returns Public provenance plus analyst detail sections when enabled.
  */
 export function advisorEvidenceProfileSections(
-  profile: AdvisorProfilePayload
+  profile: AdvisorProfilePayload,
+  options: AdvisorEvidenceProfileSectionOptions = {}
 ): readonly HTMLElement[] {
+  const publicSections = [publicEvidenceSummarySection(profile)];
+  if (!options.showAnalystDetails) return publicSections;
   return [
-    evidenceFreshnessSection(profile.evidenceFreshness),
-    factConfidenceSection(profile.confidenceSummary),
+    ...publicSections,
+    ...analystEvidenceProfileSections(
+      profile.evidenceFreshness,
+      profile.confidenceSummary
+    ),
   ];
 }
 
@@ -103,85 +102,90 @@ export function mountResponsiveEvidenceSections({
 }
 
 /**
- * Builds the evidence freshness card.
- * @param freshness - Evidence freshness summary.
- * @returns Evidence freshness section.
+ * Builds the public profile provenance card.
+ * @param profile - AdvisorProfile payload.
+ * @returns Human-readable provenance section.
  */
-function evidenceFreshnessSection(freshness: EvidenceFreshness): HTMLElement {
-  const state = evidenceFreshnessState(freshness);
+function publicEvidenceSummarySection(
+  profile: AdvisorProfilePayload
+): HTMLElement {
+  const confidence = profile.confidenceSummary;
+  const freshness = profile.evidenceFreshness;
   return SectionCardComponent({
     title: sectionTitleWithHelp(
-      "Evidence freshness",
-      "Evidence freshness explains when public-source checks last ran and whether any checks need review."
+      "Profile provenance",
+      "Profile provenance summarizes when AdvisorBook last verified this profile and the public source types behind its facts."
     ),
     attrs: {
-      class: `advisor-evidence-card advisor-evidence-card--${state.tone}`,
+      class: "advisor-evidence-card advisor-evidence-card--neutral",
     },
     body: el(
       "div",
       { class: "advisor-evidence" },
-      evidenceStateHeader(state),
-      evidenceDateGrid(freshness),
-      evidenceCountGrid(
-        "Status counts",
-        RESEARCH_STATUSES,
-        freshness.statusCounts
-      ),
-      evidenceCountGrid(
-        "Source coverage",
-        RESEARCH_SOURCE_TYPES,
-        freshness.sourceTypeCoverage
+      evidenceStateHeader({
+        label: freshness.hasData ? "Source-backed" : "Needs review",
+        tone: freshness.hasData ? "ok" : "warn",
+        body: profileProvenanceLine(freshness),
+      }),
+      el(
+        "p",
+        { class: "advisor-evidence-reader-summary" },
+        confidenceSummaryLine(confidence)
       )
     ),
   });
 }
 
 /**
- * Builds the fact confidence card.
- * @param confidence - Confidence summary payload.
- * @returns Fact confidence section.
+ * Builds reader-facing provenance copy.
+ * @param freshness - Evidence freshness summary.
+ * @returns Plain-language source provenance.
  */
-function factConfidenceSection(confidence: ConfidenceSummary): HTMLElement {
+function profileProvenanceLine(freshness: EvidenceFreshness): string {
+  if (!freshness.hasData) {
+    return `Profile data has not yet been verified from ${PUBLIC_SOURCE_LABEL}.`;
+  }
+
+  return `Profile data last verified ${fmtDate(freshness.lastCheckedAt, { mode: "short" })} from ${sourceCoverageLabel(freshness.sourceTypeCoverage)}.`;
+}
+
+/**
+ * Builds reader-facing confidence copy without exposing distribution buckets.
+ * @param confidence - Confidence summary payload.
+ * @returns Plain-language fact support summary.
+ */
+function confidenceSummaryLine(confidence: ConfidenceSummary): string {
   const total = numericCount(confidence.total);
-  return SectionCardComponent({
-    title: sectionTitleWithHelp(
-      "Fact confidence",
-      "Fact confidence groups advisor facts by how directly each fact is supported by public source rows."
-    ),
-    attrs: { class: "advisor-evidence-card advisor-evidence-card--neutral" },
-    body: el(
-      "div",
-      { class: "advisor-evidence" },
-      confidence.hasData
-        ? [
-            evidenceStateHeader({
-              label: `${formatNumber(total)} total`,
-              tone: "ok",
-              body: "Advisor facts are grouped by assertion confidence.",
-            }),
-            confidenceDistribution(confidence, total),
-            evidenceCountGrid(
-              "Distribution",
-              CONFIDENCE_LEVELS,
-              confidence,
-              confidenceLabel
-            ),
-          ]
-        : [
-            evidenceStateHeader({
-              label: "No confidence data",
-              tone: "warn",
-              body: "No confidence rows yet. Fact confidence will appear after source-backed assertions are loaded.",
-            }),
-            evidenceCountGrid(
-              "Distribution",
-              CONFIDENCE_LEVELS,
-              confidence,
-              confidenceLabel
-            ),
-          ]
-    ),
-  });
+  if (!confidence.hasData || !total) {
+    return "Cited-source support will appear after source-backed facts are loaded.";
+  }
+  return `All ${formatNumber(total)} profile fact${total === 1 ? "" : "s"} are backed by cited sources.`;
+}
+
+/**
+ * Converts non-zero source coverage into a sentence fragment.
+ * @param coverage - Source coverage counts by type.
+ * @returns Human-readable source type list.
+ */
+function sourceCoverageLabel(
+  coverage: EvidenceFreshness["sourceTypeCoverage"]
+): string {
+  const labels = RESEARCH_SOURCE_TYPES.filter(
+    sourceType => numericCount(coverage[sourceType]) > 0
+  ).map(readableLabel);
+  if (!labels.length) return PUBLIC_SOURCE_LABEL;
+  return `${joinReadableList(labels)} source${labels.length === 1 ? "" : "s"}`;
+}
+
+/**
+ * Joins labels using natural-language punctuation.
+ * @param values - Non-empty display labels.
+ * @returns Readable comma/and separated label.
+ */
+function joinReadableList(values: readonly string[]): string {
+  if (values.length <= 1) return values[0] ?? "";
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
 }
 
 /**
@@ -229,165 +233,6 @@ function evidenceStateHeader(state: EvidenceState): HTMLElement {
 }
 
 /**
- * Builds last-check and next-check metric tiles.
- * @param freshness - Evidence freshness summary.
- * @returns Date metric grid.
- */
-function evidenceDateGrid(freshness: EvidenceFreshness): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-metrics" },
-    evidenceMetric(
-      "Last checked",
-      freshness.lastCheckedAt
-        ? fmtDate(freshness.lastCheckedAt, { mode: "short" })
-        : "Not yet checked"
-    ),
-    evidenceMetric(
-      "Next check",
-      freshness.nearestNextCheckAfter
-        ? fmtDate(freshness.nearestNextCheckAfter, { mode: "short" })
-        : "Not scheduled"
-    )
-  );
-}
-
-/**
- * Builds a named count grid.
- * @param title - Grid title.
- * @param keys - Count keys in display order.
- * @param counts - Count payload.
- * @param formatLabel - Optional display formatter for count keys.
- * @returns Count grid node.
- */
-function evidenceCountGrid<K extends string>(
-  title: string,
-  keys: readonly K[],
-  counts: Readonly<Partial<Record<K, number>>>,
-  formatLabel: (key: K) => string = readableLabel
-): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-group" },
-    Heading({
-      level: 3,
-      attrs: { class: "card-subtitle" },
-      children: title,
-    }),
-    el(
-      "div",
-      { class: "advisor-evidence-metrics" },
-      ...keys.map(key =>
-        evidenceMetric(
-          formatLabel(key),
-          formatNumber(numericCount(counts[key]))
-        )
-      )
-    )
-  );
-}
-
-/** Leaf text values accepted by the local metric helper. */
-type MetricText = string | number | null | undefined;
-
-/**
- * Builds one evidence metric tile.
- * @param label - Metric label.
- * @param value - Metric value.
- * @returns Metric node.
- */
-function evidenceMetric(label: MetricText, value: MetricText): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-metric" },
-    el("strong", {}, value),
-    el("span", {}, label)
-  );
-}
-
-/**
- * Builds a confidence distribution bar.
- * @param confidence - Confidence summary.
- * @param total - Total confidence rows.
- * @returns Distribution node or null.
- */
-function confidenceDistribution(
-  confidence: ConfidenceSummary,
-  total: number
-): HTMLElement | null {
-  if (!total) return null;
-  return el(
-    "div",
-    {
-      class: "advisor-confidence-bar",
-      "aria-label": "Fact confidence distribution",
-    },
-    ...CONFIDENCE_LEVELS.map(level =>
-      el("span", {
-        class: `advisor-confidence-bar__segment advisor-confidence-bar__segment--${level}`,
-        style: `flex-grow:${numericCount(confidence[level])};`,
-        title: `${confidenceLabel(level)}: ${formatNumber(numericCount(confidence[level]))}`,
-      })
-    )
-  );
-}
-
-/**
- * Resolves freshness state copy from the payload.
- * @param freshness - Evidence freshness summary.
- * @returns State copy and tone.
- */
-function evidenceFreshnessState(freshness: EvidenceFreshness): EvidenceState {
-  if (!freshness.hasData) {
-    return {
-      label: "No data",
-      tone: "warn",
-      body: "No evidence checks yet. Freshness will appear after public source checks run.",
-    };
-  }
-
-  const failed = numericCount(freshness.statusCounts?.failed);
-  const ambiguous = numericCount(freshness.statusCounts?.ambiguous);
-  if (failed || ambiguous) {
-    return {
-      label: "Warning",
-      tone: "warn",
-      body: `${formatNumber(failed + ambiguous)} check${failed + ambiguous === 1 ? "" : "s"} need review across failed or ambiguous evidence.`,
-    };
-  }
-
-  if (isPastDate(freshness.nearestNextCheckAfter)) {
-    return {
-      label: "Stale",
-      tone: "warn",
-      body: "The next evidence check is past due. Treat profile facts as needing refresh.",
-    };
-  }
-
-  return {
-    label: "Current",
-    tone: "ok",
-    body: "Evidence checks are loaded with no failed or ambiguous statuses.",
-  };
-}
-
-/**
- * Converts machine confidence levels into reader-facing labels.
- * @param level - Confidence level returned by the API.
- * @returns Plain-language confidence label.
- */
-function confidenceLabel(level: ConfidenceLevel): string {
-  switch (level) {
-    case "asserted":
-      return "Direct source";
-    case "inferred":
-      return "Supported inference";
-    case "derived":
-      return "Calculated";
-  }
-}
-
-/**
  * Maps evidence tone to the shared tag tone.
  * @param tone - Evidence tone.
  * @returns Tag kind.
@@ -422,15 +267,4 @@ function formatNumber(value: unknown): string {
  */
 function readableLabel(value: string): string {
   return humanize(value) || value;
-}
-
-/**
- * Checks whether a date-like string is before now.
- * @param value - Date-like value.
- * @returns True when the date is in the past.
- */
-function isPastDate(value: Date | string | null | undefined): boolean {
-  if (!value) return false;
-  const time = new Date(value).getTime();
-  return Number.isFinite(time) && time < Date.now();
 }
