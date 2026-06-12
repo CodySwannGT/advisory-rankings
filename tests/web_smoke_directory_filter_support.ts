@@ -241,27 +241,17 @@ async function readDirectoryStat(
 /**
  * Confirms raw implementation counters are absent from the directory rail.
  * @param page - Browser page rendering a directory.
- * @param title - Stats card title.
+ * @param _title - Stats card title kept for a consistent helper signature.
  * @returns Whether old developer metric labels are hidden.
  */
 async function rawDirectoryMetricsHidden(
   page: Page,
-  title: string
+  _title: string
 ): Promise<boolean> {
-  return await page.evaluate(
-    ({ statsSelector, title: statsTitle }) => {
-      const stats = Array.from(document.querySelectorAll(statsSelector)).find(
-        card => card.textContent?.includes(statsTitle)
-      );
-      const labels = Array.from(stats?.querySelectorAll("dt") ?? []).map(item =>
-        item.textContent?.trim()
-      );
-      return ["Loaded", "Total", "Page size"].every(
-        label => !labels.includes(label)
-      );
-    },
-    { statsSelector: STATS_CARD_SELECTOR, title }
-  );
+  return await page.evaluate(() => {
+    const rightRailText = document.querySelector(".right")?.textContent ?? "";
+    return !/\b(?:Loaded|Total|Page size)\b/.test(rightRailText);
+  });
 }
 
 /**

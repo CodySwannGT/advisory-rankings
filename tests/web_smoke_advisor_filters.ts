@@ -65,10 +65,10 @@ export async function smokeAdvisorDirectoryFilters(
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await waitForDirectoryTotalCount(page);
   const filteredFacts = await readAdvisorFilterFacts(page);
-  const liveFacts = await captureLiveAdvisorFilterFacts(page);
   await page.reload();
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const restoredFacts = await readAdvisorFilterFacts(page);
+  const liveFacts = await captureLiveAdvisorFilterFacts(page);
   await shot(page, "06-advisors-filtered");
 
   await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
@@ -382,15 +382,19 @@ async function captureLiveAdvisorFilterFacts(
   await page.locator(FILTER_FORM_SELECTOR).waitFor({
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
-  await page.locator('[name="q"]').fill("smith");
-  await page.waitForURL(url => url.searchParams.get("q") === "smith", {
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  const query = await liveAdvisorQuery(page);
+  await page.locator('[name="q"]').fill(query);
+  await page.waitForURL(url => url.searchParams.get("q") === query, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   return await page.evaluate(
-    ({ formSelector, rowSelector }) => {
+    ({ formSelector, query, rowSelector }) => {
       const firmInput = document.querySelector(
         `${formSelector} [name="firm"]`
       ) as HTMLInputElement | null;
@@ -400,11 +404,28 @@ async function captureLiveAdvisorFilterFacts(
           document.querySelectorAll(`${formSelector} button`)
         ).some(button => button.textContent?.trim() === "Apply"),
         rowsRender: document.querySelectorAll(rowSelector).length > 0,
-        urlUpdated: new URL(location.href).searchParams.get("q") === "smith",
+        urlUpdated: new URL(location.href).searchParams.get("q") === query,
       };
     },
-    { formSelector: FILTER_FORM_SELECTOR, rowSelector: DIRECTORY_ROW_SELECTOR }
+    {
+      formSelector: FILTER_FORM_SELECTOR,
+      query,
+      rowSelector: DIRECTORY_ROW_SELECTOR,
+    }
   );
+}
+
+async function liveAdvisorQuery(page: Page): Promise<string> {
+  const rowText = await page
+    .locator(DIRECTORY_ROW_SELECTOR)
+    .first()
+    .innerText();
+  const token = rowText
+    .split(/\s+/)
+    .map(part => part.replace(/[^A-Za-z'-]/g, ""))
+    .find(part => part.length >= 3);
+  if (!token) throw new Error("could not derive advisor live-filter query");
+  return token;
 }
 
 /**

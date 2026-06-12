@@ -228,7 +228,11 @@
           ]),
           clearFiltersButton(filters.active, renderDirectory)
         );
-        installLiveFilters(form, "/advisors", renderDirectory);
+        installLiveFilters(
+          form,
+          currentDirectoryPath("/advisors"),
+          renderDirectory
+        );
         installTypeahead(form, "q", "advisor");
         installTypeahead(form, "firm", "firm");
         form.addEventListener("submit", event => {
@@ -284,7 +288,7 @@
           variant: "neutral",
           children: "Clear",
           onClick: () => {
-            history.pushState(null, "", "/advisors");
+            history.pushState(null, "", currentDirectoryPath("/advisors"));
             renderDirectory();
           },
           attrs: {
@@ -314,7 +318,12 @@
           hasCrd: String(formData.get("hasCrd") || "").trim(),
         };
         const qs = advisorQuery(filters).toString();
-        history.pushState(null, "", qs ? `/advisors?${qs}` : "/advisors");
+        const path = currentDirectoryPath("/advisors");
+        history.pushState(null, "", qs ? `${path}?${qs}` : path);
+      }
+
+      function currentDirectoryPath(fallback) {
+        return location.pathname || fallback;
       }
 
       function advisorQuery(filters) {
@@ -350,8 +359,11 @@
         const list = input?.list;
         if (!input || !list) return;
         let timer = null;
+        let requestId = 0;
         input.addEventListener("input", () => {
           clearTimeout(timer);
+          requestId += 1;
+          const currentRequestId = requestId;
           const q = input.value.trim();
           if (q.length < 2) {
             list.replaceChildren();
@@ -359,6 +371,7 @@
           }
           timer = setTimeout(async () => {
             const result = await search(q, kind).catch(() => null);
+            if (currentRequestId !== requestId) return;
             const options = (result?.items || [])
               .slice(0, 8)
               .map(item => el("option", { value: item.name }));

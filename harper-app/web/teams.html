@@ -215,9 +215,10 @@
       }
 
       function teamFilterForm(filters) {
+        const basePath = currentDirectoryPath("/teams");
         const form = el(
           "form",
-          { class: "directory-filters", method: "get", action: "/teams" },
+          { class: "directory-filters", method: "get", action: basePath },
           typeaheadField("Team", "q", filters.q, "Team name", "team"),
           typeaheadField(
             "Current firm",
@@ -236,13 +237,13 @@
             "a",
             {
               class: "feed-filter-clear",
-              href: "/teams",
+              href: basePath,
               "aria-disabled": activeFilters(filters) ? undefined : "true",
             },
             "Clear"
           )
         );
-        installLiveFilters(form, "/teams");
+        installLiveFilters(form, basePath);
         installTypeahead(form, "q", "team");
         installTypeahead(form, "firm", "firm");
         return form;
@@ -314,6 +315,10 @@
         return String(value || "").trim();
       }
 
+      function currentDirectoryPath(fallback) {
+        return location.pathname || fallback;
+      }
+
       function activeFilters(filters) {
         return Object.values(filters).some(Boolean);
       }
@@ -354,8 +359,11 @@
         const list = input?.list;
         if (!input || !list) return;
         let timer = null;
+        let requestId = 0;
         input.addEventListener("input", () => {
           clearTimeout(timer);
+          requestId += 1;
+          const currentRequestId = requestId;
           const q = input.value.trim();
           if (q.length < 2) {
             list.replaceChildren();
@@ -363,6 +371,7 @@
           }
           timer = setTimeout(async () => {
             const result = await search(q, kind).catch(() => null);
+            if (currentRequestId !== requestId) return;
             const options = (result?.items || [])
               .slice(0, 8)
               .map(item => el("option", { value: item.name }));

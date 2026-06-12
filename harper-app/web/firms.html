@@ -248,9 +248,10 @@
       }
 
       function firmFilterForm(filters) {
+        const basePath = currentDirectoryPath("/firms");
         const form = el(
           "form",
-          { class: "directory-filters", method: "get", action: "/firms" },
+          { class: "directory-filters", method: "get", action: basePath },
           typeaheadField("Firm", "q", filters.q, "Name or legal name", "firm"),
           selectField("Channel", "channel", filters.channel, CHANNEL_OPTIONS),
           selectField("HQ state", "state", filters.state, STATE_OPTIONS),
@@ -259,13 +260,13 @@
             "a",
             {
               class: "feed-filter-clear",
-              href: "/firms",
+              href: basePath,
               "aria-disabled": activeFilters(filters) ? undefined : "true",
             },
             "Clear"
           )
         );
-        installLiveFilters(form, "/firms");
+        installLiveFilters(form, basePath);
         installTypeahead(form, "q", "firm");
         return form;
       }
@@ -336,6 +337,10 @@
         return String(value || "").trim();
       }
 
+      function currentDirectoryPath(fallback) {
+        return location.pathname || fallback;
+      }
+
       function activeFilters(filters) {
         return Object.values(filters).some(Boolean);
       }
@@ -376,8 +381,11 @@
         const list = input?.list;
         if (!input || !list) return;
         let timer = null;
+        let requestId = 0;
         input.addEventListener("input", () => {
           clearTimeout(timer);
+          requestId += 1;
+          const currentRequestId = requestId;
           const q = input.value.trim();
           if (q.length < 2) {
             list.replaceChildren();
@@ -385,6 +393,7 @@
           }
           timer = setTimeout(async () => {
             const result = await search(q, kind).catch(() => null);
+            if (currentRequestId !== requestId) return;
             const options = (result?.items || [])
               .slice(0, 8)
               .map(item => el("option", { value: item.name }));
