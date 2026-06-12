@@ -367,8 +367,18 @@ function metric(labelText: string, value: string | number): HTMLElement {
     "div",
     { class: "metric" },
     el("span", { class: "metric-label" }, labelText),
-    el("strong", {}, String(value))
+    " ",
+    el("strong", {}, formatMetricValue(value))
   );
+}
+
+/**
+ * Formats compact metric values while preserving string labels.
+ * @param value - Metric value to display.
+ * @returns Display value.
+ */
+function formatMetricValue(value: string | number): string {
+  return typeof value === "number" ? value.toLocaleString() : value;
 }
 
 /**

@@ -43,6 +43,25 @@ a:hover {
   text-decoration: underline;
 }
 
+.metric,
+.kv-row {
+  display: inline-flex;
+  align-items: baseline;
+  column-gap: 4px;
+  flex-wrap: wrap;
+}
+
+.metric-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.kv-list {
+  display: grid;
+  gap: 6px;
+}
+
 /* ── Top navbar ─────────────────────────────────────────────── */
 
 .nav {
@@ -2856,6 +2875,5 @@ footer.site-footer {
 }
 
 .site-version {
-  margin-left: 8px;
   font-variant-numeric: tabular-nums;
 }

@@ -258,6 +258,7 @@ export function SiteFooter(): HTMLElement {
       },
       "source"
     ),
+    " · ",
     el("span", { class: "site-version" }, `v${APP_VERSION}`)
   );
 }
