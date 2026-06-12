@@ -31,12 +31,27 @@ export default async function staticWebRoutes(fastify) {
   for (const asset of assets) {
     await registerAsset(fastify, `/${asset}`, asset);
   }
-  fastify.setNotFoundHandler?.((request, reply) => {
-    if (!shouldServeNotFoundShell(request)) {
-      return reply.code(404).send("Not found");
-    }
-    return reply.code(404).headers(notFoundHeaders).send(notFoundShell);
-  });
+  fastify.get("/:unknownRoute", async (request, reply) =>
+    sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
+  );
+  fastify.setNotFoundHandler?.((request, reply) =>
+    sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
+  );
+}
+
+/**
+ * Sends either the recoverable document shell or a plain 404 response.
+ * @param request Fastify request object.
+ * @param reply Fastify reply object.
+ * @param headers Headers for the not-found document shell.
+ * @param body Preloaded 404 HTML body.
+ * @returns Fastify reply result.
+ */
+function sendNotFoundResponse(request, reply, headers, body) {
+  if (!shouldServeNotFoundShell(request)) {
+    return reply.code(404).send("Not found");
+  }
+  return reply.code(404).headers(headers).send(body);
 }
 
 /**
