@@ -25,6 +25,82 @@ interface CoverageDestination {
   readonly body: string;
 }
 
+/** Fields stored for the active coverage request generation. */
+interface CoverageRequestFields {
+  readonly requestId: number;
+  readonly stopLoadingFeedback: (() => void) | null;
+}
+
+/** Mutable request-generation holder for coverage dashboard loads. */
+class CoverageRequestState {
+  readonly #fields = new Map<
+    keyof CoverageRequestFields,
+    CoverageRequestFields[keyof CoverageRequestFields]
+  >([
+    ["requestId", 0],
+    ["stopLoadingFeedback", null],
+  ]);
+
+  /**
+   * Starts the next request generation and clears stale loading feedback.
+   * @returns The next request id.
+   */
+  nextRequestId(): number {
+    this.stopLoadingFeedback();
+    const requestId = this.get("requestId") + 1;
+    this.set("requestId", requestId);
+    return requestId;
+  }
+
+  /**
+   * Records loading feedback cleanup for the latest request.
+   * @param stopLoadingFeedback - Cleanup function for delayed feedback.
+   */
+  setLoadingFeedback(stopLoadingFeedback: () => void): void {
+    this.set("stopLoadingFeedback", stopLoadingFeedback);
+  }
+
+  /**
+   * Checks whether a request still owns the dashboard.
+   * @param requestId - Request id captured when the request started.
+   * @returns True when the request can update the DOM.
+   */
+  isCurrent(requestId: number): boolean {
+    return requestId === this.get("requestId");
+  }
+
+  /**
+   * Clears loading feedback for the current request.
+   */
+  stopLoadingFeedback(): void {
+    this.get("stopLoadingFeedback")?.();
+    this.set("stopLoadingFeedback", null);
+  }
+
+  /**
+   * Reads a typed request-state field.
+   * @param key - Field name.
+   * @returns Stored field value.
+   */
+  private get<K extends keyof CoverageRequestFields>(
+    key: K
+  ): CoverageRequestFields[K] {
+    return this.#fields.get(key) as CoverageRequestFields[K];
+  }
+
+  /**
+   * Writes a typed request-state field.
+   * @param key - Field name.
+   * @param value - New field value.
+   */
+  private set<K extends keyof CoverageRequestFields>(
+    key: K,
+    value: CoverageRequestFields[K]
+  ): void {
+    this.#fields.set(key, value);
+  }
+}
+
 const SECTION_DESTINATIONS: Readonly<Record<string, CoverageDestination>> = {
   "public-entity-groups": {
     href: "/advisors",
@@ -48,6 +124,8 @@ const SECTION_DESTINATIONS: Readonly<Record<string, CoverageDestination>> = {
   },
 };
 
+const coverageRequestState = new CoverageRequestState();
+
 mountThreeColumnPage({
   active: "coverage",
   refreshMe,
@@ -66,21 +144,23 @@ mountThreeColumnPage({
  * @param right - Right rail column.
  */
 function loadCoverage(center: HTMLElement, right: HTMLElement): void {
+  const requestId = coverageRequestState.nextRequestId();
   const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
     container: center,
     title: "Loading coverage",
     body: "Still fetching public data-depth rollups. Retry if this takes longer than expected.",
     onRetry: () => loadCoverage(center, right),
   });
+  coverageRequestState.setLoadingFeedback(stopLoadingFeedback);
   api<DataCoverageResponse>("/DataCoverage")
     .then(data => {
-      stopLoadingFeedback();
+      if (!finishCurrentCoverageRequest(requestId)) return;
       clear(center);
       clear(right);
       renderCoverage(data, center, right);
     })
     .catch((error: unknown) => {
-      stopLoadingFeedback();
+      if (!finishCurrentCoverageRequest(requestId)) return;
       clear(center);
       center.appendChild(
         EmptyCard({
@@ -89,6 +169,17 @@ function loadCoverage(center: HTMLElement, right: HTMLElement): void {
         })
       );
     });
+}
+
+/**
+ * Completes the latest coverage request and ignores stale retry completions.
+ * @param requestId - Request id captured when the request started.
+ * @returns True when the request is still current.
+ */
+function finishCurrentCoverageRequest(requestId: number): boolean {
+  if (!coverageRequestState.isCurrent(requestId)) return false;
+  coverageRequestState.stopLoadingFeedback();
+  return true;
 }
 
 /**

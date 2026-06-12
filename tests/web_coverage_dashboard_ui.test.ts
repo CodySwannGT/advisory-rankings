@@ -101,13 +101,50 @@ browserDescribe("coverage dashboard route (#1193)", () => {
     await captureViewports(page, "issue-1193-coverage-dashboard");
     await page.close();
   });
+
+  it("keeps a newer retry result when an older request resolves later", async () => {
+    const page = await browser.newPage();
+    let requestCount = 0;
+    let releaseFirstRequest: (() => void) | null = null;
+    const firstRequestCanFinish = new Promise<void>(resolve => {
+      releaseFirstRequest = resolve;
+    });
+    await routeAuth(page, false);
+    await page.route("**/DataCoverage", async route => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        await firstRequestCanFinish;
+        await route.fulfill({ json: coveragePayload(1250) });
+        return;
+      }
+      await route.fulfill({ json: coveragePayload(2222) });
+    });
+
+    await page.goto(`${baseUrl}/coverage`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await page
+      .getByRole("button", { name: "Retry" })
+      .click({ timeout: QUICK_TIMEOUT });
+    const advisorMetric = page.locator('[data-coverage-metric="advisors"]');
+    await advisorMetric.waitFor({ timeout: QUICK_TIMEOUT });
+    expect(await advisorMetric.textContent()).toContain("2,222");
+
+    releaseFirstRequest?.();
+    await page.waitForTimeout(100);
+    expect(await advisorMetric.textContent()).toContain("2,222");
+    expect(await advisorMetric.textContent()).not.toContain("1,250");
+    await page.close();
+  });
 });
 
 /**
  * Builds a deterministic public coverage fixture.
+ * @param advisorCount - Advisor total to include in public entity metrics.
  * @returns DataCoverage response.
  */
-function coveragePayload(): DataCoverageResponse {
+function coveragePayload(advisorCount = 1250): DataCoverageResponse {
   return {
     generatedAt: "2026-06-12T08:15:00.000Z",
     sections: [
@@ -115,7 +152,13 @@ function coveragePayload(): DataCoverageResponse {
         id: "public-entity-groups",
         label: "Public entity groups",
         metrics: [
-          metric("advisors", "Advisors", 1250, "Advisor", "/PublicAdvisors"),
+          metric(
+            "advisors",
+            "Advisors",
+            advisorCount,
+            "Advisor",
+            "/PublicAdvisors"
+          ),
           metric("firms", "Firms", 210, "Firm", "/PublicFirms"),
           metric("articles", "Articles", 4000, "Article", "/Feed"),
         ],
