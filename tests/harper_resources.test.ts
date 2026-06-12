@@ -296,6 +296,17 @@ const metricById = (payload: any, id: string): any =>
     .flatMap((section: any) => section.metrics)
     .find((metric: any) => metric.id === id);
 
+const dataCoverageMetrics = (payload: any): any[] =>
+  payload.sections.flatMap((section: any) => section.metrics);
+
+const expectDataCoverageMetricContract = (payload: any) => {
+  for (const metric of dataCoverageMetrics(payload)) {
+    expect(metric.source).toEqual(expect.any(String));
+    expect(metric.source.length).toBeGreaterThan(0);
+    expect(metric.publicResource || metric.limitation).toBeTruthy();
+  }
+};
+
 const baseRows = () => {
   setRows("Firm", [
     {
@@ -2061,10 +2072,16 @@ describe("Harper feed and profile builders", () => {
       "/PublicAdvisors",
       "/PublicFirms",
       "/PublicTeams",
+      "/Feed",
+      "/Search",
       "/RankingsExplorer",
       "/RecruitingMarket",
       "/AdvisorResearchQueue",
     ]);
+    expect(payload.provenance.sourceTables).toEqual(
+      expect.arrayContaining(["Branch", "FirmAlias"])
+    );
+    expectDataCoverageMetricContract(payload);
     expect(metricById(payload, "advisors")).toMatchObject({
       value: 2,
       source: "Advisor",
@@ -2096,6 +2113,7 @@ describe("Harper feed and profile builders", () => {
       value: 3,
       source: "FieldAssertion",
       publicResource: null,
+      limitation: "Field assertions are summarized only as aggregate counts.",
     });
     expect(payload.limitations).toEqual(
       expect.arrayContaining([
@@ -2118,6 +2136,7 @@ describe("Harper feed and profile builders", () => {
 
     const payload = await new (resources as any).DataCoverage().get();
 
+    expectDataCoverageMetricContract(payload);
     expect(metricById(payload, "ranking-lists")).toMatchObject({
       value: 0,
       limitation: "No ranking-list rows are loaded.",

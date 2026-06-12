@@ -43,6 +43,8 @@ const ADVISOR_RESEARCH_CHECK_SOURCE = "AdvisorResearchCheck";
 const ARTICLE_TRANSITION_MENTION_SOURCE = "ArticleTransitionEventMention";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
+const FEED_RESOURCE = "/Feed";
+const SEARCH_RESOURCE = "/Search";
 const RANKINGS_EXPLORER_RESOURCE = "/RankingsExplorer";
 const RECRUITING_MARKET_RESOURCE = "/RecruitingMarket";
 const ADVISOR_RESEARCH_QUEUE_RESOURCE = "/AdvisorResearchQueue";
@@ -93,17 +95,21 @@ export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
         "Firm",
         "Team",
         "Article",
+        "Branch",
         "Ranking",
         "RankingEntry",
         "TransitionEvent",
         ARTICLE_TRANSITION_MENTION_SOURCE,
         "FieldAssertion",
+        "FirmAlias",
         ADVISOR_RESEARCH_CHECK_SOURCE,
       ],
       publicResources: [
         "/PublicAdvisors",
         "/PublicFirms",
         "/PublicTeams",
+        FEED_RESOURCE,
+        SEARCH_RESOURCE,
         RANKINGS_EXPLORER_RESOURCE,
         RECRUITING_MARKET_RESOURCE,
         ADVISOR_RESEARCH_QUEUE_RESOURCE,
@@ -136,7 +142,7 @@ function publicEntitySection(db: ResourceIndex): DataCoverageSection {
         "Articles",
         db.articles.length,
         "Article",
-        "/Feed",
+        FEED_RESOURCE,
         db.articles.length === 0 ? "No public article rows are loaded." : null
       ),
     ],
@@ -286,14 +292,14 @@ function sourceContextSection(db: ResourceIndex): DataCoverageSection {
         null,
         db.fieldAssertions.length === 0
           ? "No field-level source assertions are loaded."
-          : null
+          : "Field assertions are summarized only as aggregate counts."
       ),
       metric(
         "article-mentions",
         "Article mentions",
         articleMentionCount,
         "Article*Mention",
-        null,
+        FEED_RESOURCE,
         articleMentionCount === 0
           ? "No article-to-entity mention rows are loaded."
           : null
@@ -303,7 +309,7 @@ function sourceContextSection(db: ResourceIndex): DataCoverageSection {
         "Firm aliases",
         db.firmAliases.length,
         "FirmAlias",
-        "/Search",
+        SEARCH_RESOURCE,
         db.firmAliases.length === 0
           ? "Firm alias coverage is unavailable."
           : null
