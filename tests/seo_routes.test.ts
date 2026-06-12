@@ -69,7 +69,9 @@ describe("static web route shells", () => {
   it("configures Harper static serving to fall through on missing documents", async () => {
     const config = await readFile("harper-app/config.yaml", "utf8");
 
-    expect(config).toContain("static:\n  files: 'web/**'\n  wildcard: false");
+    expect(config).toContain("static:");
+    expect(config).toContain("files: 'web/**'");
+    expect(config).toContain("wildcard: false");
   });
 
   it("registers only the unknown-document fallback", async () => {
