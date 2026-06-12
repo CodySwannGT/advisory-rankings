@@ -21,11 +21,35 @@ const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
  */
 export default async function staticWebRoutes(fastify) {
   const assets = await discoverAssets(WEB_ROOT);
+  const notFoundShell = await readAssetBody(
+    new URL("404.html", WEB_ROOT),
+    ".html"
+  );
+  const notFoundHeaders = headersFor(".html");
 
   await registerAsset(fastify, "/", "index.html");
   for (const asset of assets) {
     await registerAsset(fastify, `/${asset}`, asset);
   }
+  fastify.setNotFoundHandler?.((request, reply) => {
+    if (!shouldServeNotFoundShell(request)) {
+      return reply.code(404).send("Not found");
+    }
+    return reply.code(404).headers(notFoundHeaders).send(notFoundShell);
+  });
+}
+
+/**
+ * Keeps document navigations recoverable without turning missing API or asset
+ * requests into HTML pages.
+ * @param request Fastify request object.
+ * @returns Whether the 404 shell should be served.
+ */
+function shouldServeNotFoundShell(request) {
+  const accept = String(request?.headers?.accept || "");
+  const url = String(request?.url || "");
+  if (url && isWebAsset(url.split("?")[0])) return false;
+  return accept.includes("text/html") || accept.includes("*/*");
 }
 
 /**
