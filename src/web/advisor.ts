@@ -106,13 +106,14 @@ mountThreeColumnPage({
       return;
     }
     const loadAdvisorProfile = (): void => {
+      const profileRequest = api<AdvisorProfilePayload>(
+        `/AdvisorProfile/${encodeURIComponent(id)}`
+      );
+      const meRequest = refreshMe().catch(() => null);
       clear(center);
       clear(right);
       renderDetailLoading({ center, right, label: "advisor profile" });
-      Promise.all([
-        api<AdvisorProfilePayload>(`/AdvisorProfile/${encodeURIComponent(id)}`),
-        refreshMe(),
-      ])
+      Promise.all([profileRequest, meRequest])
         .then(([d, me]) => {
           clear(center);
           clear(right);

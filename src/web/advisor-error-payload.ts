@@ -16,10 +16,5 @@ export interface ErrorPayload {
 export function isErrorPayload(
   payload: AdvisorProfilePayload | ErrorPayload
 ): payload is ErrorPayload {
-  return (
-    typeof payload === "object" &&
-    payload !== null &&
-    "error" in payload &&
-    Boolean(payload.error)
-  );
+  return typeof payload === "object" && payload !== null && "error" in payload;
 }

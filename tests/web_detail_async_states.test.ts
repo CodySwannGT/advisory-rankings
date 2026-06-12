@@ -17,6 +17,7 @@ const ARTICLE_FIXTURE_ROUTE = `**${ARTICLE_FIXTURE_RESOURCE}`;
 const ADVISOR_NAME = "Avery Stone";
 const TEMPORARY_OUTAGE = "temporary outage";
 const TRY_AGAIN_TEXT = "Try again shortly.";
+const COULD_NOT_LOAD_ADVISOR = "Could not load advisor";
 const FIRM_PROFILE_ROUTE = "**/FirmProfile/firm-1";
 const COULD_NOT_LOAD_FIRM = "Could not load firm";
 const FIRM_DUE_DILIGENCE = "Firm due diligence";
@@ -25,6 +26,8 @@ const ADVISOR_LOADED_ID = "advisor-loaded";
 const NEEDS_DATA = "Needs data";
 const RIGHT_CARD_SELECTOR = ".right .card";
 const PROFILE_PROVENANCE = "Profile provenance";
+const PROFILE_PROVENANCE_EXPLANATION = "Profile provenance explanation";
+const STATUS_COUNTS = "Status counts";
 const EXAMPLE_WEALTH_SHORT = "Example Wealth";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
@@ -92,6 +95,43 @@ describe("detail async states", () => {
       ).toBe(true);
     } finally {
       releaseAdvisor();
+      await page.close();
+    }
+  });
+
+  it("keeps public advisor profiles visible when session lookup fails", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: TEMPORARY_OUTAGE }),
+        });
+      });
+      await page.route(
+        `**/AdvisorProfile/${ADVISOR_LOADED_ID}`,
+        async route => {
+          await route.fulfill({
+            json: advisorEvidenceProfile(ADVISOR_LOADED_ID),
+          });
+        }
+      );
+
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: ADVISOR_NAME }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText(PROFILE_PROVENANCE, { exact: true }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(await page.getByText(COULD_NOT_LOAD_ADVISOR).count()).toBe(0);
+      expect(await page.getByText(STATUS_COUNTS).count()).toBe(0);
+    } finally {
       await page.close();
     }
   });
@@ -185,7 +225,7 @@ describe("detail async states", () => {
       {
         path: `/advisor.html?id=${ADVISOR_LOADED_ID}`,
         resource: `/AdvisorProfile/${ADVISOR_LOADED_ID}`,
-        title: "Could not load advisor",
+        title: COULD_NOT_LOAD_ADVISOR,
         successText: ADVISOR_NAME,
         payload: advisorEvidenceProfile(ADVISOR_LOADED_ID),
       },
@@ -718,9 +758,9 @@ describe("detail async states", () => {
       expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
         false
       );
-      expect(
-        await page.getByText("Status counts", { exact: true }).count()
-      ).toBe(0);
+      expect(await page.getByText(STATUS_COUNTS, { exact: true }).count()).toBe(
+        0
+      );
       expect(
         await page.getByText("Source coverage", { exact: true }).count()
       ).toBe(0);
@@ -792,7 +832,7 @@ describe("detail async states", () => {
         ).some(text => text.includes("?"))
       ).toBe(false);
       await mobileEvidence
-        .getByLabel("Profile provenance explanation")
+        .getByLabel(PROFILE_PROVENANCE_EXPLANATION)
         .first()
         .press("Enter");
       expect(
@@ -821,7 +861,7 @@ describe("detail async states", () => {
         .filter({ hasText: "Evidence freshness" })
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
-        await analystPage.getByText("Status counts", { exact: true }).count()
+        await analystPage.getByText(STATUS_COUNTS, { exact: true }).count()
       ).toBe(1);
       expect(
         await analystPage

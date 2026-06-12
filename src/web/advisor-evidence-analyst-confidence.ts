@@ -1,34 +1,16 @@
 // Analyst-only advisor fact-confidence detail card.
 
 import type { ConfidenceSummary } from "../types/advisor-profile.js";
-import { humanize } from "./app.js";
-import { el, Heading, SectionCard, Tag } from "./design-system/index.js";
-
-/**
- *
- */
-type DesignSystemComponent = (
-  options: Readonly<Record<string, unknown>>
-) => HTMLElement;
-/**
- *
- */
-type EvidenceTone = "ok" | "warn" | "neutral";
-/**
- *
- */
-type ConfidenceLevel = "asserted" | "inferred" | "derived";
-
-/**
- *
- */
-interface EvidenceState {
-  readonly label: string;
-  readonly tone: EvidenceTone;
-  readonly body: string;
-}
-
-const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
+import { el } from "./design-system/index.js";
+import {
+  type ConfidenceLevel,
+  SectionCardComponent,
+  evidenceCountGrid,
+  evidenceStateHeader,
+  formatNumber,
+  numericCount,
+  sectionTitleWithHelp,
+} from "./advisor-evidence-helpers.js";
 const CONFIDENCE_LEVELS: readonly ConfidenceLevel[] = [
   "asserted",
   "inferred",
@@ -110,93 +92,6 @@ function confidenceEmptyBody(
 }
 
 /**
- * Builds a title with help text.
- * @param label - Title label.
- * @param explanation - Help copy.
- * @returns Title node.
- */
-function sectionTitleWithHelp(label: string, explanation: string): HTMLElement {
-  return el(
-    "span",
-    { class: "advisor-evidence-title" },
-    el("span", {}, label),
-    el(
-      "details",
-      { class: "advisor-evidence-help" },
-      el("summary", { "aria-label": `${label} explanation` }, "i"),
-      el("p", {}, explanation)
-    )
-  );
-}
-
-/**
- * Builds a state row.
- * @param state - State copy and tone.
- * @returns State node.
- */
-function evidenceStateHeader(state: EvidenceState): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-state" },
-    el("p", {}, state.body),
-    Tag({ kind: tagTone(state.tone), children: state.label })
-  );
-}
-
-/**
- * Builds a named count grid.
- * @param title - Grid title.
- * @param keys - Count keys in display order.
- * @param counts - Count payload.
- * @param formatLabel - Optional label formatter.
- * @returns Count grid node.
- */
-function evidenceCountGrid<K extends string>(
-  title: string,
-  keys: readonly K[],
-  counts: Readonly<Partial<Record<K, number>>>,
-  formatLabel: (key: K) => string = readableLabel
-): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-group" },
-    Heading({
-      level: 3,
-      attrs: { class: "card-subtitle" },
-      children: title,
-    }),
-    el(
-      "div",
-      { class: "advisor-evidence-metrics" },
-      ...keys.map(key =>
-        evidenceMetric(
-          formatLabel(key),
-          formatNumber(numericCount(counts[key]))
-        )
-      )
-    )
-  );
-}
-
-/**
- * Builds a metric tile.
- * @param label - Metric label.
- * @param value - Metric value.
- * @returns Metric node.
- */
-function evidenceMetric(
-  label: string | number | null | undefined,
-  value: string | number | null | undefined
-): HTMLElement {
-  return el(
-    "div",
-    { class: "advisor-evidence-metric" },
-    el("strong", {}, value),
-    el("span", {}, label)
-  );
-}
-
-/**
  * Builds the confidence bar.
  * @param confidence - Confidence payload.
  * @param total - Total rows.
@@ -237,41 +132,4 @@ function confidenceLabel(level: ConfidenceLevel): string {
     case "derived":
       return "Calculated";
   }
-}
-
-/**
- * Maps card tone to tag tone.
- * @param tone - Evidence tone.
- * @returns Tag kind.
- */
-function tagTone(tone: EvidenceTone): "ok" | "warn" | "default" {
-  return tone === "ok" ? "ok" : tone === "warn" ? "warn" : "default";
-}
-
-/**
- * Converts a value to a count.
- * @param value - Count-like value.
- * @returns Non-negative count.
- */
-function numericCount(value: unknown): number {
-  const count = Number(value || 0);
-  return Number.isFinite(count) && count > 0 ? count : 0;
-}
-
-/**
- * Formats a count.
- * @param value - Count-like value.
- * @returns Localized count.
- */
-function formatNumber(value: unknown): string {
-  return numericCount(value).toLocaleString();
-}
-
-/**
- * Converts a machine key.
- * @param value - Raw key.
- * @returns Display label.
- */
-function readableLabel(value: string): string {
-  return humanize(value) || value;
 }

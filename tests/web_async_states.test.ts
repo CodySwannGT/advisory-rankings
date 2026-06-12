@@ -399,7 +399,7 @@ browserDescribe("web async states", () => {
         await expectAnyVisibleText(page, [
           "Profile provenance",
           "Profile data last verified",
-          "All 1 profile fact is backed by cited sources.",
+          "All 4 profile facts are backed by cited sources.",
           "Web Research",
         ]);
         await page.screenshot({
