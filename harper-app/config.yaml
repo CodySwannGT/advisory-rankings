@@ -34,3 +34,9 @@ fastifyRoutes:
     - 'watchlists/index.js'
     - 'login/index.js'
     - 'favicon/index.js'
+
+# AdvisorBook web UI.  Served at the same origin as REST so the
+# browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
+# `**/*` is recursive so the design-system/ subdirectory ships too.
+static:
+  files: 'web/**'
