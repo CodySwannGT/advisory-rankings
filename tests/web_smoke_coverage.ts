@@ -34,9 +34,12 @@ const REQUIRED_METRIC_LABELS = [
   "Latest research check",
 ] as const;
 const REQUIRED_LINKS = [
-  ["Open rankings", "/rankings"],
+  ["Open rankings", "/rankings?resolved=unresolved"],
   ["Open recruiting", "/recruiting"],
-  ["Open research queue", "/research/freshness"],
+  [
+    "Open research queue",
+    "/research/freshness?sourceType=web_research&staleDays=30&status=&missingField=&limit=25",
+  ],
 ] as const;
 const PRIVATE_TEXT_PATTERNS = [
   /analyst@example/i,
@@ -181,7 +184,9 @@ async function readCoverageDashboardEvidence(
             const href =
               anchors.find(link => link.textContent?.trim() === label)?.href ??
               null;
-            return [label, href ? new URL(href).pathname : null];
+            if (!href) return [label, null];
+            const url = new URL(href);
+            return [label, `${url.pathname}${url.search}`];
           })
         ),
         metricLabels: [

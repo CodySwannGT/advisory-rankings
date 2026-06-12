@@ -108,9 +108,9 @@ const SECTION_DESTINATIONS: Readonly<Record<string, CoverageDestination>> = {
     body: "Entity counts come from public directory resources.",
   },
   rankings: {
-    href: "/rankings",
+    href: "/rankings?resolved=unresolved",
     label: "Open rankings",
-    body: "Rankings gaps open on the public rankings browser default view.",
+    body: "Ranking gaps open on the public rankings browser slice for profiles still needing a match.",
   },
   recruiting: {
     href: "/recruiting",
@@ -118,9 +118,9 @@ const SECTION_DESTINATIONS: Readonly<Record<string, CoverageDestination>> = {
     body: "Recruiting coverage opens on the public market map.",
   },
   "research-freshness": {
-    href: "/research/freshness",
+    href: "/research/freshness?sourceType=web_research&staleDays=30&status=&missingField=&limit=25",
     label: "Open research queue",
-    body: "Freshness pressure opens on the public research queue.",
+    body: "Freshness pressure opens on the public web-research queue for advisor checks due within the default window.",
   },
 };
 
