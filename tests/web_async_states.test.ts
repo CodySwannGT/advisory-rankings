@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, resolve, sep } from "node:path";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const WEB_ROOT = resolve("harper-app/web");
@@ -25,6 +25,9 @@ const RESEARCH_QUEUE_PROFILE_LINK = "Open advisor profile";
 const RESEARCH_QUEUE_BUSINESS_PHONE_LABEL = "Business Phone";
 const RESEARCH_QUEUE_MISSING_FIELD_LABEL = "Missing field";
 const RESEARCH_QUEUE_ROW_SELECTOR = ".research-queue-row";
+const RESEARCH_QUEUE_HEADER_METRIC_SELECTOR = ".research-queue-header .metric";
+const FIRM_DISCLOSURES_LABEL = "Disclosures";
+const FIRM_STATE_REGISTRATIONS_LABEL = "State registrations";
 const ROUTE_RETRY_LOG = join(SHOTS, "issue-279-route-retry-requests.json");
 const EVIDENCE_VIEWPORTS = [
   { name: "desktop", width: 1280, height: 900 },
@@ -412,6 +415,64 @@ browserDescribe("web async states", () => {
       } finally {
         expect(queueRequests).toEqual(["/AdvisorResearchQueue"]);
         expect(profileRequests).toEqual(["/AdvisorProfile/avery-stone"]);
+        await page.close();
+      }
+    }
+  }, 30_000);
+
+  it("separates stat labels and values across queue, firm rail, and footer", async () => {
+    for (const viewport of EVIDENCE_VIEWPORTS) {
+      const page = await browser.newPage({
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+          await route.fulfill({ json: highVolumeResearchQueuePayload() });
+        });
+        await page.route("**/FirmProfile/firm-1", async route => {
+          await route.fulfill({ json: firmProfilePayload() });
+        });
+
+        await page.goto(`${baseUrl}/research/freshness`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page
+          .locator(RESEARCH_QUEUE_HEADER_METRIC_SELECTOR, { hasText: "Due" })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        await expectLocatorText(
+          page.locator(RESEARCH_QUEUE_HEADER_METRIC_SELECTOR, {
+            hasText: "Due",
+          }),
+          /Due\s+16,179/
+        );
+        await expectLocatorText(
+          page.locator(RESEARCH_QUEUE_HEADER_METRIC_SELECTOR, {
+            hasText: "Shown",
+          }),
+          /Shown\s+25/
+        );
+        await expectFooterSourceVersion(page);
+
+        await page.goto(`${baseUrl}/firm.html?id=firm-1`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page
+          .locator(".kv-row", { hasText: FIRM_DISCLOSURES_LABEL })
+          .waitFor({ state: "attached", timeout: QUICK_TIMEOUT });
+        await expectLocatorText(
+          page.locator(".kv-row", { hasText: FIRM_DISCLOSURES_LABEL }),
+          /Disclosures\s+183/
+        );
+        await expectLocatorText(
+          page.locator(".kv-row", { hasText: FIRM_STATE_REGISTRATIONS_LABEL }),
+          /State registrations\s+53/
+        );
+        await expectFooterSourceVersion(page);
+      } finally {
         await page.close();
       }
     }
@@ -1334,6 +1395,22 @@ function emptyResearchQueuePayload(): Omit<ResearchQueuePayload, "items"> &
 }
 
 /**
+ * Builds the reported high-volume queue header counts for spacing checks.
+ * @returns Research queue payload with large summary counts.
+ */
+function highVolumeResearchQueuePayload(): ResearchQueuePayload {
+  const payload = researchQueuePayload();
+  return {
+    ...payload,
+    summary: {
+      ...payload.summary,
+      totalDue: 16_179,
+      returned: 25,
+    },
+  };
+}
+
+/**
  * Asserts the current value for a labeled queue filter control.
  * @param page - Browser page under test.
  * @param label - Accessible control label.
@@ -1385,6 +1462,28 @@ async function expectVisibleText(
   for (const snippet of snippets) {
     await page.getByText(snippet).first().waitFor({ timeout: QUICK_TIMEOUT });
   }
+}
+
+/**
+ * Asserts rendered text for a locator.
+ * @param locator - Locator to inspect.
+ * @param pattern - Required text pattern.
+ */
+async function expectLocatorText(
+  locator: Locator,
+  pattern: RegExp
+): Promise<void> {
+  await expect
+    .poll(async () => (await locator.first().textContent()) ?? "")
+    .toMatch(pattern);
+}
+
+/**
+ * Asserts footer source and version remain visibly separated.
+ * @param page - Playwright page under test.
+ */
+async function expectFooterSourceVersion(page: Page): Promise<void> {
+  await expectLocatorText(page.locator(".site-footer"), /source\s+·\s+v\d/);
 }
 
 /**
@@ -1561,6 +1660,43 @@ function firmDirectoryPayload(): unknown {
     ],
     nextCursor: null,
     total: 1,
+  };
+}
+
+/**
+ * Builds a minimal firm profile payload with a BrokerCheck snapshot.
+ * @returns FirmProfile resource payload.
+ */
+function firmProfilePayload(): unknown {
+  return {
+    firm: {
+      id: "firm-1",
+      name: RESEARCH_QUEUE_FIRM_NAME,
+      channel: "broker_dealer",
+      subChannel: "wirehouse",
+      hqCity: "Austin",
+      hqState: "TX",
+      hqCountry: "US",
+      foundedYear: 1999,
+      finraCrd: "67890",
+    },
+    brokerCheckSnapshot: {
+      subjectCrd: "67890",
+      bcScope: "ACTIVE",
+      iaScope: "ACTIVE",
+      disclosureCount: 183,
+      registeredStateCount: 53,
+      fetchedAt: "2026-06-11T00:00:00.000Z",
+    },
+    currentAdvisorCount: 0,
+    pastAdvisorCount: 0,
+    branches: [],
+    currentTeams: [],
+    transitionsIn: [],
+    transitionsOut: [],
+    disclosuresAtThisFirm: [],
+    articles: [],
+    dueDiligence: null,
   };
 }
 

@@ -170,8 +170,18 @@ function _kvRow(k: string, v: string | number | null | undefined): HTMLElement {
     "div",
     { class: "kv-row" },
     elC("span", { class: "kv-key" }, k),
-    elC("span", { class: "kv-val" }, String(v))
+    " ",
+    elC("span", { class: "kv-val" }, formatKvValue(v))
   );
+}
+
+/**
+ * Formats key/value rows without collapsing labels into numeric values.
+ * @param value - Row value to display.
+ * @returns Display value.
+ */
+function formatKvValue(value: string | number): string {
+  return typeof value === "number" ? value.toLocaleString() : value;
 }
 
 /**
