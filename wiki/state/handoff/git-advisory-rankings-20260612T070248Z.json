@@ -1,0 +1,10 @@
+{
+  "connector": "git",
+  "profile": "advisory-rankings",
+  "runAt": "2026-06-12T07:02:48Z",
+  "head": "17642b84ad2dfe6aca3a1a05f997e8ce310980e2",
+  "previousCursor": "9296809b565dcbf8339d8a32eff856b977a2f714",
+  "newCommits": 63,
+  "latestPr": 1181,
+  "sourceNote": "wiki/sources/git/2026-06-12-advisory-rankings-git.md"
+}

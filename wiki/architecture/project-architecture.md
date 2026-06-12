@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-11
+updated: 2026-06-12
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -12,6 +12,7 @@ sources:
   - ../sources/git/2026-06-08-advisory-rankings-git.md
   - ../sources/git/2026-06-10-advisory-rankings-git.md
   - ../sources/git/2026-06-11-advisory-rankings-git.md
+  - ../sources/git/2026-06-12-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -68,3 +69,9 @@ regulatory discrepancy review, CRD state exposure for the public advisor directo
 workbench resource/UI behavior. It also records desktop header-search layout hardening, login
 account-access guidance, and continued resource/test coverage threshold work. Source:
 wiki/sources/git/2026-06-11-advisory-rankings-git.md.
+
+The 2026-06-12 git ingest shows architecture work around advisor correction workflows: correction
+request resources, submission UI, analyst inbox handling, reviewed-note presentation, and isolated
+browser smoke sessions. It also records continued evidence UI/provenance cleanup, directory filter
+behavior, team-directory deduplication, and rankings page shell/copy alignment. Source:
+wiki/sources/git/2026-06-12-advisory-rankings-git.md.
