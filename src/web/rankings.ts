@@ -73,9 +73,7 @@ mountThreeColumnPage({
   logout,
   search,
   pageTitle: "Advisor Rankings Browser",
-  build({ center, layout, left, right }) {
-    left.remove();
-    layout.classList.add("rankings-layout", "rankings-layout--focused");
+  build({ center, right }) {
     center.append(SkeletonCard(), SkeletonCard());
     loadRankings(center, right);
   },

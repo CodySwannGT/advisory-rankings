@@ -18,6 +18,11 @@ const FACET_LIST_IDS: Readonly<Record<"city" | "firm" | "state", string>> = {
 /** Tuple form used to seed a `<select>` option list. */
 type SelectOption = readonly [value: string, label: string];
 
+/** Optional behavior for select controls. */
+interface SelectFieldOptions {
+  readonly submitOnChange?: boolean;
+}
+
 /** Public-facing filter shape exposed by the rankings-explorer route. */
 export interface PublicRankingFilters {
   readonly category: RankingExplorerFilters["category"];
@@ -105,16 +110,21 @@ export function viewOptionsCard(data: RankingsFilterPayload): HTMLElement {
         action: "/rankings",
       },
       ...filterStateFields(data.filters),
-      selectField("Sort by", "sort", data.filters.sort, [
-        ["rank", "Rank"],
-        ["-rank", "Highest rank number"],
-        ["-scale", "Largest practices"],
-        ["-growth", "Fastest growing"],
-        ["firm", "Firm"],
-        ["location", "City/state"],
-        ["name", "Name"],
-      ]),
-      el("button", { class: "filter-button", type: "submit" }, "Apply")
+      selectField(
+        "Sort by",
+        "sort",
+        data.filters.sort,
+        [
+          ["rank", "Rank"],
+          ["-rank", "Highest rank number"],
+          ["-scale", "Largest practices"],
+          ["-growth", "Fastest growing"],
+          ["firm", "Firm"],
+          ["location", "City/state"],
+          ["name", "Name"],
+        ],
+        { submitOnChange: true }
+      )
     ),
   });
 }
@@ -201,13 +211,15 @@ function facetInput(
  * @param name - Query parameter name.
  * @param current - Current selected value.
  * @param options - Value/label options.
+ * @param fieldOptions - Optional behavior flags for the select control.
  * @returns Field wrapper.
  */
 function selectField(
   label: string,
   name: string,
   current: string | null,
-  options: readonly SelectOption[]
+  options: readonly SelectOption[],
+  fieldOptions: SelectFieldOptions = {}
 ): HTMLElement {
   return el(
     "label",
@@ -215,7 +227,10 @@ function selectField(
     el("span", {}, label),
     el(
       "select",
-      { name },
+      {
+        name,
+        onChange: fieldOptions.submitOnChange ? submitSelectForm : null,
+      },
       ...options.map(([value, optionLabel]) =>
         el(
           "option",
@@ -225,4 +240,14 @@ function selectField(
       )
     )
   );
+}
+
+/**
+ * Applies presentation-only select changes through the owning GET form.
+ * @param event - Select change event.
+ */
+function submitSelectForm(event: Event): void {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLSelectElement)) return;
+  target.form?.requestSubmit();
 }
