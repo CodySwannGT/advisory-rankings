@@ -41,9 +41,14 @@ Once the server is up:
 - **Custom resources** at `http://127.0.0.1:9926/Feed`,
   `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`,
   `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>`,
-  `/RecruitingMarket`, `/RankingsExplorer`, `/AdvisorResearchQueue`,
-  `/AdvisorCorrectionRequest`, `/AdvisorCorrectionRequest/<id>`,
-  `/Search?q=…` (registered by `resources.js`).
+  `/RecruitingMarket`, `/DataCoverage`, `/RankingsExplorer`,
+  `/AdvisorResearchQueue`, `/AdvisorCorrectionRequest`,
+  `/AdvisorCorrectionRequest/<id>`, `/Search?q=…` (registered by
+  `resources.js`).
+  `/DataCoverage` is the public JSON payload behind `/coverage`: it returns
+  aggregate entity counts, rankings/recruiting gaps, research freshness,
+  source-table context, public-resource provenance, and limitations without
+  exposing private user rows or secrets.
   `/AdvisorResearchQueue` accepts `sourceType`, `staleDays`, `status`,
   `missingField`, and `limit`, then echoes normalized filters plus summary
   counts and priority-group filter mappings. `/research/freshness` exposes the
@@ -116,6 +121,56 @@ Once the server is up:
   profile pages use `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, and
   `/teams/<slug>-<id>`. Article detail pages use
   `/articles/<slug>-<id>`.
+
+## Deployed coverage replay
+
+Reviewers can verify the public data coverage dashboard from dev without
+local Harper credentials:
+
+```bash
+BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+
+curl -fsS "$BASE_URL/DataCoverage" \
+  | jq '{generatedAt, sectionIds: [.sections[].id], limitationCount: (.limitations | length), provenance}'
+```
+
+The expected section ids are `public-entity-groups`, `rankings`,
+`recruiting`, `research-freshness`, and `source-context`. Source limitations
+in that response describe aggregate public-source gaps; they are not private
+rows and should be referenced as caveats when reviewing `/coverage`.
+
+Capture browser evidence with Playwright:
+
+```bash
+mkdir -p artifacts/coverage-replay
+node --input-type=module -e 'import { chromium } from "playwright";
+const url = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/coverage";
+const dataUrl = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/DataCoverage";
+const cases = [{name:"desktop",width:1280,height:900},{name:"mobile",width:390,height:844}];
+const data = await fetch(dataUrl).then((response) => {
+  if (!response.ok) throw new Error(`/DataCoverage returned ${response.status}`);
+  return response.json();
+});
+const expectedLimitations = data.limitations.length;
+const browser = await chromium.launch({headless:true});
+for (const c of cases) {
+  const page = await browser.newPage({viewport:{width:c.width,height:c.height}});
+  await page.goto(url,{waitUntil:"domcontentloaded"});
+  await page.waitForSelector("[data-coverage-section]",{timeout:30000});
+  const title = (await page.locator("h1").first().textContent())?.trim();
+  if (title !== "Data coverage") throw new Error(`${c.name}: unexpected title ${title}`);
+  const sections = await page.locator("[data-coverage-section]").count();
+  if (sections !== 5) throw new Error(`${c.name}: expected 5 sections, got ${sections}`);
+  const limitations = await page.locator(".coverage-limitation-list li").count();
+  if (limitations !== expectedLimitations) {
+    throw new Error(`${c.name}: expected ${expectedLimitations} limitations, got ${limitations}`);
+  }
+  await page.screenshot({path:`artifacts/coverage-replay/${c.name}.png`,fullPage:true});
+  console.log(`${c.name}: title=${title} sections=${sections} limitations=${limitations}`);
+  await page.close();
+}
+await browser.close();'
+```
 
 ## Sandbox / container caveat
 

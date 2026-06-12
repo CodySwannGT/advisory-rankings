@@ -745,6 +745,7 @@ Everything else still requires auth.
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
 | `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
+| `GET /DataCoverage` | ✅ 200 | Public dashboard payload for `/coverage`: entity counts, public resource probes, rankings/recruiting gaps, research freshness, source-table context, and limitations. It reports aggregate counts and public-resource provenance only; it does not expose private user rows or secrets. |
 | `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, returned-slice counts, and group filter mappings. No private user tables are loaded. |
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
@@ -756,6 +757,66 @@ Everything else still requires auth.
 If a future change needs to lock the public routes back down, drop
 the `allowRead() { return true; }` overrides — they're flagged in a
 single comment block at the top of `Feed` in `resources.js`.
+
+### Data coverage dashboard replay
+
+Use deployed dev as the reviewer replay target for `/DataCoverage` and
+`/coverage`:
+
+```bash
+BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+
+curl -fsS "$BASE_URL/DataCoverage" \
+  | jq '{generatedAt, sectionIds: [.sections[].id], limitationCount: (.limitations | length), provenance}'
+```
+
+The response should include the public coverage sections
+`public-entity-groups`, `rankings`, `recruiting`, `research-freshness`,
+and `source-context`. `provenance.sourceTables` names the public/source
+tables used to build the aggregate rollups, while
+`provenance.publicResources` names the public routes the dashboard helps
+audit (`/PublicAdvisors`, `/PublicFirms`, `/PublicTeams`, `/Feed`,
+`/Search`, `/RankingsExplorer`, `/RecruitingMarket`, and
+`/AdvisorResearchQueue`). The `limitations` array is expected when source
+coverage is incomplete; cite those caveats as aggregate source limitations,
+not as private-data defects.
+
+Capture desktop and mobile screenshots from the deployed page with:
+
+```bash
+mkdir -p artifacts/coverage-replay
+node --input-type=module -e 'import { chromium } from "playwright";
+const url = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/coverage";
+const dataUrl = "https://advisory-rankings-de.cody-swann-org.harperfabric.com/DataCoverage";
+const cases = [{name:"desktop",width:1280,height:900},{name:"mobile",width:390,height:844}];
+const data = await fetch(dataUrl).then((response) => {
+  if (!response.ok) throw new Error(`/DataCoverage returned ${response.status}`);
+  return response.json();
+});
+const expectedLimitations = data.limitations.length;
+const browser = await chromium.launch({headless:true});
+for (const c of cases) {
+  const page = await browser.newPage({viewport:{width:c.width,height:c.height}});
+  await page.goto(url,{waitUntil:"domcontentloaded"});
+  await page.waitForSelector("[data-coverage-section]",{timeout:30000});
+  const title = (await page.locator("h1").first().textContent())?.trim();
+  if (title !== "Data coverage") throw new Error(`${c.name}: unexpected title ${title}`);
+  const sections = await page.locator("[data-coverage-section]").count();
+  if (sections !== 5) throw new Error(`${c.name}: expected 5 sections, got ${sections}`);
+  const limitations = await page.locator(".coverage-limitation-list li").count();
+  if (limitations !== expectedLimitations) {
+    throw new Error(`${c.name}: expected ${expectedLimitations} limitations, got ${limitations}`);
+  }
+  await page.screenshot({path:`artifacts/coverage-replay/${c.name}.png`,fullPage:true});
+  console.log(`${c.name}: title=${title} sections=${sections} limitations=${limitations}`);
+  await page.close();
+}
+await browser.close();'
+```
+
+For the current dev deployment, the replay should load the `Data coverage`
+page, render five `[data-coverage-section]` cards, and show the same
+limitations count returned by `/DataCoverage`.
 
 ### Auth model (data plane vs. Fabric control plane)
 
