@@ -194,10 +194,14 @@ export async function advisorCopyGuardrailChecks(
 
   return [
     check(
-      helpNames.some(name => /Evidence freshness/i.test(name)) &&
-        helpNames.some(name => /Fact confidence/i.test(name)),
-      "advisor.html: evidence terms expose accessible help affordances",
+      helpNames.some(name => /Profile provenance/i.test(name)),
+      "advisor.html: profile provenance exposes accessible help affordance",
       helpNames.join(", ")
+    ),
+    check(
+      !(await page.getByText("Status counts", { exact: true }).count()) &&
+        !(await page.locator(".advisor-confidence-bar").count()),
+      "advisor.html: public copy hides pipeline telemetry labels"
     ),
     ...(await browseLabelChecks(page, "advisor.html")),
   ];

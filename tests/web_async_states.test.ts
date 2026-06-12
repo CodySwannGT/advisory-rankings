@@ -397,10 +397,9 @@ browserDescribe("web async states", () => {
           .waitFor({ timeout: QUICK_TIMEOUT });
 
         await expectAnyVisibleText(page, [
-          "Evidence freshness",
-          "Last checked",
-          "Next check",
-          "No New Data",
+          "Profile provenance",
+          "Profile data last verified",
+          "All 1 profile fact is backed by cited sources.",
           "Web Research",
         ]);
         await page.screenshot({

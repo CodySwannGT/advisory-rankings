@@ -24,13 +24,13 @@ const RECRUITING_MOMENTUM = "Recruiting momentum";
 const ADVISOR_LOADED_ID = "advisor-loaded";
 const NEEDS_DATA = "Needs data";
 const RIGHT_CARD_SELECTOR = ".right .card";
-const EVIDENCE_FRESHNESS = "Evidence freshness";
+const PROFILE_PROVENANCE = "Profile provenance";
 const EXAMPLE_WEALTH_SHORT = "Example Wealth";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
 const LAYOUT_TOLERANCE_PX = 0.5;
-const EVIDENCE_HELP_COPY = "public-source checks last ran";
+const EVIDENCE_HELP_COPY = "last verified this profile";
 const CORRECTED_ADVISOR_NAME = "Avery Stone CFP";
 const DISPLAYED_VALUE_SELECTOR = 'input[name="displayedValue"]';
 const CORRECTION_FIXTURE_ID = "correction-a";
@@ -661,12 +661,15 @@ describe("detail async states", () => {
     }
   });
 
-  it("renders advisor evidence panels for loaded, warning, and no-data states", async () => {
+  it("renders public provenance without pipeline telemetry and keeps analyst detail accessible", async () => {
     const page = await browser.newPage({
       viewport: { width: 1180, height: 900 },
     });
     const mobilePage = await browser.newPage({
       viewport: { width: 390, height: 900 },
+    });
+    const analystPage = await browser.newPage({
+      viewport: { width: 1180, height: 900 },
     });
 
     try {
@@ -677,7 +680,7 @@ describe("detail async states", () => {
 
       const desktopEvidence = page
         .locator(RIGHT_CARD_SELECTOR)
-        .filter({ hasText: EVIDENCE_FRESHNESS })
+        .filter({ hasText: PROFILE_PROVENANCE })
         .first();
       await desktopEvidence.waitFor({ timeout: QUICK_TIMEOUT });
       expect(await page.locator("h1").count()).toBe(1);
@@ -688,7 +691,7 @@ describe("detail async states", () => {
       expect(
         await desktopEvidence
           .locator(".tag")
-          .filter({ hasText: /^Current$/ })
+          .filter({ hasText: /^Source-backed$/ })
           .isVisible()
       ).toBe(true);
       expect(
@@ -713,35 +716,30 @@ describe("detail async states", () => {
         await desktopEvidence.getByText(EVIDENCE_HELP_COPY).isVisible()
       ).toBe(true);
       expect(await desktopEvidence.getByText("Last checked").isVisible()).toBe(
-        true
+        false
       );
-      expect(await desktopEvidence.getByText("Firm Bio").isVisible()).toBe(
-        true
-      );
-      const confidence = page
-        .locator(RIGHT_CARD_SELECTOR)
-        .filter({ hasText: "Fact confidence" })
-        .first();
-      await confidence.waitFor({ timeout: QUICK_TIMEOUT });
-      expect(await confidence.getByText("4 total").isVisible()).toBe(true);
-      await confidence.getByLabel("Fact confidence explanation").click();
       expect(
-        await confidence
-          .getByText("supported by public source rows")
+        await page.getByText("Status counts", { exact: true }).count()
+      ).toBe(0);
+      expect(
+        await page.getByText("Source coverage", { exact: true }).count()
+      ).toBe(0);
+      expect(await page.locator(".advisor-confidence-bar").count()).toBe(0);
+      expect(
+        await desktopEvidence
+          .getByText(
+            "Profile data last verified May 2026 from Web Research, Firm Bio, and Press sources."
+          )
           .isVisible()
       ).toBe(true);
-      expect(await confidence.getByText("Direct source").isVisible()).toBe(
-        true
-      );
-      expect(await confidence.getByText("Calculated").isVisible()).toBe(true);
       expect(
-        await confidence
-          .locator(".advisor-confidence-bar")
-          .getAttribute("aria-label")
-      ).toBe("Fact confidence distribution");
+        await desktopEvidence
+          .getByText("All 4 profile facts are backed by cited sources.")
+          .isVisible()
+      ).toBe(true);
       expect(await helpSummaryCounts(page, ".advisor-evidence-help")).toEqual({
-        total: 2,
-        visible: 2,
+        total: 1,
+        visible: 1,
       });
 
       await page.goto(`${baseUrl}/advisor.html?id=advisor-warning`, {
@@ -749,23 +747,16 @@ describe("detail async states", () => {
       });
       const warningEvidence = page
         .locator(RIGHT_CARD_SELECTOR)
-        .filter({ hasText: EVIDENCE_FRESHNESS })
+        .filter({ hasText: PROFILE_PROVENANCE })
         .first();
       await warningEvidence
         .locator(".tag")
-        .filter({ hasText: /^Warning$/ })
+        .filter({ hasText: /^Source-backed$/ })
         .waitFor({ timeout: QUICK_TIMEOUT });
-      const warningLabels = warningEvidence.locator(
-        ".advisor-evidence-metric span"
-      );
       expect(
-        await warningLabels.filter({ hasText: /^Failed$/ }).isVisible()
-      ).toBe(true);
-      expect(
-        await warningLabels.filter({ hasText: /^Ambiguous$/ }).isVisible()
-      ).toBe(true);
-      expect(
-        await warningEvidence.getByText("2 checks need review").isVisible()
+        await warningEvidence
+          .getByText("Profile data last verified May 2026")
+          .isVisible()
       ).toBe(true);
 
       await routeAdvisorEvidence(mobilePage);
@@ -774,30 +765,23 @@ describe("detail async states", () => {
       });
       const mobileEvidence = mobilePage.locator(".advisor-mobile-evidence");
       await mobileEvidence
-        .getByRole("heading", { name: EVIDENCE_FRESHNESS })
+        .getByRole("heading", { name: PROFILE_PROVENANCE })
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
-        await mobileEvidence.getByText("No evidence checks yet").isVisible()
-      ).toBe(true);
-      expect(
-        await mobileEvidence.getByText("No confidence rows yet").isVisible()
+        await mobileEvidence
+          .getByText("Profile data has not yet been verified")
+          .isVisible()
       ).toBe(true);
       expect(
         await helpSummaryCounts(mobilePage, ".advisor-evidence-help")
       ).toEqual({
-        total: 2,
-        visible: 2,
+        total: 1,
+        visible: 1,
       });
       expect(
         await mobileEvidence
           .locator(".tag")
-          .filter({ hasText: "No data" })
-          .count()
-      ).toBe(1);
-      expect(
-        await mobileEvidence
-          .locator(".tag")
-          .filter({ hasText: "No confidence data" })
+          .filter({ hasText: "Needs review" })
           .count()
       ).toBe(1);
       expect(
@@ -807,21 +791,13 @@ describe("detail async states", () => {
             .evaluateAll(nodes => nodes.map(node => node.textContent ?? ""))
         ).some(text => text.includes("?"))
       ).toBe(false);
-      const mobileLabels = await mobileEvidence
-        .locator(".advisor-evidence-metric span")
-        .evaluateAll(nodes =>
-          nodes.map(node => node.textContent?.trim()).filter(Boolean)
-        );
-      expect(mobileLabels).toEqual(
-        expect.arrayContaining(["Last checked", "Next check", "Direct source"])
-      );
       await mobileEvidence
-        .getByLabel("Evidence freshness explanation")
+        .getByLabel("Profile provenance explanation")
         .first()
         .press("Enter");
       expect(
         await mobileEvidence
-          .getByText("public-source checks last ran")
+          .getByText("last verified this profile")
           .first()
           .isVisible()
       ).toBe(true);
@@ -832,9 +808,30 @@ describe("detail async states", () => {
             document.documentElement.clientWidth
         )
       ).toBe(true);
+
+      await routeAdvisorEvidence(analystPage, { analyst: true });
+      await analystPage.goto(
+        `${baseUrl}/advisor.html?id=${ADVISOR_LOADED_ID}`,
+        {
+          waitUntil: "domcontentloaded",
+        }
+      );
+      await analystPage
+        .locator(RIGHT_CARD_SELECTOR)
+        .filter({ hasText: "Evidence freshness" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await analystPage.getByText("Status counts", { exact: true }).count()
+      ).toBe(1);
+      expect(
+        await analystPage
+          .locator(".advisor-confidence-bar")
+          .getAttribute("aria-label")
+      ).toBe("Fact confidence distribution");
     } finally {
       await page.close();
       await mobilePage.close();
+      await analystPage.close();
     }
   });
 
@@ -1413,9 +1410,20 @@ function firmDueDiligenceAllLoadedProfile(): FirmDueDiligenceProfile {
   return profile;
 }
 
-async function routeAdvisorEvidence(page: Page) {
+async function routeAdvisorEvidence(
+  page: Page,
+  options: Readonly<{ analyst?: boolean }> = {}
+) {
   await page.route("**/Me", async route => {
-    await route.fulfill({ json: { authenticated: false } });
+    await route.fulfill({
+      json: options.analyst
+        ? {
+            authenticated: true,
+            role: "analyst",
+            username: ANALYST_FIXTURE_EMAIL,
+          }
+        : { authenticated: false },
+    });
   });
   await page.route("**/AdvisorProfile/*", async route => {
     const id = advisorIdFromRouteUrl(route.request().url());

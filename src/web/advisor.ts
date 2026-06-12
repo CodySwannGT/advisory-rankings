@@ -51,6 +51,7 @@ import {
   advisorEvidenceProfileSections,
   mountResponsiveEvidenceSections,
 } from "./advisor-evidence-sections.js";
+import { isErrorPayload } from "./advisor-error-payload.js";
 import {
   isAdvisorTeamRow,
   isDesignationStub,
@@ -108,11 +109,19 @@ mountThreeColumnPage({
       clear(center);
       clear(right);
       renderDetailLoading({ center, right, label: "advisor profile" });
-      api<AdvisorProfilePayload>(`/AdvisorProfile/${encodeURIComponent(id)}`)
-        .then(d => {
+      Promise.all([
+        api<AdvisorProfilePayload>(`/AdvisorProfile/${encodeURIComponent(id)}`),
+        refreshMe(),
+      ])
+        .then(([d, me]) => {
           clear(center);
           clear(right);
-          render(d, center, right);
+          render(
+            d,
+            center,
+            right,
+            me?.authenticated === true && me.role === "analyst"
+          );
         })
         .catch((err: unknown) => {
           renderRecoverableDetailError({
@@ -134,12 +143,14 @@ mountThreeColumnPage({
  * @param d - Advisor profile payload returned by the AdvisorProfile resource.
  * @param center - Main content column.
  * @param right - Right sidebar column.
+ * @param showAnalystDetails - Whether analyst evidence detail should render.
  * @returns Nothing; writes profile sections into the supplied columns.
  */
 function render(
   d: AdvisorProfilePayload,
   center: HTMLElement,
-  right: HTMLElement
+  right: HTMLElement,
+  showAnalystDetails: boolean
 ): void {
   if (isErrorPayload(d)) {
     center.appendChild(
@@ -153,30 +164,21 @@ function render(
     return;
   }
   const a = d.advisor;
-  const profile = ProfileHeadComponent({
-    initialsText: initials(d.displayName),
-    imageUrl: a.headshotUrl,
-    title: d.displayName,
-    subtitle: advisorSubtitle(d),
-    tags: advisorTags(a),
-  });
-
   const mobileEvidenceRoot = el("div", { class: "advisor-mobile-evidence" });
   const desktopEvidenceRoot = el("div", { class: "advisor-desktop-evidence" });
-  const evidenceSections = advisorEvidenceProfileSections(d);
-  const rightSectionsAfterEvidence = [
-    registrationApplicationsSection(
-      narrowRows(
-        resourceRows(d.registrationApplications),
-        isRegistrationApplicationRow
-      )
-    ),
-    PartialFailureCard("Registration applications", d.registrationApplications),
-  ];
+  const evidenceSections = advisorEvidenceProfileSections(d, {
+    showAnalystDetails,
+  });
 
   canonicalizeEntityRoute("advisor", { ...a, name: d.displayName });
   appendSections(center, [
-    profile,
+    ProfileHeadComponent({
+      initialsText: initials(d.displayName),
+      imageUrl: a.headshotUrl,
+      title: d.displayName,
+      subtitle: advisorSubtitle(d),
+      tags: advisorTags(a),
+    }),
     ...advisorCenterSections(d, mobileEvidenceRoot),
   ]);
   right.appendChild(identityCard(d.advisor));
@@ -186,29 +188,15 @@ function render(
     mobileRoot: mobileEvidenceRoot,
     sections: evidenceSections,
   });
-  appendSections(right, rightSectionsAfterEvidence);
-}
-
-/**
- * Discriminates a not-found error envelope from a normal advisor payload.
- * @param payload - Resource response under inspection.
- * @returns Whether the payload represents a not-found / error envelope.
- */
-function isErrorPayload(
-  payload: AdvisorProfilePayload | ErrorPayload
-): payload is ErrorPayload {
-  return (
-    typeof payload === "object" &&
-    payload !== null &&
-    "error" in payload &&
-    Boolean(payload.error)
-  );
-}
-
-/** Error envelope shape returned by AdvisorProfile when the record is missing. */
-interface ErrorPayload {
-  readonly error: unknown;
-  readonly id?: string;
+  appendSections(right, [
+    registrationApplicationsSection(
+      narrowRows(
+        resourceRows(d.registrationApplications),
+        isRegistrationApplicationRow
+      )
+    ),
+    PartialFailureCard("Registration applications", d.registrationApplications),
+  ]);
 }
 
 /**
