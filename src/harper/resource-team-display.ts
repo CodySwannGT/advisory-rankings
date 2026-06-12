@@ -32,6 +32,6 @@ export function publicTeamRow(team: TeamRow): TeamRow {
 export function publicTeamIdentityKey(team: TeamRow): string {
   return [
     publicTeamDisplayName(team.name).toLowerCase(),
-    team.currentFirmId ?? "",
+    team.currentFirmId ?? team.id,
   ].join("\u0000");
 }

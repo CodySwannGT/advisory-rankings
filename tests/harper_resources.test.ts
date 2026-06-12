@@ -4659,6 +4659,29 @@ describe("Harper directory and search resources", () => {
     );
   });
 
+  it("keeps same-named teams without firm context distinct", async () => {
+    setRows("Team", [
+      {
+        id: "team-missing-firm-a",
+        name: "545 Group",
+      },
+      {
+        id: "team-missing-firm-b",
+        name: NON_COMPLIANT_TEAM_NAME,
+      },
+    ]);
+
+    const teams = await new (resources as any).PublicTeams().get(
+      routeTarget("", { limit: "10", q: "545" })
+    );
+
+    expect(teams.total).toBe(2);
+    expect(teams.items).toEqual([
+      expect.objectContaining({ id: "team-missing-firm-a", name: "545 Group" }),
+      expect.objectContaining({ id: "team-missing-firm-b", name: "545 Group" }),
+    ]);
+  });
+
   it("scores search helper results and short query responses", async () => {
     const employments = [
       { advisorId: "advisor-a", firmId: "firm-a", startDate: DATE_2020_01_01 },
