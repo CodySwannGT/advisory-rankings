@@ -56,6 +56,7 @@ export async function smokeRankings(
   await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const loaded = await readLoadedRankings(page);
   await shot(page, "11-rankings-desktop");
+  const sortChange = await changeSortAndReadEvidence(page);
 
   const drilldown = await followUnresolvedGap(page);
 
@@ -71,7 +72,7 @@ export async function smokeRankings(
   await shot(page, "rankings-coverage-empty-state");
 
   return [
-    ...rankingsChecks(loaded, drilldown, unresolved, empty),
+    ...rankingsChecks(loaded, sortChange, drilldown, unresolved, empty),
     ...(await smokeRankingsMobile(browser, extraHTTPHeaders)),
     ...(await smokeRankingsNoRows(browser, extraHTTPHeaders)),
   ];
@@ -110,11 +111,9 @@ async function readLoadedRankings(page: Page) {
             ".left .card-title, .left .subtitle"
           ),
         ].map(title => title.textContent?.trim() ?? ""),
-        degradedBrowseIcons: [
-          ...document.querySelectorAll<HTMLElement>(".left .avatar"),
-        ]
-          .map(avatar => avatar.textContent?.trim() ?? "")
-          .filter(icon => ["?", "#", "!"].includes(icon)),
+        browseLinks: [
+          ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
+        ].map(link => link.textContent?.trim() ?? ""),
         hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
         hasPurposeLede: document.body.innerText.includes(
           "Browse public advisor and team ranking appearances"
@@ -222,12 +221,49 @@ async function readRankingsControlEvidence(page: Page) {
       hasSeparateSortControl:
         Boolean(viewOptionsCard?.querySelector('select[name="sort"]')) &&
         !filterControlNames.includes("sort"),
+      hasSortApplyButton: Boolean(
+        viewOptionsCard?.querySelector('button[type="submit"]')
+      ),
       hasSortNearResults:
         Boolean(viewOptionsCard && table) &&
         viewOptionsCard.getBoundingClientRect().top <
           table.getBoundingClientRect().top,
     };
   }, RANKINGS_TABLE_SELECTOR);
+}
+
+/**
+ * Changes the presentation sort and captures URL/row-order evidence.
+ * @param page - Browser page to drive.
+ * @returns Sort-change behavior facts.
+ */
+async function changeSortAndReadEvidence(page: Page) {
+  const before = await firstRankingRowText(page);
+  await page.locator('select[name="sort"]').selectOption("-rank");
+  await page.waitForURL(url => url.searchParams.get("sort") === "-rank", {
+    timeout: QUICK_UI_TIMEOUT,
+  });
+  await smokeWaitForSelector(page, RANKINGS_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
+  const after = await firstRankingRowText(page);
+  return {
+    firstRowChanged: before !== after,
+    sort: new URL(page.url()).searchParams.get("sort"),
+  };
+}
+
+/**
+ * Reads the first rendered ranking row as a stable order fingerprint.
+ * @param page - Browser page to inspect.
+ * @returns First row text or an empty string.
+ */
+async function firstRankingRowText(page: Page): Promise<string> {
+  return await page.evaluate(
+    rankingsTableSelector =>
+      document
+        .querySelector<HTMLElement>(`${rankingsTableSelector} tbody tr`)
+        ?.textContent?.trim() ?? "",
+    RANKINGS_TABLE_SELECTOR
+  );
 }
 
 /**
@@ -392,14 +428,15 @@ async function readEmptyRankings(page: Page) {
 /**
  * Converts rankings DOM facts into smoke checks.
  * @param loaded - Loaded page facts.
+ * @param sortChange - Sort-change behavior facts.
  * @param drilldown - Coverage drill-down page facts.
  * @param unresolved - Filtered unresolved page facts.
  * @param empty - Empty page facts.
  * @returns Smoke assertions.
  */
-function rankingsChecks(loaded, drilldown, unresolved, empty) {
+function rankingsChecks(loaded, sortChange, drilldown, unresolved, empty) {
   return [
-    ...loadedRankingsChecks(loaded),
+    ...loadedRankingsChecks(loaded, sortChange),
     ...drilldownRankingsChecks(drilldown),
     ...unresolvedRankingsChecks(unresolved),
     ...emptyRankingsChecks(empty),
@@ -409,9 +446,10 @@ function rankingsChecks(loaded, drilldown, unresolved, empty) {
 /**
  * Converts loaded rankings DOM facts into checks.
  * @param loaded - Loaded page facts.
+ * @param sortChange - Sort-change behavior facts.
  * @returns Loaded-page checks.
  */
-function loadedRankingsChecks(loaded) {
+function loadedRankingsChecks(loaded, sortChange) {
   return [
     check(
       loaded.hasHeader && loaded.hasPurposeLede,
@@ -419,15 +457,7 @@ function loadedRankingsChecks(loaded) {
     ),
     ...rankingsNavigationChecks(loaded),
     check(loaded.hasNextGen, "rankings: category data renders"),
-    check(
-      loaded.hasSeparateSortControl && loaded.hasSortNearResults,
-      "rankings: sort control is separate from filters",
-      JSON.stringify({
-        filterControlNames: loaded.filterControlNames,
-        hasSeparateSortControl: loaded.hasSeparateSortControl,
-        hasSortNearResults: loaded.hasSortNearResults,
-      })
-    ),
+    ...rankingsSortChecks(loaded, sortChange),
     check(loaded.hasDataQualityPanel, "rankings: data quality panel renders"),
     ...lowInformationPanelChecks(loaded),
     check(
@@ -479,6 +509,34 @@ function loadedRankingsChecks(loaded) {
 }
 
 /**
+ * Converts rankings sort-control facts into checks.
+ * @param loaded - Loaded page facts.
+ * @param sortChange - Sort-change behavior facts.
+ * @returns Sort behavior checks.
+ */
+function rankingsSortChecks(loaded, sortChange) {
+  return [
+    check(
+      loaded.hasSeparateSortControl &&
+        loaded.hasSortNearResults &&
+        !loaded.hasSortApplyButton,
+      "rankings: sort control is separate from filters and has no Apply button",
+      JSON.stringify({
+        filterControlNames: loaded.filterControlNames,
+        hasSortApplyButton: loaded.hasSortApplyButton,
+        hasSeparateSortControl: loaded.hasSeparateSortControl,
+        hasSortNearResults: loaded.hasSortNearResults,
+      })
+    ),
+    check(
+      sortChange.sort === "-rank" && sortChange.firstRowChanged,
+      "rankings: sort applies immediately on change",
+      JSON.stringify(sortChange)
+    ),
+  ];
+}
+
+/**
  * Converts rankings navigation facts into checks.
  * @param loaded - Loaded page facts.
  * @returns Navigation regression checks.
@@ -486,14 +544,11 @@ function loadedRankingsChecks(loaded) {
 function rankingsNavigationChecks(loaded) {
   return [
     check(
-      !loaded.browseCardTitles.includes("Browse"),
-      "rankings: duplicate Browse rail is hidden on desktop",
-      loaded.browseCardTitles.join(", ")
-    ),
-    check(
-      loaded.degradedBrowseIcons.length === 0,
-      "rankings: no degraded Browse icon placeholders render",
-      loaded.degradedBrowseIcons.join(", ")
+      ["Firms", "Recruiting", "Rankings", "Advisors", "Teams"].every(label =>
+        loaded.browseLinks.some(link => link.includes(label))
+      ),
+      "rankings: shared Browse rail exposes standard links",
+      loaded.browseLinks.join(", ")
     ),
   ];
 }
