@@ -35,6 +35,7 @@ const CORRECTION_UNKNOWN_ADVISOR_ID = "advisor-missing";
 const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
 const STONE_GROUP_SLUG = "stone-group";
+const NON_COMPLIANT_TEAM_NAME = "545 Group - NON-COMPLIANT";
 const JORDAN_EXAMPLE_NAME = "Jordan Example";
 const MORGAN_STANLEY_ID = "8e106b7e-efcc-5aed-8827-fd0ea645b6df";
 const MORGAN_STANLEY_NAME = "Morgan Stanley";
@@ -4607,6 +4608,55 @@ describe("Harper directory and search resources", () => {
       "team-c",
     ]);
     expect(unfiltered.total).toBe(3);
+  });
+
+  it("strips internal team markers and collapses duplicate directory rows", async () => {
+    setRows("Firm", [
+      { id: "firm-a", name: EXAMPLE_WEALTH_MANAGEMENT },
+      { id: "firm-b", name: BETA_ADVISORS },
+    ]);
+    setRows("Team", [
+      {
+        id: "team-clean",
+        name: "545 Group",
+        currentFirmId: "firm-a",
+      },
+      {
+        id: "team-marked",
+        name: NON_COMPLIANT_TEAM_NAME,
+        currentFirmId: "firm-a",
+      },
+      {
+        id: "team-other-firm",
+        name: NON_COMPLIANT_TEAM_NAME,
+        currentFirmId: "firm-b",
+      },
+    ]);
+
+    const teams = await new (resources as any).PublicTeams().get(
+      routeTarget("", { limit: "10", q: "545" })
+    );
+    const searchResult = await new (resources as any).Search().get(
+      routeTarget("", { kind: "team", limit: "10", q: "545" })
+    );
+
+    expect(teams.total).toBe(2);
+    expect(teams.items).toEqual([
+      expect.objectContaining({
+        currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
+        name: "545 Group",
+      }),
+      expect.objectContaining({
+        currentFirmName: BETA_ADVISORS,
+        name: "545 Group",
+      }),
+    ]);
+    expect(teams.items.map((team: any) => team.name)).not.toContain(
+      NON_COMPLIANT_TEAM_NAME
+    );
+    expect(searchResult.items.map((item: any) => item.name)).not.toContain(
+      NON_COMPLIANT_TEAM_NAME
+    );
   });
 
   it("scores search helper results and short query responses", async () => {
