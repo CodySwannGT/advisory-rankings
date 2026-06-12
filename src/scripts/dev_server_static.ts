@@ -28,6 +28,7 @@ const MIME: Readonly<Record<string, string>> = {
 const STATIC_EXACT_PATHS: ReadonlyMap<string, string> = new Map([
   ["/", "/index.html"],
   ["/firms", "/firms.html"],
+  ["/coverage", "/coverage.html"],
   ["/recruiting", "/recruiting.html"],
   ["/research/freshness", "/research-freshness.html"],
   ["/rankings", "/rankings.html"],

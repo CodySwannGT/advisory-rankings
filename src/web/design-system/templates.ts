@@ -130,6 +130,7 @@ function primaryBrowseCard(): HTMLElement {
     items: [
       { label: "Home", icon: "🏠", href: "/" },
       { label: "Firms", icon: "🏢", href: "/firms" },
+      { label: "Coverage", icon: "◫", href: "/coverage" },
       { label: "Recruiting", icon: "↔", href: "/recruiting" },
       { label: "Research queue", icon: "?", href: "/research/freshness" },
       { label: "Rankings", icon: "#", href: "/rankings" },
