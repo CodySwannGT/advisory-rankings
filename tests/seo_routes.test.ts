@@ -11,7 +11,7 @@ import teamsRoutes from "../harper-app/teams/index.js";
 
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
 
-const UNKNOWN_ROUTE_PATTERN = "/:unknownRoute";
+const UNKNOWN_ROUTE_PATTERN = "/*";
 
 describe("SEO route shells", () => {
   it("registers explicit entity routes without catching root assets", async () => {
@@ -82,7 +82,6 @@ describe("static web route shells", () => {
     expect(paths).toContain(UNKNOWN_ROUTE_PATTERN);
     expect(paths).not.toContain("/Feed");
     expect(paths).not.toContain("/:asset");
-    expect(paths).not.toContain("/*");
   });
 
   it("serves static assets as string bodies for Harper Fastify replies", async () => {
@@ -136,7 +135,7 @@ describe("static web route shells", () => {
     expect(Buffer.isBuffer(sent[0])).toBe(true);
   });
 
-  it("serves the 404 app shell for unknown top-level document routes only", async () => {
+  it("serves the 404 app shell for unknown document routes only", async () => {
     const handlers = new Map<string, RouteHandler>();
     let notFoundHandler: RouteHandler | undefined;
     const sent: unknown[] = [];
