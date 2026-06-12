@@ -198,7 +198,7 @@ export function canonicalizeForSearch(
   const raw = canonicalizeFirmResourceRows(toRawByKey(rows));
   return {
     firms: narrowRowArray<FirmRow>(raw.firms),
-    teams: narrowRowArray<TeamRow>(raw.teams),
+    teams: dedupePublicTeams(narrowRowArray<TeamRow>(raw.teams)),
     employments: narrowRowArray<EmploymentHistoryRow>(raw.employments),
   };
 }

@@ -4654,6 +4654,11 @@ describe("Harper directory and search resources", () => {
     expect(teams.items.map((team: any) => team.name)).not.toContain(
       NON_COMPLIANT_TEAM_NAME
     );
+    expect(searchResult.counts).toMatchObject({ teams: 2, total: 2 });
+    expect(searchResult.items.map((item: any) => item.name)).toEqual([
+      "545 Group",
+      "545 Group",
+    ]);
     expect(searchResult.items.map((item: any) => item.name)).not.toContain(
       NON_COMPLIANT_TEAM_NAME
     );

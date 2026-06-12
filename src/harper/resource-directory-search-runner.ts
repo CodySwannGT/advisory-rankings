@@ -129,6 +129,12 @@ const buildSearchResponse = async (
     employments: [],
     firmAliases,
   });
+  const counts = {
+    ...input.counts,
+    firms: rows.firms.length,
+    teams: rows.teams.length,
+    total: input.counts.advisors + rows.firms.length + rows.teams.length,
+  };
   const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
   const matches = rankedSearchMatches({
     advisors,
@@ -160,7 +166,7 @@ const buildSearchResponse = async (
           }
         : row
     ),
-    counts: input.counts,
+    counts,
   };
 };
 
