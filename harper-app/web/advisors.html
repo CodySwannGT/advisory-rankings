@@ -122,9 +122,8 @@
           const stats = DetailsCard({
             title: "Advisor directory",
             pairs: [
-              ["Loaded", "0"],
-              ["Total", "Loading…"],
-              ["Page size", PAGE_SIZE],
+              ["Showing", "0 advisors"],
+              ["Matches", "Finding advisors..."],
             ],
           });
           right.appendChild(stats);
@@ -140,8 +139,8 @@
           const renderDirectory = () => {
             loaded = 0;
             activeFilters = readFilters();
-            setStat("Loaded", 0);
-            setStat("Total", "Loading…");
+            setStat("Showing", "0 advisors");
+            setStat("Matches", "Finding advisors...");
             clear(center);
             center.appendChild(filterCard(activeFilters, renderDirectory));
             const card = SectionCard({
@@ -162,7 +161,7 @@
                   const titleEl = card.querySelector("h2.card-title");
                   if (titleEl)
                     titleEl.textContent = `${activeFilters.active ? "Filtered advisors" : "All advisors"} (${n.toLocaleString()})`;
-                  setStat("Total", n);
+                  setStat("Matches", `${n.toLocaleString()} matching advisors`);
                 },
                 renderRow: a => {
                   const last = a.lastName || "";
@@ -195,7 +194,7 @@
                     attrs: { class: "advisor-directory-row" },
                   });
                   loaded += 1;
-                  setStat("Loaded", loaded);
+                  setStat("Showing", `${loaded.toLocaleString()} advisors`);
                   return row;
                 },
               }),
@@ -214,7 +213,7 @@
         form.action = "/advisors";
         form.append(
           filterInput("Advisor", "q", filters.q, "Name or keyword"),
-          filterInput("Current firm", "firm", filters.firm, "Firm name"),
+          filterInput("Current firm", "firm", filters.firm, "Firm name", "firm"),
           filterSelect("Career status", "careerStatus", filters.careerStatus, [
             ["", "Any status"],
             ["active", "Active"],
@@ -227,9 +226,15 @@
             ["true", "Has CRD"],
             ["false", "Missing CRD"],
           ]),
-          el("button", { class: "filter-button", type: "submit" }, "Apply"),
           clearFiltersButton(filters.active, renderDirectory)
         );
+        installLiveFilters(
+          form,
+          currentDirectoryPath("/advisors"),
+          renderDirectory
+        );
+        installTypeahead(form, "q", "advisor");
+        installTypeahead(form, "firm", "firm");
         form.addEventListener("submit", event => {
           event.preventDefault();
           writeFilters(new FormData(form));
@@ -238,13 +243,23 @@
         return SectionCard({ title: "Filters", body: form });
       }
 
-      function filterInput(label, name, value, placeholder) {
+      function filterInput(label, name, value, placeholder, kind = "advisor") {
         const id = `advisor-filter-${name}`;
+        const listId = `${id}-suggestions`;
         return el(
           "div",
           { class: "filter-field" },
           el("label", { for: id }, label),
-          el("input", { id, name, value, placeholder, autocomplete: "off" })
+          el("input", {
+            id,
+            name,
+            value,
+            placeholder,
+            autocomplete: "off",
+            list: listId,
+            "data-search-kind": kind,
+          }),
+          el("datalist", { id: listId })
         );
       }
 
@@ -273,7 +288,7 @@
           variant: "neutral",
           children: "Clear",
           onClick: () => {
-            history.pushState(null, "", "/advisors");
+            history.pushState(null, "", currentDirectoryPath("/advisors"));
             renderDirectory();
           },
           attrs: {
@@ -303,7 +318,12 @@
           hasCrd: String(formData.get("hasCrd") || "").trim(),
         };
         const qs = advisorQuery(filters).toString();
-        history.pushState(null, "", qs ? `/advisors?${qs}` : "/advisors");
+        const path = currentDirectoryPath("/advisors");
+        history.pushState(null, "", qs ? `${path}?${qs}` : path);
+      }
+
+      function currentDirectoryPath(fallback) {
+        return location.pathname || fallback;
       }
 
       function advisorQuery(filters) {
@@ -313,6 +333,51 @@
           qs.set(key, value);
         }
         return qs;
+      }
+
+      function installLiveFilters(form, path, renderDirectory) {
+        let timer = null;
+        const apply = () => {
+          const qs = advisorQuery(Object.fromEntries(new FormData(form))).toString();
+          history.pushState(null, "", qs ? `${path}?${qs}` : path);
+          renderDirectory();
+        };
+        const schedule = () => {
+          clearTimeout(timer);
+          timer = setTimeout(apply, 250);
+        };
+        form.querySelectorAll("input").forEach(input => {
+          input.addEventListener("input", schedule);
+        });
+        form.querySelectorAll("select").forEach(select => {
+          select.addEventListener("change", apply);
+        });
+      }
+
+      function installTypeahead(form, name, kind) {
+        const input = form.querySelector(`[name="${name}"]`);
+        const list = input?.list;
+        if (!input || !list) return;
+        let timer = null;
+        let requestId = 0;
+        input.addEventListener("input", () => {
+          clearTimeout(timer);
+          requestId += 1;
+          const currentRequestId = requestId;
+          const q = input.value.trim();
+          if (q.length < 2) {
+            list.replaceChildren();
+            return;
+          }
+          timer = setTimeout(async () => {
+            const result = await search(q, kind).catch(() => null);
+            if (currentRequestId !== requestId) return;
+            const options = (result?.items || [])
+              .slice(0, 8)
+              .map(item => el("option", { value: item.name }));
+            list.replaceChildren(...options);
+          }, 150);
+        });
       }
     </script>
   </body>

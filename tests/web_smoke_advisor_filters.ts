@@ -68,6 +68,7 @@ export async function smokeAdvisorDirectoryFilters(
   await page.reload();
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const restoredFacts = await readAdvisorFilterFacts(page);
+  const liveFacts = await captureLiveAdvisorFilterFacts(page);
   await shot(page, "06-advisors-filtered");
 
   await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
@@ -99,6 +100,7 @@ export async function smokeAdvisorDirectoryFilters(
     expectedFirm: firm,
     desktopLayout,
     filteredFacts,
+    liveFacts,
     mobile320,
     mobile390,
     restoredFacts,
@@ -183,6 +185,7 @@ async function firstFirmWithActiveAdvisors(
  * @param facts.emptyFacts - Empty-filter result facts.
  * @param facts.expectedFirm - Firm name derived from live data for the filter.
  * @param facts.filteredFacts - Initial filtered result facts.
+ * @param facts.liveFacts - Interactive live-filter facts.
  * @param facts.mobile320 - Overflow metrics at 320px.
  * @param facts.mobile390 - Overflow metrics at 390px.
  * @param facts.restoredFacts - Filter facts captured after reload.
@@ -193,6 +196,7 @@ interface FilterCheckFacts {
   readonly emptyFacts: AdvisorFilterFacts;
   readonly expectedFirm: string;
   readonly filteredFacts: AdvisorFilterFacts;
+  readonly liveFacts: LiveAdvisorFilterFacts;
   readonly mobile320: ViewportOverflow;
   readonly mobile390: ViewportOverflow;
   readonly restoredFacts: AdvisorFilterFacts;
@@ -219,9 +223,14 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
     check(
       facts.filteredFacts.loaded === facts.filteredFacts.rowCount &&
         facts.filteredFacts.loaded > 0,
-      "advisors filters: loaded count tracks rendered rows",
+      "advisors filters: showing count tracks rendered rows",
       `${facts.filteredFacts.loaded}/${facts.filteredFacts.rowCount}`
     ),
+    check(
+      facts.filteredFacts.rawMetricsHidden,
+      "advisors filters: developer metrics are hidden"
+    ),
+    ...advisorLiveFilterChecks(facts.liveFacts),
     check(
       /^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(
         facts.filteredFacts.firstHref
@@ -261,6 +270,27 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
             : `${sweep.width}px ok`
         )
         .join("; ")
+    ),
+  ];
+}
+
+/**
+ * Builds checks for interactive advisor filtering.
+ * @param facts - Captured live-filter observations.
+ * @returns Advisor live-filter smoke checks.
+ */
+function advisorLiveFilterChecks(
+  facts: LiveAdvisorFilterFacts
+): readonly Check[] {
+  return [
+    check(
+      facts.noApplyButton && facts.urlUpdated && facts.rowsRender,
+      "advisors filters: advisor name filters live without Apply",
+      JSON.stringify(facts)
+    ),
+    check(
+      facts.firmTypeahead,
+      "advisors filters: current firm offers typeahead suggestions"
     ),
   ];
 }
@@ -341,7 +371,65 @@ async function readAdvisorFilterLayout(
 }
 
 /**
- * Waits for the advisor directory total stat to become numeric.
+ * Exercises advisor live filtering without pressing Apply.
+ * @param page - Browser page rendering the advisor directory.
+ * @returns Live-filter observations.
+ */
+async function captureLiveAdvisorFilterFacts(
+  page: Page
+): Promise<LiveAdvisorFilterFacts> {
+  await smokeGoto(page, `${BASE}/advisors`);
+  await page.locator(FILTER_FORM_SELECTOR).waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  const query = await liveAdvisorQuery(page);
+  await page.locator('[name="q"]').fill(query);
+  await page.waitForURL(url => url.searchParams.get("q") === query, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  return await page.evaluate(
+    ({ formSelector, query, rowSelector }) => {
+      const firmInput = document.querySelector(
+        `${formSelector} [name="firm"]`
+      ) as HTMLInputElement | null;
+      return {
+        firmTypeahead: Boolean(firmInput?.getAttribute("list")),
+        noApplyButton: !Array.from(
+          document.querySelectorAll(`${formSelector} button`)
+        ).some(button => button.textContent?.trim() === "Apply"),
+        rowsRender: document.querySelectorAll(rowSelector).length > 0,
+        urlUpdated: new URL(location.href).searchParams.get("q") === query,
+      };
+    },
+    {
+      formSelector: FILTER_FORM_SELECTOR,
+      query,
+      rowSelector: DIRECTORY_ROW_SELECTOR,
+    }
+  );
+}
+
+async function liveAdvisorQuery(page: Page): Promise<string> {
+  const rowText = await page
+    .locator(DIRECTORY_ROW_SELECTOR)
+    .first()
+    .innerText();
+  const token = rowText
+    .split(/\s+/)
+    .map(part => part.replace(/[^A-Za-z'-]/g, ""))
+    .find(part => part.length >= 3);
+  if (!token) throw new Error("could not derive advisor live-filter query");
+  return token;
+}
+
+/**
+ * Waits for the advisor directory match count to become numeric.
  * @param page - Browser page rendering the advisor directory.
  */
 async function waitForDirectoryTotalCount(page: Page): Promise<void> {
@@ -351,9 +439,10 @@ async function waitForDirectoryTotalCount(page: Page): Promise<void> {
         card => card.textContent?.includes(title)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const total = labels.find(label => label.textContent === "Total");
+      const total = labels.find(label => label.textContent === "Matches");
       const value = total?.nextElementSibling?.textContent ?? "";
-      return Number.isFinite(Number(value.replace(/,/g, "")));
+      const match = /\d+/.exec(value.replace(/,/g, ""));
+      return Number.isFinite(match ? Number(match[0]) : NaN);
     },
     {
       statsSelector: STATS_CARD_SELECTOR,
@@ -378,10 +467,14 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
         card => card.textContent?.includes(title)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const total = labels.find(label => label.textContent === "Total");
-      const loaded = labels.find(label => label.textContent === "Loaded");
+      const total = labels.find(label => label.textContent === "Matches");
+      const loaded = labels.find(label => label.textContent === "Showing");
       const totalValue = total?.nextElementSibling?.textContent ?? "";
       const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
+      const countFrom = (value: string) => {
+        const match = /\d+/.exec(value.replace(/,/g, ""));
+        return match ? Number(match[0]) : NaN;
+      };
       const rows = Array.from(document.querySelectorAll(rowSelector));
 
       return {
@@ -408,12 +501,15 @@ async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
           rows[0]?.querySelector("a")?.getAttribute("href") ||
           "",
         hasCrd: valueOf("hasCrd"),
-        loaded: Number(loadedValue.replace(/,/g, "")),
+        loaded: countFrom(loadedValue),
+        rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
+          label => !labels.some(item => item.textContent?.trim() === label)
+        ),
         rowCount: rows.length,
         rowTexts: rows
           .slice(0, 5)
           .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
-        total: Number(totalValue.replace(/,/g, "")),
+        total: countFrom(totalValue),
       };
     },
     {
@@ -445,6 +541,7 @@ interface AdvisorFilterFacts {
   readonly firstHref: string;
   readonly hasCrd: string;
   readonly loaded: number;
+  readonly rawMetricsHidden: boolean;
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
   readonly total: number;
@@ -454,6 +551,14 @@ interface AdvisorFilterFacts {
 interface FilterLayoutSweep {
   readonly escapedControls: readonly string[];
   readonly width: number;
+}
+
+/** Captured interactive advisor filter behavior. */
+interface LiveAdvisorFilterFacts {
+  readonly firmTypeahead: boolean;
+  readonly noApplyButton: boolean;
+  readonly rowsRender: boolean;
+  readonly urlUpdated: boolean;
 }
 
 /** Document width metrics for a responsive viewport. */

@@ -6,16 +6,29 @@ import {
   mobileOverflow,
 } from "./web_smoke_directory_filter_support.js";
 
+const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
+const DIRECTORY_FILTER_SELECTOR = ".directory-filters";
+
 /** Minimal firm row shape needed for filter smoke assertions. */
 interface FirmFixture {
   readonly channel?: string;
   readonly hqState?: string;
+  readonly name?: string;
 }
 
 /** Minimal team row shape needed for filter smoke assertions. */
 interface TeamFixture {
   readonly currentFirmName?: string;
+  readonly name?: string;
   readonly serviceModel?: string;
+}
+
+/** Live-filter behavior captured from an interactive directory form. */
+interface LiveFilterFacts {
+  readonly noApplyButton: boolean;
+  readonly rowsRender: boolean;
+  readonly selectControls: boolean;
+  readonly urlUpdated: boolean;
 }
 
 /**
@@ -63,6 +76,7 @@ async function smokeFirmDirectoryFilters(
     "No firms match the selected filters.",
     "06-firms-filtered-empty-state"
   );
+  const liveFacts = await captureLiveFirmFilterFacts(page, fixture);
 
   return [
     check(
@@ -83,9 +97,14 @@ async function smokeFirmDirectoryFilters(
     check(
       filtered.loaded === filtered.rowCount &&
         filtered.total >= filtered.loaded,
-      "firms filters: loaded and total counts render",
+      "firms filters: showing and match copy render",
       `${filtered.loaded}/${filtered.total}`
     ),
+    check(
+      filtered.rawMetricsHidden,
+      "firms filters: developer metrics are hidden"
+    ),
+    ...firmLiveFilterChecks(liveFacts),
     check(
       /^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
       "firms filters: first row links to canonical firm profile",
@@ -131,6 +150,7 @@ async function smokeTeamDirectoryFilters(
     "No teams match the selected filters.",
     "06-teams-filtered-empty-state"
   );
+  const liveFacts = await captureLiveTeamFilterFacts(page, fixture);
 
   return [
     check(
@@ -149,9 +169,14 @@ async function smokeTeamDirectoryFilters(
     check(
       filtered.loaded === filtered.rowCount &&
         filtered.total >= filtered.loaded,
-      "teams filters: loaded and total counts render",
+      "teams filters: showing and match copy render",
       `${filtered.loaded}/${filtered.total}`
     ),
+    check(
+      filtered.rawMetricsHidden,
+      "teams filters: developer metrics are hidden"
+    ),
+    ...teamLiveFilterChecks(liveFacts),
     check(
       /^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
       "teams filters: first row links to canonical team profile",
@@ -162,6 +187,44 @@ async function smokeTeamDirectoryFilters(
     check(
       emptyControlsAvailable,
       "teams filters: empty state keeps controls available"
+    ),
+  ];
+}
+
+/**
+ * Builds checks for interactive firm filtering.
+ * @param facts - Captured live-filter observations.
+ * @returns Firm live-filter smoke checks.
+ */
+function firmLiveFilterChecks(facts: LiveFilterFacts): readonly Check[] {
+  return [
+    check(
+      facts.noApplyButton && facts.urlUpdated && facts.rowsRender,
+      "firms filters: firm name filters live without Apply",
+      JSON.stringify(facts)
+    ),
+    check(
+      facts.selectControls,
+      "firms filters: channel and HQ state are constrained selects"
+    ),
+  ];
+}
+
+/**
+ * Builds checks for interactive team filtering.
+ * @param facts - Captured live-filter observations.
+ * @returns Team live-filter smoke checks.
+ */
+function teamLiveFilterChecks(facts: LiveFilterFacts): readonly Check[] {
+  return [
+    check(
+      facts.noApplyButton && facts.urlUpdated && facts.rowsRender,
+      "teams filters: team name filters live without Apply",
+      JSON.stringify(facts)
+    ),
+    check(
+      facts.selectControls,
+      "teams filters: service model is a constrained select"
     ),
   ];
 }
@@ -182,6 +245,7 @@ async function firstFirmFilterFixture(page: Page): Promise<FirmFixture> {
   return {
     channel: String(firm?.channel || "").toLowerCase(),
     hqState: String(firm?.hqState || "").toUpperCase(),
+    name: String(firm?.name || ""),
   };
 }
 
@@ -198,8 +262,76 @@ async function firstTeamFilterFixture(page: Page): Promise<TeamFixture> {
   );
   return {
     currentFirmName: String(team?.currentFirmName || ""),
+    name: String(team?.name || ""),
     serviceModel: String(team?.serviceModel || "").toLowerCase(),
   };
+}
+
+/**
+ * Exercises the firm name live filter and constrained controls.
+ * @param page - Browser page used for the directory scenario.
+ * @param fixture - Live firm row used to choose a satisfiable query.
+ * @returns Live-filter observations.
+ */
+async function captureLiveFirmFilterFacts(
+  page: Page,
+  fixture: FirmFixture
+): Promise<LiveFilterFacts> {
+  const query = (fixture.name || "morgan").slice(0, 4).toLowerCase();
+  await page.goto(`${BASE}/firms`, { waitUntil: "domcontentloaded" });
+  await page.locator(DIRECTORY_FILTER_SELECTOR).waitFor();
+  await page.locator('[name="q"]').fill(query);
+  await page.waitForURL(url => url.searchParams.get("q") === query);
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor();
+  return await page.evaluate(
+    ({ filterSelector, rowSelector }) => ({
+      noApplyButton: !Array.from(
+        document.querySelectorAll(`${filterSelector} button`)
+      ).some(button => button.textContent?.trim() === "Apply"),
+      rowsRender: document.querySelectorAll(rowSelector).length > 0,
+      selectControls: ["channel", "state"].every(
+        name => document.querySelector(`[name="${name}"]`)?.tagName === "SELECT"
+      ),
+      urlUpdated: new URL(location.href).searchParams.has("q"),
+    }),
+    {
+      filterSelector: DIRECTORY_FILTER_SELECTOR,
+      rowSelector: DIRECTORY_ROW_SELECTOR,
+    }
+  );
+}
+
+/**
+ * Exercises the team name live filter and constrained controls.
+ * @param page - Browser page used for the directory scenario.
+ * @param fixture - Live team row used to choose a satisfiable query.
+ * @returns Live-filter observations.
+ */
+async function captureLiveTeamFilterFacts(
+  page: Page,
+  fixture: TeamFixture
+): Promise<LiveFilterFacts> {
+  const query = (fixture.name || "team").slice(0, 4).toLowerCase();
+  await page.goto(`${BASE}/teams`, { waitUntil: "domcontentloaded" });
+  await page.locator(DIRECTORY_FILTER_SELECTOR).waitFor();
+  await page.locator('[name="q"]').fill(query);
+  await page.waitForURL(url => url.searchParams.get("q") === query);
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor();
+  return await page.evaluate(
+    ({ filterSelector, rowSelector }) => ({
+      noApplyButton: !Array.from(
+        document.querySelectorAll(`${filterSelector} button`)
+      ).some(button => button.textContent?.trim() === "Apply"),
+      rowsRender: document.querySelectorAll(rowSelector).length > 0,
+      selectControls:
+        document.querySelector('[name="serviceModel"]')?.tagName === "SELECT",
+      urlUpdated: new URL(location.href).searchParams.has("q"),
+    }),
+    {
+      filterSelector: DIRECTORY_FILTER_SELECTOR,
+      rowSelector: DIRECTORY_ROW_SELECTOR,
+    }
+  );
 }
 
 /**
