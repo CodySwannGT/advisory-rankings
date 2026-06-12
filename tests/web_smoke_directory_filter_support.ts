@@ -28,6 +28,22 @@ interface FilteredDirectoryState {
   readonly total: number;
 }
 
+/** Expected label/control pairing for a directory filter form. */
+interface DirectoryLabelSpec {
+  readonly controlTag: "INPUT" | "SELECT";
+  readonly id: string;
+  readonly labelText: string;
+  readonly name: string;
+}
+
+/** Label/control pairing observed from a rendered directory filter form. */
+export interface DirectoryLabelObservation {
+  readonly controlName: string;
+  readonly controlTag: string;
+  readonly id: string;
+  readonly labelText: string;
+}
+
 /**
  * Opens a filtered directory, reloads it, and reads restored controls.
  * @param page - Browser page to inspect.
@@ -159,30 +175,19 @@ async function controlsHaveAccessibleLabels(
   page: Page,
   pageName: DirectoryPageName
 ): Promise<boolean> {
-  const labels =
-    pageName === "firms"
-      ? [
-          ["Firm", "firm-filter-q", "q"],
-          ["Channel", "firm-filter-channel", "channel"],
-          ["HQ state", "firm-filter-state", "state"],
-          ["Status", "firm-filter-active", "active"],
-        ]
-      : [
-          ["Current firm", "team-filter-firm", "firm"],
-          ["Service model", "team-filter-serviceModel", "serviceModel"],
-        ];
-  return await page.evaluate(expectedLabels => {
-    return expectedLabels.every(([labelText, id, name]) => {
+  const observedLabels = await page.evaluate(expectedLabels => {
+    return expectedLabels.map(({ id }) => {
       const labelNode = document.querySelector(`label[for="${id}"]`);
       const control = document.getElementById(id);
-      return Boolean(
-        labelNode?.textContent?.trim() === labelText &&
-        control &&
-        ["INPUT", "SELECT"].includes(control.tagName) &&
-        control.getAttribute("name") === name
-      );
+      return {
+        controlName: control?.getAttribute("name") ?? "",
+        controlTag: control?.tagName ?? "",
+        id,
+        labelText: labelNode?.textContent?.trim() ?? "",
+      };
     });
-  }, labels);
+  }, directoryLabelSpecs(pageName));
+  return labelsMatchDirectoryControls(pageName, observedLabels);
 }
 
 /**
@@ -223,19 +228,18 @@ async function readDirectoryStat(
   title: string,
   label: string
 ): Promise<number> {
-  return await page.evaluate(
+  const value = await page.evaluate(
     ({ statsSelector, title: statsTitle, statLabel }) => {
       const stats = Array.from(document.querySelectorAll(statsSelector)).find(
         card => card.textContent?.includes(statsTitle)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
       const key = labels.find(item => item.textContent === statLabel);
-      const value = key?.nextElementSibling?.textContent ?? "";
-      const match = /\d+/.exec(value.replace(/,/g, ""));
-      return match ? Number(match[0]) : NaN;
+      return key?.nextElementSibling?.textContent ?? "";
     },
     { statsSelector: STATS_CARD_SELECTOR, title, statLabel: label }
   );
+  return parseDirectoryStatValue(value);
 }
 
 /**
@@ -248,10 +252,10 @@ async function rawDirectoryMetricsHidden(
   page: Page,
   _title: string
 ): Promise<boolean> {
-  return await page.evaluate(() => {
-    const rightRailText = document.querySelector(".right")?.textContent ?? "";
-    return !/\b(?:Loaded|Total|Page size)\b/.test(rightRailText);
-  });
+  const rightRailText = await page.evaluate(
+    () => document.querySelector(".right")?.textContent ?? ""
+  );
+  return rawDirectoryMetricsAreHidden(rightRailText);
 }
 
 /**
@@ -277,4 +281,95 @@ async function firstRowHref(page: Page): Promise<string> {
  */
 function directoryTitle(pageName: DirectoryPageName): string {
   return pageName === "firms" ? "Firm directory" : "Team directory";
+}
+
+/**
+ * Maps directory routes to their required accessible label/control contracts.
+ * @param pageName - Directory route name.
+ * @returns Expected visible label/control pairs.
+ */
+export function directoryLabelSpecs(
+  pageName: DirectoryPageName
+): readonly DirectoryLabelSpec[] {
+  return pageName === "firms"
+    ? [
+        {
+          controlTag: "INPUT",
+          id: "firm-filter-q",
+          labelText: "Firm",
+          name: "q",
+        },
+        {
+          controlTag: "SELECT",
+          id: "firm-filter-channel",
+          labelText: "Channel",
+          name: "channel",
+        },
+        {
+          controlTag: "SELECT",
+          id: "firm-filter-state",
+          labelText: "HQ state",
+          name: "state",
+        },
+        {
+          controlTag: "SELECT",
+          id: "firm-filter-active",
+          labelText: "Status",
+          name: "active",
+        },
+      ]
+    : [
+        {
+          controlTag: "INPUT",
+          id: "team-filter-firm",
+          labelText: "Current firm",
+          name: "firm",
+        },
+        {
+          controlTag: "SELECT",
+          id: "team-filter-serviceModel",
+          labelText: "Service model",
+          name: "serviceModel",
+        },
+      ];
+}
+
+/**
+ * Checks rendered directory label/control observations against the route contract.
+ * @param pageName - Directory route name.
+ * @param observations - Label/control pairs read from the page.
+ * @returns Whether every expected label points at the expected control.
+ */
+export function labelsMatchDirectoryControls(
+  pageName: DirectoryPageName,
+  observations: readonly DirectoryLabelObservation[]
+): boolean {
+  const byId = new Map(observations.map(item => [item.id, item]));
+  return directoryLabelSpecs(pageName).every(expected => {
+    const observed = byId.get(expected.id);
+    return (
+      observed?.labelText === expected.labelText &&
+      observed.controlTag === expected.controlTag &&
+      observed.controlName === expected.name
+    );
+  });
+}
+
+/**
+ * Parses formatted directory stat text.
+ * @param value - Visible statistic value.
+ * @returns Parsed number, or NaN when no numeric value is present.
+ */
+export function parseDirectoryStatValue(value: string): number {
+  const match = /\d+/.exec(value.replace(/,/g, ""));
+  return match ? Number(match[0]) : NaN;
+}
+
+/**
+ * Confirms raw implementation counter labels are absent from rendered rail text.
+ * @param rightRailText - Visible right-rail text.
+ * @returns Whether developer-only metric labels are hidden.
+ */
+export function rawDirectoryMetricsAreHidden(rightRailText: string): boolean {
+  return !/\b(?:Loaded|Total|Page size)\b/.test(rightRailText);
 }
