@@ -57,6 +57,91 @@ a:hover {
   gap: 12px;
 }
 
+.coverage-header .card-body {
+  display: grid;
+  gap: 16px;
+}
+
+.coverage-lede {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.coverage-stat-grid,
+.coverage-metric-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.coverage-stat,
+.coverage-metric {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.coverage-stat-label,
+.coverage-metric-label,
+.coverage-metric-source,
+.coverage-metric-resource {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.coverage-stat strong,
+.coverage-metric-value {
+  overflow-wrap: anywhere;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.coverage-metric--limited {
+  border-color: var(--warning-border, var(--border));
+}
+
+.coverage-metric-limitation {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.coverage-destination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.coverage-destination p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.coverage-destination a {
+  font-weight: 700;
+}
+
+.coverage-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.coverage-limitation-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
 .kv-list {
   display: grid;
   gap: 6px;

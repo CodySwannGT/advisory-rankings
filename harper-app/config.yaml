@@ -23,6 +23,7 @@ fastifyRoutes:
     - 'advisors/index.js'
     - 'teams/index.js'
     - 'articles/index.js'
+    - 'data-coverage/index.js'
     - 'recruiting/index.js'
     - 'research-freshness/index.js'
     - 'rankings/index.js'
