@@ -111,6 +111,21 @@
         ["true", "Active"],
         ["false", "Dissolved"],
       ];
+      const CHANNEL_OPTIONS = [
+        ["", "Any channel"],
+        ["wirehouse", "Wirehouse"],
+        ["pure_ria", "Pure RIA"],
+        ["independent_bd", "Independent BD"],
+        ["bank", "Bank"],
+        ["regional_bd", "Regional BD"],
+        ["incubator", "Incubator"],
+      ];
+      const STATE_OPTIONS = [
+        ["", "Any state"],
+        ..."AL AK AZ AR CA CO CT DC DE FL GA HI IA ID IL IN KS KY LA MA MD ME MI MN MO MS MT NC ND NE NH NJ NM NV NY OH OK OR PA RI SC SD TN TX UT VA VT WA WI WV WY"
+          .split(" ")
+          .map(state => [state, state]),
+      ];
 
       mountThreeColumnPage({
         active: "firms",
@@ -119,16 +134,16 @@
         search,
         pageTitle: "Firm directory",
         build({ center, right }) {
-          const filters = readFirmFilters();
           const loadFirms = () => {
+            const filters = readFirmFilters();
             clear(center);
             clear(right);
             let totalCount = null;
             let statsCard = DetailsCard({
               title: "Firm directory",
               pairs: [
-                ["Loaded", "0"],
-                ["Total", "Loading..."],
+                ["Showing", "0 firms"],
+                ["Matches", "Finding firms..."],
               ],
             });
             right.appendChild(statsCard);
@@ -138,12 +153,12 @@
               const nextStatsCard = DetailsCard({
                 title: "Firm directory",
                 pairs: [
-                  ["Loaded", loaded.size.toLocaleString()],
+                  ["Showing", `${loaded.size.toLocaleString()} firms`],
                   [
-                    "Total",
+                    "Matches",
                     typeof totalCount === "number"
-                      ? totalCount.toLocaleString()
-                      : "Loading...",
+                      ? `${totalCount.toLocaleString()} matching firms`
+                      : "Finding firms...",
                   ],
                 ],
               });
@@ -208,6 +223,7 @@
               );
             }
           };
+          window.addEventListener("popstate", loadFirms);
           loadFirms();
         },
       });
@@ -232,14 +248,13 @@
       }
 
       function firmFilterForm(filters) {
-        return el(
+        const form = el(
           "form",
           { class: "directory-filters", method: "get", action: "/firms" },
-          textField("Firm", "q", filters.q, "Name or legal name"),
-          textField("Channel", "channel", filters.channel, "wirehouse, ria"),
-          textField("HQ state", "state", filters.state, "NY"),
+          typeaheadField("Firm", "q", filters.q, "Name or legal name", "firm"),
+          selectField("Channel", "channel", filters.channel, CHANNEL_OPTIONS),
+          selectField("HQ state", "state", filters.state, STATE_OPTIONS),
           selectField("Status", "active", filters.active, ACTIVE_OPTIONS),
-          el("button", { class: "filter-button", type: "submit" }, "Apply"),
           el(
             "a",
             {
@@ -250,6 +265,9 @@
             "Clear"
           )
         );
+        installLiveFilters(form, "/firms");
+        installTypeahead(form, "q", "firm");
+        return form;
       }
 
       function directoryQuery(filters, cursor) {
@@ -271,8 +289,31 @@
         );
       }
 
+      function typeaheadField(label, name, value, placeholder, kind) {
+        const id = `firm-filter-${name}`;
+        const listId = `${id}-suggestions`;
+        return el(
+          "div",
+          { class: "filter-field" },
+          el("label", { for: id }, label),
+          el("input", {
+            id,
+            name,
+            value,
+            placeholder,
+            list: listId,
+            autocomplete: "off",
+            "data-search-kind": kind,
+          }),
+          el("datalist", { id: listId })
+        );
+      }
+
       function selectField(label, name, value, options) {
         const id = `firm-filter-${name}`;
+        const normalizedOptions = options.some(([optionValue]) => optionValue === value)
+          ? options
+          : [[value, value], ...options];
         return el(
           "div",
           { class: "filter-field" },
@@ -280,7 +321,7 @@
           el(
             "select",
             { id, name },
-            ...options.map(([optionValue, optionLabel]) =>
+            ...normalizedOptions.map(([optionValue, optionLabel]) =>
               el(
                 "option",
                 { value: optionValue, selected: optionValue === value },
@@ -305,6 +346,60 @@
 
       function filterEmptyCopy(filters, filteredCopy, defaultCopy) {
         return activeFilters(filters) ? filteredCopy : defaultCopy;
+      }
+
+      function installLiveFilters(form, path) {
+        let timer = null;
+        const apply = () => {
+          const qs = compactFormParams(form).toString();
+          history.pushState(null, "", qs ? `${path}?${qs}` : path);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        };
+        const schedule = () => {
+          clearTimeout(timer);
+          timer = setTimeout(apply, 250);
+        };
+        form.addEventListener("submit", event => {
+          event.preventDefault();
+          apply();
+        });
+        form.querySelectorAll("input").forEach(input => {
+          input.addEventListener("input", schedule);
+        });
+        form.querySelectorAll("select").forEach(select => {
+          select.addEventListener("change", apply);
+        });
+      }
+
+      function installTypeahead(form, name, kind) {
+        const input = form.querySelector(`[name="${name}"]`);
+        const list = input?.list;
+        if (!input || !list) return;
+        let timer = null;
+        input.addEventListener("input", () => {
+          clearTimeout(timer);
+          const q = input.value.trim();
+          if (q.length < 2) {
+            list.replaceChildren();
+            return;
+          }
+          timer = setTimeout(async () => {
+            const result = await search(q, kind).catch(() => null);
+            const options = (result?.items || [])
+              .slice(0, 8)
+              .map(item => el("option", { value: item.name }));
+            list.replaceChildren(...options);
+          }, 150);
+        });
+      }
+
+      function compactFormParams(form) {
+        const qs = new URLSearchParams();
+        for (const [key, value] of new FormData(form)) {
+          const cleanValue = String(value || "").trim();
+          if (cleanValue) qs.set(key, cleanValue);
+        }
+        return qs;
       }
     </script>
   </body>

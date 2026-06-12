@@ -105,6 +105,14 @@
       } from "/design-system/index.js";
 
       const PAGE_SIZE = 50;
+      const SERVICE_MODEL_OPTIONS = [
+        ["", "Any service model"],
+        ["ensemble", "Ensemble"],
+        ["solo", "Solo"],
+        ["hybrid", "Hybrid"],
+        ["family_office", "Family office"],
+        ["institutional", "Institutional"],
+      ];
 
       mountThreeColumnPage({
         active: "teams",
@@ -113,16 +121,16 @@
         search,
         pageTitle: "Team directory",
         build({ center, right }) {
-          const filters = readTeamFilters();
           const loadTeams = () => {
+            const filters = readTeamFilters();
             clear(center);
             clear(right);
             let totalCount = null;
             let statsCard = DetailsCard({
               title: "Team directory",
               pairs: [
-                ["Loaded", "0"],
-                ["Total", "Loading..."],
+                ["Showing", "0 teams"],
+                ["Matches", "Finding teams..."],
               ],
             });
             right.appendChild(statsCard);
@@ -132,12 +140,12 @@
               const nextStatsCard = DetailsCard({
                 title: "Team directory",
                 pairs: [
-                  ["Loaded", loaded.size.toLocaleString()],
+                  ["Showing", `${loaded.size.toLocaleString()} teams`],
                   [
-                    "Total",
+                    "Matches",
                     typeof totalCount === "number"
-                      ? totalCount.toLocaleString()
-                      : "Loading...",
+                      ? `${totalCount.toLocaleString()} matching teams`
+                      : "Finding teams...",
                   ],
                 ],
               });
@@ -192,6 +200,7 @@
               );
             }
           };
+          window.addEventListener("popstate", loadTeams);
           loadTeams();
         },
       });
@@ -206,18 +215,23 @@
       }
 
       function teamFilterForm(filters) {
-        return el(
+        const form = el(
           "form",
           { class: "directory-filters", method: "get", action: "/teams" },
-          textField("Team", "q", filters.q, "Team name"),
-          textField("Current firm", "firm", filters.firm, "Firm name or ID"),
-          textField(
+          typeaheadField("Team", "q", filters.q, "Team name", "team"),
+          typeaheadField(
+            "Current firm",
+            "firm",
+            filters.firm,
+            "Firm name",
+            "firm"
+          ),
+          selectField(
             "Service model",
             "serviceModel",
             filters.serviceModel,
-            "ensemble, solo"
+            SERVICE_MODEL_OPTIONS
           ),
-          el("button", { class: "filter-button", type: "submit" }, "Apply"),
           el(
             "a",
             {
@@ -228,6 +242,10 @@
             "Clear"
           )
         );
+        installLiveFilters(form, "/teams");
+        installTypeahead(form, "q", "team");
+        installTypeahead(form, "firm", "firm");
+        return form;
       }
 
       function directoryQuery(filters, cursor) {
@@ -249,6 +267,49 @@
         );
       }
 
+      function typeaheadField(label, name, value, placeholder, kind) {
+        const id = `team-filter-${name}`;
+        const listId = `${id}-suggestions`;
+        return el(
+          "div",
+          { class: "filter-field" },
+          el("label", { for: id }, label),
+          el("input", {
+            id,
+            name,
+            value,
+            placeholder,
+            list: listId,
+            autocomplete: "off",
+            "data-search-kind": kind,
+          }),
+          el("datalist", { id: listId })
+        );
+      }
+
+      function selectField(label, name, value, options) {
+        const id = `team-filter-${name}`;
+        const normalizedOptions = options.some(([optionValue]) => optionValue === value)
+          ? options
+          : [[value, value], ...options];
+        return el(
+          "div",
+          { class: "filter-field" },
+          el("label", { for: id }, label),
+          el(
+            "select",
+            { id, name },
+            ...normalizedOptions.map(([optionValue, optionLabel]) =>
+              el(
+                "option",
+                { value: optionValue, selected: optionValue === value },
+                optionLabel
+              )
+            )
+          )
+        );
+      }
+
       function clean(value) {
         return String(value || "").trim();
       }
@@ -263,6 +324,60 @@
 
       function filterEmptyCopy(filters, filteredCopy, defaultCopy) {
         return activeFilters(filters) ? filteredCopy : defaultCopy;
+      }
+
+      function installLiveFilters(form, path) {
+        let timer = null;
+        const apply = () => {
+          const qs = compactFormParams(form).toString();
+          history.pushState(null, "", qs ? `${path}?${qs}` : path);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        };
+        const schedule = () => {
+          clearTimeout(timer);
+          timer = setTimeout(apply, 250);
+        };
+        form.addEventListener("submit", event => {
+          event.preventDefault();
+          apply();
+        });
+        form.querySelectorAll("input").forEach(input => {
+          input.addEventListener("input", schedule);
+        });
+        form.querySelectorAll("select").forEach(select => {
+          select.addEventListener("change", apply);
+        });
+      }
+
+      function installTypeahead(form, name, kind) {
+        const input = form.querySelector(`[name="${name}"]`);
+        const list = input?.list;
+        if (!input || !list) return;
+        let timer = null;
+        input.addEventListener("input", () => {
+          clearTimeout(timer);
+          const q = input.value.trim();
+          if (q.length < 2) {
+            list.replaceChildren();
+            return;
+          }
+          timer = setTimeout(async () => {
+            const result = await search(q, kind).catch(() => null);
+            const options = (result?.items || [])
+              .slice(0, 8)
+              .map(item => el("option", { value: item.name }));
+            list.replaceChildren(...options);
+          }, 150);
+        });
+      }
+
+      function compactFormParams(form) {
+        const qs = new URLSearchParams();
+        for (const [key, value] of new FormData(form)) {
+          const cleanValue = String(value || "").trim();
+          if (cleanValue) qs.set(key, cleanValue);
+        }
+        return qs;
       }
     </script>
   </body>

@@ -61,9 +61,9 @@ export async function smokeAdvisorDirectoryPagination(
   return [
     check((await rows.count()) >= 50, "advisors pagination: first page rows"),
     check(
-      (await stats.locator("dt", { hasText: "Total" }).count()) >= 1 &&
+      (await stats.locator("dt", { hasText: "Matches" }).count()) >= 1 &&
         Number.isFinite(await directoryTotalCount(page, ADVISOR_STATS_TITLE)),
-      "advisors pagination: total count rendered"
+      "advisors pagination: match count rendered"
     ),
     check(
       preClickCount >= 50,
@@ -186,7 +186,7 @@ export async function smokePaginatedDirectory(
 }
 
 /**
- * Waits until a directory loaded stat reaches the first-page count.
+ * Waits until directory showing copy reaches the first-page count.
  * @param page - Browser page rendering the directory.
  * @param statsTitle - Right-rail stats card title.
  * @param min - Minimum loaded count to accept.
@@ -202,9 +202,10 @@ async function waitForDirectoryLoadedCount(
         card => card.textContent?.includes(title)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const loaded = labels.find(label => label.textContent === "Loaded");
+      const loaded = labels.find(label => label.textContent === "Showing");
       const value = loaded?.nextElementSibling?.textContent ?? "";
-      const count = Number(value.replace(/,/g, ""));
+      const match = /\d+/.exec(value.replace(/,/g, ""));
+      const count = match ? Number(match[0]) : NaN;
       return Number.isFinite(count) && count >= min;
     },
     {
@@ -217,7 +218,7 @@ async function waitForDirectoryLoadedCount(
 }
 
 /**
- * Waits for a directory total stat to become numeric.
+ * Waits for directory match copy to become numeric.
  * @param page - Browser page rendering the directory.
  * @param statsTitle - Right-rail stats card title.
  */
@@ -231,9 +232,10 @@ async function waitForDirectoryTotalCount(
         card => card.textContent?.includes(title)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const total = labels.find(label => label.textContent === "Total");
+      const total = labels.find(label => label.textContent === "Matches");
       const value = total?.nextElementSibling?.textContent ?? "";
-      return Number.isFinite(Number(value.replace(/,/g, "")));
+      const match = /\d+/.exec(value.replace(/,/g, ""));
+      return Number.isFinite(match ? Number(match[0]) : NaN);
     },
     {
       statsSelector: STATS_CARD_SELECTOR,
@@ -244,7 +246,7 @@ async function waitForDirectoryTotalCount(
 }
 
 /**
- * Reads a directory total stat as a number.
+ * Reads a directory match count as a number.
  * @param page - Browser page rendering the directory.
  * @param statsTitle - Right-rail stats card title.
  * @returns Parsed total count, or NaN when the stat is absent.
@@ -259,9 +261,10 @@ async function directoryTotalCount(
         card => card.textContent?.includes(title)
       );
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const total = labels.find(label => label.textContent === "Total");
+      const total = labels.find(label => label.textContent === "Matches");
       const value = total?.nextElementSibling?.textContent ?? "";
-      return Number(value.replace(/,/g, ""));
+      const match = /\d+/.exec(value.replace(/,/g, ""));
+      return match ? Number(match[0]) : NaN;
     },
     {
       statsSelector: STATS_CARD_SELECTOR,

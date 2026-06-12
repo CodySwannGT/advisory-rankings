@@ -22,6 +22,7 @@ interface FilteredDirectoryState {
   readonly firmValue?: string;
   readonly firstHref: string;
   readonly loaded: number;
+  readonly rawMetricsHidden: boolean;
   readonly rowCount: number;
   readonly serviceModelValue?: string;
   readonly total: number;
@@ -63,13 +64,17 @@ export async function captureFilteredState(
         ? await page.locator('[name="firm"]').inputValue()
         : undefined,
     firstHref: await firstRowHref(page),
-    loaded: await readDirectoryStat(page, directoryTitle(pageName), "Loaded"),
+    loaded: await readDirectoryStat(page, directoryTitle(pageName), "Showing"),
+    rawMetricsHidden: await rawDirectoryMetricsHidden(
+      page,
+      directoryTitle(pageName)
+    ),
     rowCount: await page.locator(DIRECTORY_ROW_SELECTOR).count(),
     serviceModelValue:
       pageName === "teams"
         ? await page.locator('[name="serviceModel"]').inputValue()
         : undefined,
-    total: await readDirectoryStat(page, directoryTitle(pageName), "Total"),
+    total: await readDirectoryStat(page, directoryTitle(pageName), "Matches"),
   };
   await shot(page, `06-${pageName}-filtered-url-state`);
   return state;
@@ -181,7 +186,7 @@ async function controlsHaveAccessibleLabels(
 }
 
 /**
- * Waits for loaded and total directory stats to become numeric.
+ * Waits for directory match copy to include numeric showing and match counts.
  * @param page - Browser page rendering a directory.
  * @param title - Stats card title.
  */
@@ -196,9 +201,10 @@ async function waitForDirectoryStats(page: Page, title: string): Promise<void> {
         const key = labels.find(item => item.textContent === label);
         return key?.nextElementSibling?.textContent ?? "";
       };
-      return ["Loaded", "Total"].every(label =>
-        Number.isFinite(Number(statValue(label).replace(/,/g, "")))
-      );
+      return ["Showing", "Matches"].every(label => {
+        const match = /\d+/.exec(statValue(label).replace(/,/g, ""));
+        return Number.isFinite(match ? Number(match[0]) : NaN);
+      });
     },
     { statsSelector: STATS_CARD_SELECTOR, title },
     { timeout: DEPLOYED_DATA_TIMEOUT }
@@ -225,9 +231,36 @@ async function readDirectoryStat(
       const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
       const key = labels.find(item => item.textContent === statLabel);
       const value = key?.nextElementSibling?.textContent ?? "";
-      return Number(value.replace(/,/g, ""));
+      const match = /\d+/.exec(value.replace(/,/g, ""));
+      return match ? Number(match[0]) : NaN;
     },
     { statsSelector: STATS_CARD_SELECTOR, title, statLabel: label }
+  );
+}
+
+/**
+ * Confirms raw implementation counters are absent from the directory rail.
+ * @param page - Browser page rendering a directory.
+ * @param title - Stats card title.
+ * @returns Whether old developer metric labels are hidden.
+ */
+async function rawDirectoryMetricsHidden(
+  page: Page,
+  title: string
+): Promise<boolean> {
+  return await page.evaluate(
+    ({ statsSelector, title: statsTitle }) => {
+      const stats = Array.from(document.querySelectorAll(statsSelector)).find(
+        card => card.textContent?.includes(statsTitle)
+      );
+      const labels = Array.from(stats?.querySelectorAll("dt") ?? []).map(item =>
+        item.textContent?.trim()
+      );
+      return ["Loaded", "Total", "Page size"].every(
+        label => !labels.includes(label)
+      );
+    },
+    { statsSelector: STATS_CARD_SELECTOR, title }
   );
 }
 
