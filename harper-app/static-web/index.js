@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 
 const WEB_ROOT = new URL("../web/", import.meta.url);
@@ -16,22 +16,17 @@ const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
 const UNKNOWN_DOCUMENT_ROUTE = "*";
 
 /**
- * Register root-level static web routes for Fabric nodes that do not expose
- * Harper's static extension at the URL paths used by the HTML shells.
+ * Register the recoverable unknown-document fallback for requests that fall
+ * through Harper's static extension.
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function staticWebRoutes(fastify) {
-  const assets = await discoverAssets(WEB_ROOT);
   const notFoundShell = await readAssetBody(
     new URL("404.html", WEB_ROOT),
     ".html"
   );
   const notFoundHeaders = headersFor(".html");
 
-  await registerAsset(fastify, "/", "index.html");
-  for (const asset of assets) {
-    await registerAsset(fastify, `/${asset}`, asset);
-  }
   fastify.get(UNKNOWN_DOCUMENT_ROUTE, async (request, reply) =>
     sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
   );
@@ -69,54 +64,12 @@ function shouldServeNotFoundShell(request) {
 }
 
 /**
- * Recursively lists deployable web assets under the generated web root.
- * @param rootUrl Directory URL to scan.
- * @param prefix Relative path prefix accumulated during recursion.
- * @returns Relative asset paths safe to register as exact routes.
- */
-async function discoverAssets(rootUrl, prefix = "") {
-  const entries = await readdir(rootUrl, { withFileTypes: true });
-  const assets = [];
-  for (const entry of entries) {
-    const name = `${prefix}${entry.name}`;
-    if (entry.isDirectory()) {
-      assets.push(
-        ...(await discoverAssets(
-          new URL(`${entry.name}/`, rootUrl),
-          `${name}/`
-        ))
-      );
-      continue;
-    }
-    if (isWebAsset(name)) assets.push(name);
-  }
-  return assets;
-}
-
-/**
  * Checks whether a path is one of the static asset types served by this router.
  * @param path Relative asset path.
  * @returns Whether the asset has a known web content type.
  */
 function isWebAsset(path) {
   return Object.prototype.hasOwnProperty.call(MIME, extname(path));
-}
-
-/**
- * Registers one exact static asset route.
- * @param fastify Fastify instance provided by Harper.
- * @param routePath Public URL path to register.
- * @param assetPath Relative asset path under the web root.
- */
-async function registerAsset(fastify, routePath, assetPath) {
-  const assetUrl = new URL(assetPath, WEB_ROOT);
-  const extension = extname(assetPath);
-  const body = await readAssetBody(assetUrl, extension);
-  const headers = headersFor(extension);
-
-  fastify.get(routePath, async (_request, reply) => {
-    return reply.headers(headers).send(body);
-  });
 }
 
 /**

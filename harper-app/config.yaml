@@ -41,3 +41,4 @@ fastifyRoutes:
 # `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
   files: 'web/**'
+  wildcard: false
