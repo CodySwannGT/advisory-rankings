@@ -14,6 +14,7 @@ const ARTICLE_FIXTURE_URL = "https://example.com/article-1";
 const ARTICLE_FIXTURE_PATH = `/article.html?id=${ARTICLE_FIXTURE_ID}`;
 const ARTICLE_FIXTURE_RESOURCE = `/ArticleView/${ARTICLE_FIXTURE_ID}`;
 const ARTICLE_FIXTURE_ROUTE = `**${ARTICLE_FIXTURE_RESOURCE}`;
+const ABOUT_THIS_ARTICLE = "About this article";
 const ADVISOR_NAME = "Avery Stone";
 const TEMPORARY_OUTAGE = "temporary outage";
 const TRY_AGAIN_TEXT = "Try again shortly.";
@@ -485,11 +486,47 @@ describe("detail async states", () => {
       await page.getByText("Extracted facts could not load").waitFor();
       await page.getByText("Mentioned advisors could not load").waitFor();
       const metadataHeading = page.getByRole("heading", {
-        name: "Article metadata",
+        name: ABOUT_THIS_ARTICLE,
       });
       await metadataHeading.waitFor();
       expect(await headline.isVisible()).toBe(true);
       expect(await metadataHeading.isVisible()).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("presents bodyless article pages as intentional link-outs", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
+        await route.fulfill({ json: articleWithoutBodyText() });
+      });
+
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: HEADLINE_TEXT }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      await page.getByRole("heading", { name: ABOUT_THIS_ARTICLE }).waitFor();
+      await page
+        .getByRole("heading", { name: "Read the original story" })
+        .waitFor();
+      expect(await page.getByText("Slug").count()).toBe(0);
+      expect(await page.getByText("Modified").count()).toBe(0);
+      expect(await page.getByText("Article metadata").count()).toBe(0);
+      expect(await page.getByText("Article body").count()).toBe(0);
+      expect(await page.getByText("Source: Example").isVisible()).toBe(true);
+      expect(
+        await page.locator(".article-linkout-button").getAttribute("href")
+      ).toBe(ARTICLE_FIXTURE_URL);
     } finally {
       await page.close();
     }
@@ -532,7 +569,7 @@ describe("detail async states", () => {
       expect(await page.getByText("Extracted facts").count()).toBe(0);
       expect(
         await page
-          .getByRole("heading", { name: "Article metadata" })
+          .getByRole("heading", { name: ABOUT_THIS_ARTICLE })
           .isVisible()
       ).toBe(true);
     } finally {
@@ -1221,6 +1258,31 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
     teams: [],
     advisors: { error: "advisors unavailable" },
     provenance: { error: "provenance unavailable" },
+  };
+}
+
+/**
+ * Builds an ArticleView payload for source-only stories without stored body.
+ * @returns ArticleView response for bodyless article presentation.
+ */
+function articleWithoutBodyText(): Readonly<Record<string, unknown>> {
+  return {
+    article: {
+      id: ARTICLE_FIXTURE_ID,
+      headline: HEADLINE_TEXT,
+      dek: null,
+      category: "advisorhub_article",
+      publishedDate: ARTICLE_FIXTURE_DATE,
+      modifiedDate: null,
+      authors: [],
+      url: ARTICLE_FIXTURE_URL,
+    },
+    body: {},
+    eventCards: [],
+    firms: [],
+    teams: [],
+    advisors: [],
+    provenance: [],
   };
 }
 
