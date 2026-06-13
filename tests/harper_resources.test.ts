@@ -3011,6 +3011,20 @@ describe("Harper resource endpoints", () => {
         publishedDate: "2025-03-01",
         category: "unknown",
       },
+      {
+        id: "article-d",
+        headline: "Advisor research import",
+        slug: "advisor-research-import",
+        publishedDate: "2025-04-01",
+        category: "web_research",
+      },
+      {
+        id: "article-e",
+        headline: "Public research import",
+        slug: "public-research-import",
+        publishedDate: "2025-04-02",
+        category: "public_web_research",
+      },
     ]);
 
     const eventBacked = await new (resources as any).Feed().get(
@@ -3040,6 +3054,9 @@ describe("Harper resource endpoints", () => {
     const empty = await new (resources as any).Feed().get(
       routeTarget("", { category: "firm bio" })
     );
+    const advisorResearch = await new (resources as any).Feed().get(
+      routeTarget("", { category: "public_web_research" })
+    );
 
     // /Feed paginates natively post-#721. `summary.total` now means
     // "items on this page" (= `returned`); `summary.categoryTotal` is
@@ -3052,7 +3069,7 @@ describe("Harper resource endpoints", () => {
         returned: 2,
         total: 2,
         modeTotal: 2,
-        categoryTotal: 3,
+        categoryTotal: 5,
       },
       emptyState: null,
     });
@@ -3066,7 +3083,7 @@ describe("Harper resource endpoints", () => {
         returned: 2,
         total: 2,
         modeTotal: 2,
-        categoryTotal: 3,
+        categoryTotal: 5,
       },
     });
     expect(
@@ -3136,6 +3153,19 @@ describe("Harper resource endpoints", () => {
         message: "No feed items match the selected filters.",
       },
       items: [],
+    });
+    expect(advisorResearch).toMatchObject({
+      count: 2,
+      filters: { mode: "all", category: "public_web_research" },
+      summary: { returned: 2, total: 2, modeTotal: 2, categoryTotal: 2 },
+      items: [
+        expect.objectContaining({
+          article: expect.objectContaining({ id: "article-e" }),
+        }),
+        expect.objectContaining({
+          article: expect.objectContaining({ id: "article-d" }),
+        }),
+      ],
     });
   });
 

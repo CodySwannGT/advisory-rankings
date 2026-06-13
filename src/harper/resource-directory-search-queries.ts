@@ -237,12 +237,25 @@ export async function feedArticlePage(
     comparator: "greater_than",
     value: "1970-01-01",
   };
+  const categoryAliases = feedCategoryAliases(category);
+  if (categoryAliases.length > 1) {
+    return mergedFeedArticlePage(
+      categoryAliases,
+      publishedFloor,
+      limit,
+      offset
+    );
+  }
   const conditions: readonly HarperCondition[] =
-    category === "all"
+    categoryAliases.length === 0
       ? [publishedFloor]
       : [
           publishedFloor,
-          { attribute: "category", comparator: "equals", value: category },
+          {
+            attribute: "category",
+            comparator: "equals",
+            value: categoryAliases[0],
+          },
         ];
   return searchPageAndCount<ArticleRow>(tables.Article, {
     conditions,
@@ -250,6 +263,74 @@ export async function feedArticlePage(
     limit,
     offset,
   });
+}
+
+/**
+ * Expands visible feed-category labels to their underlying stored categories.
+ * @param category - Normalized feed category filter.
+ * @returns Stored categories to query, or an empty array for all categories.
+ */
+function feedCategoryAliases(category: string): readonly string[] {
+  if (category === "all") return [];
+  if (category === "public_web_research" || category === "web_research") {
+    return ["public_web_research", "web_research"];
+  }
+  return [category];
+}
+
+/**
+ * Merges bounded pages from category aliases using the same published-date sort.
+ * @param categories - Stored category aliases.
+ * @param publishedFloor - Common published-date guard condition.
+ * @param limit - Response page size.
+ * @param offset - Global offset across the merged category set.
+ * @returns Merged page and total.
+ */
+async function mergedFeedArticlePage(
+  categories: readonly string[],
+  publishedFloor: HarperCondition,
+  limit: number,
+  offset: number
+): Promise<PageAndCount<ArticleRow>> {
+  const aliasPages = await Promise.all(
+    categories.map(category =>
+      searchPageAndCount<ArticleRow>(tables.Article, {
+        conditions: [
+          publishedFloor,
+          { attribute: "category", comparator: "equals", value: category },
+        ],
+        sort: { attribute: "publishedDate", descending: true },
+        limit: offset + limit,
+        offset: 0,
+      })
+    )
+  );
+  const items = aliasPages
+    .flatMap(page => page.items)
+    .reduce<readonly ArticleRow[]>(insertFeedArticleByPublishedDate, [])
+    .slice(offset, offset + limit);
+  const total = aliasPages.reduce((sum, page) => sum + page.total, 0);
+  return { items, total };
+}
+
+/**
+ * Inserts an article into a published-date-desc immutable list.
+ * @param sorted - Existing date-desc article rows.
+ * @param article - Article row to insert.
+ * @returns New date-desc article rows.
+ */
+function insertFeedArticleByPublishedDate(
+  sorted: readonly ArticleRow[],
+  article: ArticleRow
+): readonly ArticleRow[] {
+  const publishedDate = String(article.publishedDate ?? "");
+  const index = sorted.findIndex(
+    existing =>
+      publishedDate.localeCompare(String(existing.publishedDate ?? "")) > 0
+  );
+  return index === -1
+    ? [...sorted, article]
+    : [...sorted.slice(0, index), article, ...sorted.slice(index)];
 }
 
 /**

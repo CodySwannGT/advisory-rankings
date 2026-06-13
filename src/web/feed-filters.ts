@@ -161,9 +161,10 @@ export function feedCategories(items: readonly FeedItem[]): readonly string[] {
       (category): category is string =>
         typeof category === "string" && category.length > 0
     );
-  const nextCategories = [
-    ...new Set([...feedCategoryState.seen, ...categories]),
-  ].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
+  const nextCategories = uniqueCategoriesByLabel([
+    ...feedCategoryState.seen,
+    ...categories,
+  ]);
   Object.assign(feedCategoryState, { seen: nextCategories });
   return nextCategories;
 }
@@ -297,7 +298,8 @@ function modeMatches(item: FeedItem, mode: FeedMode): boolean {
 function categoryMatches(item: FeedItem, filters: FeedFilters): boolean {
   return (
     !filters.category ||
-    normalizeFeedCategoryValue(item.article?.category) === filters.category
+    categoryLabel(normalizeFeedCategoryValue(item.article?.category)) ===
+      categoryLabel(filters.category)
   );
 }
 
@@ -306,10 +308,58 @@ function categoryMatches(item: FeedItem, filters: FeedFilters): boolean {
  * @param state - Current filter state.
  * @returns Human-readable result summary.
  */
-function feedSummaryText(state: FeedFilterCardState): string {
-  const modeLabel = modeLabelFor(state.filters.mode).toLowerCase();
-  const scope = state.filters.category
-    ? `${modeLabel} in ${categoryLabel(state.filters.category)}`
-    : modeLabel;
-  return `Showing ${state.count ?? "filtered"} of ${state.total} ${scope}.`;
+export function feedSummaryText(state: FeedFilterCardState): string {
+  return `Showing ${state.count ?? "filtered"} of ${state.total} ${feedSummaryScope(state.filters)}.`;
+}
+
+/**
+ * Keeps one filter value for each visible category label.
+ * @param categories - Candidate normalized category values.
+ * @returns Sorted filter values with unique reader-facing labels.
+ */
+function uniqueCategoriesByLabel(
+  categories: readonly string[]
+): readonly string[] {
+  return categories
+    .reduce<readonly string[]>((unique, category) => {
+      const label = categoryLabel(category);
+      return unique.some(existing => categoryLabel(existing) === label)
+        ? unique
+        : [...unique, category];
+    }, [])
+    .reduce<readonly string[]>(insertCategoryByLabel, []);
+}
+
+/**
+ * Inserts a category into a label-sorted immutable list.
+ * @param sorted - Existing sorted category values.
+ * @param category - Category to insert.
+ * @returns New sorted category values.
+ */
+function insertCategoryByLabel(
+  sorted: readonly string[],
+  category: string
+): readonly string[] {
+  const index = sorted.findIndex(
+    existing =>
+      categoryLabel(category).localeCompare(categoryLabel(existing)) < 0
+  );
+  return index === -1
+    ? [...sorted, category]
+    : [...sorted.slice(0, index), category, ...sorted.slice(index)];
+}
+
+/**
+ * Builds grammatical noun copy for the result counter.
+ * @param filters - Current filter state.
+ * @returns Counter scope copy.
+ */
+function feedSummaryScope(filters: FeedFilters): string {
+  const category = filters.category
+    ? ` in ${categoryLabel(filters.category)}`
+    : "";
+  if (filters.mode === "event") return `event-backed posts${category}`;
+  if (filters.mode === "moves") return `recruiting moves${category}`;
+  if (filters.mode === "compliance") return `compliance disclosures${category}`;
+  return `posts${category}`;
 }
