@@ -1,0 +1,19 @@
+{
+  "connector": "git",
+  "profile": "advisory-rankings",
+  "runAt": "2026-06-13T07:02:16Z",
+  "cursorBefore": {
+    "lastCommit": "17642b84ad2dfe6aca3a1a05f997e8ce310980e2",
+    "lastPr": 1181
+  },
+  "cursorAfter": {
+    "lastCommit": "40261aff3bc43ffab025e3d3897bb0188efe07fa",
+    "lastPr": 1215
+  },
+  "sourceNote": "wiki/sources/git/2026-06-13-advisory-rankings-git.md",
+  "synthesisPages": [
+    "wiki/architecture/project-architecture.md",
+    "wiki/projects/git-history.md"
+  ],
+  "summary": "Incremental git ingest captured 74 commits and merged PR metadata through #1215."
+}
