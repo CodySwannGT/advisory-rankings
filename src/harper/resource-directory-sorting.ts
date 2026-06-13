@@ -5,6 +5,7 @@ import {
   teamSearchMatches,
 } from "./resource-search.js";
 import type {
+  BranchDirectoryRow,
   RankedSearchInput,
   SearchMatch,
   TeamDirectoryRow,
@@ -43,6 +44,18 @@ export function teamDirectoryKey(team: TeamRow): string {
 }
 
 /**
+ * Sorts public branch rows by firm, location, and display label.
+ * @param branch - Enriched branch directory row.
+ * @returns Lowercase key used for cursor pagination.
+ */
+export function branchDirectoryKey(branch: BranchDirectoryRow): string {
+  return [branch.firmName, branch.state, branch.city, branch.displayName]
+    .map(value => value || "")
+    .join("\x00")
+    .toLowerCase();
+}
+
+/**
  * Orders firm directory rows while keeping cursor ties deterministic.
  * @param a - Left firm row.
  * @param b - Right firm row.
@@ -76,6 +89,19 @@ export function compareTeamDirectoryRows(
   b: TeamDirectoryRow
 ): number {
   return compareDirectoryRows(a, b, teamDirectoryKey);
+}
+
+/**
+ * Orders branch directory rows while keeping cursor ties deterministic.
+ * @param a - Left branch row.
+ * @param b - Right branch row.
+ * @returns Negative, zero, or positive comparison result.
+ */
+export function compareBranchDirectoryRows(
+  a: BranchDirectoryRow,
+  b: BranchDirectoryRow
+): number {
+  return compareDirectoryRows(a, b, branchDirectoryKey);
 }
 
 /**
