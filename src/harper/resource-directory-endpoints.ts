@@ -1,7 +1,14 @@
-import type { FirmAliasRow, FirmRow, TeamRow } from "../types/harper-schema.js";
+import type {
+  BranchRow,
+  EmploymentHistoryRow,
+  FirmAliasRow,
+  FirmRow,
+  TeamRow,
+} from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
 import type {
   AdvisorDirectoryRow,
+  BranchDirectoryRow,
   DirectoryPage,
   SearchResponse,
   TeamDirectoryRow,
@@ -19,16 +26,24 @@ import {
 import {
   firmMatchesFilters,
   parseAdvisorDirectoryFilters,
+  parseBranchDirectoryFilters,
   parseFirmDirectoryFilters,
   parseSearchKind,
   parseTeamDirectoryFilters,
   teamMatchesFilters,
+  branchMatchesFilters,
   queryValue,
 } from "./resource-directory-filters.js";
-import { allRows, optionalAll } from "./resource-directory-tables.js";
+import {
+  allRows,
+  optionalAll,
+  rowsByAttribute,
+} from "./resource-directory-tables.js";
 import {
   compareFirmDirectoryRows,
   compareTeamDirectoryRows,
+  compareBranchDirectoryRows,
+  branchDirectoryKey,
   firmDirectoryKey,
   teamDirectoryKey,
 } from "./resource-directory-sorting.js";
@@ -153,6 +168,199 @@ export class PublicTeams extends Resource {
     );
     return { items, nextCursor, total: sorted.length };
   }
+}
+
+/** Public branch directory resource. */
+export class PublicBranches extends Resource {
+  /**
+   * Allows anonymous readers to browse public branch rows.
+   * @returns True because branch directory data is public.
+   */
+  allowRead(): boolean {
+    return true;
+  }
+
+  /**
+   * Lists public branch rows with firm context and source-backed counts.
+   * @param target - Request target carrying optional filters and pagination.
+   * @returns Branch page, next cursor, and total row count.
+   */
+  async get(target?: RouteTarget): Promise<DirectoryPage<BranchDirectoryRow>> {
+    const [branches, firms] = await Promise.all([
+      allRows<BranchRow>(tables.Branch),
+      allRows<FirmRow>(tables.Firm),
+    ]);
+    const byFirm = new Map(firms.map(firm => [firm.id, firm]));
+    const filters = parseBranchDirectoryFilters(target);
+    const rows = (
+      await Promise.all(
+        branches.map(branch => branchDirectoryMatch(branch, byFirm, filters))
+      )
+    ).filter(isBranchDirectoryRow);
+    const sorted = [...rows].sort(compareBranchDirectoryRows);
+    const { cursor, limit } = parsePagination(target);
+    const { items, nextCursor } = paginate(
+      sorted,
+      { cursor: decodeCursor(cursor), limit },
+      branchDirectoryKey
+    );
+    return { items, nextCursor, total: sorted.length };
+  }
+}
+
+/**
+ * Builds an enriched branch row when it matches public filters.
+ * @param branch - Source branch row.
+ * @param byFirm - Firm lookup keyed by id.
+ * @param filters - Normalized public branch filters.
+ * @returns Branch directory row, or null when filtered out.
+ */
+async function branchDirectoryMatch(
+  branch: BranchRow,
+  byFirm: ReadonlyMap<string, FirmRow>,
+  filters: ReturnType<typeof parseBranchDirectoryFilters>
+): Promise<BranchDirectoryRow | null> {
+  const firm = byFirm.get(branch.firmId) ?? null;
+  const linkedEmployments = await rowsByAttribute<EmploymentHistoryRow>(
+    tables.EmploymentHistory,
+    "branchId",
+    branch.id
+  );
+  const currentAdvisorCount = currentBranchAdvisorCount(linkedEmployments);
+  const sourceMetadata = branchSourceSummary(linkedEmployments);
+  return branchMatchesFilters(
+    branch,
+    filters,
+    firm,
+    sourceMetadata.sourceTypes,
+    currentAdvisorCount
+  )
+    ? branchDirectoryRow(branch, firm, currentAdvisorCount, sourceMetadata)
+    : null;
+}
+
+/**
+ * Narrows nullable branch rows.
+ * @param row - Candidate branch directory row.
+ * @returns True when the row is present.
+ */
+function isBranchDirectoryRow(
+  row: BranchDirectoryRow | null
+): row is BranchDirectoryRow {
+  return row !== null;
+}
+
+/**
+ * Counts distinct currently linked advisors for a branch.
+ * @param employments - Employment rows already scoped to one branch.
+ * @returns Current distinct advisor count.
+ */
+function currentBranchAdvisorCount(
+  employments: ReadonlyArray<EmploymentHistoryRow>
+): number {
+  return new Set(
+    employments
+      .filter(employment => !employment.endDate)
+      .map(employment => employment.advisorId)
+  ).size;
+}
+
+/**
+ * Summarizes employment source fields without exposing employment row ids.
+ * @param employments - Employment rows already scoped to one branch.
+ * @returns Distinct source types and references.
+ */
+function branchSourceSummary(
+  employments: ReadonlyArray<EmploymentHistoryRow>
+): BranchDirectoryRow["sourceMetadata"] {
+  return {
+    sourceTypes: distinctStrings(employments.map(row => row.sourceType)),
+    sourceRefs: distinctStrings(employments.map(row => row.sourceRef)),
+  };
+}
+
+/**
+ * Builds the public branch explorer payload row.
+ * @param branch - Source branch row.
+ * @param firm - Resolved firm context, when present.
+ * @param currentAdvisorCount - Distinct active advisor count for this branch.
+ * @param sourceMetadata - Public source summary for linked employment rows.
+ * @returns Branch directory row safe for anonymous clients.
+ */
+function branchDirectoryRow(
+  branch: BranchRow,
+  firm: FirmRow | null,
+  currentAdvisorCount: number,
+  sourceMetadata: BranchDirectoryRow["sourceMetadata"]
+): BranchDirectoryRow {
+  return {
+    id: branch.id,
+    firmId: branch.firmId,
+    parentBranchId: branch.parentBranchId,
+    level: branch.level,
+    name: branch.name,
+    buildingName: branch.buildingName,
+    address: branch.address,
+    city: branch.city,
+    state: branch.state,
+    country: branch.country,
+    postalCode: branch.postalCode,
+    displayName: branchDisplayName(branch),
+    firmName: firm?.name ?? null,
+    currentAdvisorCount,
+    coverageStatus: branchCoverageStatus(firm, currentAdvisorCount),
+    sourceMetadata,
+  };
+}
+
+/**
+ * Chooses a stable human branch label from available public fields.
+ * @param branch - Branch row.
+ * @returns Display label for the branch explorer.
+ */
+function branchDisplayName(branch: BranchRow): string {
+  return (
+    branch.name ||
+    branch.buildingName ||
+    [branch.city, branch.state].filter(Boolean).join(", ") ||
+    branch.id
+  );
+}
+
+/**
+ * Classifies branch coverage without implying missing data means no offices.
+ * @param firm - Resolved firm context, when present.
+ * @param currentAdvisorCount - Distinct active advisor count for this branch.
+ * @returns Public coverage state.
+ */
+function branchCoverageStatus(
+  firm: FirmRow | null,
+  currentAdvisorCount: number
+): BranchDirectoryRow["coverageStatus"] {
+  if (!firm) return "unavailable";
+  return currentAdvisorCount > 0 ? "loaded" : "partial";
+}
+
+/**
+ * Returns sorted unique non-empty string values.
+ * @param values - Candidate strings.
+ * @returns Stable unique values.
+ */
+function distinctStrings(
+  values: ReadonlyArray<string | null | undefined>
+): ReadonlyArray<string> {
+  return [...new Set(values.filter(isNonEmptyString))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+}
+
+/**
+ * Narrows non-empty strings.
+ * @param value - Candidate value.
+ * @returns True when value is a non-empty string.
+ */
+function isNonEmptyString(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 /** Global navbar search resource. */

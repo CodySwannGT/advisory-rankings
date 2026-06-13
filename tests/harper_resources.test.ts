@@ -45,6 +45,7 @@ const MORGAN_GAP_NAME = "Morgan Gap";
 const TAYLOR_MARKET_NAME = "Taylor Market";
 const CASEY_STONE_NAME = "Casey Stone";
 const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
+const BRANCH_ATLANTA_ID = "branch-atlanta";
 const EMPLOYMENT_A_ID = "employment-a";
 const EMPLOYMENT_B_ID = "employment-b";
 const RANKING_ENTRY_A_ID = "ranking-entry-a";
@@ -80,6 +81,7 @@ const MISSING_PRODUCER_TIER_REASON = "missing-producer-tier";
 const MISSING_BACKEND_METRICS_REASON = "missing-backend-metrics";
 const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
+const EXAMPLE_WEALTH_QUERY = "example wealth";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
 const CLIENT_EMAIL = "client@example.test";
@@ -324,7 +326,7 @@ const baseRows = () => {
     {
       id: "alias-a",
       alias: EXAMPLE_WEALTH_LLC,
-      normalizedAlias: "example wealth",
+      normalizedAlias: EXAMPLE_WEALTH_QUERY,
       firmId: "firm-a",
     },
   ]);
@@ -724,7 +726,7 @@ describe("Harper resource routing helpers", () => {
       "example-wealth-and-co"
     );
     expect(routing.normalizeFirmAlias("Example Wealth, LLC")).toBe(
-      "example wealth"
+      EXAMPLE_WEALTH_QUERY
     );
     expect(routing.resolveFirm(db, EXAMPLE_WEALTH_LLC)?.id).toBe("firm-a");
     expect(routing.resolveAdvisor(db, AVERY_STONE_NAME)?.id).toBe("advisor-a");
@@ -2655,6 +2657,7 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).PublicFirms().allowRead()).toBe(true);
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
+    expect(new (resources as any).PublicBranches().allowRead()).toBe(true);
     expect(new (resources as any).RecruitingMarket().allowRead()).toBe(true);
     expect(new (resources as any).Search().allowRead()).toBe(true);
     expect(new (resources as any).mcp().allowCreate()).toBe(true);
@@ -4652,6 +4655,153 @@ describe("Harper directory and search resources", () => {
       "firm-a",
     ]);
     expect(unfiltered.total).toBe(3);
+  });
+
+  it("filters public branches with source metadata, counts, and cursor pages", async () => {
+    setRows("Branch", [
+      {
+        id: BRANCH_ATLANTA_ID,
+        firmId: "firm-a",
+        name: "Atlanta Market",
+        buildingName: "Peachtree Center",
+        level: "branch",
+        city: "Atlanta",
+        state: "GA",
+        address: "1 Peachtree",
+        country: "US",
+        postalCode: "30303",
+        createdAt: DATE_2026_05_25,
+      },
+      {
+        id: "branch-austin",
+        firmId: "firm-a",
+        name: "Austin Office",
+        level: "branch",
+        city: "Austin",
+        state: "TX",
+      },
+      {
+        id: "branch-orphan",
+        firmId: MISSING_FIRM_REASON,
+        level: "market",
+        city: "Miami",
+        state: "FL",
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-atlanta-a",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_ATLANTA_ID,
+        sourceType: "brokercheck",
+        sourceRef: "crd:123",
+      },
+      {
+        id: "employment-atlanta-b",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        branchId: BRANCH_ATLANTA_ID,
+        sourceType: "firm_locator",
+        sourceRef: "firm:atlanta",
+      },
+      {
+        id: "employment-atlanta-former",
+        advisorId: "advisor-c",
+        firmId: "firm-a",
+        branchId: BRANCH_ATLANTA_ID,
+        endDate: DATE_2024_01_01,
+        sourceType: "brokercheck",
+      },
+      {
+        id: "employment-austin-former",
+        advisorId: "advisor-d",
+        firmId: "firm-a",
+        branchId: "branch-austin",
+        endDate: DATE_2024_01_01,
+        sourceType: "firm_locator",
+      },
+    ]);
+
+    const first = await new (resources as any).PublicBranches().get(
+      routeTarget("", {
+        city: "atl",
+        firm: EXAMPLE_WEALTH_QUERY,
+        limit: "1",
+        minAdvisorCount: "2",
+        sourceType: "brokercheck",
+        state: "GA",
+      })
+    );
+    const second = await new (resources as any).PublicBranches().get(
+      routeTarget("", { limit: "1" })
+    );
+
+    expect(first).toMatchObject({
+      total: 1,
+      nextCursor: null,
+      items: [
+        {
+          id: BRANCH_ATLANTA_ID,
+          displayName: "Atlanta Market",
+          firmId: "firm-a",
+          firmName: EXAMPLE_WEALTH_MANAGEMENT,
+          currentAdvisorCount: 2,
+          coverageStatus: "loaded",
+          sourceMetadata: {
+            sourceTypes: ["brokercheck", "firm_locator"],
+            sourceRefs: ["crd:123", "firm:atlanta"],
+          },
+        },
+      ],
+    });
+    expect(first.items[0]).not.toHaveProperty("createdAt");
+    expect(first.items[0]).not.toHaveProperty("advisorId");
+    expect(JSON.stringify(first.items[0])).not.toContain("employment-atlanta");
+    expect(second).toMatchObject({
+      total: 3,
+      items: [expect.objectContaining({ id: "branch-orphan" })],
+    });
+    expect(second.nextCursor).toEqual(expect.any(String));
+  });
+
+  it("labels public branch partial and unavailable coverage states", async () => {
+    setRows("Branch", [
+      {
+        id: "branch-empty",
+        firmId: "firm-a",
+        name: "Empty Branch",
+        level: "branch",
+        city: "Atlanta",
+        state: "GA",
+      },
+      {
+        id: "branch-unavailable",
+        firmId: MISSING_FIRM_REASON,
+        level: "branch",
+        city: "Charlotte",
+        state: "NC",
+      },
+    ]);
+    setRows("EmploymentHistory", []);
+
+    const result = await new (resources as any).PublicBranches().get(
+      routeTarget("", { limit: "10" })
+    );
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: "branch-unavailable",
+        coverageStatus: "unavailable",
+        displayName: "Charlotte, NC",
+        firmName: null,
+      }),
+      expect.objectContaining({
+        id: "branch-empty",
+        coverageStatus: "partial",
+        currentAdvisorCount: 0,
+      }),
+    ]);
   });
 
   it("filters team directories with pagination and profile metadata", async () => {

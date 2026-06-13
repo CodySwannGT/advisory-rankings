@@ -1,5 +1,6 @@
 import type {
   AdvisorRow,
+  BranchRow,
   EmploymentHistoryRow,
   FirmRow,
   TeamRow,
@@ -8,6 +9,7 @@ import type { RouteTarget } from "../types/harper-resource.js";
 import { advisorDisplayName } from "./resource-routing.js";
 import type {
   AdvisorDirectoryFilters,
+  BranchDirectoryFilters,
   CandidateValue,
   FirmDirectoryFilters,
   SearchKind,
@@ -75,6 +77,25 @@ export function parseTeamDirectoryFilters(
     q: normalizedParam(target, "q"),
     firm: normalizedParam(target, "firm"),
     serviceModel: normalizedParam(target, "serviceModel"),
+  };
+}
+
+/**
+ * Parses branch directory filters from public query parameters.
+ * @param target - Request target carrying URL search params.
+ * @returns Normalized branch filter values.
+ */
+export function parseBranchDirectoryFilters(
+  target: RouteTarget | undefined
+): BranchDirectoryFilters {
+  return {
+    q: normalizedParam(target, "q"),
+    firm: normalizedParam(target, "firm"),
+    state: normalizedParam(target, "state"),
+    city: normalizedParam(target, "city") || normalizedParam(target, "market"),
+    sourceType: normalizedParam(target, "sourceType"),
+    level: normalizedParam(target, "level"),
+    minAdvisorCount: numberParam(target, "minAdvisorCount"),
   };
 }
 
@@ -166,6 +187,49 @@ export function teamMatchesFilters(
 }
 
 /**
+ * Checks a branch against supported public directory filters.
+ * @param branch - Branch row from the public table.
+ * @param filters - Normalized branch filters.
+ * @param firm - Firm context for the branch, when resolvable.
+ * @param sourceTypes - Source types observed in linked employment rows.
+ * @param currentAdvisorCount - Current advisor count for the branch.
+ * @returns Whether the branch should be included in the response.
+ */
+export function branchMatchesFilters(
+  branch: BranchRow,
+  filters: BranchDirectoryFilters,
+  firm: FirmRow | null,
+  sourceTypes: ReadonlyArray<string>,
+  currentAdvisorCount: number
+): boolean {
+  return (
+    textMatches(filters.q, [
+      branch.name,
+      branch.buildingName,
+      branch.address,
+      branch.city,
+      branch.state,
+      firm?.name,
+    ]) &&
+    textMatches(filters.firm, [branch.firmId, firm?.id, firm?.name]) &&
+    exactMatches(filters.state, branch.state) &&
+    textMatches(filters.city, [
+      branch.city,
+      branch.name,
+      branch.buildingName,
+      branch.address,
+    ]) &&
+    exactMatches(filters.level, branch.level) &&
+    (!filters.sourceType ||
+      sourceTypes.some(sourceType =>
+        exactMatches(filters.sourceType, sourceType)
+      )) &&
+    (filters.minAdvisorCount === null ||
+      currentAdvisorCount >= filters.minAdvisorCount)
+  );
+}
+
+/**
  * Applies the directory `firm` filter's case-insensitive substring match to a
  * single firm's identifier and name, using the exact same normalization as the
  * internal `textMatches` helper. Used by the advisor directory endpoint to
@@ -232,6 +296,21 @@ function booleanParam(
   if (["true", "1", "yes"].includes(value)) return true;
   if (["false", "0", "no"].includes(value)) return false;
   return null;
+}
+
+/**
+ * Parses optional non-negative integer query parameters.
+ * @param target - Request target carrying URL search params.
+ * @param name - Query parameter name.
+ * @returns Parsed integer, or null when absent/invalid.
+ */
+function numberParam(
+  target: RouteTarget | undefined,
+  name: string
+): number | null {
+  const value = normalizedParam(target, name);
+  if (!/^\d+$/.test(value)) return null;
+  return Number(value);
 }
 
 /**

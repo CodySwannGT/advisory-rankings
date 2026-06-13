@@ -359,6 +359,16 @@ firm hierarchy references point to `Morgan Stanley`.
 > wirehouses; smaller firms may have only `branch`. Use a self-reference on
 > `Branch.parent_branch_id` to keep one entity rather than three.
 
+Public branch directory filtering (`GET /PublicBranches`) is derived from
+`Branch`, canonical `Firm`, and linked `EmploymentHistory` rows. `q` matches
+branch name, building, address, city, state, or firm name by case-insensitive
+substring; `firm` matches firm id or name; `state` exactly matches
+`Branch.state`; `city` and `market` match city/name/building/address;
+`sourceType` exactly matches linked employment source type; `level` exactly
+matches `Branch.level`; and `minAdvisorCount` filters on distinct current
+advisor count. The payload exposes aggregate source metadata and coverage
+status, not employment-row or advisor identifiers.
+
 ### 4.7 `EmploymentHistory`
 
 | Field | Type | Notes |

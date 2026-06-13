@@ -539,7 +539,8 @@ Once the dataset grows past ~10k rows, narrow them to indexed
 (article-by-publishedDate, employments-by-firmId, etc.).
 
 **Paginated directory endpoints:** `/PublicAdvisors`, `/PublicFirms`,
-`/PublicTeams`, and `/FirmAdvisors/<id>` accept `?cursor=…&limit=…`
+`/PublicTeams`, `/PublicBranches`, and `/FirmAdvisors/<id>` accept
+`?cursor=…&limit=…`
 (default 50, max 100). Directory endpoints return
 `{ items, nextCursor, total }`, where `total` is the filtered row count;
 `/FirmAdvisors/<id>` returns `{ items, nextCursor }`. The cursor is
@@ -553,6 +554,7 @@ Supported public directory filters:
 | `/PublicAdvisors` | `q` matches advisor display/legal/preferred/first/last name substrings; `firm` matches current firm id or name substrings after firm-alias canonicalization; `careerStatus` exactly matches `Advisor.career_status`; `hasCrd=true|false` filters whether `finra_crd` is present. |
 | `/PublicFirms` | `q` matches firm name/legal name substrings; `channel` exactly matches `Firm.channel`; `state` exactly matches `Firm.hq_state`; `active=true|false` filters on missing/present `dissolved_year`. `status=active` and `status=dissolved|inactive` are compatibility aliases. |
 | `/PublicTeams` | `q` matches team name substrings; `firm` matches current firm id or name substrings after firm-alias canonicalization; `serviceModel` exactly matches `Team.service_model`. |
+| `/PublicBranches` | `q` matches branch name, building, address, city, state, or firm name substrings; `firm` matches firm id or name substrings; `state` exactly matches `Branch.state`; `city` and `market` match city/name/building/address substrings; `sourceType` exactly matches linked `EmploymentHistory.source_type`; `level` exactly matches `Branch.level`; `minAdvisorCount` filters on distinct current advisor count. |
 
 All filter comparisons are case-insensitive. Unsupported, missing, or
 empty filter values are ignored except booleans, where unsupported
@@ -749,7 +751,7 @@ Everything else still requires auth.
 |---|---|---|
 | `GET /` (the SPA shell) | ✅ 200 | Static; served by the bundled `static` extension. |
 | `GET /Feed`, `/ArticleView/<id>`, `/FirmProfile/<id>`, `/AdvisorProfile/<id>`, `/AdvisorComparison?ids=<id>,<id>`, `/TeamProfile/<id>` | ✅ 200 | Each `Resource` subclass overrides `allowRead()` to return `true`. The data they expose is sourced from public AdvisorHub coverage. |
-| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so the directory pages (`firms.html`, `advisors.html`, `teams.html`) don't need to call the auth-gated `/<TableName>/` routes. |
+| `GET /PublicFirms`, `/PublicAdvisors`, `/PublicTeams`, `/PublicBranches` | ✅ 200 | Public directory resources with cursor pagination, filtered totals, and documented query filters, so directory pages don't need to call the auth-gated `/<TableName>/` routes. `/PublicBranches` exposes aggregate branch context only: firm name, location, source metadata, coverage status, and current advisor count. |
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `GET /DataCoverage` | ✅ 200 | Public dashboard payload for `/coverage`: entity counts, public resource probes, rankings/recruiting gaps, research freshness, source-table context, and limitations. It reports aggregate counts and public-resource provenance only; it does not expose private user rows or secrets. |
 | `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, returned-slice counts, and group filter mappings. No private user tables are loaded. |
@@ -1544,6 +1546,7 @@ defined in `src/harper/resources.ts`:
 | `GET /AdvisorProfile/<id>` | `AdvisorProfile` | Career walk + teams + disclosures + sanctions + OBAs + reg apps + transitions + mention articles. |
 | `GET /AdvisorComparison?ids=<id>,<id>` | `AdvisorComparison` | Two-to-four advisor comparison payload with identity, firm, regulatory, career, rankings/articles, data confidence, and attribution sections. |
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
+| `GET /PublicBranches` | `PublicBranches` | Branch rows joined to firm names and linked `EmploymentHistory` rows for source metadata and distinct current advisor counts. |
 | `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, recruiting-deal terms, state and city activity, source URLs, and Recruiting Market Map rollups. |
 | `GET /DataCoverage` | `DataCoverage` | Public entity counts, route/resource probes, rankings and recruiting coverage gaps, research freshness, source-table context, and limitations for `/coverage`. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |

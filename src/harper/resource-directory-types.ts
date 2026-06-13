@@ -1,5 +1,6 @@
 import type {
   AdvisorRow,
+  BranchRow,
   EmploymentHistoryRow,
   FirmRow,
   TeamRow,
@@ -38,9 +39,48 @@ export interface TeamDirectoryFilters {
   readonly serviceModel: string;
 }
 
+/** Normalized branch directory filters. */
+export interface BranchDirectoryFilters {
+  readonly q: string;
+  readonly firm: string;
+  readonly state: string;
+  readonly city: string;
+  readonly sourceType: string;
+  readonly level: string;
+  readonly minAdvisorCount: number | null;
+}
+
 /** Team row enriched with the current firm name rendered on directory cards. */
 export interface TeamDirectoryRow extends TeamRow {
   readonly currentFirmName: string | null;
+}
+
+/** Source summary safe to expose on public branch rows. */
+export interface BranchSourceSummary {
+  readonly sourceTypes: ReadonlyArray<string>;
+  readonly sourceRefs: ReadonlyArray<string>;
+}
+
+/** Branch row enriched for the public branch explorer resource. */
+export interface BranchDirectoryRow extends Pick<
+  BranchRow,
+  | "id"
+  | "firmId"
+  | "parentBranchId"
+  | "level"
+  | "name"
+  | "buildingName"
+  | "address"
+  | "city"
+  | "state"
+  | "country"
+  | "postalCode"
+> {
+  readonly displayName: string;
+  readonly firmName: string | null;
+  readonly currentAdvisorCount: number;
+  readonly coverageStatus: "loaded" | "partial" | "unavailable";
+  readonly sourceMetadata: BranchSourceSummary;
 }
 
 /** Advisor row with explicit CRD presence for public directory verification. */
