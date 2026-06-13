@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Branch Network Explorer — AdvisorBook</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <!-- ab-boot-guard:start (identical across all web shells — see docs/fabric-runbook.md §6) -->
+    <script>
+    	// Boot resilience. The shared Fabric dev serving node intermittently
+    	// resets connections during the browser's concurrent ES-module fan-out,
+    	// which aborts SPA boot and leaves a blank 200 page (and repeatedly broke
+    	// the deploy smoke gate). Recover by reloading while the page is still
+    	// unbooted, bounded per-path so a genuinely broken build can't reload-loop.
+    	// `.nav` / `.route-loading-feedback` render within ~1s of the entry module
+    	// executing, so their absence is a reliable "modules never loaded" signal
+    	// independent of backend latency.
+    	(() => {
+    		const READY = ".nav, .ab-page-title, article.card, .route-loading-feedback";
+    		const KEY = "ab-boot-retry:" + location.pathname;
+    		const MAX_RELOADS = 5;
+    		const state = { handled: false };
+    		const attempts = () => {
+    			try {
+    				return parseInt(sessionStorage.getItem(KEY) || "0", 10) || 0;
+    			} catch (_) {
+    				return MAX_RELOADS;
+    			}
+    		};
+    		const clearAttempts = () => {
+    			try {
+    				sessionStorage.removeItem(KEY);
+    			} catch (_) {}
+    		};
+    		const manualFallback = () => {
+    			if (document.querySelector(READY)) return;
+    			document.body.innerHTML =
+    				'<main class="layout" style="max-width:760px;margin:48px auto;padding:0 20px">' +
+    				'<section class="center card"><h1>AdvisorBook</h1>' +
+    				'<p>AdvisorBook could not finish loading this page.</p>' +
+    				'<button type="button" id="ab-reload">Reload</button></section></main>';
+    			const btn = document.getElementById("ab-reload");
+    			if (btn)
+    				btn.addEventListener("click", () => {
+    					clearAttempts();
+    					location.reload();
+    				});
+    		};
+    		const recover = () => {
+    			if (state.handled || document.querySelector(READY)) return;
+    			const n = attempts();
+    			if (n >= MAX_RELOADS) {
+    				manualFallback();
+    				return;
+    			}
+    			state.handled = true;
+    			try {
+    				sessionStorage.setItem(KEY, String(n + 1));
+    			} catch (_) {}
+    			location.reload();
+    		};
+    		window.addEventListener(
+    			"error",
+    			event => {
+    				const t = event.target;
+    				if (t instanceof HTMLScriptElement || t instanceof HTMLLinkElement)
+    					recover();
+    			},
+    			true
+    		);
+    		window.addEventListener("unhandledrejection", recover);
+    		// Clear the per-path budget once the app actually renders.
+    		window.setTimeout(() => {
+    			if (document.querySelector(READY)) clearAttempts();
+    		}, 2000);
+    		// Auto-reload (bounded) if nothing rendered within the boot window.
+    		window.setTimeout(recover, 5000);
+    	})();
+    </script>
+    <!-- ab-boot-guard:end -->
+    <script type="module" src="/branches.js"></script>
+  </body>
+</html>

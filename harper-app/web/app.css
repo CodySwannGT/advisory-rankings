@@ -142,6 +142,186 @@ a:hover {
   padding-left: 18px;
 }
 
+.branches-header .card-body,
+.branches-filter-card .card-body,
+.branches-results-card .card-body {
+  display: grid;
+  gap: 14px;
+}
+
+.branches-lede,
+.branches-muted {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.branches-filter-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.branches-filter-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.branches-filter-field input,
+.branches-filter-field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.branches-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.branches-list {
+  display: grid;
+  gap: 10px;
+}
+
+.branches-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(110px, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.branches-row-main,
+.branches-row-field,
+.branches-summary-grid,
+.branches-legend {
+  min-width: 0;
+}
+
+.branches-row-main {
+  display: grid;
+  gap: 5px;
+}
+
+.branches-row-title {
+  font-weight: 800;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.branches-row-subtitle,
+.branches-row-label,
+.branches-metric-label,
+.branches-active-filter,
+.branches-legend-row {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.branches-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.branches-row-field {
+  display: grid;
+  gap: 3px;
+}
+
+.branches-row-value {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.branches-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.branches-row-action {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 7px 9px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.branches-row-action:hover {
+  background: var(--border);
+  text-decoration: none;
+}
+
+.branches-load-more {
+  display: flex;
+  justify-content: center;
+}
+
+.branches-metric,
+.branches-summary-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.branches-metric {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.branches-metric-value {
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.branches-active-filters,
+.branches-legend {
+  display: grid;
+  gap: 8px;
+}
+
+.branches-active-filter,
+.branches-legend-row {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .branches-row {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 0.5fr);
+  }
+  .branches-row-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .branches-row,
+  .branches-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .kv-list {
   display: grid;
   gap: 6px;

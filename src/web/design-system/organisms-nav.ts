@@ -28,6 +28,7 @@ interface NavLink {
 const NAV_LINKS: readonly NavLink[] = [
   { active: "home", href: "/", label: "Home" },
   { active: "firms", href: "/firms", label: "Firms" },
+  { active: "branches", href: "/branches", label: "Branches" },
   { active: "recruiting", href: "/recruiting", label: "Recruiting" },
   { active: "research", href: "/research/freshness", label: "Research" },
   { active: "rankings", href: "/rankings", label: "Rankings" },
