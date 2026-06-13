@@ -8,8 +8,6 @@ import {
   clearC,
   elC,
   EmptyCardC,
-  fmtMoneyC,
-  fmtNumberC,
   marketCardC,
   momentumCardC,
   MountThreeColumnPage,
@@ -24,9 +22,11 @@ import {
   type ThreeColumnLayout,
 } from "./recruiting-types.js";
 import { buildRecruitingResourceQuery } from "./recruiting-query.js";
+import { recruitingSummaryStatGrid } from "./recruiting-summary-stats.js";
 import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 
 const DEFAULT_LIMIT = 30;
+const FIRM_SUGGESTIONS_ID = "recruiting-firm-suggestions";
 const FIRM_INPUT_SELECTOR = 'input[name="firm"]';
 const WATCHLIST_ADD_BUTTON_SELECTOR = ".watchlist-add-button";
 const WATCHLIST_FIRMS_SELECTOR = "[data-watchlist-firms]";
@@ -146,12 +146,7 @@ function headerCard(data: RecruitingMarketResponse): HTMLElement {
         { class: "recruiting-lede" },
         "Public advisor-team move activity grouped by firm, market, source status, and known AUM."
       ),
-      statGrid([
-        ["Moves", fmtNumberC(data.summary.count)],
-        ["Known AUM", fmtMoneyC(data.summary.knownAum)],
-        ["Unknown AUM", fmtNumberC(data.summary.unknownAumCount)],
-        ["Missing T12", fmtNumberC(data.summary.missingT12Count)],
-      ]),
+      recruitingSummaryStatGrid(data),
     ],
   });
 }
@@ -162,6 +157,9 @@ function headerCard(data: RecruitingMarketResponse): HTMLElement {
  * @returns Filter form card.
  */
 function filterCard(data: RecruitingMarketResponse): HTMLElement {
+  const firmSuggestions = data.firmMomentum
+    .map(row => row.firm.short || row.firm.name || "")
+    .filter((name): name is string => name.length > 0);
   const form = elC(
     "form",
     {
@@ -170,6 +168,7 @@ function filterCard(data: RecruitingMarketResponse): HTMLElement {
       action: "/recruiting",
     },
     watchlistFirmControls(watchlistFirmQueries(data)),
+    firmSuggestions.length ? firmDatalist(firmSuggestions) : null,
     labelInput("State", "state", data.filters.state || "", {
       placeholder: "NY",
       maxlength: 2,
@@ -235,8 +234,11 @@ function firmInputRow(value: string, index: number): HTMLElement {
   return elC(
     "div",
     { class: "watchlist-firm-row" },
-    labelInput(`Firm ${index + 1}`, "firm", value, {
+    labelInput("Firm", "firm", value, {
+      "aria-label": `Firm ${index + 1}`,
       autocomplete: "organization",
+      list: FIRM_SUGGESTIONS_ID,
+      placeholder: "Search firm",
     }),
     elC(
       "button",
@@ -248,6 +250,19 @@ function firmInputRow(value: string, index: number): HTMLElement {
       },
       "x"
     )
+  );
+}
+
+/**
+ * Creates firm suggestions for the repeated firm filter inputs.
+ * @param names - Firm names from the current market payload.
+ * @returns Datalist shared by every firm input.
+ */
+function firmDatalist(names: readonly string[]): HTMLElement {
+  return elC(
+    "datalist",
+    { id: FIRM_SUGGESTIONS_ID },
+    ...[...new Set(names)].map(name => elC("option", { value: name }))
   );
 }
 
@@ -337,26 +352,6 @@ function directionSelect(current: string): HTMLElement {
       { name: "direction" },
       ...options.map(([value, label]) =>
         elC("option", { value, selected: value === current }, label)
-      )
-    )
-  );
-}
-
-/**
- * Creates a stable summary stat grid.
- * @param pairs - Label/value pairs.
- * @returns Stat grid node.
- */
-function statGrid(pairs: readonly (readonly [string, string])[]): HTMLElement {
-  return elC(
-    "div",
-    { class: "recruiting-stat-grid" },
-    ...pairs.map(([label, value]) =>
-      elC(
-        "div",
-        { class: "recruiting-stat" },
-        elC("span", { class: "recruiting-stat-label" }, label),
-        elC("strong", {}, value)
       )
     )
   );

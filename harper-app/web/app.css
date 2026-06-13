@@ -1467,7 +1467,7 @@ body.drawer-open .nav .nav-scrim {
 .recruiting-stat-grid,
 .rankings-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 8px;
 }
 .recruiting-stat,
@@ -1829,6 +1829,10 @@ body.drawer-open .nav .nav-scrim {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.recruiting-table th {
+  overflow-wrap: normal;
+  word-break: normal;
+}
 .firm-momentum-table th:first-child,
 .firm-momentum-table td:first-child {
   width: 25%;
@@ -1890,6 +1894,19 @@ body.drawer-open .nav .nav-scrim {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+}
+.source-disclosure {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.source-disclosure summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+.source-disclosure-tags {
+  padding-top: 4px;
 }
 .recruiting-watchlist .card-body {
   display: grid;

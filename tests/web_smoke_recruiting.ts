@@ -59,11 +59,19 @@ interface RecruitingTableOverflow {
 }
 /** Default Recruiting route content loaded before overflow-specific checks. */
 interface LoadedRecruitingState {
+  readonly addFirmLabel: string | null;
+  readonly hasAboutDataDisclosure: boolean;
+  readonly hasAumUnknownHeader: boolean;
+  readonly hasFirmOneLabel: boolean;
   readonly hasHeader: boolean;
   readonly hasMomentum: boolean;
+  readonly hasMissingT12Tile: boolean;
   readonly hasRecentMoves: boolean;
   readonly hasSourceStatus: boolean;
   readonly hasTaylorGroup: boolean;
+  readonly hasUnknownAumTile: boolean;
+  readonly hasUnknownMarketLabel: boolean;
+  readonly removeFirmLabel: string | null;
   readonly rawLabels: readonly string[];
   readonly rowCount: number;
 }
@@ -134,11 +142,33 @@ async function readLoadedRecruiting(
   await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
   const loaded: LoadedRecruitingState = await page.evaluate(
     ({ rawRecruitingLabels, tableSelector }) => ({
+      addFirmLabel: document
+        .querySelector(".watchlist-add-button")
+        ?.getAttribute("aria-label"),
+      hasAboutDataDisclosure: Array.from(
+        document.querySelectorAll("details summary")
+      ).some(node => node.textContent?.trim() === "About this data"),
+      hasAumUnknownHeader: Array.from(
+        document.querySelectorAll(".firm-momentum-table th")
+      ).some(node => node.textContent?.trim() === "AUM unknown"),
+      hasFirmOneLabel: Array.from(document.querySelectorAll("label span")).some(
+        node => node.textContent?.trim() === "Firm 1"
+      ),
       hasHeader: document.body.innerText.includes("Recruiting Market Map"),
       hasMomentum: document.body.innerText.includes("Firm momentum"),
+      hasMissingT12Tile: Array.from(
+        document.querySelectorAll(".recruiting-stat")
+      ).some(tile => tile.textContent?.includes("Missing T12")),
       hasRecentMoves: document.body.innerText.includes("Recent moves"),
       hasSourceStatus: document.body.innerText.includes("Source confirmed"),
       hasTaylorGroup: document.body.innerText.includes("The Taylor Group"),
+      hasUnknownAumTile: Array.from(
+        document.querySelectorAll(".recruiting-stat")
+      ).some(tile => tile.textContent?.includes("Unknown AUM")),
+      hasUnknownMarketLabel: document.body.innerText.includes("Unknown market"),
+      removeFirmLabel: document
+        .querySelector(".watchlist-remove-button")
+        ?.getAttribute("aria-label"),
       rawLabels: rawRecruitingLabels.filter(label =>
         document.body.innerText.includes(label)
       ),
@@ -406,7 +436,24 @@ function recruitingChecks(
   overflowChecks: readonly Check[],
   watchlistMobileChecks: readonly Check[]
 ): readonly Check[] {
-  const { restored, noMatch, updatedFirmValues, updatedUrl } = watchlist;
+  return [
+    ...loadedRecruitingChecks(loaded),
+    ...recruitingSliceChecks(slices),
+    ...overflowChecks,
+    ...emptyRecruitingChecks(empty),
+    ...watchlistRecruitingChecks(watchlist),
+    ...watchlistMobileChecks,
+  ];
+}
+
+/**
+ * Converts default page observations into smoke checks.
+ * @param loaded - Default page observations.
+ * @returns Default page smoke checks.
+ */
+function loadedRecruitingChecks(
+  loaded: LoadedRecruitingState
+): readonly Check[] {
   return [
     check(loaded.hasHeader, "recruiting: page header renders"),
     check(loaded.hasMomentum, "recruiting: firm momentum renders"),
@@ -421,11 +468,55 @@ function recruitingChecks(
       "recruiting: raw source table labels are hidden",
       loaded.rawLabels.join(", ")
     ),
-    ...recruitingSliceChecks(slices),
-    ...overflowChecks,
+    check(
+      !loaded.hasUnknownAumTile && !loaded.hasMissingT12Tile,
+      "recruiting: zero-value caveat tiles stay hidden"
+    ),
+    check(
+      !loaded.hasFirmOneLabel &&
+        loaded.addFirmLabel === "Add firm" &&
+        loaded.removeFirmLabel === "Remove firm 1",
+      "recruiting: firm filter controls are plainly labeled",
+      `add ${loaded.addFirmLabel}, remove ${loaded.removeFirmLabel}`
+    ),
+    check(
+      loaded.hasAumUnknownHeader,
+      "recruiting: firm momentum uses readable AUM gap header"
+    ),
+    check(
+      !loaded.hasUnknownMarketLabel,
+      "recruiting: undisclosed markets use public-facing copy"
+    ),
+    check(
+      loaded.hasAboutDataDisclosure,
+      "recruiting: source caveats are grouped in disclosure"
+    ),
+  ];
+}
+
+/**
+ * Converts empty-route observations into smoke checks.
+ * @param empty - Empty-filter Recruiting route observations.
+ * @returns Empty-state smoke checks.
+ */
+function emptyRecruitingChecks(empty: EmptyRecruitingState): readonly Check[] {
+  return [
     check(empty.hasEmpty, "recruiting: empty filter explains missing data"),
     check(empty.state === "ZZ", "recruiting: state filter is retained"),
     check(empty.noOverflow, "recruiting: filtered page has no overflow"),
+  ];
+}
+
+/**
+ * Converts watchlist route observations into smoke checks.
+ * @param watchlist - Watchlist observations.
+ * @returns Watchlist smoke checks.
+ */
+function watchlistRecruitingChecks(
+  watchlist: WatchlistRecruitingState
+): readonly Check[] {
+  const { restored, noMatch, updatedFirmValues, updatedUrl } = watchlist;
+  return [
     check(
       restored.hasWatchlist && restored.panelCount >= 2,
       "recruiting: watchlist cards render from URL firms"
@@ -466,7 +557,6 @@ function recruitingChecks(
       "recruiting: filter submit updates URL and preserves firm set",
       updatedUrl.search
     ),
-    ...watchlistMobileChecks,
   ];
 }
 
