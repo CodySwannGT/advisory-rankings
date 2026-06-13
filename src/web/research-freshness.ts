@@ -20,6 +20,10 @@ import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-re
 /** One rendered queue item from the AdvisorResearchQueue resource. */
 type QueueItem = AdvisorResearchQueueResponse["items"][number];
 
+const SOURCE_TABLE_LABELS: Readonly<Record<string, string>> = {
+  AdvisorResearchCheck: "Source check",
+};
+
 const queuePopstate: Readonly<
   Record<"reload", (() => void) | null> & Record<"listenerInstalled", boolean>
 > = { reload: null as (() => void) | null, listenerInstalled: false };
@@ -183,7 +187,7 @@ function queueRow(item: QueueItem): HTMLElement {
     ),
     queueRowField("Missing fields", missingFields(item)),
     queueRowField("Freshness", freshnessText(item)),
-    queueRowField("Provenance", provenanceText(item)),
+    queueRowField("Source check", provenanceText(item)),
     el(
       "a",
       { class: "research-queue-row-action", href: item.profileUrl },
@@ -352,8 +356,17 @@ function freshnessText(item: QueueItem): string {
  * @returns Provenance summary.
  */
 function provenanceText(item: QueueItem): string {
-  const sourceIds = item.provenance.sourceIds.join(", ") || "None";
-  return `${item.provenance.sourceTable}: ${sourceIds}`;
+  const sourceIds = item.provenance.sourceIds.join(", ") || "No source row";
+  return `${sourceTableLabel(item.provenance.sourceTable)}: ${sourceIds}`;
+}
+
+/**
+ * Converts source table identifiers into queue-facing labels.
+ * @param sourceTable - Raw source table name from the queue resource.
+ * @returns Human-readable source label.
+ */
+function sourceTableLabel(sourceTable: string): string {
+  return SOURCE_TABLE_LABELS[sourceTable] || label(sourceTable);
 }
 
 /**

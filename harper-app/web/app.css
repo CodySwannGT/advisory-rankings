@@ -927,15 +927,9 @@ body.drawer-open .nav .nav-scrim {
 
 .research-queue-row {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1.4fr)
-    minmax(0, 0.8fr)
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    max-content;
-  gap: 10px 12px;
-  align-items: center;
+  grid-template-columns: minmax(14rem, 1.2fr) minmax(12rem, 0.8fr);
+  gap: 12px 20px;
+  align-items: start;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -969,7 +963,8 @@ body.drawer-open .nav .nav-scrim {
 .research-queue-row-label,
 .research-queue-row-value {
   display: block;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .research-queue-row-firm,
@@ -983,7 +978,13 @@ body.drawer-open .nav .nav-scrim {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  min-width: 0;
+  min-width: 12rem;
+}
+
+.research-queue-row-identity,
+.research-queue-row-status,
+.research-queue-row-action {
+  grid-column: 1 / -1;
 }
 
 .research-queue-row-label {
@@ -999,7 +1000,7 @@ body.drawer-open .nav .nav-scrim {
 }
 
 .research-queue-row-action {
-  justify-self: end;
+  justify-self: start;
   white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
@@ -1008,7 +1009,6 @@ body.drawer-open .nav .nav-scrim {
 @media (max-width: 1100px) {
   .research-queue-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
   }
 
   .research-queue-row-identity,
@@ -1025,6 +1025,10 @@ body.drawer-open .nav .nav-scrim {
 @media (max-width: 700px) {
   .research-queue-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .research-queue-row-status {
+    min-width: 0;
   }
 }
 

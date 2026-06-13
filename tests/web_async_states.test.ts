@@ -339,7 +339,7 @@ browserDescribe("web async states", () => {
       RESEARCH_QUEUE_FIRM_NAME,
       "Headshot Url",
       RESEARCH_QUEUE_BUSINESS_PHONE_LABEL,
-      RESEARCH_QUEUE_SOURCE_TABLE,
+      "Source check",
       "FINRA CRD 1234567",
     ]);
 
@@ -356,6 +356,35 @@ browserDescribe("web async states", () => {
       queueRequests.map(requestUrl => new URL(requestUrl).pathname)
     ).toEqual(["/AdvisorResearchQueue"]);
     await page.close();
+  });
+
+  it("keeps research queue row words intact at desktop widths", async () => {
+    for (const width of [1280, 1440, 1920]) {
+      const page = await browser.newPage({
+        viewport: { width, height: 900 },
+      });
+      try {
+        await page.route(ME_ROUTE, async route => {
+          await route.fulfill({ json: { authenticated: false } });
+        });
+        await page.route(ADVISOR_RESEARCH_QUEUE_ROUTE, async route => {
+          await route.fulfill({ json: researchQueuePayload() });
+        });
+
+        await page.goto(`${baseUrl}/research/freshness`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page
+          .locator(RESEARCH_QUEUE_ROW_SELECTOR, {
+            hasText: ADVISOR_RECOVERY_NAME,
+          })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+
+        await expectQueueRowWordsFit(page);
+      } finally {
+        await page.close();
+      }
+    }
   });
 
   it("verifies research queue profile links preserve freshness context", async () => {
@@ -1441,13 +1470,57 @@ async function expectCompactQueueRows(page: Page): Promise<void> {
   expect(rowText).toContain("(38 days); next");
   expect(rowText).toMatch(/May\s+\d{1,2},\s+2026/);
   expect(rowText).toMatch(/next\s+Jun\s+\d{1,2},\s+2026/);
-  expect(rowText).toContain(`${RESEARCH_QUEUE_SOURCE_TABLE}: research-check-1`);
+  expect(rowText).toContain("Source check: research-check-1");
   expect(await rows.locator(".details-card").count()).toBe(0);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth)
   ).toBeLessThanOrEqual(
     await page.evaluate(() => document.documentElement.clientWidth)
   );
+}
+
+/**
+ * Asserts queue row text can wrap only at word boundaries for the current viewport.
+ * @param page - Browser page under test.
+ */
+async function expectQueueRowWordsFit(page: Page): Promise<void> {
+  const failures = await page.evaluate(selector => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return ["canvas context unavailable"];
+    return Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `${selector} .research-queue-row-label, ${selector} .research-queue-row-value`
+      )
+    ).flatMap(element => {
+      const style = window.getComputedStyle(element);
+      context.font = style.font;
+      const text =
+        style.textTransform === "uppercase"
+          ? element.innerText.toUpperCase()
+          : element.innerText;
+      const longestWord = text
+        .split(/\s+/)
+        .filter(Boolean)
+        .sort(
+          (left, right) =>
+            context.measureText(right).width - context.measureText(left).width
+        )[0];
+      if (!longestWord) return [];
+      const wordWidth = context.measureText(longestWord).width;
+      const availableWidth = element.getBoundingClientRect().width;
+      const canKeepWordIntact =
+        wordWidth <= availableWidth + 1 &&
+        style.overflowWrap !== "anywhere" &&
+        style.wordBreak === "normal";
+      return canKeepWordIntact
+        ? []
+        : [
+            `${element.className}: ${longestWord} width ${wordWidth.toFixed(1)} > ${availableWidth.toFixed(1)} (${style.overflowWrap}/${style.wordBreak})`,
+          ];
+    });
+  }, RESEARCH_QUEUE_ROW_SELECTOR);
+  expect(failures).toEqual([]);
 }
 
 /**
