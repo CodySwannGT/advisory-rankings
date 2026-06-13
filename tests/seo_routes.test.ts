@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import advisorsRoutes from "../harper-app/advisors/index.js";
 import articlesRoutes from "../harper-app/articles/index.js";
+import branchesRoutes from "../harper-app/branches/index.js";
 import firmsRoutes from "../harper-app/firms/index.js";
 import loginRoutes from "../harper-app/login/index.js";
 import recruitingRoutes from "../harper-app/recruiting/index.js";
@@ -20,6 +21,7 @@ describe("SEO route shells", () => {
     const paths: string[] = [];
     const fastify = { get: (path: string) => paths.push(path) };
 
+    await branchesRoutes(fastify);
     await firmsRoutes(fastify);
     await recruitingRoutes(fastify);
     await advisorsRoutes(fastify);
@@ -29,6 +31,7 @@ describe("SEO route shells", () => {
     await loginRoutes(fastify);
 
     expect(paths).toEqual([
+      "/branches",
       "/firms",
       "/firms/:slug",
       "/recruiting",

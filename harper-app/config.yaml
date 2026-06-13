@@ -19,6 +19,7 @@ jsResource:
 fastifyRoutes:
   files:
     - 'static-web/index.js'
+    - 'branches/index.js'
     - 'firms/index.js'
     - 'advisors/index.js'
     - 'teams/index.js'
