@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-12
+updated: 2026-06-13
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -13,6 +13,7 @@ sources:
   - ../sources/git/2026-06-10-advisory-rankings-git.md
   - ../sources/git/2026-06-11-advisory-rankings-git.md
   - ../sources/git/2026-06-12-advisory-rankings-git.md
+  - ../sources/git/2026-06-13-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -75,3 +76,9 @@ request resources, submission UI, analyst inbox handling, reviewed-note presenta
 browser smoke sessions. It also records continued evidence UI/provenance cleanup, directory filter
 behavior, team-directory deduplication, and rankings page shell/copy alignment. Source:
 wiki/sources/git/2026-06-12-advisory-rankings-git.md.
+
+The 2026-06-13 git ingest shows architecture work around deployed route recovery and coverage
+inspection: unknown documents now rely on a restored deploy-safe static/web route fallback path,
+while the DataCoverage resource and public coverage dashboard provide explicit metric and replay
+surfaces. It also records article presentation and recruiting-market source-caveat polish. Source:
+wiki/sources/git/2026-06-13-advisory-rankings-git.md.
