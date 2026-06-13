@@ -220,6 +220,7 @@ fabric-deploy branch layout (commit a03f495):
   web/                  ← Facebook-style UI (see §8); copy whole dir after build
     index.html / index.js     home feed
     article.html / article.js article detail
+    branches.html / branches.js branch explorer
     firm.html / firm.js       firm profile
     advisor.html / advisor.js advisor profile
     team.html / team.js       team profile
@@ -1518,6 +1519,7 @@ organisms / templates) — see `docs/design-system.md`.
 | URL | What it shows |
 |---|---|
 | `/` (`index.html`) | Activity feed of every `Article` ordered by `publishedDate desc`, each card hydrated with the entities it documents. Transition articles render an inline event block (`from-firm → to-firm · AUM · T-12 · headcount · upfront % of T-12`); regulatory articles render a stacked-sanctions block (regulator + each sanction as a pill). |
+| `/branches` | Branch explorer backed by `PublicBranches`: URL-backed firm, state, city/market, source-type, branch-level, and minimum-advisor filters; rows link back to firm profiles and advisor directory context while distinguishing no matches from unavailable or partial branch coverage. |
 | `/firms/<slug>-<id>` (`firm.html?id=…` still works) | Firm profile: current advisors, past advisors with reason-for-leaving, current teams, transitions in / out, branches (market → complex → branch), disclosures filed at the firm, coverage. This is the "sticky" view the user asked for — open Wells Fargo and you get the live roster, alumni, and the two teams that came / went. |
 | `/advisors/<slug>-<id>` (`advisor.html?id=…` still works) | Advisor profile: career timeline (each `EmploymentHistory` row, terminated-for-cause flag if any), teams, disclosures with sanction pills, OBAs, registration applications, transitions, coverage. |
 | `/teams/<slug>-<id>` (`team.html?id=…` still works) | Team profile: current and past members ordered by role (lead first), `TeamMetricSnapshot` history as a small table, transitions, coverage. |
