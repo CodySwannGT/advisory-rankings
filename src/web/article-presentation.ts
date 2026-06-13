@@ -1,11 +1,10 @@
-import { DetailsCardComponent, SectionCardComponent } from "./article-types.js";
 import type {
   ArticleBodyPayload,
   ArticleMetadata,
   ArticleSourceMetadata,
 } from "./article-types.js";
 import { articleSource, fmtDate, humanize } from "./app.js";
-import { el } from "./design-system/index.js";
+import { DetailsCard, el, SectionCard } from "./design-system/index.js";
 
 /**
  * Builds the optional article body section.
@@ -15,7 +14,7 @@ import { el } from "./design-system/index.js";
 export function articleBodyCard(body: unknown): HTMLElement | null {
   const text = articleBodyText(body);
   return text
-    ? SectionCardComponent({
+    ? SectionCard({
         title: "Article body",
         body: el("div", {}, ...paragraphs(text)),
       })
@@ -34,7 +33,7 @@ export function linkOutCard(
 ): HTMLElement | null {
   if (articleBodyText(body) || isResourceErrorPayload(body)) return null;
   const src = articleSource(article) as ArticleSourceMetadata;
-  return SectionCardComponent({
+  return SectionCard({
     title: "Read the original story",
     attrs: { class: "article-linkout-card" },
     body: [
@@ -62,7 +61,7 @@ export function linkOutCard(
  */
 export function metadataSection(article: ArticleMetadata): HTMLElement {
   const src = articleSource(article) as ArticleSourceMetadata;
-  return DetailsCardComponent({
+  return DetailsCard({
     title: "About this article",
     pairs: [
       [
