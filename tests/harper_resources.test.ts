@@ -2085,7 +2085,7 @@ describe("Harper feed and profile builders", () => {
       "/AdvisorResearchQueue",
     ]);
     expect(payload.provenance.sourceTables).toEqual(
-      expect.arrayContaining(["Branch", "FirmAlias"])
+      expect.arrayContaining(["Branch", "EmploymentHistory", "FirmAlias"])
     );
     expectDataCoverageMetricContract(payload);
     expect(metricById(payload, "advisors")).toMatchObject({
@@ -2181,6 +2181,36 @@ describe("Harper feed and profile builders", () => {
       value: 0,
       limitation: "No field-level source assertions are loaded.",
     });
+  });
+
+  it("counts branch-linked advisors only for known branch rows", async () => {
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-known-branch",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: "branch-a",
+        roleTitle: "Partner",
+        startDate: DATE_2020_01_01,
+      },
+      {
+        id: "employment-orphan-branch",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        branchId: "missing-branch",
+        roleTitle: "Advisor",
+        startDate: DATE_2021_01_01,
+      },
+    ]);
+
+    const payload = await new (resources as any).DataCoverage().get();
+
+    expect(metricById(payload, "branches-with-current-advisors")).toMatchObject(
+      {
+        value: 1,
+        limitation: null,
+      }
+    );
   });
 
   it("builds a source-backed rankings explorer payload", async () => {

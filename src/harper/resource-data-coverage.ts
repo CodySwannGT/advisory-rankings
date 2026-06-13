@@ -101,6 +101,7 @@ export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
         "Team",
         "Article",
         "Branch",
+        "EmploymentHistory",
         "Ranking",
         "RankingEntry",
         "TransitionEvent",

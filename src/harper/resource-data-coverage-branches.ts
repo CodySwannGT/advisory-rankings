@@ -12,9 +12,12 @@ export const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
  * @returns Branch coverage section.
  */
 export function branchCoverageSection(db: ResourceIndex): DataCoverageSection {
+  const knownBranchIds = new Set(db.branches.map(row => row.id));
   const branchIdsWithCurrentAdvisors = new Set(
     db.employments
-      .filter(row => row.branchId && !row.endDate)
+      .filter(
+        row => row.branchId && !row.endDate && knownBranchIds.has(row.branchId)
+      )
       .map(row => row.branchId)
   );
   return {

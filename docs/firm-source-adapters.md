@@ -23,7 +23,7 @@ Each adapter must document:
 
 Branch coverage is user-visible through `/branches` and the public
 `DataCoverage` response. Adapters should prefer explicit branch rows and
-advisor-to-branch `EmploymentHistory.branch_id` links when the source supports
+advisor-to-branch `EmploymentHistory.branchId` links when the source supports
 them; when a source has advisors without branch ids or locator rows without
 advisor links, the UI must expose that state as partial or unavailable coverage
 instead of implying the firm has no offices.
