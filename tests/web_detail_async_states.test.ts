@@ -331,6 +331,11 @@ describe("detail async states", () => {
           .isVisible()
       ).toBe(true);
       expect(
+        await page
+          .getByRole("link", { name: "Open branch explorer" })
+          .getAttribute("href")
+      ).toBe("/branches?firm=firm-1");
+      expect(
         firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
       ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
       expect(await page.getByText(COULD_NOT_LOAD_FIRM).count()).toBe(0);
@@ -1356,7 +1361,19 @@ function firmDueDiligenceProfile(): FirmDueDiligenceProfile {
     transitionsOut: [],
     disclosuresAtThisFirm: [],
     articles: [],
-    branches: [],
+    branches: [
+      {
+        id: "branch-1",
+        firmId: "firm-1",
+        name: "Atlanta Branch",
+        buildingName: "Peachtree Center",
+        level: "branch",
+        city: "Atlanta",
+        state: "GA",
+        country: "USA",
+        postalCode: "30303",
+      },
+    ],
     brokerCheckSnapshot: null,
     dueDiligence: {
       generatedAt: "2026-05-25T12:00:00.000Z",

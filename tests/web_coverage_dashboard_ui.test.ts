@@ -14,10 +14,12 @@ import {
 } from "./fixtures/watchlist-ui-harness.js";
 import type { DataCoverageResponse } from "../src/harper/resource-data-coverage.js";
 
+const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
+
 const browserDescribe =
   process.env.RUN_WEB_COVERAGE_DASHBOARD_UI === "1" &&
   existsSync(chromium.executablePath())
-    ? describe.sequential
+    ? describe
     : describe.skip;
 
 browserDescribe("coverage dashboard route (#1194)", () => {
@@ -79,6 +81,11 @@ browserDescribe("coverage dashboard route (#1194)", () => {
         .getByRole("link", { name: "Open rankings" })
         .getAttribute("href")
     ).toBe("/rankings?resolved=unresolved");
+    expect(
+      await page
+        .getByRole("link", { name: "Open branches" })
+        .getAttribute("href")
+    ).toBe("/branches");
     expect(
       await page
         .getByRole("link", { name: "Open recruiting" })
@@ -180,6 +187,27 @@ function coveragePayload(advisorCount = 1250): DataCoverageResponse {
         ],
       },
       {
+        id: "branch-coverage",
+        label: "Branch coverage",
+        metrics: [
+          metric(
+            "branches",
+            "Branches",
+            24,
+            "Branch",
+            PUBLIC_BRANCHES_RESOURCE
+          ),
+          metric(
+            "branches-with-current-advisors",
+            "Branches with current advisors",
+            18,
+            "EmploymentHistory.branchId",
+            PUBLIC_BRANCHES_RESOURCE,
+            "Some branch rows have partial advisor linkage."
+          ),
+        ],
+      },
+      {
         id: "recruiting",
         label: "Recruiting coverage",
         metrics: [
@@ -208,6 +236,7 @@ function coveragePayload(advisorCount = 1250): DataCoverageResponse {
       publicResources: [
         "/PublicAdvisors",
         "/PublicFirms",
+        PUBLIC_BRANCHES_RESOURCE,
         "/Feed",
         "/RankingsExplorer",
         "/RecruitingMarket",

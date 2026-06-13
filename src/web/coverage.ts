@@ -112,6 +112,11 @@ const SECTION_DESTINATIONS: Readonly<Record<string, CoverageDestination>> = {
     label: "Open rankings",
     body: "Ranking gaps open on the public rankings browser slice for profiles still needing a match.",
   },
+  "branch-coverage": {
+    href: "/branches",
+    label: "Open branches",
+    body: "Branch coverage opens on the public branch explorer, where partial advisor linkage is labeled separately from no offices.",
+  },
   recruiting: {
     href: "/recruiting",
     label: "Open recruiting",
@@ -386,6 +391,7 @@ function metricValue(value: DataCoverageMetric["value"]): string {
 function resourceLabel(resource: string): string {
   if (resource === "/RankingsExplorer") return "Rankings";
   if (resource === "/RecruitingMarket") return "Recruiting";
+  if (resource === "/PublicBranches") return "Branch explorer";
   if (resource === "/AdvisorResearchQueue") return "Research freshness";
   if (resource === "/Feed") return "Home feed";
   if (resource === "/Search") return "Global search";

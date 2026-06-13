@@ -47,6 +47,7 @@ const CASEY_STONE_NAME = "Casey Stone";
 const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
 const BRANCH_ATLANTA_ID = "branch-atlanta";
 const BRANCH_AUSTIN_ID = "branch-austin";
+const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
 const EMPLOYMENT_A_ID = "employment-a";
 const EMPLOYMENT_B_ID = "employment-b";
 const RANKING_ENTRY_A_ID = "ranking-entry-a";
@@ -2066,6 +2067,7 @@ describe("Harper feed and profile builders", () => {
     expect(new (resources as any).DataCoverage().allowRead()).toBe(true);
     expect(payload.sections.map((section: any) => section.id)).toEqual([
       "public-entity-groups",
+      "branch-coverage",
       "rankings",
       "recruiting",
       "research-freshness",
@@ -2075,6 +2077,7 @@ describe("Harper feed and profile builders", () => {
       "/PublicAdvisors",
       "/PublicFirms",
       "/PublicTeams",
+      PUBLIC_BRANCHES_RESOURCE,
       "/Feed",
       "/Search",
       "/RankingsExplorer",
@@ -2091,6 +2094,18 @@ describe("Harper feed and profile builders", () => {
       publicResource: "/PublicAdvisors",
       limitation: null,
     });
+    expect(metricById(payload, "branches")).toMatchObject({
+      source: "Branch",
+      publicResource: PUBLIC_BRANCHES_RESOURCE,
+      limitation: null,
+    });
+    expect(metricById(payload, "branches-with-current-advisors")).toMatchObject(
+      {
+        source: "EmploymentHistory.branchId",
+        publicResource: PUBLIC_BRANCHES_RESOURCE,
+        limitation: null,
+      }
+    );
     expect(metricById(payload, "ranking-entries")).toMatchObject({
       value: 2,
       source: "RankingEntry",
@@ -2134,6 +2149,7 @@ describe("Harper feed and profile builders", () => {
     setRows("Ranking", []);
     setRows("RankingEntry", []);
     setRows("TransitionEvent", []);
+    setRows("Branch", []);
     setRows("AdvisorResearchCheck", []);
     setRows("FieldAssertion", []);
 
@@ -2151,6 +2167,11 @@ describe("Harper feed and profile builders", () => {
     expect(metricById(payload, "moves")).toMatchObject({
       value: 0,
       limitation: "No public recruiting moves are loaded.",
+    });
+    expect(metricById(payload, "branches")).toMatchObject({
+      value: 0,
+      limitation:
+        "Branch rows are unavailable; this does not imply firms have no offices.",
     });
     expect(metricById(payload, "latest-research-check")).toMatchObject({
       value: null,
@@ -4787,6 +4808,9 @@ describe("Harper directory and search resources", () => {
     const third = await new (resources as any).PublicBranches().get(
       routeTarget("", { cursor: String(second.nextCursor), limit: "2" })
     );
+    const pagedBranchIds = [...second.items, ...third.items].map(
+      (row: any) => row.id
+    );
 
     expect(first).toMatchObject({
       total: 1,
@@ -4827,9 +4851,7 @@ describe("Harper directory and search resources", () => {
         expect.objectContaining({ id: BRANCH_AUSTIN_ID }),
       ]),
     });
-    expect(
-      new Set([...second.items, ...third.items].map((row: any) => row.id)).size
-    ).toBe(3);
+    expect(new Set(pagedBranchIds).size).toBe(3);
   });
 
   it("bounds public branch employment lookup concurrency", async () => {
