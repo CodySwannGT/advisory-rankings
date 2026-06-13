@@ -18,7 +18,10 @@ const FEED_CATEGORY_LABELS: Readonly<Record<string, string>> = {
  * @returns Visible category label.
  */
 export function feedCategoryLabel(value: string): string {
-  const normalized = String(value || "").trim();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/gu, "_");
   if (!normalized) return "Uncategorized";
   return (
     FEED_CATEGORY_LABELS[normalized] ??

@@ -223,7 +223,7 @@ export function FeedPostCard(
     PostHeaderC({
       initials: src.initials,
       source: src.source,
-      authors: a.authors,
+      authors: visibleFeedAuthors(a.authors),
       when: fmtDate
         ? fmtDate(a.publishedDate ?? null, { mode: "rel" })
         : (a.publishedDate ?? null),
@@ -255,6 +255,27 @@ function visibleFeedCategory(
 ): string | null {
   const label = feedCategoryLabel(category ?? "");
   return label === "Uncategorized" ? null : label;
+}
+
+/**
+ * Converts machine-style author/source tokens into public feed byline copy.
+ * @param authors - Raw article authors from the feed resource.
+ * @returns Reader-facing byline authors, or undefined when none remain.
+ */
+function visibleFeedAuthors(
+  authors: readonly string[] | null | undefined
+): readonly string[] | undefined {
+  const labels = (authors ?? []).map(feedCategoryLabel).filter(isVisibleAuthor);
+  return labels.length ? labels : undefined;
+}
+
+/**
+ * Drops empty or placeholder author labels.
+ * @param author - Candidate display author.
+ * @returns Whether the author should render in the feed header.
+ */
+function isVisibleAuthor(author: string): boolean {
+  return Boolean(author && author !== "Uncategorized");
 }
 
 /**
