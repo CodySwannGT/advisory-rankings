@@ -42,6 +42,7 @@ const SOURCE_TABLE_LABELS: Record<string, string> = {
   FirmAlias: "Firm name aliases",
   TransitionEvent: "Recruiting moves",
 };
+const UNKNOWN_MARKET = "Unknown market";
 
 /**
  * Builds the firm momentum rankings table.
@@ -60,7 +61,7 @@ export function momentumCard(rows: readonly FirmMomentumRow[]): HTMLElement {
     body: ScrollableTable(
       table(
         "firm-momentum-table",
-        ["Firm", "Inbound", "Outbound", "Net AUM", "Unknown"],
+        ["Firm", "Inbound", "Outbound", "Net AUM", "AUM unknown"],
         rows.map(row => [
           firmCell(row.firm),
           summaryCell(row.inbound),
@@ -142,7 +143,7 @@ export function marketCard(rows: readonly MarketActivityRow[]): HTMLElement {
         "market-activity-table",
         ["Market", "Moves", "Known AUM", "Unknown AUM", "Missing T12"],
         rows.map(row => [
-          row.market,
+          marketLabel(row.market),
           fmtNumber(row.summary.count),
           fmtMoney(row.summary.knownAum),
           fmtNumber(row.summary.unknownAumCount),
@@ -214,7 +215,7 @@ export function topMarketsCard(
     title: "Top markets",
     rows: rows.slice(0, 5),
     renderRow: row => ({
-      name: row.market,
+      name: marketLabel(row.market),
       sub: `${fmtMoney(row.summary.knownAum)} known AUM`,
       tail: fmtNumber(row.summary.count),
     }),
@@ -234,52 +235,7 @@ export function sourceCard(data: RecruitingMarketResponse): HTMLElement {
         children:
           "AUM totals exclude unknown values. Rows keep missing fields visible and retain source/provenance references.",
       }),
-      el(
-        "div",
-        { class: "tag-list" },
-        Tag({
-          kind: data.sourceCoverage.missingSourceCount > 0 ? "warn" : "ok",
-          children: `${fmtNumber(data.sourceCoverage.sourceBackedCount)}/${fmtNumber(data.sourceCoverage.moveCount)} source-backed`,
-        }),
-        data.sourceCoverage.missingSourceCount > 0
-          ? Tag({
-              kind: "warn",
-              children: `${fmtNumber(data.sourceCoverage.missingSourceCount)} missing source`,
-            })
-          : null,
-        data.sourceCoverage.missingLocationCount > 0
-          ? Tag({
-              kind: "warn",
-              children: `${fmtNumber(data.sourceCoverage.missingLocationCount)} missing location`,
-            })
-          : null,
-        data.sourceCoverage.missingAumCount > 0
-          ? Tag({
-              kind: "warn",
-              children: `${fmtNumber(data.sourceCoverage.missingAumCount)} missing AUM`,
-            })
-          : null,
-        data.sourceCoverage.missingT12Count > 0
-          ? Tag({
-              kind: "warn",
-              children: `${fmtNumber(data.sourceCoverage.missingT12Count)} missing T12`,
-            })
-          : null
-      ),
-      data.sourceCoverage.statusCounts.length
-        ? el(
-            "div",
-            { class: "tag-list" },
-            ...data.sourceCoverage.statusCounts.map(row =>
-              el(
-                "span",
-                { class: "stacked-cell" },
-                statusTag(row.status),
-                el("span", {}, `${fmtNumber(row.count)} moves`)
-              )
-            )
-          )
-        : null,
+      sourceDisclosure(data),
       el(
         "div",
         { class: "tag-list" },
@@ -292,10 +248,72 @@ export function sourceCard(data: RecruitingMarketResponse): HTMLElement {
 }
 
 /**
+ * Groups source caveats into one disclosure instead of a rail badge wall.
+ * @param data - RecruitingMarket response.
+ * @returns Source caveat disclosure.
+ */
+function sourceDisclosure(data: RecruitingMarketResponse): HTMLElement {
+  return el(
+    "details",
+    { class: "source-disclosure" },
+    el("summary", {}, "About this data"),
+    el(
+      "div",
+      { class: "tag-list source-disclosure-tags" },
+      Tag({
+        kind: data.sourceCoverage.missingSourceCount > 0 ? "warn" : "ok",
+        children: `${fmtNumber(data.sourceCoverage.sourceBackedCount)}/${fmtNumber(data.sourceCoverage.moveCount)} source-backed`,
+      }),
+      data.sourceCoverage.missingSourceCount > 0
+        ? Tag({
+            kind: "warn",
+            children: `${fmtNumber(data.sourceCoverage.missingSourceCount)} missing source`,
+          })
+        : null,
+      data.sourceCoverage.missingLocationCount > 0
+        ? Tag({
+            kind: "warn",
+            children: `${fmtNumber(data.sourceCoverage.missingLocationCount)} missing location`,
+          })
+        : null,
+      data.sourceCoverage.missingAumCount > 0
+        ? Tag({
+            kind: "warn",
+            children: `${fmtNumber(data.sourceCoverage.missingAumCount)} missing AUM`,
+          })
+        : null,
+      data.sourceCoverage.missingT12Count > 0
+        ? Tag({
+            kind: "warn",
+            children: `${fmtNumber(data.sourceCoverage.missingT12Count)} missing T12`,
+          })
+        : null,
+      ...data.sourceCoverage.statusCounts.map(row =>
+        el(
+          "span",
+          { class: "stacked-cell" },
+          statusTag(row.status),
+          el("span", {}, `${fmtNumber(row.count)} moves`)
+        )
+      )
+    )
+  );
+}
+
+/**
  * Converts source table identifiers into reader-facing provenance labels.
  * @param name - Source table identifier.
  * @returns Display label.
  */
 function sourceTableLabel(name: string): string {
   return SOURCE_TABLE_LABELS[name] || "Source records";
+}
+
+/**
+ * Converts resource market labels into public-facing copy.
+ * @param market - Resource market label.
+ * @returns Human-readable market label.
+ */
+function marketLabel(market: string): string {
+  return market === UNKNOWN_MARKET ? "Location not disclosed" : market;
 }
