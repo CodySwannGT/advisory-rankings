@@ -17,6 +17,8 @@ export interface CompareEntryOptions {
   readonly advisorId: string;
   readonly label?: string;
   readonly className?: string;
+  readonly onDirectoryToggle?: (advisorId: string) => void;
+  readonly registerDirectoryButton?: (button: HTMLButtonElement) => void;
 }
 
 /** Navigation target or blocked-selection feedback for a compare entry. */
@@ -32,12 +34,16 @@ export interface CompareTarget {
  * @param options.advisorId - Advisor id to add to the comparison URL.
  * @param options.label - Button label.
  * @param options.className - Extra class applied to the button.
+ * @param options.onDirectoryToggle - Optional in-page directory selection handler.
+ * @param options.registerDirectoryButton - Optional directory button registration hook.
  * @returns Compare-entry control.
  */
 export function compareEntryAction({
   advisorId,
   label = "Compare",
   className = "",
+  onDirectoryToggle,
+  registerDirectoryButton,
 }: CompareEntryOptions): HTMLElement {
   const status = el("span", {
     class: "compare-entry-status",
@@ -49,8 +55,14 @@ export function compareEntryAction({
     type: "button",
     children: label,
     attrs: { class: `compare-entry-button ${className}`.trim() },
-    onClick: () => handleCompareEntry(advisorId, status),
+    onClick: () =>
+      onDirectoryToggle
+        ? onDirectoryToggle(advisorId)
+        : handleCompareEntry(advisorId, status),
   });
+  if (registerDirectoryButton && button instanceof HTMLButtonElement) {
+    registerDirectoryButton(button);
+  }
   return el("span", { class: "compare-entry-action" }, button, status);
 }
 

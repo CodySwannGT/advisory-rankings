@@ -15,6 +15,9 @@ import {
   startStaticServer,
 } from "./fixtures/watchlist-ui-harness.js";
 
+const SECOND_ADVISOR_ID = "advisor-watch-2";
+const DIRECTORY_COMPARE_BUTTON = ".compare-entry-button";
+
 const browserDescribe =
   process.env.RUN_WEB_COMPARE_ENTRY_UI === "1" &&
   existsSync(chromium.executablePath())
@@ -40,24 +43,35 @@ browserDescribe("public comparison entry actions (#810)", () => {
     });
   });
 
-  it("adds a directory advisor to the comparison URL", async () => {
+  it("selects directory advisors in place before opening comparison", async () => {
     const page = await browser.newPage();
     await routeAuth(page, false);
     await routeAdvisorDirectory(page);
 
-    await page.goto(`${baseUrl}/advisors?ids=adv-a`, {
+    await page.goto(`${baseUrl}/advisors`, {
       waitUntil: "domcontentloaded",
     });
 
-    const row = page.locator(".advisor-directory-row").first();
-    await row.waitFor({ timeout: QUICK_TIMEOUT });
+    const rows = page.locator(".advisor-directory-row");
+    await rows.first().waitFor({ timeout: QUICK_TIMEOUT });
+    await rows.nth(0).locator(DIRECTORY_COMPARE_BUTTON).click();
+    expect(new URL(page.url()).pathname).toBe("/advisors");
+    await page.getByText("1 selected").waitFor({ timeout: QUICK_TIMEOUT });
+
+    await rows.nth(1).locator(DIRECTORY_COMPARE_BUTTON).click();
+    await page.getByText("2 selected").waitFor({ timeout: QUICK_TIMEOUT });
+
+    const comparisonUrlPattern = new RegExp(
+      `/compare\\?ids=${ADVISOR_ID},${SECOND_ADVISOR_ID}$`,
+      "u"
+    );
     await Promise.all([
-      page.waitForURL(/\/compare\?ids=adv-a,advisor-watch-1$/u),
-      row.locator(".compare-entry-button").click(),
+      page.waitForURL(comparisonUrlPattern),
+      page.getByRole("button", { name: "Compare now" }).click(),
     ]);
 
     expect(new URL(page.url()).searchParams.get("ids")).toBe(
-      `adv-a,${ADVISOR_ID}`
+      `${ADVISOR_ID},${SECOND_ADVISOR_ID}`
     );
     await captureViewports(page, "issue-810-compare-entry-public-flow");
     await page.close();
@@ -87,7 +101,7 @@ browserDescribe("public comparison entry actions (#810)", () => {
 });
 
 /**
- * Routes the public advisor directory to one deterministic row.
+ * Routes the public advisor directory to deterministic rows.
  * @param page - Browser page under test.
  */
 async function routeAdvisorDirectory(page: Page): Promise<void> {
@@ -95,20 +109,32 @@ async function routeAdvisorDirectory(page: Page): Promise<void> {
     await route.fulfill({
       json: {
         items: [
-          {
-            id: ADVISOR_ID,
-            legalName: "Avery Stone",
-            preferredName: "Avery Stone",
-            lastName: "Stone",
-            careerStatus: "active",
-            yearsExperience: 12,
-            finraCrd: "12345",
-            headshotUrl: null,
-          },
+          directoryAdvisor(ADVISOR_ID, "Avery Stone", "Stone"),
+          directoryAdvisor(SECOND_ADVISOR_ID, "Jordan Lee", "Lee"),
         ],
         nextCursor: null,
-        total: 1,
+        total: 2,
       },
     });
   });
+}
+
+/**
+ * Builds a minimal public advisor directory row fixture.
+ * @param id - Advisor id.
+ * @param name - Display name.
+ * @param lastName - Last name.
+ * @returns PublicAdvisors row fixture.
+ */
+function directoryAdvisor(id: string, name: string, lastName: string) {
+  return {
+    id,
+    legalName: name,
+    preferredName: name,
+    lastName,
+    careerStatus: "active",
+    yearsExperience: 12,
+    finraCrd: "12345",
+    headshotUrl: null,
+  };
 }

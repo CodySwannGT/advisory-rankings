@@ -176,7 +176,11 @@ export function humanize(s: unknown): string | null | undefined {
  */
 export function initials(name: string | null | undefined): string {
   if (!name) return "?";
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  const parts = String(name)
+    .trim()
+    .split(/\s+/)
+    .map(part => part.replace(/[^a-z0-9]/giu, ""))
+    .filter(Boolean);
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();

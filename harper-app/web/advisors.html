@@ -119,6 +119,7 @@
         build({ center, right }) {
           let loaded = 0;
           let activeFilters = readFilters();
+          const comparisonSelection = createDirectoryComparisonSelection();
           const stats = DetailsCard({
             title: "Advisor directory",
             pairs: [
@@ -141,6 +142,7 @@
             activeFilters = readFilters();
             setStat("Showing", "0 advisors");
             setStat("Matches", "Finding advisors...");
+            comparisonSelection.beginRender();
             clear(center);
             center.appendChild(filterCard(activeFilters, renderDirectory));
             const card = SectionCard({
@@ -190,6 +192,10 @@
                       advisorId: a.id,
                       label: "Compare",
                       className: "compare-entry-button--directory",
+                      onDirectoryToggle: () =>
+                        comparisonSelection.toggle(a.id, name),
+                      registerDirectoryButton: button =>
+                        comparisonSelection.register(a.id, name, button),
                     }),
                     attrs: { class: "advisor-directory-row" },
                   });
@@ -200,6 +206,8 @@
               }),
             });
             center.appendChild(card);
+            center.appendChild(comparisonSelection.element);
+            comparisonSelection.sync();
           };
           window.addEventListener("popstate", renderDirectory);
           renderDirectory();
@@ -378,6 +386,150 @@
             list.replaceChildren(...options);
           }, 150);
         });
+      }
+
+      function createDirectoryComparisonSelection() {
+        const selected = new Map(
+          selectedCompareIds().map(id => [id, { id, name: id }])
+        );
+        let buttons = new Map();
+        const count = el(
+          "span",
+          { class: "directory-compare-count", "aria-live": "polite" },
+          ""
+        );
+        const names = el("span", { class: "directory-compare-names" }, "");
+        const status = el(
+          "span",
+          {
+            class: "directory-compare-status",
+            role: "status",
+            "aria-live": "polite",
+          },
+          ""
+        );
+        const compare = Button({
+          variant: "primary",
+          type: "button",
+          children: "Compare now",
+          attrs: { class: "directory-compare-submit" },
+          onClick: () => {
+            if (selected.size < 2) {
+              status.textContent = "Select at least two advisors.";
+              return;
+            }
+            window.location.href = compareHref([...selected.keys()]);
+          },
+        });
+        const clearButton = Button({
+          variant: "ghost",
+          type: "button",
+          children: "Clear",
+          attrs: { class: "directory-compare-clear" },
+          onClick: () => {
+            selected.clear();
+            syncUrl(selected);
+            sync();
+          },
+        });
+        const element = el(
+          "div",
+          {
+            class: "directory-compare-bar",
+            "data-visible": selected.size ? "true" : "false",
+          },
+          el(
+            "div",
+            { class: "directory-compare-summary" },
+            count,
+            names,
+            status
+          ),
+          el(
+            "div",
+            { class: "directory-compare-actions" },
+            compare,
+            clearButton
+          )
+        );
+
+        function beginRender() {
+          buttons = new Map();
+        }
+
+        function register(id, name, button) {
+          const list = buttons.get(id) || [];
+          list.push(button);
+          buttons.set(id, list);
+          if (selected.has(id)) selected.set(id, { id, name });
+          syncButton(id, button);
+        }
+
+        function toggle(id, name) {
+          status.textContent = "";
+          if (selected.has(id)) {
+            selected.delete(id);
+          } else if (selected.size >= 4) {
+            status.textContent = "Compare supports up to four advisors.";
+          } else {
+            selected.set(id, { id, name });
+          }
+          syncUrl(selected);
+          sync();
+        }
+
+        function sync() {
+          const selectedItems = [...selected.values()];
+          const selectedCount = selectedItems.length;
+          element.dataset.visible = selectedCount ? "true" : "false";
+          count.textContent = `${selectedCount} selected`;
+          names.textContent = selectedItems.map(item => item.name).join(", ");
+          compare.toggleAttribute("disabled", selectedCount < 2);
+          buttons.forEach((list, id) =>
+            list.forEach(button => syncButton(id, button))
+          );
+        }
+
+        function syncButton(id, button) {
+          const isSelected = selected.has(id);
+          button.setAttribute("aria-pressed", String(isSelected));
+          button.textContent = isSelected ? "Selected" : "Compare";
+          button.toggleAttribute(
+            "disabled",
+            !isSelected && selected.size >= 4
+          );
+        }
+
+        sync();
+        return { beginRender, element, register, sync, toggle };
+      }
+
+      function selectedCompareIds() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get("ids") || params.get("advisorIds") || "";
+        return raw
+          .split(",")
+          .map(id => id.trim())
+          .filter(Boolean)
+          .filter((id, index, ids) => ids.indexOf(id) === index)
+          .slice(0, 4);
+      }
+
+      function syncUrl(selected) {
+        const params = new URLSearchParams(window.location.search);
+        const ids = [...selected.keys()];
+        if (ids.length) params.set("ids", ids.join(","));
+        else params.delete("ids");
+        const query = params.toString();
+        history.replaceState(
+          null,
+          "",
+          query ? `${window.location.pathname}?${query}` : window.location.pathname
+        );
+      }
+
+      function compareHref(ids) {
+        return `/compare?ids=${ids.map(encodeURIComponent).join(",")}`;
       }
     </script>
   </body>

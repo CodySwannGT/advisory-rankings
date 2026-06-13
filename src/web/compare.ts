@@ -20,12 +20,13 @@ import {
   AsyncStateCard,
   Button,
   Tag,
-  SourceAttribution,
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
 import { reportPacketAction } from "./compare-packet-action.js";
 import { privateOverlayMount } from "./compare-private-overlay.js";
+import { compareAddAdvisorControl } from "./compare-add-advisor.js";
+import { brokerCheckSourceNode } from "./compare-brokercheck-source.js";
 import {
   advisorComparisonPathFromLocation,
   comparisonColumnHeader,
@@ -35,7 +36,9 @@ import {
   type ComparisonColumnActions,
 } from "./compare-selection.js";
 
-/** Design-system component signature normalized at this boundary. */
+/**
+ *
+ */
 type Component = (...args: readonly unknown[]) => HTMLElement;
 
 const ProfileHeadComponent = ProfileHead as unknown as Component;
@@ -43,18 +46,14 @@ const SectionCardComponent = SectionCard as unknown as Component;
 const AsyncStateCardComponent = AsyncStateCard as unknown as Component;
 const ButtonComponent = Button as unknown as Component;
 const TagComponent = Tag as unknown as Component;
-const SourceAttributionComponent = SourceAttribution as unknown as Component;
 
-const BROKERCHECK_SOURCE = "FINRA BrokerCheck";
-const BROKERCHECK_TERMS_URL = "https://brokercheck.finra.org/terms";
-const BROKERCHECK_SECTION_LABELS = new Set(["Regulatory", "Career"]);
-
-/** Full-width page columns supplied by the design-system shell. */
+/**
+ *
+ */
 interface PageColumns {
   readonly center: HTMLElement;
 }
 
-/** Browser page title for the advisor comparison route. */
 const PAGE_TITLE = "Advisor comparison";
 
 mountFullWidthPage({
@@ -66,7 +65,16 @@ mountFullWidthPage({
   build({ center }: PageColumns): void {
     const loadComparison = (): void => {
       clear(center);
-      center.appendChild(loadingCard());
+      center.appendChild(
+        SectionCardComponent({
+          title: "Loading advisor comparison",
+          body: el(
+            "p",
+            { class: "muted" },
+            "Fetching public diligence evidence..."
+          ),
+        })
+      );
 
       runDelayedRouteRequest({
         container: center,
@@ -105,13 +113,15 @@ function renderComparison(
   center: HTMLElement,
   payload: AdvisorComparisonPayload
 ): void {
-  const selectedDirectoryHref = `/advisors?ids=${payload.ids.map(encodeURIComponent).join(",")}`;
+  const selectedIds = payload.ids ?? [];
+  const selectedDirectoryHref = `/advisors?ids=${selectedIds.map(encodeURIComponent).join(",")}`;
   const recoveryCard =
     payload.selection.status === "under_limit"
       ? [
           compareStartCard(
             underLimitStartCopy(payload.items.length),
-            selectedDirectoryHref
+            selectedDirectoryHref,
+            selectedIds
           ),
         ]
       : [];
@@ -119,7 +129,7 @@ function renderComparison(
   clear(center);
 
   if (!payload.items.length) {
-    center.appendChild(compareStartCard());
+    center.appendChild(compareStartCard(undefined, "/advisors", selectedIds));
     return;
   }
 
@@ -154,11 +164,13 @@ function renderComparison(
  * Renders a human-usable starting point for cold `/compare` visits.
  * @param copy - Introductory action copy.
  * @param browseHref - Advisor directory href for Browse actions.
+ * @param selectedIds - Currently selected advisor ids.
  * @returns Compare empty-state section.
  */
 function compareStartCard(
   copy = "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row.",
-  browseHref = "/advisors"
+  browseHref = "/advisors",
+  selectedIds: readonly string[] = []
 ): HTMLElement {
   return SectionCardComponent({
     title: "Choose advisors to compare",
@@ -191,6 +203,7 @@ function compareStartCard(
         el("li", {}, "Add two to four advisors to the comparison."),
         el("li", {}, "Review diligence evidence side by side.")
       ),
+      compareAddAdvisorControl(selectedIds),
     ],
   });
 }
@@ -331,49 +344,10 @@ function comparisonCell(
 }
 
 /**
- * Renders BrokerCheck source or an explicit neutral missing-state.
- * @param section - Section label.
- * @param item - Compared advisor item.
- * @returns Attribution or missing-state node.
- */
-function brokerCheckSourceNode(
-  section: string,
-  item: AdvisorComparisonItem
-): HTMLElement | null {
-  if (!BROKERCHECK_SECTION_LABELS.has(section)) return null;
-  const snapshot = item.regulatory.brokerCheckSnapshot;
-  if (!snapshot) {
-    return el(
-      "span",
-      { class: "comparison-brokercheck-missing" },
-      "No BrokerCheck snapshot loaded for this advisor."
-    );
-  }
-  return SourceAttributionComponent({
-    source: BROKERCHECK_SOURCE,
-    url: `https://brokercheck.finra.org/individual/summary/${encodeURIComponent(snapshot.subjectCrd)}`,
-    termsUrl: BROKERCHECK_TERMS_URL,
-    fetchedAt: snapshot.fetchedAt,
-    attrs: { class: "comparison-source-attribution" },
-  });
-}
-
-/**
  * Neutral copy for missing values in a comparison row.
  * @param section - Section label.
  * @returns Missing-state copy.
  */
 function neutralMissingState(section: string): string {
   return `No ${section.toLowerCase()} evidence available`;
-}
-
-/**
- * Loading card for the comparison route.
- * @returns Loading section.
- */
-function loadingCard(): HTMLElement {
-  return SectionCardComponent({
-    title: "Loading advisor comparison",
-    body: el("p", { class: "muted" }, "Fetching public diligence evidence..."),
-  });
 }

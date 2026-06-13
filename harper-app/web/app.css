@@ -2010,6 +2010,44 @@ body.drawer-open .nav .nav-scrim {
 .advisor-directory-row {
   align-items: center;
 }
+.directory-compare-bar {
+  position: sticky;
+  bottom: var(--ab-space-4);
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ab-space-3);
+  margin-top: var(--ab-space-4);
+  padding: var(--ab-space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+.directory-compare-bar[data-visible="true"] {
+  display: flex;
+}
+.directory-compare-summary,
+.directory-compare-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ab-space-2);
+  min-width: 0;
+}
+.directory-compare-summary {
+  flex-wrap: wrap;
+}
+.directory-compare-count {
+  font-weight: 800;
+}
+.directory-compare-names,
+.directory-compare-status {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
 .directory-row-link {
   color: inherit;
   font-weight: 700;
@@ -2462,6 +2500,52 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text);
   line-height: 1.5;
 }
+.comparison-add {
+  display: grid;
+  gap: var(--ab-space-3);
+  max-width: 720px;
+  padding-top: var(--ab-space-2);
+}
+.comparison-add h3,
+.comparison-add-status {
+  margin: 0;
+}
+.comparison-add-form,
+.comparison-add-result {
+  display: flex;
+  align-items: center;
+  gap: var(--ab-space-2);
+}
+.comparison-add-input {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.comparison-add-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.comparison-add-results {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+.comparison-add-result {
+  justify-content: space-between;
+  padding: var(--ab-space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.comparison-add-result-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.comparison-add-result-text span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
 
 .comparison-card .card-body {
   padding: 0;
@@ -2842,6 +2926,18 @@ body.drawer-open .nav .nav-scrim {
 
   .comparison-start-link {
     text-align: center;
+  }
+
+  .directory-compare-bar,
+  .directory-compare-actions,
+  .comparison-add-form,
+  .comparison-add-result {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .directory-compare-bar {
+    bottom: var(--ab-space-2);
   }
 
   .comparison-table-wrap {

@@ -234,6 +234,17 @@ browserDescribe(
       });
 
       const desktopMetrics = await compareStartMetrics(desktop);
+      await desktop
+        .getByRole("searchbox", { name: /search advisors/i })
+        .fill("Jordan");
+      await desktop.getByRole("button", { name: "Find" }).click();
+      await desktop.getByText("Jordan Lee").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await Promise.all([
+        desktop.waitForURL(/\/compare\?ids=advisor-a,advisor-b$/u),
+        desktop.getByRole("button", { name: "Add" }).click(),
+      ]);
       await desktop.screenshot({
         path: join(SHOTS, "issue-987-compare-under-limit-desktop.png"),
         fullPage: true,
@@ -262,6 +273,7 @@ browserDescribe(
       expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
       expect(desktopMetrics.h1Count).toBe(1);
       expect(desktopMetrics.hasUnderLimitCopy).toBe(true);
+      expect(desktopMetrics.hasInlineAddControl).toBe(true);
       expect(desktopMetrics.hasBrowseAction).toBe(true);
       expect(desktopMetrics.hasDirectoryLink).toBe(true);
       expect(desktopMetrics.directoryHref).toBe(
@@ -394,6 +406,22 @@ async function routeSingleSelectionComparison(page: Page): Promise<void> {
   await page.route(COMPARISON_RESOURCE_ROUTE, fulfillSingleSelectionComparison);
   await page.route(COMPARISON_RESOURCE_QUERY_ROUTE, async route => {
     await fulfillSingleSelectionComparison(route);
+  });
+  await page.route("**/Search?**", async route => {
+    await route.fulfill({
+      json: {
+        q: "Jordan",
+        items: [
+          {
+            kind: "advisor",
+            id: "advisor-b",
+            name: "Jordan Lee",
+            sub: "Example Wealth",
+          },
+        ],
+        counts: { firms: 0, advisors: 1, teams: 0, total: 1 },
+      },
+    });
   });
 }
 
@@ -649,6 +677,7 @@ async function compareStartMetrics(page: Page) {
       hasDirectoryLink: Boolean(
         document.querySelector(".comparison-start-link")
       ),
+      hasInlineAddControl: Boolean(document.querySelector(".comparison-add")),
       directoryHref:
         document.querySelector<HTMLAnchorElement>(".comparison-start-link")
           ?.href ?? null,
