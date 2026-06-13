@@ -106,9 +106,15 @@
         clear,
         el,
       } from "/design-system/index.js";
-      import { compareEntryAction } from "/compare-entry.js";
+      import {
+        comparisonUrl,
+        selectedComparisonIdsFromParams,
+        toggleComparisonId,
+      } from "/compare-selection.js";
 
       const PAGE_SIZE = "50";
+      const MAX_COMPARISON_ADVISORS = 4;
+      const CAP_MESSAGE = "Compare supports up to four advisors.";
 
       mountThreeColumnPage({
         active: "advisors",
@@ -119,6 +125,8 @@
         build({ center, right }) {
           let loaded = 0;
           let activeFilters = readFilters();
+          let selectedIds = selectedComparisonIds();
+          let selectionBar = null;
           const stats = DetailsCard({
             title: "Advisor directory",
             pairs: [
@@ -139,10 +147,24 @@
           const renderDirectory = () => {
             loaded = 0;
             activeFilters = readFilters();
+            selectedIds = selectedComparisonIds();
             setStat("Showing", "0 advisors");
             setStat("Matches", "Finding advisors...");
             clear(center);
             center.appendChild(filterCard(activeFilters, renderDirectory));
+            selectionBar = compareSelectionBar(
+              selectedIds,
+              () => {
+                selectedIds = [];
+                syncComparisonParams(selectedIds);
+                updateSelectionUi(selectionBar, selectedIds);
+                syncCompareButtons(selectedIds);
+              },
+              () => {
+                window.location.href = comparisonUrl(selectedIds);
+              }
+            );
+            center.appendChild(selectionBar);
             const card = SectionCard({
               title: activeFilters.active
                 ? "Filtered advisors"
@@ -188,6 +210,13 @@
                       .join(" · "),
                     tail: compareEntryAction({
                       advisorId: a.id,
+                      selectedIds: () => selectedIds,
+                      onToggle: nextIds => {
+                        selectedIds = nextIds;
+                        syncComparisonParams(selectedIds);
+                        updateSelectionUi(selectionBar, selectedIds);
+                        syncCompareButtons(selectedIds);
+                      },
                       label: "Compare",
                       className: "compare-entry-button--directory",
                     }),
@@ -205,6 +234,129 @@
           renderDirectory();
         },
       });
+
+      function compareEntryAction({
+        advisorId,
+        selectedIds,
+        onToggle,
+        label,
+        className,
+      }) {
+        const status = el("span", {
+          class: "compare-entry-status",
+          role: "status",
+          "aria-live": "polite",
+        });
+        const button = Button({
+          variant: "neutral",
+          type: "button",
+          children: label,
+          attrs: {
+            class: `compare-entry-button ${className || ""}`.trim(),
+            "data-advisor-id": advisorId,
+            "aria-pressed": selectedIds().includes(advisorId) ? "true" : "false",
+          },
+          onClick: () => {
+            const next = toggleComparisonId(
+              selectedIds(),
+              advisorId,
+              MAX_COMPARISON_ADVISORS
+            );
+            if (next.capped) {
+              status.replaceChildren(CAP_MESSAGE);
+              return;
+            }
+            status.replaceChildren(
+              next.ids.includes(advisorId) ? "Selected" : "Removed"
+            );
+            button.setAttribute(
+              "aria-pressed",
+              next.ids.includes(advisorId) ? "true" : "false"
+            );
+            onToggle(next.ids);
+          },
+        });
+        return el("span", { class: "compare-entry-action" }, button, status);
+      }
+
+      function compareSelectionBar(ids, onClear, onCompare) {
+        return el(
+          "div",
+          {
+            class: "compare-selection-bar",
+            role: "region",
+            "aria-label": "Advisor comparison selection",
+            hidden: ids.length ? null : "",
+          },
+          el(
+            "span",
+            { class: "compare-selection-count", "aria-live": "polite" },
+            selectionCountText(ids.length)
+          ),
+          el(
+            "div",
+            { class: "compare-selection-actions" },
+            Button({
+              variant: "neutral",
+              type: "button",
+              children: "Clear",
+              attrs: { class: "compare-selection-clear" },
+              onClick: onClear,
+            }),
+            Button({
+              variant: "primary",
+              type: "button",
+              children: "Compare now",
+              attrs: {
+                class: "compare-selection-submit",
+                disabled: ids.length >= 2 ? null : "",
+              },
+              onClick: onCompare,
+            })
+          )
+        );
+      }
+
+      function updateSelectionUi(bar, ids) {
+        if (!bar) return;
+        const count = bar.querySelector(".compare-selection-count");
+        const submit = bar.querySelector(".compare-selection-submit");
+        if (count) count.textContent = selectionCountText(ids.length);
+        if (submit) submit.disabled = ids.length < 2;
+        bar.hidden = ids.length === 0;
+      }
+
+      function syncCompareButtons(ids) {
+        document.querySelectorAll(".compare-entry-button[data-advisor-id]").forEach(button => {
+          button.setAttribute(
+            "aria-pressed",
+            ids.includes(button.dataset.advisorId) ? "true" : "false"
+          );
+        });
+      }
+
+      function selectionCountText(count) {
+        return `${count} selected`;
+      }
+
+      function selectedComparisonIds() {
+        return selectedComparisonIdsFromParams(
+          new URLSearchParams(window.location.search)
+        );
+      }
+
+      function syncComparisonParams(ids) {
+        const params = new URLSearchParams(window.location.search);
+        if (ids.length) params.set("ids", ids.join(","));
+        else params.delete("ids");
+        history.replaceState(
+          null,
+          "",
+          params.toString()
+            ? `${currentDirectoryPath("/advisors")}?${params.toString()}`
+            : currentDirectoryPath("/advisors")
+        );
+      }
 
       function filterCard(filters, renderDirectory) {
         const form = document.createElement("form");
@@ -317,7 +469,7 @@
           careerStatus: String(formData.get("careerStatus") || "").trim(),
           hasCrd: String(formData.get("hasCrd") || "").trim(),
         };
-        const qs = advisorQuery(filters).toString();
+        const qs = directoryParams(filters, selectedComparisonIds()).toString();
         const path = currentDirectoryPath("/advisors");
         history.pushState(null, "", qs ? `${path}?${qs}` : path);
       }
@@ -335,10 +487,19 @@
         return qs;
       }
 
+      function directoryParams(filters, ids) {
+        const qs = advisorQuery(filters);
+        if (ids.length) qs.set("ids", ids.join(","));
+        return qs;
+      }
+
       function installLiveFilters(form, path, renderDirectory) {
         let timer = null;
         const apply = () => {
-          const qs = advisorQuery(Object.fromEntries(new FormData(form))).toString();
+          const qs = directoryParams(
+            Object.fromEntries(new FormData(form)),
+            selectedComparisonIds()
+          ).toString();
           history.pushState(null, "", qs ? `${path}?${qs}` : path);
           renderDirectory();
         };

@@ -20,6 +20,8 @@ const browserDescribe =
   existsSync(chromium.executablePath())
     ? describe.sequential
     : describe.skip;
+const COMPARE_BUTTON_SELECTOR = ".compare-entry-button";
+const SECOND_ADVISOR_ID = "advisor-watch-2";
 
 browserDescribe("public comparison entry actions (#810)", () => {
   let browser: Browser;
@@ -40,26 +42,35 @@ browserDescribe("public comparison entry actions (#810)", () => {
     });
   });
 
-  it("adds a directory advisor to the comparison URL", async () => {
+  it("selects directory advisors in place before opening comparison", async () => {
     const page = await browser.newPage();
     await routeAuth(page, false);
     await routeAdvisorDirectory(page);
 
-    await page.goto(`${baseUrl}/advisors?ids=adv-a`, {
+    await page.goto(`${baseUrl}/advisors`, {
       waitUntil: "domcontentloaded",
     });
 
-    const row = page.locator(".advisor-directory-row").first();
-    await row.waitFor({ timeout: QUICK_TIMEOUT });
+    const rows = page.locator(".advisor-directory-row");
+    await rows.first().waitFor({ timeout: QUICK_TIMEOUT });
+    await rows.nth(0).locator(COMPARE_BUTTON_SELECTOR).click();
+
+    expect(new URL(page.url()).pathname).toBe("/advisors");
+    await page.getByText("1 selected").waitFor({ timeout: QUICK_TIMEOUT });
+    await rows.nth(1).locator(COMPARE_BUTTON_SELECTOR).click();
+    await page.getByText("2 selected").waitFor({ timeout: QUICK_TIMEOUT });
+
     await Promise.all([
-      page.waitForURL(/\/compare\?ids=adv-a,advisor-watch-1$/u),
-      row.locator(".compare-entry-button").click(),
+      page.waitForURL(
+        new RegExp(`/compare\\?ids=${ADVISOR_ID},${SECOND_ADVISOR_ID}$`, "u")
+      ),
+      page.getByRole("button", { name: "Compare now" }).click(),
     ]);
 
     expect(new URL(page.url()).searchParams.get("ids")).toBe(
-      `adv-a,${ADVISOR_ID}`
+      `${ADVISOR_ID},${SECOND_ADVISOR_ID}`
     );
-    await captureViewports(page, "issue-810-compare-entry-public-flow");
+    await captureViewports(page, "issue-1165-directory-in-place-compare");
     await page.close();
   });
 
@@ -74,7 +85,7 @@ browserDescribe("public comparison entry actions (#810)", () => {
     );
 
     const card = page.locator(".compare-entry-card");
-    await card.locator(".compare-entry-button").click();
+    await card.locator(COMPARE_BUTTON_SELECTOR).click();
     await card.getByText("Compare supports up to four advisors.").waitFor({
       timeout: QUICK_TIMEOUT,
     });
@@ -105,9 +116,19 @@ async function routeAdvisorDirectory(page: Page): Promise<void> {
             finraCrd: "12345",
             headshotUrl: null,
           },
+          {
+            id: SECOND_ADVISOR_ID,
+            legalName: "Blake Carter",
+            preferredName: "Blake Carter",
+            lastName: "Carter",
+            careerStatus: "active",
+            yearsExperience: 9,
+            finraCrd: "67890",
+            headshotUrl: null,
+          },
         ],
         nextCursor: null,
-        total: 1,
+        total: 2,
       },
     });
   });

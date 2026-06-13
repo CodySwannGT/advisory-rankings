@@ -18,11 +18,11 @@ import {
   ProfileHead,
   SectionCard,
   AsyncStateCard,
-  Button,
   Tag,
   SourceAttribution,
 } from "./design-system/index.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
+import { compareStartCard, underLimitStartCopy } from "./compare-start-card.js";
 import { comparisonSections, firmName } from "./compare-sections.js";
 import { reportPacketAction } from "./compare-packet-action.js";
 import { privateOverlayMount } from "./compare-private-overlay.js";
@@ -41,7 +41,6 @@ type Component = (...args: readonly unknown[]) => HTMLElement;
 const ProfileHeadComponent = ProfileHead as unknown as Component;
 const SectionCardComponent = SectionCard as unknown as Component;
 const AsyncStateCardComponent = AsyncStateCard as unknown as Component;
-const ButtonComponent = Button as unknown as Component;
 const TagComponent = Tag as unknown as Component;
 const SourceAttributionComponent = SourceAttribution as unknown as Component;
 
@@ -105,13 +104,14 @@ function renderComparison(
   center: HTMLElement,
   payload: AdvisorComparisonPayload
 ): void {
-  const selectedDirectoryHref = `/advisors?ids=${payload.ids.map(encodeURIComponent).join(",")}`;
   const recoveryCard =
     payload.selection.status === "under_limit"
       ? [
           compareStartCard(
             underLimitStartCopy(payload.items.length),
-            selectedDirectoryHref
+            payload.ids.length
+              ? payload.ids
+              : payload.items.map(item => item.id)
           ),
         ]
       : [];
@@ -148,61 +148,6 @@ function renderComparison(
     }),
     privateOverlayMount(payload.items)
   );
-}
-
-/**
- * Renders a human-usable starting point for cold `/compare` visits.
- * @param copy - Introductory action copy.
- * @param browseHref - Advisor directory href for Browse actions.
- * @returns Compare empty-state section.
- */
-function compareStartCard(
-  copy = "Search for an advisor or browse the directory, then use Add to comparison from an advisor profile or directory row.",
-  browseHref = "/advisors"
-): HTMLElement {
-  return SectionCardComponent({
-    title: "Choose advisors to compare",
-    attrs: { class: "comparison-start" },
-    body: [
-      el("p", { class: "comparison-start-copy" }, copy),
-      el(
-        "div",
-        { class: "comparison-start-actions" },
-        ButtonComponent({
-          variant: "primary",
-          children: "Browse advisors",
-          onClick: () => {
-            window.location.href = browseHref;
-          },
-          attrs: {
-            class: "comparison-start-button",
-          },
-        }),
-        el(
-          "a",
-          { class: "comparison-start-link", href: browseHref },
-          "Open advisor directory"
-        )
-      ),
-      el(
-        "ol",
-        { class: "comparison-start-steps", "aria-label": "Comparison steps" },
-        el("li", {}, "Find an advisor by name, firm, or team."),
-        el("li", {}, "Add two to four advisors to the comparison."),
-        el("li", {}, "Review diligence evidence side by side.")
-      ),
-    ],
-  });
-}
-
-/**
- * Builds recovery copy for an under-limit comparison selection.
- * @param selectedCount - Number of selected advisor columns.
- * @returns User-facing recovery guidance.
- */
-function underLimitStartCopy(selectedCount: number): string {
-  const advisorLabel = selectedCount === 1 ? "advisor" : "advisors";
-  return `You have selected ${selectedCount} ${advisorLabel}. Browse the directory to add another advisor and complete the comparison.`;
 }
 
 /**

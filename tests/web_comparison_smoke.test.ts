@@ -262,20 +262,24 @@ browserDescribe(
       expect(desktopMetrics.heading).toBe(EXPECTED_COMPARISON_HEADING);
       expect(desktopMetrics.h1Count).toBe(1);
       expect(desktopMetrics.hasUnderLimitCopy).toBe(true);
-      expect(desktopMetrics.hasBrowseAction).toBe(true);
-      expect(desktopMetrics.hasDirectoryLink).toBe(true);
-      expect(desktopMetrics.directoryHref).toBe(
-        `${baseUrl}/advisors?ids=${UNDER_LIMIT_ADVISOR_ID}`
-      );
+      expect(desktopMetrics.hasInlineAddControl).toBe(true);
+      expect(desktopMetrics.hasBrowseAction).toBe(false);
+      expect(desktopMetrics.hasDirectoryLink).toBe(false);
       expect(mobileMetrics.hasUnderLimitCopy).toBe(true);
       expect(mobileMetrics.scrollWidth).toBeLessThanOrEqual(
         mobileMetrics.clientWidth
       );
+      await mobile
+        .getByRole("searchbox", { name: "Search advisors to add" })
+        .fill("Blake");
+      await mobile
+        .getByRole("option", { name: /Blake Carter/u })
+        .waitFor({ timeout: QUICK_TIMEOUT });
       await Promise.all([
         mobile.waitForURL(
-          new RegExp(`/advisors\\?ids=${UNDER_LIMIT_ADVISOR_ID}$`, "u")
+          new RegExp(`/compare\\?ids=${UNDER_LIMIT_ADVISOR_ID},advisor-b$`, "u")
         ),
-        mobile.getByRole("button", { name: "Browse advisors" }).click(),
+        mobile.getByRole("option", { name: /Blake Carter/u }).click(),
       ]);
       await mobile.close();
     });
@@ -361,24 +365,36 @@ async function routeNoSelectionComparison(page: Page): Promise<void> {
   await page.route("**/Me", async route => {
     await route.fulfill({ json: { authenticated: false } });
   });
-  await page.route(COMPARISON_RESOURCE_ROUTE, async route => {
-    await route.fulfill({
-      json: {
-        generatedAt: new Date().toISOString(),
-        selection: {
-          status: "under_limit",
-          requestedIds: [],
-          normalizedIds: [],
-          duplicateIds: [],
-          cappedIds: [],
-          missingIds: [],
-          min: 2,
-          max: 4,
-          truncated: false,
-        },
-        items: [],
+  await page.route(COMPARISON_RESOURCE_ROUTE, fulfillNoSelectionComparison);
+  await page.route(
+    COMPARISON_RESOURCE_QUERY_ROUTE,
+    fulfillNoSelectionComparison
+  );
+}
+
+/**
+ * Fulfills the empty comparison resource route.
+ * @param route - Playwright route to fulfill.
+ */
+async function fulfillNoSelectionComparison(route: Route): Promise<void> {
+  await route.fulfill({
+    json: {
+      generatedAt: new Date().toISOString(),
+      count: 0,
+      ids: [],
+      selection: {
+        status: "under_limit",
+        requestedIds: [],
+        normalizedIds: [],
+        duplicateIds: [],
+        cappedIds: [],
+        missingIds: [],
+        min: 2,
+        max: 4,
+        truncated: false,
       },
-    });
+      items: [],
+    },
   });
 }
 
@@ -390,6 +406,23 @@ async function routeNoSelectionComparison(page: Page): Promise<void> {
 async function routeSingleSelectionComparison(page: Page): Promise<void> {
   await page.route("**/Me", async route => {
     await route.fulfill({ json: { authenticated: false } });
+  });
+  await page.route("**/Search?**", async route => {
+    await route.fulfill({
+      json: {
+        q: "Blake",
+        counts: { firms: 0, advisors: 1, teams: 0, total: 1 },
+        items: [
+          {
+            kind: "advisor",
+            id: "advisor-b",
+            name: "Blake Carter",
+            sub: "Example Wealth",
+            score: 2,
+          },
+        ],
+      },
+    });
   });
   await page.route(COMPARISON_RESOURCE_ROUTE, fulfillSingleSelectionComparison);
   await page.route(COMPARISON_RESOURCE_QUERY_ROUTE, async route => {
@@ -649,12 +682,15 @@ async function compareStartMetrics(page: Page) {
       hasDirectoryLink: Boolean(
         document.querySelector(".comparison-start-link")
       ),
+      hasInlineAddControl: Boolean(
+        document.querySelector(".comparison-add-control")
+      ),
       directoryHref:
         document.querySelector<HTMLAnchorElement>(".comparison-start-link")
           ?.href ?? null,
       hasUnderLimitCopy: Boolean(
         document.body.textContent?.includes(
-          "Browse the directory to add another advisor"
+          "Add another advisor here to complete the comparison"
         )
       ),
       clientWidth: document.documentElement.clientWidth,

@@ -5,10 +5,12 @@
 // valid.
 
 import { Button, el } from "./design-system/index.js";
+import {
+  comparisonUrl,
+  selectedComparisonIdsFromParams,
+} from "./compare-selection.js";
 
 const MAX_COMPARISON_ADVISORS = 4;
-const IDS_PARAM = "ids";
-const LEGACY_ADVISOR_IDS_PARAM = "advisorIds";
 const CAP_MESSAGE = "Compare supports up to four advisors.";
 const DUPLICATE_MESSAGE = "Advisor is already in this comparison.";
 
@@ -66,14 +68,14 @@ export function nextComparisonTarget(
   currentUrl: string
 ): CompareTarget {
   const url = new URL(currentUrl, window.location.origin);
-  const ids = selectedIds(url.searchParams);
+  const ids = selectedComparisonIdsFromParams(url.searchParams);
   if (ids.includes(advisorId)) {
-    return { href: comparisonHref(ids) };
+    return { href: comparisonUrl(ids) };
   }
   if (ids.length >= MAX_COMPARISON_ADVISORS) {
     return { message: CAP_MESSAGE };
   }
-  return { href: comparisonHref([...ids, advisorId]) };
+  return { href: comparisonUrl([...ids, advisorId]) };
 }
 
 /**
@@ -88,29 +90,4 @@ function handleCompareEntry(advisorId: string, status: HTMLElement): void {
     return;
   }
   status.replaceChildren(target.message ?? DUPLICATE_MESSAGE);
-}
-
-/**
- * Reads comparison ids from the canonical `ids` query parameter, falling back
- * to the older `advisorIds` spelling accepted by the resource.
- * @param params - Current page query params.
- * @returns Deduplicated advisor ids in URL order.
- */
-function selectedIds(params: URLSearchParams): readonly string[] {
-  const raw = params.get(IDS_PARAM) || params.get(LEGACY_ADVISOR_IDS_PARAM);
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map(id => id.trim())
-    .filter(Boolean)
-    .filter((id, index, ids) => ids.indexOf(id) === index);
-}
-
-/**
- * Builds the public comparison route URL for selected advisor ids.
- * @param ids - Advisor ids in selection order.
- * @returns Absolute-path comparison href.
- */
-function comparisonHref(ids: readonly string[]): string {
-  return `/compare?ids=${ids.map(encodeURIComponent).join(",")}`;
 }
