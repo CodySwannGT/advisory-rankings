@@ -43,7 +43,7 @@ describe("branch explorer route (#1224)", () => {
     await routePublicBranches(page);
 
     await page.goto(
-      `${baseUrl}/branches?firm=wells&state=NY&minAdvisorCount=2`,
+      `${baseUrl}/branches?firm=wells&state=NY&minAdvisorCount=2&sourceType=brokercheck&level=branch`,
       {
         waitUntil: "domcontentloaded",
       }
@@ -61,7 +61,9 @@ describe("branch explorer route (#1224)", () => {
     );
     expect(await inputValue(page, "Firm")).toBe("wells");
     expect(await inputValue(page, "State")).toBe("NY");
+    expect(await inputValue(page, "Source type")).toBe("brokercheck");
     expect(await inputValue(page, "Minimum advisors")).toBe("2");
+    expect(await selectValue(page, "Level")).toBe("branch");
     const branchRow = page.locator('[data-branch-id="branch-ny"]');
     expect(
       await branchRow.getByRole("link", { name: "Firm" }).getAttribute("href")
@@ -80,12 +82,14 @@ describe("branch explorer route (#1224)", () => {
     expect(new URL(page.url()).searchParams.get("city")).toBe("No match");
 
     await page.getByRole("button", { name: "Clear" }).click();
+    await page.getByRole("button", { name: "Load more" }).click();
     await page.locator('[data-branch-id="branch-empty"]').waitFor({
       timeout: QUICK_TIMEOUT,
     });
     await page.getByText("Partial branch coverage").waitFor({
       timeout: QUICK_TIMEOUT,
     });
+    await expectUniqueBranchRows(page);
     expect(await hasHorizontalOverflow(page)).toBe(false);
 
     await captureViewports(page, "issue-1224-branch-explorer");
@@ -157,7 +161,18 @@ function branchPage(
       !minAdvisorCount || row.currentAdvisorCount >= minAdvisorCount,
     ].every(Boolean)
   );
-  return { items, nextCursor: null, total: items.length };
+  if (hasActiveFilters(params) || params.get("cursor") === "page-2") {
+    return {
+      items: params.get("cursor") === "page-2" ? items.slice(1) : items,
+      nextCursor: null,
+      total: items.length,
+    };
+  }
+  return {
+    items: items.slice(0, 1),
+    nextCursor: "page-2",
+    total: items.length,
+  };
 }
 
 /**
@@ -168,6 +183,23 @@ function branchPage(
  */
 function lowerParam(params: URLSearchParams, key: string): string {
   return (params.get(key) ?? "").trim().toLowerCase();
+}
+
+/**
+ * Detects whether branch filters are active on a request.
+ * @param params - Request query params.
+ * @returns True when at least one filter is active.
+ */
+function hasActiveFilters(params: URLSearchParams): boolean {
+  return [
+    "q",
+    "firm",
+    "state",
+    "city",
+    "sourceType",
+    "level",
+    "minAdvisorCount",
+  ].some(key => Boolean(params.get(key)));
 }
 
 /**
@@ -231,6 +263,31 @@ async function inputValue(page: Page, label: string): Promise<string> {
   return await page
     .getByRole("textbox", { name: label, exact: true })
     .inputValue();
+}
+
+/**
+ * Reads the visible value from a labeled select.
+ * @param page - Browser page under test.
+ * @param label - Select label.
+ * @returns Current select value.
+ */
+async function selectValue(page: Page, label: string): Promise<string> {
+  return await page
+    .getByRole("combobox", { name: label, exact: true })
+    .inputValue();
+}
+
+/**
+ * Asserts rendered branch row IDs are unique after pagination.
+ * @param page - Browser page under test.
+ */
+async function expectUniqueBranchRows(page: Page): Promise<void> {
+  const branchIds = await page
+    .locator("[data-branch-id]")
+    .evaluateAll(rows =>
+      rows.map(row => row.getAttribute("data-branch-id") ?? "")
+    );
+  expect(branchIds).toHaveLength(new Set(branchIds).size);
 }
 
 /**
