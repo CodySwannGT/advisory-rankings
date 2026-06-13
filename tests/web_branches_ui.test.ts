@@ -124,11 +124,17 @@ function branchPage(
   const items = branchRows().filter(row =>
     [
       !q ||
-        [row.displayName, row.firmName, row.city, row.state, row.address].some(
-          value =>
-            String(value ?? "")
-              .toLowerCase()
-              .includes(q)
+        [
+          row.displayName,
+          row.buildingName,
+          row.firmName,
+          row.city,
+          row.state,
+          row.address,
+        ].some(value =>
+          String(value ?? "")
+            .toLowerCase()
+            .includes(q)
         ),
       !firm ||
         [row.firmId, row.firmName].some(value =>

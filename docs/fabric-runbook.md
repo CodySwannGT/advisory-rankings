@@ -220,6 +220,7 @@ fabric-deploy branch layout (commit a03f495):
   web/                  ← Facebook-style UI (see §8); copy whole dir after build
     index.html / index.js     home feed
     article.html / article.js article detail
+    branches.html / branches.js branch explorer
     firm.html / firm.js       firm profile
     advisor.html / advisor.js advisor profile
     team.html / team.js       team profile

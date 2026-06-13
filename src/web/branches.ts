@@ -39,6 +39,13 @@ const popstateState: Readonly<
   reload: null,
 };
 
+const loadState: Readonly<
+  Record<"controller", AbortController | null> & Record<"id", number>
+> = {
+  controller: null,
+  id: 0,
+};
+
 const installPopstateReload = (reload: () => void): void => {
   Object.assign(popstateState, { reload });
   if (popstateState.installed) return;
@@ -47,6 +54,8 @@ const installPopstateReload = (reload: () => void): void => {
 };
 
 const loadBranches = (center: HTMLElement, right: HTMLElement): void => {
+  const controller = new AbortController();
+  const loadId = loadState.id + 1;
   const filters = readBranchFilters();
   const stopLoadingFeedback = showDelayedRouteLoadingFeedback({
     container: center,
@@ -54,9 +63,12 @@ const loadBranches = (center: HTMLElement, right: HTMLElement): void => {
     body: "Still fetching public branch rows. Retry if this takes longer than expected.",
     onRetry: () => loadBranches(center, right),
   });
-  api<BranchPage>(resourcePath(filters))
+  loadState.controller?.abort();
+  Object.assign(loadState, { controller, id: loadId });
+  api<BranchPage>(resourcePath(filters), { signal: controller.signal })
     .then(page => {
       stopLoadingFeedback();
+      if (loadId !== loadState.id) return;
       renderLoadedState(
         {
           filters,
@@ -70,6 +82,8 @@ const loadBranches = (center: HTMLElement, right: HTMLElement): void => {
     })
     .catch((error: unknown) => {
       stopLoadingFeedback();
+      if (controller.signal.aborted) return;
+      if (loadId !== loadState.id) return;
       renderError(error, center, right);
     });
 };
@@ -80,18 +94,22 @@ const loadMore = (
   right: HTMLElement
 ): void => {
   if (!state.nextCursor) return;
-  api<BranchPage>(resourcePath(state.filters, state.nextCursor)).then(page => {
-    renderLoadedState(
-      {
-        filters: state.filters,
-        items: [...state.items, ...page.items],
-        total: page.total,
-        nextCursor: page.nextCursor,
-      },
-      center,
-      right
+  api<BranchPage>(resourcePath(state.filters, state.nextCursor))
+    .then(page => {
+      renderLoadedState(
+        {
+          filters: state.filters,
+          items: [...state.items, ...page.items],
+          total: page.total,
+          nextCursor: page.nextCursor,
+        },
+        center,
+        right
+      );
+    })
+    .catch((error: unknown) =>
+      renderLoadMoreError(state, error, center, right)
     );
-  });
 };
 
 const renderLoadedState = (
@@ -118,6 +136,21 @@ const renderError = (
   center.appendChild(
     EmptyCard({
       title: "Could not load branches",
+      body: errorMessage(error),
+    })
+  );
+};
+
+const renderLoadMoreError = (
+  state: BranchExplorerState,
+  error: unknown,
+  center: HTMLElement,
+  right: HTMLElement
+): void => {
+  renderLoadedState(state, center, right);
+  right.prepend(
+    EmptyCard({
+      title: "Could not load more branches",
       body: errorMessage(error),
     })
   );
