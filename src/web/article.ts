@@ -4,7 +4,6 @@
 import {
   CardComponent,
   ChipRowComponent,
-  DetailsCardComponent,
   DisclosureEventCardComponent,
   PostHeaderComponent,
   ScrollableTableComponent,
@@ -12,7 +11,6 @@ import {
   TransitionEventCardComponent,
 } from "./article-types.js";
 import type {
-  ArticleBodyPayload,
   ArticleEventCard,
   ArticleMetadata,
   ArticleProvenancePayload,
@@ -36,6 +34,11 @@ import {
   articleSource,
   canonicalizeArticleRoute,
 } from "./app.js";
+import {
+  articleBodyCard,
+  linkOutCard,
+  metadataSection,
+} from "./article-presentation.js";
 import {
   mountThreeColumnPage,
   el,
@@ -126,6 +129,7 @@ function render(
   appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
   appendIfPresent(center, PartialFailureCard("Mentioned advisors", d.advisors));
   appendIfPresent(center, articleBodyCard(d.body));
+  appendIfPresent(center, linkOutCard(a, d.body));
   appendIfPresent(center, PartialFailureCard("Article body", d.body));
   appendIfPresent(center, evidenceSection(evidenceRows));
   appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
@@ -217,21 +221,6 @@ function articleFooter(
 }
 
 /**
- * Builds the optional article body section.
- * @param body - Article body payload from ArticleView.
- * @returns Body card or null when no text is available.
- */
-function articleBodyCard(body: unknown): HTMLElement | null {
-  const articleBody = body as ArticleBodyPayload | null | undefined;
-  return articleBody?.text
-    ? SectionCardComponent({
-        title: "Article body",
-        body: el("div", {}, ...paragraphs(articleBody.text)),
-      })
-    : null;
-}
-
-/**
  * Builds the source-backed article facts section.
  * @param rows - Deduplicated provenance rows.
  * @returns Evidence card or null when no public facts have source context.
@@ -272,37 +261,6 @@ function evidenceTable(rows: readonly EvidenceTableRow[]): HTMLElement {
 }
 
 /**
- * Builds the article metadata sidebar card.
- * @param article - Article metadata row.
- * @returns Details card for the right rail.
- */
-function metadataSection(article: ArticleMetadata): HTMLElement {
-  const src = articleSource(article) as ArticleSourceMetadata;
-  return DetailsCardComponent({
-    title: "Article metadata",
-    pairs: [
-      ["Slug", article.slug],
-      ["Category", humanize(article.category)],
-      ["Published", fmtDate(article.publishedDate)],
-      ["Modified", fmtDate(article.modifiedDate)],
-      ["Authors", (article.authors || []).join(", ")],
-      [
-        "Source",
-        article.url && src.publicOriginalLink !== false
-          ? el(
-              "a",
-              { href: article.url, target: "_blank", rel: "noreferrer" },
-              `${src.source} →`
-            )
-          : article.url
-            ? (src.ctaLabel ?? null)
-            : null,
-      ],
-    ],
-  });
-}
-
-/**
  * Appends a node only when the section exists.
  * @param parent - Parent column node.
  * @param child - Optional section node.
@@ -320,15 +278,6 @@ function isArticleViewError(
   payload: ArticleViewPayload
 ): payload is ArticleViewErrorPayload {
   return "error" in payload && Boolean(payload.error);
-}
-
-/**
- * Splits article body text into paragraph nodes.
- * @param text - Source text to parse.
- * @returns Paragraph nodes.
- */
-function paragraphs(text: string): readonly HTMLElement[] {
-  return text.split(/\n{2,}/).map(p => el("p", {}, p));
 }
 
 /**

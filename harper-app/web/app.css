@@ -562,6 +562,33 @@ body.drawer-open .nav .nav-scrim {
   margin-left: auto;
 }
 
+.article-linkout-card .card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.article-linkout-source {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.article-linkout-button {
+  justify-self: start;
+  border-radius: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 9px 12px;
+  text-decoration: none;
+}
+
+.article-linkout-button:hover {
+  background: var(--brand-dark);
+}
+
 /* ── Event cards inside a post ──────────────────────────────── */
 
 .event-card {
