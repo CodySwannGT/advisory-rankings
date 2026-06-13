@@ -85,4 +85,50 @@ browserDescribe("design-system event cards", () => {
     expect(text).not.toContain("[object Object]");
     await page.close();
   });
+
+  it("renders feed metadata without raw category author tokens", async () => {
+    const page = await browser.newPage();
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.addScriptTag({
+      type: "module",
+      content: `
+        import { FeedPostCard } from "/design-system/index.js";
+
+        const card = FeedPostCard({
+          article: {
+            id: "article-raw-author",
+            headline: "Advisor public profile",
+            dek: "",
+            url: "https://advisor.morganstanley.com/example",
+            slug: undefined,
+            publishedDate: "2026-06-06",
+            modifiedDate: undefined,
+            authors: ["public_web_research"],
+            category: "public_web_research",
+          },
+          eventCards: [],
+          advisors: [],
+          firms: [],
+          teams: [],
+        }, {
+          fmtDate: () => "1w ago",
+          articleSource: () => ({
+            source: "Morgan Stanley",
+            initials: "MS",
+            ctaLabel: "Read original",
+            publicOriginalLink: false,
+          }),
+        });
+
+        document.body.append(card);
+      `,
+    });
+
+    const header = page.locator(".post-header");
+    await header.waitFor({ timeout: QUICK_TIMEOUT });
+    const text = await header.innerText();
+    expect(text).toContain("Advisor research");
+    expect(text).not.toContain("public_web_research");
+    await page.close();
+  });
 });
