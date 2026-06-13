@@ -227,7 +227,7 @@ export function FeedPostCard(
       when: fmtDate
         ? fmtDate(a.publishedDate ?? null, { mode: "rel" })
         : (a.publishedDate ?? null),
-      category: feedCategoryLabel(a.category ?? ""),
+      category: visibleFeedCategory(a.category),
     }),
     el(
       "h2",
@@ -243,6 +243,18 @@ export function FeedPostCard(
     }),
     feedPostFooter(detailHref, a.url, src)
   );
+}
+
+/**
+ * Hides absent article category metadata in the feed byline.
+ * @param category - Raw article category.
+ * @returns Reader-facing category label, or null when category is absent.
+ */
+function visibleFeedCategory(
+  category: string | null | undefined
+): string | null {
+  const label = feedCategoryLabel(category ?? "");
+  return label === "Uncategorized" ? null : label;
 }
 
 /**

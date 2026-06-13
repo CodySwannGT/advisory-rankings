@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { feedApiPath, type FeedPayload } from "../src/web/feed-route-utils.js";
 import {
   feedCategories,
+  feedSummaryText,
   filterFeedItems,
   readFeedFilters,
 } from "../src/web/feed-filters.js";
@@ -57,6 +58,37 @@ describe("feed route filters", () => {
 
     expect(categories).toEqual([PUBLIC_WEB_RESEARCH]);
     expect(readFeedFilters(categories).category).toBe(PUBLIC_WEB_RESEARCH);
+  });
+
+  it("merges category options and matches rows by reader-facing label", () => {
+    const categories = feedCategories([
+      feedItem("public_web_research"),
+      feedItem("web_research"),
+      feedItem("firm_bio"),
+    ]);
+
+    const filtered = filterFeedItems(
+      [feedItem("public_web_research"), feedItem("web_research")],
+      { mode: "all", category: PUBLIC_WEB_RESEARCH }
+    );
+
+    expect(categories).toEqual(["public_web_research", "firm_bio"]);
+    expect(filtered.map(item => item.article?.category)).toEqual([
+      "public_web_research",
+      "web_research",
+    ]);
+  });
+
+  it("renders grammatical feed result counters", () => {
+    const text = feedSummaryText({
+      filters: { mode: "all", category: "", active: false },
+      categories: [],
+      count: 20,
+      total: 50,
+      onChange: () => {},
+    });
+
+    expect(text).toBe("Showing 20 of 50 posts.");
   });
 });
 

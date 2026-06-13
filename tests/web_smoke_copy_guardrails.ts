@@ -23,6 +23,16 @@ const RAW_IDENTIFIER_PATTERN = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 const PUBLIC_WEB_RESEARCH_OPTION_MISSING =
   "public_web_research option not present";
 const UNCATEGORIZED_OPTION_MISSING = "unknown option not present";
+const UNCATEGORIZED_LABEL = "Uncategorized";
+const FEED_CATEGORY_SELECT = 'form.feed-filters select[name="category"]';
+const FEED_FILTER_SUMMARY = ".feed-filter-summary";
+const FEED_CARD_BYLINE = "article.card .post-header .when";
+
+interface InitialFeedCopy {
+  readonly categoryLabels: readonly string[];
+  readonly summary: string;
+  readonly uncategorizedBylines: number;
+}
 
 /**
  * Checks feed copy and browse labels on the public home route.
@@ -34,9 +44,11 @@ export async function feedCopyGuardrailChecks(
 ): Promise<readonly Check[]> {
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
+  const initialCopy = await visibleFeedInitialCopy(page);
   const metadata = await visibleFeedMetadata(page);
   const categoryCopy = await visibleFeedCategoryCopy(page);
   return [
+    ...initialFeedCopyChecks(initialCopy),
     check(
       metadata.length > 0,
       "/ feed copy: visible card metadata is available"
@@ -66,13 +78,13 @@ export async function feedCopyGuardrailChecks(
     ),
     check(
       categoryCopy.unknownOptionLabel === null ||
-        categoryCopy.unknownOptionLabel === "Uncategorized",
+        categoryCopy.unknownOptionLabel === UNCATEGORIZED_LABEL,
       "/ feed copy: unknown category option is reader-facing",
       categoryCopy.unknownOptionLabel || UNCATEGORIZED_OPTION_MISSING
     ),
     check(
       categoryCopy.unknownSummary === null ||
-        categoryCopy.unknownSummary.includes("Uncategorized"),
+        categoryCopy.unknownSummary.includes(UNCATEGORIZED_LABEL),
       "/ feed copy: unknown category summary is reader-facing",
       categoryCopy.unknownSummary || UNCATEGORIZED_OPTION_MISSING
     ),
@@ -84,6 +96,32 @@ export async function feedCopyGuardrailChecks(
     ),
     ...(await browseLabelChecks(page, "/ feed")),
     copyGuardFixtureCheck(),
+  ];
+}
+
+/**
+ * Converts initial feed copy facts into smoke checks.
+ * @param initialCopy - Copy facts from the unfiltered feed.
+ * @returns Smoke assertions for feed filter and byline copy.
+ */
+function initialFeedCopyChecks(initialCopy: InitialFeedCopy): readonly Check[] {
+  return [
+    check(
+      initialCopy.categoryLabels.length ===
+        new Set(initialCopy.categoryLabels).size,
+      "/ feed copy: category option labels are unique",
+      initialCopy.categoryLabels.join(" | ")
+    ),
+    check(
+      /^Showing \d+ of \d+ posts\.$/.test(initialCopy.summary),
+      "/ feed copy: all-post result counter is grammatical",
+      initialCopy.summary
+    ),
+    check(
+      initialCopy.uncategorizedBylines === 0,
+      "/ feed copy: uncategorized category is hidden from card bylines",
+      `${initialCopy.uncategorizedBylines} matching bylines`
+    ),
   ];
 }
 
@@ -220,6 +258,34 @@ function copyGuardFixtureCheck(): Check {
 }
 
 /**
+ * Reads initial feed copy before exercising category filters.
+ * @param page - Browser page rendering the unfiltered feed.
+ * @returns Initial category labels, summary copy, and byline facts.
+ */
+async function visibleFeedInitialCopy(page: Page): Promise<InitialFeedCopy> {
+  const categoryLabels = await page
+    .locator(`${FEED_CATEGORY_SELECT} option`)
+    .evaluateAll(options =>
+      options.map(option => option.textContent?.trim() || "")
+    );
+  const summary =
+    (await page.locator(FEED_FILTER_SUMMARY).textContent())?.trim() ?? "";
+  const bylines = await page
+    .locator(FEED_CARD_BYLINE)
+    .evaluateAll(nodes =>
+      nodes.map(node => node.textContent?.trim() || "").filter(Boolean)
+    );
+
+  return {
+    categoryLabels,
+    summary,
+    uncategorizedBylines: bylines.filter(text =>
+      text.includes(UNCATEGORIZED_LABEL)
+    ).length,
+  };
+}
+
+/**
  * Reads visible feed card metadata after filtering to web research when present.
  * @param page - Browser page rendering the feed.
  * @returns Visible post-header text values.
@@ -278,9 +344,7 @@ async function visibleFeedCategoryCopy(page: Page): Promise<{
   readonly unknownSummary: string | null;
   readonly unknownUrlCategory: string | null;
 }> {
-  const categorySelect = page.locator(
-    'form.feed-filters select[name="category"]'
-  );
+  const categorySelect = page.locator(FEED_CATEGORY_SELECT);
   const option = categorySelect.locator('option[value="public_web_research"]');
   const categoryCopy = {
     optionLabel: null,
@@ -291,7 +355,7 @@ async function visibleFeedCategoryCopy(page: Page): Promise<{
     (await option.count()) > 0
       ? {
           optionLabel: (await option.textContent())?.trim() || "",
-          summary: await page.locator(".feed-filter-summary").textContent(),
+          summary: await page.locator(FEED_FILTER_SUMMARY).textContent(),
           urlCategory: new URL(page.url()).searchParams.get("category"),
         }
       : categoryCopy;
@@ -313,7 +377,7 @@ async function visibleFeedCategoryCopy(page: Page): Promise<{
   return {
     ...publicWebResearchCopy,
     unknownOptionLabel: (await unknownOption.textContent())?.trim() || "",
-    unknownSummary: await page.locator(".feed-filter-summary").textContent(),
+    unknownSummary: await page.locator(FEED_FILTER_SUMMARY).textContent(),
     unknownUrlCategory: new URL(page.url()).searchParams.get("category"),
   };
 }
