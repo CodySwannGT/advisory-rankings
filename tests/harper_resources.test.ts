@@ -4765,6 +4765,59 @@ describe("Harper directory and search resources", () => {
     expect(second.nextCursor).toEqual(expect.any(String));
   });
 
+  it("bounds public branch employment lookup concurrency", async () => {
+    const branchRows = Array.from({ length: 30 }, (_unused, index) => ({
+      id: `branch-batch-${String(index).padStart(2, "0")}`,
+      firmId: "firm-a",
+      name: `Batch Branch ${String(index).padStart(2, "0")}`,
+      level: "branch",
+      city: "Atlanta",
+      state: "GA",
+    }));
+    const employmentRows = branchRows.map((branch, index) => ({
+      id: `employment-batch-${String(index).padStart(2, "0")}`,
+      advisorId: `advisor-batch-${String(index).padStart(2, "0")}`,
+      firmId: "firm-a",
+      branchId: branch.id,
+      sourceType: "brokercheck",
+    }));
+    setRows("Branch", branchRows);
+    setRows("EmploymentHistory", employmentRows);
+    const original = (globalThis as any).tables.EmploymentHistory;
+    let activeLookups = 0;
+    let maxActiveLookups = 0;
+    (globalThis as any).tables.EmploymentHistory = {
+      search: (query: any) => {
+        const branchId = query?.conditions?.find(
+          (condition: any) => condition.attribute === "branchId"
+        )?.value;
+        return (async function* () {
+          activeLookups += 1;
+          maxActiveLookups = Math.max(maxActiveLookups, activeLookups);
+          try {
+            await new Promise(resolve => setTimeout(resolve, 1));
+            for (const row of employmentRows)
+              if (row.branchId === branchId) yield row;
+          } finally {
+            activeLookups -= 1;
+          }
+        })();
+      },
+    };
+
+    try {
+      const result = await new (resources as any).PublicBranches().get(
+        routeTarget("", { limit: "50" })
+      );
+
+      expect(result.total).toBe(30);
+      expect(maxActiveLookups).toBeLessThanOrEqual(25);
+      expect(maxActiveLookups).toBeGreaterThan(1);
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
   it("labels public branch partial and unavailable coverage states", async () => {
     setRows("Branch", [
       {

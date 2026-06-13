@@ -55,6 +55,9 @@ export type {
   SearchResponse,
 } from "./resource-directory-types.js";
 
+/** Max branch employment lookups issued concurrently in one batch. */
+const BRANCH_LOOKUP_BATCH = 25;
+
 /**
  * Public firm directory resource.
  */
@@ -192,11 +195,7 @@ export class PublicBranches extends Resource {
     ]);
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
     const filters = parseBranchDirectoryFilters(target);
-    const rows = (
-      await Promise.all(
-        branches.map(branch => branchDirectoryMatch(branch, byFirm, filters))
-      )
-    ).filter(isBranchDirectoryRow);
+    const rows = await matchingBranchDirectoryRows(branches, byFirm, filters);
     const sorted = [...rows].sort(compareBranchDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
@@ -205,6 +204,38 @@ export class PublicBranches extends Resource {
       branchDirectoryKey
     );
     return { items, nextCursor, total: sorted.length };
+  }
+}
+
+/**
+ * Enriches branch rows through indexed employment lookups without issuing an
+ * unbounded concurrent burst for broad directory requests.
+ * @param branches - Branch rows to evaluate in source order.
+ * @param byFirm - Firm lookup keyed by id.
+ * @param filters - Normalized public branch filters.
+ * @returns Matching public branch rows in source order.
+ */
+async function matchingBranchDirectoryRows(
+  branches: ReadonlyArray<BranchRow>,
+  byFirm: ReadonlyMap<string, FirmRow>,
+  filters: ReturnType<typeof parseBranchDirectoryFilters>
+): Promise<ReadonlyArray<BranchDirectoryRow>> {
+  try {
+    const batches = branchBatches(branches);
+    const rows = await batches.reduce<
+      Promise<ReadonlyArray<BranchDirectoryRow | null>>
+    >(async (accumulated, batch) => {
+      const matched = await accumulated;
+      const next = await Promise.all(
+        batch.map(branch => branchDirectoryMatch(branch, byFirm, filters))
+      );
+      return [...matched, ...next];
+    }, Promise.resolve([]));
+    return rows.filter(isBranchDirectoryRow);
+  } catch (error) {
+    throw new Error("Failed to resolve public branch directory rows", {
+      cause: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 }
 
@@ -248,6 +279,24 @@ function isBranchDirectoryRow(
   row: BranchDirectoryRow | null
 ): row is BranchDirectoryRow {
   return row !== null;
+}
+
+/**
+ * Splits branch rows into fixed-size batches for bounded indexed lookups.
+ * @param branches - Branch rows to batch.
+ * @returns Batches of at most `BRANCH_LOOKUP_BATCH` rows each.
+ */
+function branchBatches(
+  branches: ReadonlyArray<BranchRow>
+): ReadonlyArray<ReadonlyArray<BranchRow>> {
+  return Array.from(
+    { length: Math.ceil(branches.length / BRANCH_LOOKUP_BATCH) },
+    (_unused, batchIndex) =>
+      branches.slice(
+        batchIndex * BRANCH_LOOKUP_BATCH,
+        batchIndex * BRANCH_LOOKUP_BATCH + BRANCH_LOOKUP_BATCH
+      )
+  );
 }
 
 /**
