@@ -2001,6 +2001,11 @@ body.drawer-open .nav .nav-scrim {
 .compare-entry-button {
   white-space: nowrap;
 }
+.compare-entry-button[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
 .compare-entry-status {
   min-width: 0;
   color: var(--text-muted);
@@ -2009,6 +2014,33 @@ body.drawer-open .nav .nav-scrim {
 }
 .advisor-directory-row {
   align-items: center;
+}
+.compare-selection-bar {
+  position: sticky;
+  z-index: 8;
+  top: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ab-space-3);
+  margin-bottom: var(--ab-space-3);
+  padding: var(--ab-space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--ab-radius-card);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.compare-selection-bar[hidden] {
+  display: none;
+}
+.compare-selection-count {
+  color: var(--text);
+  font-weight: 800;
+}
+.compare-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ab-space-2);
 }
 .directory-row-link {
   color: inherit;
@@ -2439,6 +2471,40 @@ body.drawer-open .nav .nav-scrim {
   gap: var(--ab-space-3);
 }
 
+.comparison-add-control {
+  display: grid;
+  gap: var(--ab-space-3);
+  max-width: 720px;
+}
+
+.comparison-add-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--ab-space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--ab-radius-control);
+  font: inherit;
+}
+
+.comparison-add-results {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+
+.comparison-add-result {
+  justify-content: flex-start;
+  min-height: 40px;
+  white-space: normal;
+}
+
+.comparison-add-status {
+  min-height: 20px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .comparison-start-button {
   min-width: 160px;
 }
@@ -2835,8 +2901,20 @@ body.drawer-open .nav .nav-scrim {
     flex-direction: column;
   }
 
+  .compare-selection-bar {
+    align-items: stretch;
+    flex-direction: column;
+    top: 56px;
+  }
+
+  .compare-selection-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .comparison-start-button,
-  .comparison-start-link {
+  .comparison-start-link,
+  .compare-selection-actions button {
     width: 100%;
   }
 

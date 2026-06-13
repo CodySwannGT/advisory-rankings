@@ -8,9 +8,16 @@ import type {
 import { Button, el } from "./design-system/index.js";
 
 const IDS_PARAM = "ids";
+const LEGACY_ADVISOR_IDS_PARAM = "advisorIds";
 
 /** Selection mutation callback used by comparison column controls. */
 export type ComparisonRender = (payload: AdvisorComparisonPayload) => void;
+
+/** Result of toggling one advisor in a comparison selection. */
+export interface ComparisonToggleResult {
+  readonly ids: readonly string[];
+  readonly capped: boolean;
+}
 
 /**
  * Builds the AdvisorComparison resource path from the current browser URL.
@@ -28,10 +35,53 @@ export function advisorComparisonPathFromLocation(): string {
 export function advisorComparisonPathFromParams(
   params: URLSearchParams
 ): string {
-  const ids = params.get(IDS_PARAM) ?? repeatedIds(params).join(",");
+  const ids =
+    selectedComparisonIdsFromParams(params).join(",") ??
+    repeatedIds(params).join(",");
   const qs = new URLSearchParams();
   if (ids) qs.set(IDS_PARAM, ids);
   return qs.size ? `/AdvisorComparison?${qs.toString()}` : "/AdvisorComparison";
+}
+
+/**
+ * Reads comparison ids from URL params using the canonical `ids` parameter,
+ * falling back to the legacy `advisorIds` spelling and repeated `id` params.
+ * @param params - Current route query params.
+ * @returns Deduplicated advisor ids in URL order.
+ */
+export function selectedComparisonIdsFromParams(
+  params: URLSearchParams
+): readonly string[] {
+  const raw =
+    params.get(IDS_PARAM) ||
+    params.get(LEGACY_ADVISOR_IDS_PARAM) ||
+    repeatedIds(params).join(",");
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean)
+    .filter((id, index, ids) => ids.indexOf(id) === index);
+}
+
+/**
+ * Toggles an advisor id in a comparison selection while preserving URL order
+ * and respecting the AdvisorComparison resource cap.
+ * @param ids - Existing selected advisor ids.
+ * @param advisorId - Advisor id being toggled.
+ * @param max - Maximum selectable advisors.
+ * @returns Next ids plus a cap flag when selection was blocked.
+ */
+export function toggleComparisonId(
+  ids: readonly string[],
+  advisorId: string,
+  max: number = 4
+): ComparisonToggleResult {
+  if (ids.includes(advisorId)) {
+    return { ids: ids.filter(id => id !== advisorId), capped: false };
+  }
+  if (ids.length >= max) return { ids, capped: true };
+  return { ids: [...ids, advisorId], capped: false };
 }
 
 /**
@@ -249,7 +299,7 @@ function comparisonPayloadWithItems(
  * @param ids - Ordered advisor ids.
  * @returns Path and query string for the comparison route.
  */
-function comparisonUrl(ids: readonly string[]): string {
+export function comparisonUrl(ids: readonly string[]): string {
   if (!ids.length) return "/compare";
   return `/compare?ids=${ids.map(encodeURIComponent).join(",")}`;
 }
