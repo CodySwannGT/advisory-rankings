@@ -150,7 +150,7 @@ export function firmRightSections(
   return [
     firmDetailsCardComponent(d.firm),
     regulatoryCardComponent(d.brokerCheckSnapshot),
-    branchesCardComponent(resourceRows(d.branches)),
+    branchesCardComponent(d.firm, resourceRows(d.branches)),
     PartialFailureCard("Branches", d.branches),
   ];
 }

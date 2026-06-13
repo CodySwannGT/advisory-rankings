@@ -21,6 +21,13 @@ Each adapter must document:
 - Limitation when a source is blocked, rate-limited, or lacks a structured
   feed.
 
+Branch coverage is user-visible through `/branches` and the public
+`DataCoverage` response. Adapters should prefer explicit branch rows and
+advisor-to-branch `EmploymentHistory.branchId` links when the source supports
+them; when a source has advisors without branch ids or locator rows without
+advisor links, the UI must expose that state as partial or unavailable coverage
+instead of implying the firm has no offices.
+
 Adapters produce rows for the shared table set:
 
 - `Firm`

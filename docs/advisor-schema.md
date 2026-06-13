@@ -369,6 +369,13 @@ matches `Branch.level`; and `minAdvisorCount` filters on distinct current
 advisor count. The payload exposes aggregate source metadata and coverage
 status, not employment-row or advisor identifiers.
 
+Firm profiles link their branch card into `/branches?firm=<firm_id>` so a
+visitor can inspect the same branch rows with URL-backed filters preserved.
+The public `DataCoverage` resource reports branch row counts and
+current-advisor linkage through `/PublicBranches`; missing or unlinked rows are
+described as unavailable or partial coverage, never as proof that a firm has no
+offices.
+
 ### 4.7 `EmploymentHistory`
 
 | Field | Type | Notes |

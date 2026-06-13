@@ -7,6 +7,10 @@ import {
   recruitingMoves,
   summarizeMoves,
 } from "./resource-recruiting-market-helpers.js";
+import {
+  branchCoverageSection,
+  PUBLIC_BRANCHES_RESOURCE,
+} from "./resource-data-coverage-branches.js";
 
 /** One coverage metric with its public data source named for clients. */
 export interface DataCoverageMetric {
@@ -76,6 +80,7 @@ export class DataCoverage extends Resource {
 export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
   const sections = [
     publicEntitySection(db),
+    branchCoverageSection(db),
     rankingsSection(db),
     recruitingSection(db),
     researchFreshnessSection(db),
@@ -96,6 +101,7 @@ export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
         "Team",
         "Article",
         "Branch",
+        "EmploymentHistory",
         "Ranking",
         "RankingEntry",
         "TransitionEvent",
@@ -108,6 +114,7 @@ export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
         "/PublicAdvisors",
         "/PublicFirms",
         "/PublicTeams",
+        PUBLIC_BRANCHES_RESOURCE,
         FEED_RESOURCE,
         SEARCH_RESOURCE,
         RANKINGS_EXPLORER_RESOURCE,

@@ -45,6 +45,10 @@ export const resourcePath = (
   return `/PublicBranches?${params}`;
 };
 
+export const firmBranchExplorerHref = (firmId: string): string => {
+  return `/branches?${new URLSearchParams({ firm: firmId })}`;
+};
+
 export const emptyBranchFilters = (): BranchFilters => {
   return filtersFromEntries(() => "");
 };

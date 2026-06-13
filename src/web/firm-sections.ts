@@ -1,6 +1,7 @@
 // Firm profile auxiliary sections.
 
 import { api, fmtDate, humanize, initials, entityPath } from "./app.js";
+import { firmBranchExplorerHref } from "./branches-url.js";
 import { Avatar, Tag } from "./design-system/index.js";
 import {
   EntityRowC,
@@ -117,10 +118,12 @@ export function regulatoryCard(
 
 /**
  * Builds the branch list card.
+ * @param firm - Firm row owning the branch list.
  * @param branches - Branch rows for the firm.
  * @returns Branches card or null.
  */
 export function branchesCard(
+  firm: FirmRow,
   branches: readonly BranchRow[]
 ): HTMLElement | null {
   return branches.length
@@ -131,6 +134,16 @@ export function branchesCard(
             attrs: { class: "card-subtitle" },
             children: `Branches (${branches.length.toLocaleString()})`,
           }),
+          elC(
+            "p",
+            { class: "muted" },
+            elC(
+              "a",
+              { href: firmBranchExplorerHref(firm.id) },
+              "Open branch explorer"
+            ),
+            " with this firm selected."
+          ),
           EntityListC({
             rows: branches.map(b =>
               EntityRowC({
