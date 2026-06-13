@@ -46,6 +46,7 @@ const TAYLOR_MARKET_NAME = "Taylor Market";
 const CASEY_STONE_NAME = "Casey Stone";
 const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
 const BRANCH_ATLANTA_ID = "branch-atlanta";
+const BRANCH_AUSTIN_ID = "branch-austin";
 const EMPLOYMENT_A_ID = "employment-a";
 const EMPLOYMENT_B_ID = "employment-b";
 const RANKING_ENTRY_A_ID = "ranking-entry-a";
@@ -4703,7 +4704,7 @@ describe("Harper directory and search resources", () => {
         createdAt: DATE_2026_05_25,
       },
       {
-        id: "branch-austin",
+        id: BRANCH_AUSTIN_ID,
         firmId: "firm-a",
         name: "Austin Office",
         level: "branch",
@@ -4736,6 +4737,14 @@ describe("Harper directory and search resources", () => {
         sourceRef: "firm:atlanta",
       },
       {
+        id: "employment-atlanta-duplicate-advisor",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_ATLANTA_ID,
+        sourceType: "brokercheck",
+        sourceRef: "crd:123",
+      },
+      {
         id: "employment-atlanta-former",
         advisorId: "advisor-c",
         firmId: "firm-a",
@@ -4747,7 +4756,7 @@ describe("Harper directory and search resources", () => {
         id: "employment-austin-former",
         advisorId: "advisor-d",
         firmId: "firm-a",
-        branchId: "branch-austin",
+        branchId: BRANCH_AUSTIN_ID,
         endDate: DATE_2024_01_01,
         sourceType: "firm_locator",
       },
@@ -4761,10 +4770,22 @@ describe("Harper directory and search resources", () => {
         minAdvisorCount: "2",
         sourceType: "brokercheck",
         state: "GA",
+        level: "branch",
+        q: "peachtree",
+      })
+    );
+    const byFirmAndMarket = await new (resources as any).PublicBranches().get(
+      routeTarget("", {
+        firm: EXAMPLE_WEALTH_QUERY,
+        market: "peachtree",
+        sourceType: "firm_locator",
       })
     );
     const second = await new (resources as any).PublicBranches().get(
-      routeTarget("", { limit: "1" })
+      routeTarget("", { limit: "2" })
+    );
+    const third = await new (resources as any).PublicBranches().get(
+      routeTarget("", { cursor: String(second.nextCursor), limit: "2" })
     );
 
     expect(first).toMatchObject({
@@ -4788,11 +4809,27 @@ describe("Harper directory and search resources", () => {
     expect(first.items[0]).not.toHaveProperty("createdAt");
     expect(first.items[0]).not.toHaveProperty("advisorId");
     expect(JSON.stringify(first.items[0])).not.toContain("employment-atlanta");
+    expect(byFirmAndMarket).toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: BRANCH_ATLANTA_ID })],
+    });
     expect(second).toMatchObject({
       total: 3,
-      items: [expect.objectContaining({ id: "branch-orphan" })],
+      items: expect.arrayContaining([
+        expect.objectContaining({ id: "branch-orphan" }),
+      ]),
     });
     expect(second.nextCursor).toEqual(expect.any(String));
+    expect(third).toMatchObject({
+      total: 3,
+      nextCursor: null,
+      items: expect.arrayContaining([
+        expect.objectContaining({ id: BRANCH_AUSTIN_ID }),
+      ]),
+    });
+    expect(
+      new Set([...second.items, ...third.items].map((row: any) => row.id)).size
+    ).toBe(3);
   });
 
   it("bounds public branch employment lookup concurrency", async () => {
