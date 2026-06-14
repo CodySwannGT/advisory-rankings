@@ -38,7 +38,11 @@ fastifyRoutes:
     - 'favicon/index.js'
 
 # AdvisorBook web UI.  Served at the same origin as REST so the
-# browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
+# browser can `fetch('/Feed')` without CORS. Root URL assets are
+# registered explicitly by static-web/index.js; the built-in static
+# plugin is mounted away from / so its wildcard miss handler cannot
+# intercept browser document misses before the app-level not-found shell.
 # `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
   files: 'web/**'
+  urlPath: '_static'
