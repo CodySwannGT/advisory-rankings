@@ -44,7 +44,7 @@ export async function firmDueDiligenceChecks(
       "firm.html: due-diligence missing ranking state"
     ),
     check(
-      /Source:|Data confidence|Generated/.test(text),
+      /Sources:|Data confidence|Updated/.test(text),
       "firm.html: due-diligence source transparency"
     ),
     ...(await firmCopyGuardrailChecks(section)),

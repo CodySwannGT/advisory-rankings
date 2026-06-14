@@ -368,7 +368,7 @@ describe("detail async states", () => {
         page,
         ".firm-dd-card .firm-dd-help",
         ".firm-dd-card .firm-dd-summary",
-        "public source rows support each trust check"
+        "public sources support each trust check"
       );
     } finally {
       await page.close();
@@ -609,26 +609,31 @@ describe("detail async states", () => {
       expect(
         await page.getByRole("link", { name: "The Taylor Group" }).isVisible()
       ).toBe(true);
+      const pageText = (await page.locator("body").textContent()) ?? "";
+      expect(pageText).not.toMatch(
+        /TRANSITIONEVENT|EMPLOYMENTHISTORY|RANKINGENTRY|BROKERCHECKSNAPSHOT|ARTICLEFIRMMENTION/i
+      );
+      expect(pageText).not.toMatch(/SOURCE ROW\(S\)|NO SOURCE ROWS YET/i);
       expect(
         await page
-          .getByText("No RankingEntry rows are loaded")
+          .getByText("No ranking appearances are loaded")
           .first()
           .isVisible()
       ).toBe(true);
       expect(
         await page.getByText("FINRA BrokerCheck").first().isVisible()
       ).toBe(true);
-      expect(await page.getByText("Source: TransitionEvent").isVisible()).toBe(
-        true
-      );
+      expect(
+        await page.getByText("Sources: AdvisorHub coverage").count()
+      ).toBeGreaterThan(0);
       await page.getByLabel("Source-backed explanation").first().click();
       expect(
-        await page.getByText("public rows or records that support").isVisible()
+        await page.getByText("public sources that support").isVisible()
       ).toBe(true);
       await page.getByLabel("Needs data explanation").first().press("Enter");
       expect(
         await page
-          .getByText("not yet have enough public source rows")
+          .getByText("not yet have enough public source coverage")
           .isVisible()
       ).toBe(true);
       expect(await page.getByText("Source-backed").first().isVisible()).toBe(
