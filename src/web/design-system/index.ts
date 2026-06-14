@@ -77,4 +77,6 @@ export {
   mountThreeColumnPage,
   mountFullWidthPage,
   mountCenteredNarrowPage,
+  primaryBrowseCard,
+  primaryBrowseItems,
 } from "./templates.js";
