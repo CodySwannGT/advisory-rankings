@@ -13,10 +13,11 @@ const MIME = {
 
 const CACHEABLE = new Set([".css", ".ico", ".js", ".svg"]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".svg"]);
+const UNKNOWN_DOCUMENT_ROUTE = "*";
+
 /**
  * Register root-level static web routes for Fabric nodes that do not expose
- * Harper's static extension at the URL paths used by the HTML shells, and a
- * final document-only not-found handler after API/resources have matched.
+ * Harper's static extension at the URL paths used by the HTML shells.
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function staticWebRoutes(fastify) {
@@ -31,6 +32,9 @@ export default async function staticWebRoutes(fastify) {
   for (const asset of assets) {
     await registerAsset(fastify, `/${asset}`, asset);
   }
+  fastify.get(UNKNOWN_DOCUMENT_ROUTE, async (request, reply) =>
+    sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
+  );
   fastify.setNotFoundHandler?.((request, reply) =>
     sendNotFoundResponse(request, reply, notFoundHeaders, notFoundShell)
   );
