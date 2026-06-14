@@ -10,6 +10,7 @@
 // See docs/design-system.md.
 
 import { el } from "./dom.js";
+import { iconSvg, type IconName } from "./atoms-icons.js";
 
 /** Child values accepted by the local DOM builder. */
 type Child = Node | string | number | boolean | null | undefined;
@@ -86,6 +87,7 @@ interface FormLabelOptions {
 /** Icon glyph rendering options. */
 interface IconOptions {
   readonly char?: string | number | null;
+  readonly name?: IconName | null;
   readonly attrs?: DOMAttrs;
 }
 
@@ -324,18 +326,45 @@ export function FormLabel({
 }
 
 // ─── Icon glyph ───────────────────────────────────────────────
-// Tiny single-character icon used in nav rows / row avatars.
-// Accepts either an emoji or a 1–2 letter abbreviation (e.g. "AH").
+// Tiny design-system icon used in nav rows / row avatars. Prefer a named icon;
+// `char` remains for legacy callers that still need a text fallback.
 /**
  * Handles icon for this workflow.
  * @param root0 - value used by this operation.
  * @param root0.char - char used by this operation.
+ * @param root0.name - Named design-system icon to render.
  * @param root0.attrs - Element attributes.
  * @returns The computed value.
  */
-export function Icon({ char, attrs = {} }: IconOptions = {}): HTMLElement {
+export function Icon({
+  char,
+  name,
+  attrs = {},
+}: IconOptions = {}): HTMLElement {
   const cls = `ab-icon ${attrs.class || ""}`.trim();
-  return el("span", { ...attrs, class: cls }, String(char ?? ""));
+  const accessibilityAttrs = attrs["aria-label"]
+    ? {}
+    : { "aria-hidden": "true" };
+  return el(
+    "span",
+    {
+      ...accessibilityAttrs,
+      ...attrs,
+      class: cls,
+      dataset: { ...datasetAttrs(attrs), icon: name ?? "text" },
+    },
+    name ? iconSvg(name) : String(char ?? "")
+  );
+}
+
+/**
+ * Reads caller-supplied dataset values from an atom attrs bag.
+ * @param attrs - Element attributes passed to the atom.
+ * @returns Dataset values safe to merge into the rendered element.
+ */
+function datasetAttrs(attrs: DOMAttrs): Readonly<Record<string, string>> {
+  const dataset = attrs.dataset;
+  return dataset && typeof dataset === "object" ? dataset : {};
 }
 
 // ─── SourceAttribution ────────────────────────────────────────

@@ -80,14 +80,30 @@
 	overflow: hidden;
 	background: var(--ab-color-surface);
 }
-.ab-avatar--image img {
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
-	display: block;
-}
+	.ab-avatar--image img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		display: block;
+	}
 
-/* Tag */
+	/* Icon */
+	.ab-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.15em;
+		height: 1.15em;
+		color: currentcolor;
+		line-height: 1;
+	}
+	.ab-icon svg {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	/* Tag */
 .ab-tag {
 	display: inline-block;
 	padding: 1px 7px;
@@ -188,9 +204,6 @@
 	font-weight: var(--ab-font-weight-semi);
 	color: var(--ab-color-text-muted);
 }
-
-/* Icon glyph (used as an avatar substitute) */
-.ab-icon { display: inline-block; line-height: 1; }
 
 /* Scrollable table wrapper — keeps wide tables (provenance,
    snapshots) from overflowing the card on narrow viewports. */

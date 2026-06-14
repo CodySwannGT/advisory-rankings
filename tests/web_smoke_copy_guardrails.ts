@@ -12,6 +12,8 @@ import {
 const EXPECTED_BROWSE_LABELS = [
   "Home",
   "Firms",
+  "Branches",
+  "Coverage",
   "Recruiting",
   "Rankings",
   "Advisors",

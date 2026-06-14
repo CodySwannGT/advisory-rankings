@@ -141,7 +141,7 @@ not own state and do not fetch.
 | `Heading` | `{ level, children, attrs }` | Levels 1–3 mapped to `h1`/`h2`/`h3` with consistent type sizes. |
 | `TextInput` | `(attrs)` | Pass-through to `<input>`. |
 | `FormLabel` | `{ label, control, attrs }` | Block-level label wrapping a control. |
-| `Icon` | `{ char, attrs }` | Single emoji or 1–2 letter glyph. |
+| `Icon` | `{ name, char, attrs }` | Prefer named SVG icons from the design-system set; `char` remains only for legacy text fallbacks. |
 | `SourceAttribution` | `{ source, url, termsUrl, fetchedAt, attrs }` | Footer line crediting an external data source. Renders `Source: <a>FINRA BrokerCheck</a> (as of <date>). <a>Terms of use</a>.` Required by FINRA BrokerCheck's ToU under any section that surfaces regulator-of-record facts. |
 
 ### CSS
@@ -174,7 +174,7 @@ Composed from atoms; each does one concrete job.
 | `SanctionPill(bits)` | Red-tinted pill used in `DisclosureEventCard`. |
 | `DealStrip({ deal, fmtPct })` | Dashed-top recruiting-deal strip on `TransitionEventCard`. |
 | `EventStat({ value, label })` | One value-with-caption stat in an event card. |
-| `NavRow({ label, icon, href })` | Left-rail Browse list row. |
+| `NavRow({ label, icon, href })` | Left-rail Browse list row. Pass `Icon({ name })` output rather than raw emoji/ASCII glyphs. |
 | `LabeledField({ label, input })` | Form field with stacked label. |
 | `FirmArrow({ fromFirm, toFirm })` | "Morgan Stanley → Wells Fargo" header on transitions. |
 
@@ -210,7 +210,7 @@ Self-contained UI sections.
 | `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
 | `ScrollableTable(table)` | Wraps a wide `<table>` (e.g. provenance, snapshots) in a horizontally-scrollable container so it doesn't blow out a card on mobile. |
 | `SkeletonCard()` | Loading placeholder. |
-| `BrowseCard({ items })` | Left-rail Browse navigation. |
+| `BrowseCard({ items })` | Left-rail Browse navigation. Public pages should use `primaryBrowseItems()` / `primaryBrowseCard()` so Home and interior rails stay identical and analyst-only links remain role-gated. |
 | `RollupCard({ title, rows, renderRow })` | Small rail card listing items. |
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
 

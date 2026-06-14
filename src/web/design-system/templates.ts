@@ -10,9 +10,13 @@
 // chrome elsewhere.
 
 import { el } from "./dom.js";
-import { Heading } from "./atoms.js";
+import { Heading, Icon } from "./atoms.js";
+import type { IconName } from "./atoms-icons.js";
 import { BrowseCard, Navbar, SiteFooter } from "./organisms.js";
-import type { BrowseCardOptions } from "./organisms-core-types.js";
+import type {
+  BrowseCardItem,
+  BrowseCardOptions,
+} from "./organisms-core-types.js";
 import type { SearchAdapter } from "./organisms-search.js";
 
 /** Typed adapter for the currently untyped navigation organism export. */
@@ -76,6 +80,8 @@ const renderNavbar = Navbar as unknown as NavbarAdapter;
 const renderSiteFooter = SiteFooter as unknown as SiteFooterAdapter;
 const renderBrowseCard = BrowseCard as unknown as BrowseCardAdapter;
 
+const ANALYST_ROLES = new Set(["analyst", "super_user", "super", "admin"]);
+
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
 // (left rail | center column | right rail), site footer. The
@@ -117,31 +123,102 @@ export function mountThreeColumnPage({
   appendPageTitle(layout, pageTitle);
   left.appendChild(primaryBrowseCard());
   layout.append(left, center, right);
+  refreshMe?.()
+    .then(me => updateBrowseCardForSession(left, me))
+    .catch(() => undefined);
 
   runBuilder(build, { left, center, right, layout });
 }
 
 /**
  * Builds the left-rail browse navigation shared by public pages.
+ * @param session - Optional `/Me` session envelope.
  * @returns Browse card with the primary site sections.
  */
-function primaryBrowseCard(): HTMLElement {
+export function primaryBrowseCard(session?: unknown): HTMLElement {
   return renderBrowseCard({
-    items: [
-      { label: "Home", icon: "🏠", href: "/" },
-      { label: "Firms", icon: "🏢", href: "/firms" },
-      { label: "Branches", icon: "⌘", href: "/branches" },
-      { label: "Coverage", icon: "◫", href: "/coverage" },
-      { label: "Recruiting", icon: "↔", href: "/recruiting" },
-      { label: "Research queue", icon: "?", href: "/research/freshness" },
-      { label: "Rankings", icon: "#", href: "/rankings" },
-      { label: "Advisors", icon: "👤", href: "/advisors" },
-      { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Watchlists", icon: "⭐", href: "/watchlists" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
-      { label: "Discrepancies", icon: "!", href: "/regulatory/discrepancies" },
-    ],
+    items: primaryBrowseItems(session),
   });
+}
+
+/**
+ * Builds the canonical Browse rail entries for public and analyst sessions.
+ * @param session - Optional `/Me` session envelope.
+ * @returns Ordered Browse navigation entries.
+ */
+export function primaryBrowseItems(
+  session?: unknown
+): readonly BrowseCardItem[] {
+  const publicItems: readonly BrowseCardItem[] = [
+    browseItem("Home", "home", "/"),
+    browseItem("Firms", "building", "/firms"),
+    browseItem("Branches", "branches", "/branches"),
+    browseItem("Coverage", "coverage", "/coverage"),
+    browseItem("Recruiting", "recruiting", "/recruiting"),
+    browseItem("Rankings", "rankings", "/rankings"),
+    browseItem("Advisors", "advisor", "/advisors"),
+    browseItem("Teams", "teams", "/teams"),
+    browseItem("Watchlists", "watchlist", "/watchlists"),
+    browseItem("Compliance", "compliance", "/regulatory"),
+  ];
+  if (!hasAnalystRole(session)) return publicItems;
+  return [
+    ...publicItems,
+    browseItem("Research queue", "research", "/research/freshness"),
+    browseItem("Discrepancies", "discrepancies", "/regulatory/discrepancies"),
+  ];
+}
+
+/**
+ * Creates one Browse item with a named design-system icon.
+ * @param label - Public navigation label.
+ * @param icon - Design-system icon name.
+ * @param href - Browser path.
+ * @returns Browse navigation item.
+ */
+function browseItem(
+  label: string,
+  icon: IconName,
+  href: string
+): BrowseCardItem {
+  return { label, icon: Icon({ name: icon }), href };
+}
+
+/**
+ * Refreshes the default Browse card once session state resolves.
+ * @param left - Left rail containing the initial Browse card.
+ * @param session - Resolved `/Me` session envelope.
+ */
+function updateBrowseCardForSession(left: HTMLElement, session: unknown): void {
+  const current = left.querySelector(".card");
+  if (!current) return;
+  current.replaceWith(primaryBrowseCard(session));
+}
+
+/**
+ * Checks whether the current session can see analyst-only navigation.
+ * @param session - Optional `/Me` session envelope.
+ * @returns True when the user has an analyst or elevated role.
+ */
+function hasAnalystRole(session: unknown): boolean {
+  if (!session || typeof session !== "object") return false;
+  const authenticated = Reflect.get(session, "authenticated") === true;
+  const role = roleValue(Reflect.get(session, "role"));
+  return authenticated && ANALYST_ROLES.has(role);
+}
+
+/**
+ * Normalizes flat or nested Harper role values.
+ * @param value - Role value from `/Me`.
+ * @returns Role name or empty string.
+ */
+function roleValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const nested = Reflect.get(value, "role");
+    return typeof nested === "string" ? nested : "";
+  }
+  return "";
 }
 
 // ─── FullWidthLayout ──────────────────────────────────────────

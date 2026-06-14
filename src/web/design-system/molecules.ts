@@ -84,7 +84,7 @@ export interface EventStatOptions {
 /** Options accepted by {@link NavRow}. */
 export interface NavRowOptions {
   readonly label?: DomChild;
-  readonly icon?: OptionalScalar;
+  readonly icon?: DomChild;
   readonly href?: string | null;
 }
 
@@ -395,16 +395,27 @@ export function EventStat({
  * Handles nav row for this workflow.
  * @param root0 - Nav-row rendering options.
  * @param root0.label - Human-readable check label.
- * @param root0.icon - Glyph string shown inside the row avatar.
+ * @param root0.icon - Design-system icon or legacy glyph shown inside the row avatar.
  * @param root0.href - Optional href.
  * @returns Rendered nav row node.
  */
 export function NavRow({ label, icon, href }: NavRowOptions): HTMLElement {
   return EntityRow({
-    avatar: el("div", { class: "avatar" }, String(icon ?? "")),
+    avatar: el("div", { class: "avatar" }, navIcon(icon)),
     name: label,
     href: href ?? null,
   });
+}
+
+/**
+ * Normalizes nav icons so Browse rows use the design-system icon atom.
+ * @param icon - Icon node or legacy scalar fallback.
+ * @returns Icon child for the nav-row avatar.
+ */
+function navIcon(icon: DomChild): DomChild {
+  if (icon instanceof Node) return icon;
+  if (icon == null || typeof icon === "boolean") return "";
+  return Icon({ char: String(icon) });
 }
 
 // ─── LabeledField (form field with a stacked label) ───────────

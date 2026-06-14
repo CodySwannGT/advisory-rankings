@@ -6,6 +6,7 @@ import type {
 } from "../harper/resource-feed-types.js";
 import {
   api,
+  getCurrentUser,
   refreshMe,
   logout,
   search,
@@ -44,6 +45,7 @@ import {
   SectionCardC,
   SkeletonCardC,
 } from "./index-types.js";
+import { primaryBrowseItems } from "./design-system/index.js";
 import type {
   FeedFilterValues,
   ThreeColumnLayout,
@@ -171,16 +173,7 @@ function renderFeed(
  */
 function renderLeft(root: HTMLElement, items: readonly FeedItem[]): void {
   const browseCard = BrowseCardC({
-    items: [
-      { label: "Home", icon: "🏠", href: "/" },
-      { label: "Firms", icon: "🏢", href: "/firms" },
-      { label: "Recruiting", icon: "↔", href: "/recruiting" },
-      { label: "Rankings", icon: "#", href: "/rankings" },
-      { label: "Advisors", icon: "👤", href: "/advisors" },
-      { label: "Teams", icon: "🤝", href: "/teams" },
-      { label: "Watchlists", icon: "⭐", href: "/watchlists" },
-      { label: "Compliance", icon: "⚖️", href: "/regulatory" },
-    ],
+    items: primaryBrowseItems(getCurrentUser()),
   });
   const recentTransitions = items
     .flatMap(i => i.eventCards.filter(isTransitionCard))
