@@ -14,8 +14,6 @@ import teamsRoutes from "../harper-app/teams/index.js";
 
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
 
-const UNKNOWN_ROUTE_PATTERN = "*";
-
 describe("SEO route shells", () => {
   it("registers explicit entity routes without catching root assets", async () => {
     const paths: string[] = [];
@@ -69,19 +67,23 @@ describe("SEO route shells", () => {
 });
 
 describe("static web route shells", () => {
-  it("keeps Harper static serving on the deploy-safe wildcard mode", async () => {
+  it("mounts Harper static away from root so document misses can recover", async () => {
     const config = await readFile("harper-app/config.yaml", "utf8");
 
     expect(config).toContain("static:");
     expect(config).toContain("files: 'web/**'");
+    expect(config).toContain("urlPath: '_static'");
     expect(config).not.toContain("wildcard: false");
   });
 
-  it("registers root web assets explicitly without catching API resources", async () => {
+  it("registers root web assets explicitly without root catch-all routes", async () => {
     const paths: string[] = [];
+    let registeredNotFound = false;
     const fastify = {
       get: (path: string) => paths.push(path),
-      setNotFoundHandler: () => undefined,
+      setNotFoundHandler: () => {
+        registeredNotFound = true;
+      },
     };
 
     await staticWebRoutes(fastify);
@@ -92,9 +94,10 @@ describe("static web route shells", () => {
     expect(paths).toContain("/index.html");
     expect(paths).toContain("/compare.html");
     expect(paths).toContain("/design-system/components.css");
-    expect(paths).toContain(UNKNOWN_ROUTE_PATTERN);
+    expect(paths).not.toContain("*");
     expect(paths).not.toContain("/Feed");
     expect(paths).not.toContain("/:asset");
+    expect(registeredNotFound).toBe(true);
   });
 
   it("serves static assets as string bodies for Harper Fastify replies", async () => {
@@ -186,30 +189,26 @@ describe("static web route shells", () => {
     };
 
     await staticWebRoutes(fastify);
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
+    expect(handlers.has("*")).toBe(false);
+    await notFoundHandler?.(
       { url: "/this-page-does-not-exist", headers: { accept: "text/html" } },
       reply
     );
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
+    await notFoundHandler?.(
       { url: "/other-missing-route", headers: { accept: "*/*" } },
       reply
     );
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
-      { url: "/missing.js", headers: { accept: "*/*" } },
-      reply
-    );
     await notFoundHandler?.(
-      { url: "/nested/missing", headers: { accept: "text/html" } },
+      { url: "/missing.js", headers: { accept: "text/html" } },
       reply
     );
 
-    expect(statuses).toEqual([404, 404, 404, 404]);
+    expect(statuses).toEqual([404, 404, 404]);
     expect(headerSets[0]).toMatchObject({
       "content-type": "text/html; charset=utf-8",
     });
     expect(String(sent[0])).toContain("/not-found.js");
     expect(sent[1]).toBe("Not found");
     expect(sent[2]).toBe("Not found");
-    expect(String(sent[3])).toContain("/not-found.js");
   });
 });
