@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-13
+updated: 2026-06-14
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -20,6 +20,7 @@ sources:
   - ../sources/git/2026-06-11-advisory-rankings-git.md
   - ../sources/git/2026-06-12-advisory-rankings-git.md
   - ../sources/git/2026-06-13-advisory-rankings-git.md
+  - ../sources/git/2026-06-14-advisory-rankings-git.md
 ---
 
 # Git history
@@ -103,6 +104,11 @@ commits since the 2026-06-12 cursor, bringing the branch total to 1574 commits, 
 PR metadata through #1215, "Clarify Recruiting page filters and source caveats." Source:
 wiki/sources/git/2026-06-13-advisory-rankings-git.md.
 
+The 2026-06-14 git ingest ran at HEAD `e8eabb9a01936c9731cdb0531f09ee170c02f617`. It added 37
+commits since the 2026-06-13 wiki-ingest merge cursor, bringing the branch total to 1613 commits,
+and refreshed merged PR metadata through #1239, "Fix firm profile source copy." Source:
+wiki/sources/git/2026-06-14-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -172,6 +178,11 @@ wiki/sources/git/2026-06-13-advisory-rankings-git.md.
 - The 2026-06-12 wiki ingest PR merged, followed by unknown-route and static web serving recovery,
   data coverage resource/dashboard/replay work, coverage-threshold hardening, bodyless article
   presentation fixes, and recruiting-market filter/source-caveat copy.
+- The 2026-06-13 wiki ingest PR merged, followed by in-place advisor comparison selection, public
+  branch resource and explorer work, clean branch routes, feed-category copy cleanup, research queue
+  row readability fixes, deployed feed-category token hiding, branch explorer regression coverage,
+  firm branch coverage provenance/linking, browse rail alignment, and firm profile source-copy
+  clarification.
 
 ## Use
 
@@ -190,4 +201,5 @@ wiki/sources/git/2026-06-09-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-10-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-11-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-12-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-13-advisory-rankings-git.md.
+wiki/sources/git/2026-06-13-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-14-advisory-rankings-git.md.
