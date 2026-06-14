@@ -131,9 +131,7 @@ export function rankingPresenceCard(
             )
         )
       : EmptyTextComponent({
-          children:
-            module?.note ||
-            "No ranking data is on file for this firm; this is an unavailable source state.",
+          children: "No ranking appearances are loaded for this firm yet.",
         }),
     el(
       "div",
@@ -171,7 +169,10 @@ export function regulatorySnapshotCard(
           )
         )
       : EmptyTextComponent({
-          children: module?.note || "No firm BrokerCheck snapshot is loaded.",
+          children:
+            module?.status === STATUS_LOADED
+              ? "Regulatory values are backed by FINRA BrokerCheck."
+              : "No FINRA BrokerCheck snapshot is loaded for this firm yet.",
         }),
     module?.source
       ? SourceAttributionComponent({
@@ -223,12 +224,8 @@ export function coverageTimelineCard(
           })
         )
       : EmptyTextComponent({
-          children: module?.note || "No source-backed coverage is loaded.",
+          children: "No article coverage is loaded for this firm yet.",
         }),
-    metricTile(
-      "Articles on file",
-      fmtNumber(module?.articleCount),
-      "source rows"
-    )
+    metricTile("Articles on file", fmtNumber(module?.articleCount), "articles")
   );
 }

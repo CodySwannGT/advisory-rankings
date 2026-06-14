@@ -24,7 +24,7 @@ export function helpText(label: string, explanation: string): HTMLElement {
   return el(
     "details",
     { class: "firm-dd-help" },
-    el("summary", { "aria-label": `${label} explanation` }, "?"),
+    el("summary", { "aria-label": `${label} explanation` }, "i"),
     el("p", {}, explanation)
   );
 }

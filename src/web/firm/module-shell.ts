@@ -9,6 +9,7 @@ import { el } from "../design-system/index.js";
 import {
   CLASS_LIST,
   CLASS_LIST_ROW,
+  COPY_SOURCE_BACKED,
   EmptyTextComponent,
   LABEL_DATA_CONFIDENCE,
   ModuleShellPayload,
@@ -22,6 +23,22 @@ import {
   statusCopy,
   statusTag,
 } from "./helpers.js";
+
+const SOURCE_ADVISORHUB_COVERAGE = "AdvisorHub coverage";
+const SOURCE_FIRM_BIOS = "Firm bios";
+const SOURCE_BROKERCHECK = "FINRA BrokerCheck";
+const SOURCE_RANKINGS = "AdvisorBook rankings";
+
+const PUBLIC_SOURCE_NAMES: Readonly<Record<string, string>> = {
+  Article: SOURCE_ADVISORHUB_COVERAGE,
+  ArticleFirmMention: SOURCE_ADVISORHUB_COVERAGE,
+  Branch: SOURCE_FIRM_BIOS,
+  BrokerCheckSnapshot: SOURCE_BROKERCHECK,
+  EmploymentHistory: SOURCE_FIRM_BIOS,
+  RankingEntry: SOURCE_RANKINGS,
+  Team: SOURCE_FIRM_BIOS,
+  TransitionEvent: SOURCE_ADVISORHUB_COVERAGE,
+};
 
 /**
  * Builds a module card shell with status, provenance, and freshness labels.
@@ -44,7 +61,7 @@ export function moduleCard(
       el("h3", {}, title),
       statusTag(module?.status)
     ),
-    module?.note ? el("p", { class: "firm-dd-note" }, module.note) : null,
+    el("p", { class: "firm-dd-note" }, publicModuleNote(title, module)),
     ...children,
     moduleMeta(module)
   );
@@ -63,25 +80,20 @@ export function moduleMeta(
     provenance.sourceTable,
     ...(provenance.sourceTables || []),
   ].filter((s): s is string => Boolean(s));
-  const sourceIds = provenance.sourceIds || [];
   const freshness = module?.freshness;
+  const sources = publicSourceNames(sourceTables);
   return el(
     "div",
     { class: "firm-dd-meta" },
     helpText(
       "Source state",
-      "Source state explains which loaded rows support this module and whether the module has a current freshness date."
+      "Source state names the public sources behind this module and whether the module has a current freshness date."
     ),
-    sourceTables.length
+    sources.length
       ? TagComponent({
-          children: `Source: ${sourceTables.join(", ")}`,
+          children: `Sources: ${sources.join(", ")}`,
         })
-      : null,
-    sourceIds.length
-      ? TagComponent({
-          children: `${fmtNumber(sourceIds.length)} source row(s)`,
-        })
-      : TagComponent({ children: "No source rows yet" }),
+      : TagComponent({ children: "Sources pending" }),
     freshness?.asOf
       ? TagComponent({
           kind: "ok",
@@ -101,7 +113,7 @@ export function recentMovesList(
 ): HTMLElement {
   if (!moves.length)
     return EmptyTextComponent({
-      children: "No recent move rows are loaded for this firm.",
+      children: "No recent moves are loaded for this firm.",
     });
   return el(
     "div",
@@ -142,6 +154,11 @@ export function dataConfidenceBlock(
   confidence: DataConfidenceModule | null | undefined
 ): HTMLElement | null {
   if (!confidence) return null;
+  const modules = confidence.modules || [];
+  const loadedCount = modules.filter(
+    module => module.status === "loaded"
+  ).length;
+  const status = loadedCount === modules.length ? "loaded" : "not_found";
   return el(
     "div",
     { class: "firm-dd-confidence" },
@@ -151,11 +168,11 @@ export function dataConfidenceBlock(
       el("strong", {}, LABEL_DATA_CONFIDENCE),
       helpText(
         LABEL_DATA_CONFIDENCE,
-        "Data confidence summarizes whether each due-diligence module is supported by public source rows, needs more data, or needs review."
+        "Data confidence summarizes whether each due-diligence module is backed by public sources or still needs more data."
       ),
-      statusTag(confidence.status)
+      statusTag(status)
     ),
-    el("p", {}, confidence.note || ""),
+    el("p", {}, dataConfidenceSummary(modules.length, loadedCount)),
     el(
       "div",
       { class: "firm-dd-confidence-modules" },
@@ -168,4 +185,81 @@ export function dataConfidenceBlock(
       )
     )
   );
+}
+
+/**
+ * Converts internal provenance tables into unique public source names.
+ * @param sourceTables - Internal provenance table names.
+ * @returns Reader-facing source labels.
+ */
+function publicSourceNames(sourceTables: readonly string[]): readonly string[] {
+  return [
+    ...new Set(sourceTables.map(source => PUBLIC_SOURCE_NAMES[source])),
+  ].filter((source): source is string => Boolean(source));
+}
+
+/**
+ * Builds public copy for a due-diligence module without table jargon.
+ * @param title - Module title.
+ * @param module - Module payload.
+ * @returns Reader-facing module note.
+ */
+function publicModuleNote(
+  title: string,
+  module: ModuleShellPayload | null | undefined
+): string {
+  if (moduleStatusGroup(module) !== "loaded") {
+    return needsDataNote(title);
+  }
+  switch (title) {
+    case "Recruiting momentum":
+      return `Recent advisor and team moves are backed by ${SOURCE_ADVISORHUB_COVERAGE}.`;
+    case "Roster footprint":
+      return `Advisor, team, and branch counts are backed by ${SOURCE_FIRM_BIOS.toLowerCase()}.`;
+    case "Ranking presence":
+      return `Ranking appearances are backed by ${SOURCE_RANKINGS}.`;
+    case "Regulatory snapshot":
+      return `Regulatory values are backed by ${SOURCE_BROKERCHECK}.`;
+    case "Coverage timeline":
+      return `Article coverage is backed by ${SOURCE_ADVISORHUB_COVERAGE}.`;
+    default:
+      return "This module is backed by public source data.";
+  }
+}
+
+/**
+ * Builds a module-specific needs-data note.
+ * @param title - Module title.
+ * @returns Reader-facing missing-data note.
+ */
+function needsDataNote(title: string): string {
+  switch (title) {
+    case "Recruiting momentum":
+      return "No recent advisor or team move coverage is loaded for this firm yet.";
+    case "Roster footprint":
+      return "No firm roster coverage is loaded for this firm yet.";
+    case "Ranking presence":
+      return "No ranking appearances are loaded for this firm yet.";
+    case "Regulatory snapshot":
+      return "No FINRA BrokerCheck snapshot is loaded for this firm yet.";
+    case "Coverage timeline":
+      return "No article coverage is loaded for this firm yet.";
+    default:
+      return "This module needs more public data.";
+  }
+}
+
+/**
+ * Builds a confidence summary from module statuses.
+ * @param total - Total module count.
+ * @param loadedCount - Count of modules backed by public sources.
+ * @returns Reader-facing confidence summary.
+ */
+function dataConfidenceSummary(total: number, loadedCount: number): string {
+  if (total > 0 && total === loadedCount) {
+    return `All ${fmtNumber(total)} due-diligence modules are ${COPY_SOURCE_BACKED.toLowerCase()}.`;
+  }
+  const needsDataCount = Math.max(total - loadedCount, 0);
+  const noun = needsDataCount === 1 ? "module needs" : "modules need";
+  return `${fmtNumber(loadedCount)} of ${fmtNumber(total)} due-diligence modules are ${COPY_SOURCE_BACKED.toLowerCase()}; ${fmtNumber(needsDataCount)} ${noun} more public data.`;
 }

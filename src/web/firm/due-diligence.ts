@@ -18,9 +18,7 @@ import {
   STATUS_MISSING,
 } from "./shared.js";
 import {
-  fmtNumber,
   helpText,
-  metricTile,
   moduleStatusGroup,
   sectionTitleWithHelp,
 } from "./helpers.js";
@@ -56,19 +54,9 @@ export function dueDiligenceSection(
   const filters = dueDiligenceFilters(grid, emptyState);
   body.append(
     el(
-      "div",
+      "p",
       { class: "firm-dd-summary" },
-      metricTile(
-        "Loaded modules",
-        loadedModuleCount(moduleEntries),
-        "source-backed"
-      ),
-      metricTile("Needs data", missingModuleCount(moduleEntries), "explicit"),
-      metricTile(
-        "Generated",
-        fmtDate(diligence.generatedAt, { mode: "short" }),
-        "resource"
-      )
+      dueDiligenceSummaryCopy(moduleEntries, diligence.generatedAt)
     ),
     filters,
     grid,
@@ -78,7 +66,7 @@ export function dueDiligenceSection(
   return SectionCardComponent({
     title: sectionTitleWithHelp(
       "Firm due diligence",
-      "Firm due diligence shows which public source rows support each trust check and where more data is needed."
+      "Firm due diligence shows which public sources support each trust check and where more data is needed."
     ),
     attrs: { class: "firm-dd-card" },
     body,
@@ -167,11 +155,11 @@ export function dueDiligenceFilters(
       { class: "firm-dd-filter-help" },
       helpText(
         COPY_SOURCE_BACKED,
-        "Source-backed means a due-diligence module has public rows or records that support the summary shown here."
+        "Source-backed means a due-diligence module has public sources that support the summary shown here."
       ),
       helpText(
         COPY_NEEDS_DATA,
-        "Needs data means the module is intentionally visible, but AdvisorBook does not yet have enough public source rows to support it."
+        "Needs data means the module is intentionally visible, but AdvisorBook does not yet have enough public source coverage to support it."
       )
     )
   );
@@ -238,7 +226,7 @@ export function dueDiligenceEmptyState(): HTMLElement {
  * @returns Count string.
  */
 export function loadedModuleCount(entries: readonly ModuleEntry[]): string {
-  return fmtNumber(
+  return String(
     entries.filter(({ node }) => node.dataset.firmDdStatus === STATUS_LOADED)
       .length
   );
@@ -250,8 +238,30 @@ export function loadedModuleCount(entries: readonly ModuleEntry[]): string {
  * @returns Count string.
  */
 export function missingModuleCount(entries: readonly ModuleEntry[]): string {
-  return fmtNumber(
+  return String(
     entries.filter(({ node }) => node.dataset.firmDdStatus === STATUS_MISSING)
       .length
   );
+}
+
+/**
+ * Builds the one-sentence public summary for module coverage.
+ * @param entries - Rendered module entries with status groups.
+ * @param generatedAt - Resource generation timestamp.
+ * @returns Reader-facing due-diligence summary.
+ */
+function dueDiligenceSummaryCopy(
+  entries: readonly ModuleEntry[],
+  generatedAt: string | null | undefined
+): string {
+  const loadedCount = loadedModuleCount(entries);
+  const missingCount = missingModuleCount(entries);
+  const totalCount = String(entries.length);
+  const updated = generatedAt
+    ? ` Updated ${fmtDate(generatedAt, { mode: "short" })}.`
+    : "";
+  if (missingCount === "0") {
+    return `All ${totalCount} due-diligence modules are ${COPY_SOURCE_BACKED.toLowerCase()}.${updated}`;
+  }
+  return `${loadedCount} of ${totalCount} due-diligence modules are ${COPY_SOURCE_BACKED.toLowerCase()}; ${missingCount} ${missingCount === "1" ? "module needs" : "modules need"} more public data.${updated}`;
 }
