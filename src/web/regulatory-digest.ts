@@ -271,7 +271,9 @@ function hasBrokerCheckCue(disclosure: DisclosureEventCard): boolean {
     ...(disclosure.ruleViolations ?? []),
   ]
     .filter(Boolean)
-    .some(value => String(value).toLowerCase().includes("brokercheck"));
+    .some(value =>
+      String(value).toLowerCase().replace(/[\s-]/g, "").includes("brokercheck")
+    );
 }
 
 /**

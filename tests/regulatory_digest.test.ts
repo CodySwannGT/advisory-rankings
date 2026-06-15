@@ -103,6 +103,21 @@ describe("regulatory digest ranking", () => {
 
     expect(digestLimitations(row)).toEqual([]);
   });
+
+  it("recognizes spaced and hyphenated public BrokerCheck cues", () => {
+    const rows = regulatoryDigestItems([
+      feedItem("spaced-broker-check", {
+        allegationText: "See Broker Check summary",
+        sanctions: [sanction("fine")],
+      }),
+      feedItem("hyphenated-broker-check", {
+        allegationCategories: ["broker-check disclosure"],
+        sanctions: [sanction("suspension")],
+      }),
+    ]);
+
+    expect(rows.map(row => digestLimitations(row))).toEqual([[], []]);
+  });
 });
 
 function feedItem(
