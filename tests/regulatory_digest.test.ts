@@ -6,6 +6,7 @@ import type {
 } from "../src/harper/resource-feed-types.js";
 import {
   digestContext,
+  digestLimitations,
   digestSourceLabel,
   regulatoryDigestItems,
 } from "../src/web/regulatory-digest.js";
@@ -76,6 +77,31 @@ describe("regulatory digest ranking", () => {
 
     expect(row.firm?.name).toBe(FIRM_CONTEXT_NAME);
     expect(digestContext(row)).toBe(FIRM_CONTEXT_NAME);
+  });
+
+  it("describes missing evidence as a limitation instead of clean evidence", () => {
+    const [row] = regulatoryDigestItems([
+      feedItem("limited-source", {
+        dateResolved: "2026-04-01",
+      }),
+    ]);
+
+    expect(digestLimitations(row)).toEqual([
+      "Structured sanction or rule context is not loaded for this row; missing details are a source limitation, not clean evidence.",
+      "BrokerCheck context is not present in this digest row; use the public evidence links before drawing conclusions.",
+    ]);
+  });
+
+  it("does not add limitation copy when public sanction and BrokerCheck cues exist", () => {
+    const [row] = regulatoryDigestItems([
+      feedItem("source-backed", {
+        regulator: "FINRA BrokerCheck",
+        ruleViolations: ["FINRA Rule 2010"],
+        sanctions: [sanction("fine")],
+      }),
+    ]);
+
+    expect(digestLimitations(row)).toEqual([]);
   });
 });
 

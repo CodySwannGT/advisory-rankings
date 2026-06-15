@@ -29,6 +29,7 @@ import {
 import { EntityRowC } from "./design-system-adapters.js";
 import {
   digestContext,
+  digestLimitations,
   digestSourceLabel,
   disclosureEvents,
   regulatoryDigestItems,
@@ -120,6 +121,7 @@ function regulatoryDigestRow(
 ): HTMLElement {
   const disclosure = item.disclosure;
   const eventType = humanize(disclosure.disclosureType) || "Disclosure";
+  const limitations = digestLimitations(item);
   return el(
     "article",
     { class: "regulatory-digest-row" },
@@ -145,6 +147,13 @@ function regulatoryDigestRow(
             "p",
             { class: "regulatory-digest-summary" },
             disclosure.allegationText
+          )
+        : null,
+      limitations.length
+        ? el(
+            "ul",
+            { class: "regulatory-digest-limitations" },
+            ...limitations.map(limitation => el("li", {}, limitation))
           )
         : null,
       el(

@@ -79,6 +79,29 @@ export function digestSourceLabel(item: RegulatoryDigestItem): string {
 }
 
 /**
+ * Builds public limitation copy for digest rows when structured regulatory
+ * context is absent from the public feed payload.
+ * @param item - Ranked digest item.
+ * @returns Limitation labels that avoid implying a clean record.
+ */
+export function digestLimitations(
+  item: RegulatoryDigestItem
+): readonly string[] {
+  return [
+    ...(!hasStructuredSanctionContext(item.disclosure)
+      ? [
+          "Structured sanction or rule context is not loaded for this row; missing details are a source limitation, not clean evidence.",
+        ]
+      : []),
+    ...(!hasBrokerCheckCue(item.disclosure)
+      ? [
+          "BrokerCheck context is not present in this digest row; use the public evidence links before drawing conclusions.",
+        ]
+      : []),
+  ];
+}
+
+/**
  * Combines one disclosure card with its article source metadata.
  * @param disclosure - Public disclosure event card.
  * @param article - Source article attached to the feed item.
@@ -215,6 +238,40 @@ function severityScore(disclosure: DisclosureEventCard): number {
       ...(disclosure.sanctions ?? []).map(sanction => sanction.sanctionType),
     ])
   );
+}
+
+/**
+ * Detects whether public feed data includes structured sanction/rule context.
+ * @param disclosure - Public disclosure event card.
+ * @returns True when row carries a structured context signal.
+ */
+function hasStructuredSanctionContext(
+  disclosure: DisclosureEventCard
+): boolean {
+  return Boolean(
+    (disclosure.sanctions ?? []).length ||
+    (disclosure.ruleViolations ?? []).length ||
+    disclosure.awardAmount ||
+    disclosure.settlementAmount ||
+    disclosure.damagesRequested
+  );
+}
+
+/**
+ * Detects a public BrokerCheck cue without reading private workflow tables.
+ * @param disclosure - Public disclosure event card.
+ * @returns True when visible source fields name BrokerCheck.
+ */
+function hasBrokerCheckCue(disclosure: DisclosureEventCard): boolean {
+  return [
+    disclosure.regulator,
+    disclosure.forum,
+    disclosure.allegationText,
+    ...(disclosure.allegationCategories ?? []),
+    ...(disclosure.ruleViolations ?? []),
+  ]
+    .filter(Boolean)
+    .some(value => String(value).toLowerCase().includes("brokercheck"));
 }
 
 /**
