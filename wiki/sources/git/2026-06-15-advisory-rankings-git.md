@@ -10,7 +10,7 @@ project: advisory-rankings
 
 # git history - advisory-rankings (2026-06-15)
 
-- Repo: `/Users/codysai/.codex/worktrees/9525/advisory-rankings`
+- Repo: `advisory-rankings`
 - HEAD: `0abf8f28110317b4e917241d25adc4c6e21b03a7`
 - Total commits on HEAD: 1623
 - New commits since last ingest (`e8eabb9a01936c9731cdb0531f09ee170c02f617`): 10
