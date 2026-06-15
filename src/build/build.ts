@@ -1,9 +1,36 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { join } from "node:path";
+import { promisify } from "node:util";
 
 const HARPER_WEB_DIR = "harper-app/web";
 const HARPER_APP_DIR = "harper-app";
 const PACKAGE_JSON = "package.json";
+const execFileAsync = promisify(execFile);
+
+const WEB_ENTRYPOINTS = [
+  "advisor.js",
+  "app.js",
+  "article.js",
+  "branches.js",
+  "compare.js",
+  "correction-inbox.js",
+  "coverage.js",
+  "design-system/index.js",
+  "detail-state.js",
+  "discrepancy-queue.js",
+  "firm.js",
+  "index.js",
+  "not-found.js",
+  "rankings.js",
+  "recruiting.js",
+  "regulatory.js",
+  "report-packet.js",
+  "research-freshness.js",
+  "route-loading.js",
+  "team.js",
+  "watchlists.js",
+];
 
 /** Minimal package fields needed for generated browser metadata. */
 interface PackageManifest {
@@ -11,16 +38,56 @@ interface PackageManifest {
 }
 
 /**
- * Copies generated browser modules into Harper's static web root.
+ * Bundles generated browser modules into Harper's static web root.
  * @returns Promise that resolves after generated web files are deploy-ready.
  */
 async function copyGeneratedWeb(): Promise<void> {
-  await writeGeneratedVersionModule();
   await mkdir(HARPER_WEB_DIR, { recursive: true });
-  await cp("dist/web", HARPER_WEB_DIR, {
-    recursive: true,
-    filter: source => source.endsWith(".js") || !source.includes("."),
-  });
+  await removeGeneratedWebJavaScript(HARPER_WEB_DIR);
+  await bundleWebEntrypoints();
+  await writeGeneratedVersionModule();
+}
+
+/**
+ * Removes previously generated browser JavaScript so deploys cannot retain
+ * stale helper modules after the page entries are bundled.
+ * @param dir Static web directory to clean recursively.
+ */
+async function removeGeneratedWebJavaScript(dir: string): Promise<void> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await removeGeneratedWebJavaScript(path);
+      continue;
+    }
+    if (entry.name.endsWith(".js")) await rm(path, { force: true });
+  }
+}
+
+/**
+ * Uses Bun's browser bundler to collapse each HTML shell entrypoint into one
+ * deployable module. This avoids the Fabric serving node's reset-prone burst
+ * of dozens of concurrent transitive ES-module requests on a cold page boot.
+ */
+async function bundleWebEntrypoints(): Promise<void> {
+  const entrypoints = WEB_ENTRYPOINTS.map(entry => join("dist/web", entry));
+  await execFileAsync(
+    "bun",
+    [
+      "build",
+      ...entrypoints,
+      "--target=browser",
+      "--format=esm",
+      "--root",
+      "dist/web",
+      "--entry-naming",
+      "[dir]/[name].[ext]",
+      "--outdir",
+      HARPER_WEB_DIR,
+    ],
+    { maxBuffer: 1024 * 1024 * 10 }
+  );
 }
 
 /**
@@ -34,7 +101,7 @@ async function writeGeneratedVersionModule(): Promise<void> {
   const version = manifest.version || "0.0.0";
 
   await writeFile(
-    join("dist/web", "version.js"),
+    join(HARPER_WEB_DIR, "version.js"),
     `export const APP_VERSION = ${JSON.stringify(version)};\n`
   );
 }

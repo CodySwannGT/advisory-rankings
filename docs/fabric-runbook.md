@@ -492,9 +492,9 @@ re-reads files on reload; no special handling.
 > least one static module/CSS asset (a different asset each time —
 > `design-system/*.js`, `tokens.css`, `watchlist-*.js`, …), which aborts the
 > whole ES-module graph so the SPA never boots and never fetches `/Feed`.
-> `curl` and single requests are stable (no 4xx/5xx); only the ~20-way
-> concurrent module fan-out trips it. The client had no retry anywhere, so a
-> single blip surfaced as a dead-end and broke the gate. Two-part fix:
+> `curl` and single requests are stable (no 4xx/5xx); only the browser's
+> concurrent module fan-out trips it. A single blip surfaced as a dead-end and
+> broke the gate. Current mitigation has four parts:
 >
 > 1. **Boot guard** — an identical, dependency-free inline `<script>` in every
 >    `harper-app/web/*.html` shell (between the `ab-boot-guard:start/end`
@@ -522,13 +522,17 @@ re-reads files on reload; no special handling.
 >    one. The window sits well above healthy latency (sub-second) and below the
 >    observed cold-start stall. Mutations still never retry, so a timed-out
 >    `POST` fails fast rather than double-applying.
+> 4. **Bundled page entries** — `bun run build` uses Bun's browser bundler to
+>    emit one JavaScript module per HTML shell entrypoint (`index.js`,
+>    `regulatory.js`, `advisor.js`, and peers) instead of copying the full
+>    transitive `dist/web/**` module tree. That removes the reset-prone burst of
+>    separate `design-system/*.js` and helper-module requests during boot while
+>    preserving the same source files and HTML entrypoint names.
 >
 > Tempting but wrong: cache-busting the failed module via a query string —
 > blocked by the query-string caveat above, and a failed transitive import is
 > cached in the realm's module map, so a plain `import()` retry returns the
-> cached rejection; only a full reload re-fetches. Future hardening: bundle
-> each page entry into one self-contained module so the concurrent fan-out
-> (and thus the per-load reset probability) collapses.
+> cached rejection; only a full reload re-fetches.
 
 ### Custom JS resources (`resources.js`)
 Edit `src/harper/resources.ts`, run `bun run build`, then deploy the
