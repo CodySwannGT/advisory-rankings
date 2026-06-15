@@ -78,42 +78,66 @@ async function smokeFirmDirectoryFilters(
   );
   const liveFacts = await captureLiveFirmFilterFacts(page, fixture);
 
+  return firmDirectoryChecks({
+    emptyControlsAvailable,
+    filtered,
+    fixture,
+    liveFacts,
+    wide320,
+    wide390,
+  });
+}
+
+function firmDirectoryChecks(facts: {
+  readonly emptyControlsAvailable: boolean;
+  readonly filtered: Awaited<ReturnType<typeof captureFilteredState>>;
+  readonly fixture: FirmFixture;
+  readonly liveFacts: LiveFilterFacts;
+  readonly wide320: boolean;
+  readonly wide390: boolean;
+}): readonly Check[] {
   return [
     check(
-      !fixture.channel ||
-        filtered.channelValue?.toLowerCase() === fixture.channel,
+      !facts.fixture.channel ||
+        facts.filtered.channelValue?.toLowerCase() === facts.fixture.channel,
       "firms filters: channel restores from URL",
-      filtered.channelValue
+      facts.filtered.channelValue
     ),
     check(
-      filtered.activeValue === "true",
+      facts.filtered.activeValue === "true",
       "firms filters: active status restores"
     ),
     check(
-      filtered.accessibleLabels,
+      facts.filtered.accessibleLabels,
       "firms filters: controls are reachable by visible labels"
     ),
-    check(filtered.rowCount >= 1, "firms filters: filtered rows render"),
+    check(facts.filtered.rowCount >= 1, "firms filters: filtered rows render"),
     check(
-      filtered.loaded === filtered.rowCount &&
-        filtered.total >= filtered.loaded,
+      facts.filtered.loaded === facts.filtered.rowCount &&
+        facts.filtered.total >= facts.filtered.loaded,
       "firms filters: showing and match copy render",
-      `${filtered.loaded}/${filtered.total}`
+      `${facts.filtered.loaded}/${facts.filtered.total}`
     ),
     check(
-      filtered.rawMetricsHidden,
+      facts.filtered.rawMetricsHidden,
       "firms filters: developer metrics are hidden"
     ),
-    ...firmLiveFilterChecks(liveFacts),
+    ...firmLiveFilterChecks(facts.liveFacts),
     check(
-      /^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
+      /^\/firms\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(facts.filtered.firstHref),
       "firms filters: first row links to canonical firm profile",
-      filtered.firstHref
+      facts.filtered.firstHref
     ),
-    check(!wide390, "firms filters: 390px layout has no horizontal overflow"),
-    check(!wide320, "firms filters: 320px layout has no horizontal overflow"),
     check(
-      emptyControlsAvailable,
+      !facts.wide390,
+      "firms filters: 390px layout has no horizontal overflow"
+    ),
+    check(
+      !facts.wide320,
+      "firms filters: 320px layout has no horizontal overflow"
+    ),
+    check(
+      facts.emptyControlsAvailable,
       "firms filters: empty state keeps controls available"
     ),
   ];

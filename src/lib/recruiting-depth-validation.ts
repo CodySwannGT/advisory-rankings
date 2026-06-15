@@ -17,6 +17,21 @@ const RECRUITING_DEPTH_THRESHOLDS = {
 /** Loose JSON object used for compact evidence summaries. */
 type JsonRecord = Readonly<Record<string, unknown>>;
 
+/** Facts needed to build compact recruiting depth evidence. */
+interface RecruitingCompactSummaryFacts {
+  readonly filterSlices: JsonRecord;
+  readonly firmMomentumCount: number;
+  readonly marketActivityCount: number;
+  readonly missingAumCount: number;
+  readonly missingDealEconomicsStatusCount: number;
+  readonly missingFieldTags: ReadonlyArray<string>;
+  readonly moveCount: number;
+  readonly recentMoves: ReadonlyArray<unknown>;
+  readonly sourceBackedCount: number;
+  readonly sourceStatusTags: ReadonlyArray<string>;
+  readonly summary: JsonRecord;
+}
+
 /**
  * Builds the recruiting-resource baseline summary.
  * @param body - Decoded `/RecruitingMarket` JSON object.
@@ -53,29 +68,19 @@ export function summarizeRecruitingResourcePayload(
     recentMoves
   );
   const filterSlices = recruitingFilterSlices(recentMoves);
-  const compactSummary = {
-    summary,
-    recentMoveCount: moveCount,
-    marketActivityCount: marketActivity.length,
+  const compactSummary = recruitingCompactSummary({
+    filterSlices,
     firmMomentumCount: firmMomentum.length,
-    sourceBackedCount,
-    sourceCoveragePercent: percent(sourceBackedCount, moveCount),
-    knownAumCount: Math.max(moveCount - missingAumCount, 0),
+    marketActivityCount: marketActivity.length,
     missingAumCount,
     missingDealEconomicsStatusCount,
-    sourceStatusTags,
     missingFieldTags,
-    filterSlices,
-    thresholds: RECRUITING_DEPTH_THRESHOLDS,
-    sampleRecentMoves: sampleRecords(recentMoves, [
-      "id",
-      "subject",
-      "fromFirm",
-      "toFirm",
-      "sourceStatus",
-      "provenance",
-    ]),
-  };
+    moveCount,
+    recentMoves,
+    sourceBackedCount,
+    sourceStatusTags,
+    summary,
+  });
   return {
     ...compactSummary,
     validationReport: recruitingValidationReport({
@@ -87,6 +92,39 @@ export function summarizeRecruitingResourcePayload(
       directionSliceCount: arrayValue(filterSlices.directions).length,
       minimums: RECRUITING_DEPTH_THRESHOLDS,
     }),
+  };
+}
+
+/**
+ * Builds compact recruiting depth evidence from captured facts.
+ * @param facts - Captured counts, tags, slices, and samples.
+ * @returns Compact recruiting depth evidence.
+ */
+function recruitingCompactSummary(
+  facts: RecruitingCompactSummaryFacts
+): JsonRecord {
+  return {
+    summary: facts.summary,
+    recentMoveCount: facts.moveCount,
+    marketActivityCount: facts.marketActivityCount,
+    firmMomentumCount: facts.firmMomentumCount,
+    sourceBackedCount: facts.sourceBackedCount,
+    sourceCoveragePercent: percent(facts.sourceBackedCount, facts.moveCount),
+    knownAumCount: Math.max(facts.moveCount - facts.missingAumCount, 0),
+    missingAumCount: facts.missingAumCount,
+    missingDealEconomicsStatusCount: facts.missingDealEconomicsStatusCount,
+    sourceStatusTags: facts.sourceStatusTags,
+    missingFieldTags: facts.missingFieldTags,
+    filterSlices: facts.filterSlices,
+    thresholds: RECRUITING_DEPTH_THRESHOLDS,
+    sampleRecentMoves: sampleRecords(facts.recentMoves, [
+      "id",
+      "subject",
+      "fromFirm",
+      "toFirm",
+      "sourceStatus",
+      "provenance",
+    ]),
   };
 }
 

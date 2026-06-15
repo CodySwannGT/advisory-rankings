@@ -204,13 +204,7 @@ interface FilterCheckFacts {
 
 function filterChecks(facts: FilterCheckFacts): readonly Check[] {
   return [
-    check(
-      facts.filteredFacts.firm === facts.expectedFirm &&
-        facts.filteredFacts.careerStatus === "active" &&
-        facts.filteredFacts.hasCrd === "",
-      "advisors filters: controls reflect URL",
-      JSON.stringify(facts.filteredFacts)
-    ),
+    advisorUrlControlCheck(facts),
     check(
       facts.filteredFacts.accessibleLabels,
       "advisors filters: controls are reachable by visible labels"
@@ -260,18 +254,34 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
       "advisors filters: no mobile horizontal overflow at 390px and 320px",
       `390 ${facts.mobile390.scrollWidth}/${facts.mobile390.clientWidth}, 320 ${facts.mobile320.scrollWidth}/${facts.mobile320.clientWidth}`
     ),
-    check(
-      facts.desktopLayout.every(sweep => sweep.escapedControls.length === 0),
-      "advisors filters: controls stay inside card at desktop and tablet widths",
-      facts.desktopLayout
-        .map(sweep =>
-          sweep.escapedControls.length
-            ? `${sweep.width}px escaped ${sweep.escapedControls.join(", ")}`
-            : `${sweep.width}px ok`
-        )
-        .join("; ")
-    ),
+    advisorDesktopLayoutCheck(facts.desktopLayout),
   ];
+}
+
+function advisorUrlControlCheck(facts: FilterCheckFacts): Check {
+  return check(
+    facts.filteredFacts.firm === facts.expectedFirm &&
+      facts.filteredFacts.careerStatus === "active" &&
+      facts.filteredFacts.hasCrd === "",
+    "advisors filters: controls reflect URL",
+    JSON.stringify(facts.filteredFacts)
+  );
+}
+
+function advisorDesktopLayoutCheck(
+  desktopLayout: readonly FilterLayoutSweep[]
+): Check {
+  return check(
+    desktopLayout.every(sweep => sweep.escapedControls.length === 0),
+    "advisors filters: controls stay inside card at desktop and tablet widths",
+    desktopLayout
+      .map(sweep =>
+        sweep.escapedControls.length
+          ? `${sweep.width}px escaped ${sweep.escapedControls.join(", ")}`
+          : `${sweep.width}px ok`
+      )
+      .join("; ")
+  );
 }
 
 /**

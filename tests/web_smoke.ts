@@ -63,6 +63,17 @@ const NAV_BURGER_SELECTOR = ".nav-burger";
 const NAV_SEARCH_SELECTOR = ".nav .search";
 const FAVICON_SELECTOR = 'link[rel~="icon"]';
 const ROOT_ATTEMPTS = 3;
+const EXPECTED_DRAWER_LABELS = [
+  "Home",
+  "Firms",
+  "Recruiting",
+  "Rankings",
+  "Advisors",
+  "Teams",
+  "Watchlists",
+  "Compliance",
+  "Sign in",
+] as const;
 
 interface RootRenderFacts {
   readonly articleCount: number;
@@ -168,8 +179,6 @@ async function smokeMobile(
     extraHTTPHeaders
   );
   const page = await mobile.newPage();
-  const drawer = page.locator(DRAWER_SELECTOR);
-  const search = page.locator(NAV_SEARCH_SELECTOR);
 
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, ARTICLE_CARD_SELECTOR);
@@ -183,53 +192,81 @@ async function smokeMobile(
   await page.locator(DRAWER_FIRMS_LINK_SELECTOR).click();
   await page.waitForURL(/\/firms$/, { timeout: QUICK_UI_TIMEOUT });
 
-  return await closeWithChecks(mobile, [
+  return await closeWithChecks(
+    mobile,
+    await mobileDrawerChecks({
+      closedMetrics,
+      drawerLinkLabels,
+      escapeResult,
+      focusChecks,
+      openMetrics,
+      page,
+    })
+  );
+}
+
+async function mobileDrawerChecks(facts: {
+  readonly closedMetrics: Awaited<ReturnType<typeof readClosedMobileMetrics>>;
+  readonly drawerLinkLabels: readonly string[];
+  readonly escapeResult: Awaited<ReturnType<typeof exerciseEscapeDismissal>>;
+  readonly focusChecks: readonly Check[];
+  readonly openMetrics: Awaited<ReturnType<typeof readOpenMobileMetrics>>;
+  readonly page: Page;
+}): Promise<readonly Check[]> {
+  return [
     check(
-      closedMetrics.searchWidth >= 220,
+      facts.closedMetrics.searchWidth >= 220,
       "mobile: search readable at 390px",
-      `width ${Math.round(closedMetrics.searchWidth)}px`
-    ),
-    check(await search.isVisible(), "mobile: search remains visible"),
-    check(
-      closedMetrics.scrollWidth <= closedMetrics.clientWidth &&
-        openMetrics.scrollWidth <= openMetrics.clientWidth,
-      "mobile: no horizontal overflow at 390px",
-      `closed ${closedMetrics.scrollWidth}/${closedMetrics.clientWidth}, open ${openMetrics.scrollWidth}/${openMetrics.clientWidth}`
+      `width ${Math.round(facts.closedMetrics.searchWidth)}px`
     ),
     check(
-      await page.locator(NAV_BURGER_SELECTOR).isVisible(),
+      await facts.page.locator(NAV_SEARCH_SELECTOR).isVisible(),
+      "mobile: search remains visible"
+    ),
+    mobileOverflowCheck(facts.closedMetrics, facts.openMetrics),
+    check(
+      await facts.page.locator(NAV_BURGER_SELECTOR).isVisible(),
       "mobile: hamburger visible"
     ),
-    check(await drawer.isVisible(), "mobile: drawer opens"),
     check(
-      !escapeResult.closed.open && escapeResult.closed.expanded === "false",
+      await facts.page.locator(DRAWER_SELECTOR).isVisible(),
+      "mobile: drawer opens"
+    ),
+    check(
+      !facts.escapeResult.closed.open &&
+        facts.escapeResult.closed.expanded === "false",
       "mobile: Escape closes drawer and resets aria-expanded"
     ),
-    ...focusChecks,
+    ...facts.focusChecks,
     check(
-      escapeResult.reopened.open && escapeResult.reopened.expanded === "true",
+      facts.escapeResult.reopened.open &&
+        facts.escapeResult.reopened.expanded === "true",
       "mobile: drawer reopens after Escape dismissal"
     ),
     check(
-      [
-        "Home",
-        "Firms",
-        "Recruiting",
-        "Rankings",
-        "Advisors",
-        "Teams",
-        "Watchlists",
-        "Compliance",
-        "Sign in",
-      ].every(label => drawerLinkLabels.includes(label)),
+      EXPECTED_DRAWER_LABELS.every(label =>
+        facts.drawerLinkLabels.includes(label)
+      ),
       "mobile: drawer links visible at 390px",
-      drawerLinkLabels.join(", ")
+      facts.drawerLinkLabels.join(", ")
     ),
     check(
-      page.url().endsWith("/firms"),
+      facts.page.url().endsWith("/firms"),
       "mobile: drawer link navigates to Firms"
     ),
-  ]);
+  ];
+}
+
+function mobileOverflowCheck(
+  closedMetrics: Awaited<ReturnType<typeof readClosedMobileMetrics>>,
+  openMetrics: Awaited<ReturnType<typeof readOpenMobileMetrics>>
+): Check {
+  return check(
+    closedMetrics.scrollWidth <= closedMetrics.clientWidth &&
+      openMetrics.scrollWidth <= openMetrics.clientWidth,
+    "mobile: no horizontal overflow at 390px",
+    `closed ${closedMetrics.scrollWidth}/${closedMetrics.clientWidth}, open ${openMetrics.scrollWidth}/${openMetrics.clientWidth}`
+  );
 }
 
 /**
