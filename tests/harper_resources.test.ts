@@ -1889,6 +1889,14 @@ describe("Harper feed and profile builders", () => {
   });
 
   it("returns due advisor research queue rows with public-safe context", async () => {
+    setRows(
+      "AdvisorResearchCheck",
+      (tableRows.get("AdvisorResearchCheck") ?? []).map(row =>
+        row.id === "research-a"
+          ? { ...row, nextCheckAfter: "2099-01-01T00:00:00Z" }
+          : row
+      )
+    );
     const payload = await new (resources as any).AdvisorResearchQueue().get(
       routeTarget("", { limit: "5", staleDays: "1" })
     );

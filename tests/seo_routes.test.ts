@@ -117,6 +117,7 @@ describe("static web route shells", () => {
     await handlers.get("/app.css")?.({}, reply);
 
     expect(headerSets[0]).toMatchObject({
+      "cache-control": "public, max-age=3600",
       "content-type": "text/css; charset=utf-8",
     });
     expect(typeof sent[0]).toBe("string");
@@ -143,6 +144,7 @@ describe("static web route shells", () => {
     await handlers.get("/favicon.ico")?.({}, reply);
 
     expect(headerSets[0]).toMatchObject({
+      "cache-control": "public, max-age=3600",
       "content-type": "image/x-icon",
     });
     expect(Buffer.isBuffer(sent[0])).toBe(true);
@@ -198,18 +200,24 @@ describe("static web route shells", () => {
       { url: "/missing.js", headers: { accept: "*/*" } },
       reply
     );
+    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
+      { url: "/missing.css?v=stale", headers: { accept: "text/html" } },
+      reply
+    );
     await notFoundHandler?.(
       { url: "/nested/missing", headers: { accept: "text/html" } },
       reply
     );
 
-    expect(statuses).toEqual([404, 404, 404, 404]);
+    expect(statuses).toEqual([404, 404, 404, 404, 404]);
     expect(headerSets[0]).toMatchObject({
+      "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8",
     });
     expect(String(sent[0])).toContain("/not-found.js");
     expect(sent[1]).toBe("Not found");
     expect(sent[2]).toBe("Not found");
-    expect(String(sent[3])).toContain("/not-found.js");
+    expect(sent[3]).toBe("Not found");
+    expect(String(sent[4])).toContain("/not-found.js");
   });
 });
