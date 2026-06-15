@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-14
+updated: 2026-06-15
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -21,6 +21,7 @@ sources:
   - ../sources/git/2026-06-12-advisory-rankings-git.md
   - ../sources/git/2026-06-13-advisory-rankings-git.md
   - ../sources/git/2026-06-14-advisory-rankings-git.md
+  - ../sources/git/2026-06-15-advisory-rankings-git.md
 ---
 
 # Git history
@@ -109,6 +110,11 @@ commits since the 2026-06-13 wiki-ingest merge cursor, bringing the branch total
 and refreshed merged PR metadata through #1239, "Fix firm profile source copy." Source:
 wiki/sources/git/2026-06-14-advisory-rankings-git.md.
 
+The 2026-06-15 git ingest ran at HEAD `0abf8f28110317b4e917241d25adc4c6e21b03a7`. It added 10
+commits since the 2026-06-14 cursor, bringing the branch total to 1623 commits, and refreshed merged
+PR metadata through #1242, "Restore root static serving." Source:
+wiki/sources/git/2026-06-15-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -183,6 +189,8 @@ wiki/sources/git/2026-06-14-advisory-rankings-git.md.
   row readability fixes, deployed feed-category token hiding, branch explorer regression coverage,
   firm branch coverage provenance/linking, browse rail alignment, and firm profile source-copy
   clarification.
+- The 2026-06-14 wiki ingest PR merged, followed by an unknown-document route recovery attempt and
+  an immediate revert that restored root static serving as the durable Fabric static-route behavior.
 
 ## Use
 
@@ -202,4 +210,5 @@ wiki/sources/git/2026-06-10-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-11-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-12-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-13-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-14-advisory-rankings-git.md.
+wiki/sources/git/2026-06-14-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-15-advisory-rankings-git.md.
