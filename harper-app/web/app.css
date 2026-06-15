@@ -915,6 +915,15 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text);
 }
 
+.regulatory-digest-limitations {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .regulatory-digest-links a {
   font-size: 13px;
   font-weight: 700;

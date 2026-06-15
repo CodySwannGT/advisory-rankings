@@ -16,6 +16,18 @@ const browserDescribe = existsSync(chromium.executablePath())
 
 const SEVERITY_ARTICLE_ID = "article-severity";
 const FIRM_CONTEXT_NAME = "Example Wealth";
+const PRIVATE_REVIEWER_NOTE = "private reviewer note";
+const PRIVATE_SUBMITTER_NOTE = "private submitter note";
+const PRIVATE_WATCHLIST_NOTE = "private watchlist note";
+const PRIVATE_RATING_REVIEW = "private rating review";
+const PRIVATE_COPY_MARKERS = [
+  PRIVATE_REVIEWER_NOTE,
+  PRIVATE_SUBMITTER_NOTE,
+  PRIVATE_WATCHLIST_NOTE,
+  PRIVATE_RATING_REVIEW,
+];
+const PRIVATE_RESOURCE_RE =
+  /\/(RegulatoryDiscrepancyQueue|UserRating|UserWatchlists|AdvisorCorrectionRequest)\b/u;
 
 browserDescribe("regulatory digest UI", () => {
   let browser: Browser;
@@ -38,6 +50,13 @@ browserDescribe("regulatory digest UI", () => {
   it("renders a ranked public digest before the compatible event list", async () => {
     const page = await browser.newPage({
       viewport: { width: 390, height: 844 },
+    });
+    const requestedPrivateResources: string[] = [];
+    page.on("request", request => {
+      const url = new URL(request.url());
+      if (PRIVATE_RESOURCE_RE.test(url.pathname)) {
+        requestedPrivateResources.push(url.pathname);
+      }
     });
     await routeAuth(page, false);
     await page.route("**/Feed**", async route => {
@@ -64,6 +83,12 @@ browserDescribe("regulatory digest UI", () => {
     expect(await digestRows.first().innerText()).toContain(
       "source published 2026-05-02"
     );
+    expect(await digestRows.nth(1).innerText()).toContain(
+      "missing details are a source limitation, not clean evidence"
+    );
+    expect(await digestRows.nth(1).innerText()).toContain(
+      "BrokerCheck context is not present in this digest row"
+    );
     expect(
       await digestRows
         .first()
@@ -82,6 +107,11 @@ browserDescribe("regulatory digest UI", () => {
         .getByRole("link", { name: "Firm profile" })
         .getAttribute("href")
     ).toContain("firm-example");
+    const bodyText = await page.locator("body").innerText();
+    for (const marker of PRIVATE_COPY_MARKERS) {
+      expect(bodyText).not.toContain(marker);
+    }
+    expect(requestedPrivateResources).toEqual([]);
     expect(
       await page.evaluate(
         () =>
@@ -149,6 +179,10 @@ function firmFeedItem(): Readonly<Record<string, unknown>> {
         damagesRequested: undefined,
         clusterId: undefined,
         sanctions: [],
+        reviewerNote: PRIVATE_REVIEWER_NOTE,
+        submitterNote: PRIVATE_SUBMITTER_NOTE,
+        watchlistNote: PRIVATE_WATCHLIST_NOTE,
+        ratingReview: PRIVATE_RATING_REVIEW,
       },
     ],
   };
@@ -197,6 +231,10 @@ function feedItem(
         damagesRequested: undefined,
         clusterId: undefined,
         sanctions,
+        reviewerNote: PRIVATE_REVIEWER_NOTE,
+        submitterNote: PRIVATE_SUBMITTER_NOTE,
+        watchlistNote: PRIVATE_WATCHLIST_NOTE,
+        ratingReview: PRIVATE_RATING_REVIEW,
       },
     ],
     advisors: [],
