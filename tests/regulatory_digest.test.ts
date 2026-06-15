@@ -10,6 +10,8 @@ import {
   regulatoryDigestItems,
 } from "../src/web/regulatory-digest.js";
 
+const FIRM_CONTEXT_NAME = "Example Wealth";
+
 describe("regulatory digest ranking", () => {
   it("orders public disclosure rows by event recency before severity signals", () => {
     const rows = regulatoryDigestItems([
@@ -48,6 +50,32 @@ describe("regulatory digest ranking", () => {
     expect(digestContext(row)).toBe("Avery Stone");
     expect(digestSourceLabel(row)).toContain("Event date 2026-04-15");
     expect(digestSourceLabel(row)).toContain("source published 2026-04-20");
+  });
+
+  it("preserves firm context when a disclosure has no advisor", () => {
+    const [row] = regulatoryDigestItems([
+      {
+        ...feedItem("firm-source", {
+          advisor: undefined,
+          dateResolved: "2026-04-01",
+        }),
+        firms: [
+          {
+            id: "firm-a",
+            kind: "firm",
+            name: FIRM_CONTEXT_NAME,
+            short: "Example",
+            logoUrl: null,
+            channel: "ria",
+            hq: "Austin, TX",
+            dissolvedYear: null,
+          },
+        ],
+      },
+    ]);
+
+    expect(row.firm?.name).toBe(FIRM_CONTEXT_NAME);
+    expect(digestContext(row)).toBe(FIRM_CONTEXT_NAME);
   });
 });
 

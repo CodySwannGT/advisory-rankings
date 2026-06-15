@@ -2,12 +2,14 @@ import type {
   ArticlePayload,
   DisclosureEventCard,
   FeedItem,
+  FirmChip,
 } from "../harper/resource-feed-types.js";
 
 /** Ranked disclosure item shown in the public regulatory digest. */
 export interface RegulatoryDigestItem {
   readonly disclosure: DisclosureEventCard;
   readonly article: ArticlePayload;
+  readonly firm: FirmChip | null;
   readonly eventDate: string | null;
   readonly severityScore: number;
   readonly sourceIndicator: string;
@@ -27,7 +29,11 @@ export function regulatoryDigestItems(
       (item.eventCards ?? [])
         .filter(isDisclosureCard)
         .map(disclosure =>
-          digestItem(disclosure, item.article ?? fallbackArticle(disclosure))
+          digestItem(
+            disclosure,
+            item.article ?? fallbackArticle(disclosure),
+            (item.firms ?? [])[0] ?? null
+          )
         )
     )
     .reduce<readonly RegulatoryDigestItem[]>(insertDigestItem, [])
@@ -54,7 +60,10 @@ export function disclosureEvents(
  */
 export function digestContext(item: RegulatoryDigestItem): string {
   return (
-    item.disclosure.advisor?.name || item.article.headline || "Regulatory event"
+    item.disclosure.advisor?.name ||
+    item.firm?.name ||
+    item.article.headline ||
+    "Regulatory event"
   );
 }
 
@@ -73,11 +82,13 @@ export function digestSourceLabel(item: RegulatoryDigestItem): string {
  * Combines one disclosure card with its article source metadata.
  * @param disclosure - Public disclosure event card.
  * @param article - Source article attached to the feed item.
+ * @param firm - First public firm chip attached to the feed item.
  * @returns Digest item with normalized date and source labels.
  */
 function digestItem(
   disclosure: DisclosureEventCard,
-  article: ArticlePayload
+  article: ArticlePayload,
+  firm: FirmChip | null
 ): RegulatoryDigestItem {
   const eventDate = displayDate(
     disclosure.dateResolved ?? disclosure.dateInitiated ?? article.publishedDate
@@ -86,6 +97,7 @@ function digestItem(
   return {
     disclosure,
     article,
+    firm,
     eventDate,
     severityScore: severityScore(disclosure),
     sourceIndicator: publishedDate

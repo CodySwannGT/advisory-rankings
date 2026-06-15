@@ -15,6 +15,7 @@ const browserDescribe = existsSync(chromium.executablePath())
   : describe.skip;
 
 const SEVERITY_ARTICLE_ID = "article-severity";
+const FIRM_CONTEXT_NAME = "Example Wealth";
 
 browserDescribe("regulatory digest UI", () => {
   let browser: Browser;
@@ -56,7 +57,7 @@ browserDescribe("regulatory digest UI", () => {
     expect(await digestRows.count()).toBe(3);
     expect(await digestRows.nth(0).innerText()).toContain("Morgan Severity");
     expect(await digestRows.nth(1).innerText()).toContain("Avery Recency");
-    expect(await digestRows.nth(2).innerText()).toContain("Casey Older");
+    expect(await digestRows.nth(2).innerText()).toContain(FIRM_CONTEXT_NAME);
     expect(await digestRows.first().innerText()).toContain(
       "Event date 2026-05-01"
     );
@@ -75,6 +76,12 @@ browserDescribe("regulatory digest UI", () => {
         .getByRole("link", { name: "Source article" })
         .getAttribute("href")
     ).toContain(SEVERITY_ARTICLE_ID);
+    expect(
+      await digestRows
+        .nth(2)
+        .getByRole("link", { name: "Firm profile" })
+        .getAttribute("href")
+    ).toContain("firm-example");
     expect(
       await page.evaluate(
         () =>
@@ -100,7 +107,49 @@ function regulatoryFeedFixture(): Readonly<Record<string, unknown>> {
           jurisdiction: "FINRA",
         },
       ]),
-      feedItem("article-older", "Casey Older", "2026-04-01", "resolved"),
+      firmFeedItem(),
+    ],
+  };
+}
+
+function firmFeedItem(): Readonly<Record<string, unknown>> {
+  return {
+    ...feedItem("article-older", "Casey Older", "2026-04-01", "resolved"),
+    firms: [
+      {
+        id: "firm-example",
+        kind: "firm",
+        name: FIRM_CONTEXT_NAME,
+        short: "Example",
+        logoUrl: null,
+        channel: "ria",
+        hq: "Austin, TX",
+        dissolvedYear: null,
+      },
+    ],
+    eventCards: [
+      {
+        kind: "disclosure",
+        disclosureId: "disc-firm-only",
+        id: "disc-firm-only",
+        advisor: undefined,
+        disclosureType: "regulatory",
+        regulator: "SEC",
+        regulatorState: undefined,
+        forum: undefined,
+        status: "resolved",
+        admitDeny: undefined,
+        dateInitiated: undefined,
+        dateResolved: "2026-04-01",
+        allegationText: `${FIRM_CONTEXT_NAME} public firm disclosure.`,
+        allegationCategories: undefined,
+        ruleViolations: undefined,
+        awardAmount: undefined,
+        settlementAmount: undefined,
+        damagesRequested: undefined,
+        clusterId: undefined,
+        sanctions: [],
+      },
     ],
   };
 }

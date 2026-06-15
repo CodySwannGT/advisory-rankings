@@ -157,6 +157,9 @@ function regulatoryDigestRow(
               "Advisor profile"
             )
           : null,
+        !disclosure.advisor && item.firm
+          ? el("a", { href: entityPath("firm", item.firm) }, "Firm profile")
+          : null,
         el("a", { href: articlePath(item.article) }, "Source article")
       )
     )
