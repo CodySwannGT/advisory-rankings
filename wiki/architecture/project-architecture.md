@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-14
+updated: 2026-06-15
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -15,6 +15,7 @@ sources:
   - ../sources/git/2026-06-12-advisory-rankings-git.md
   - ../sources/git/2026-06-13-advisory-rankings-git.md
   - ../sources/git/2026-06-14-advisory-rankings-git.md
+  - ../sources/git/2026-06-15-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -90,3 +91,8 @@ coverage provenance/linking, branch explorer regression coverage, and in-place a
 selection all landed in the window. It also records feed/source copy cleanup, research queue row
 readability fixes, browse rail alignment, and firm profile source-copy clarification. Source:
 wiki/sources/git/2026-06-14-advisory-rankings-git.md.
+
+The 2026-06-15 git ingest shows Fabric route handling returning to the post-revert root static
+serving arrangement after a brief unknown-document route recovery attempt. The runbook and
+Harper-app notes should be read with PR #1242 as the current durable state for root static serving.
+Source: wiki/sources/git/2026-06-15-advisory-rankings-git.md.
