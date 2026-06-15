@@ -4,7 +4,6 @@
 
 import type {
   DisclosureEventCard as DisclosureEventCardPayload,
-  FeedEventCard,
   FeedItem,
 } from "../harper/resource-feed-types.js";
 import {
@@ -24,8 +23,18 @@ import {
   Heading,
   DisclosureEventCard,
   clear,
+  el,
+  Tag,
 } from "./design-system/index.js";
 import { EntityRowC } from "./design-system-adapters.js";
+import {
+  digestContext,
+  digestSourceLabel,
+  disclosureEvents,
+  regulatoryDigestItems,
+  type RegulatoryDigestItem,
+} from "./regulatory-digest.js";
+import { articlePath } from "./urls.js";
 
 /** Feed payload returned by the `/Feed` resource. */
 interface FeedPayload {
@@ -49,7 +58,7 @@ function loadCompliance(center: HTMLElement, right: HTMLElement): void {
   clear(right);
   api("/Feed?mode=compliance-disclosures&limit=100")
     .then(payload => {
-      renderCompliance(disclosureEvents(payload.items ?? []), center, right);
+      renderCompliance(payload.items ?? [], center, right);
     })
     .catch((error: unknown) => {
       renderComplianceError(error, center, right);
@@ -57,46 +66,101 @@ function loadCompliance(center: HTMLElement, right: HTMLElement): void {
 }
 
 /**
- * Extracts disclosure cards from feed items.
- * @param items - Feed items with optional event cards.
- * @returns First disclosure event cards.
- */
-function disclosureEvents(
-  items: readonly FeedItem[]
-): readonly DisclosureEventCardPayload[] {
-  return items
-    .flatMap(item => (item.eventCards ?? []).filter(isDisclosureCard))
-    .slice(0, 25);
-}
-
-/**
- * Narrows a feed event card to its disclosure variant.
- * @param card - Either kind of feed event card.
- * @returns True when the card is a disclosure event.
- */
-function isDisclosureCard(
-  card: FeedEventCard
-): card is DisclosureEventCardPayload {
-  return card.kind === "disclosure";
-}
-
-/**
  * Renders the compliance page body and right rail.
- * @param disclosures - Disclosure event cards.
+ * @param items - Public feed items.
  * @param center - Main content column.
  * @param right - Right rail column.
  */
 function renderCompliance(
-  disclosures: readonly DisclosureEventCardPayload[],
+  items: readonly FeedItem[],
   center: HTMLElement,
   right: HTMLElement
 ): void {
+  const disclosures = disclosureEvents(items);
+  const digestItems = regulatoryDigestItems(items);
   const advisors = disclosures
     .filter(disclosure => disclosure.advisor)
     .slice(0, 8);
+  center.appendChild(regulatoryDigestCard(digestItems));
   center.appendChild(complianceEventsCard(disclosures));
   right.appendChild(regulatorsCard(disclosures));
   if (advisors.length) right.appendChild(advisorsCard(advisors));
+}
+
+/**
+ * Builds the ranked regulatory digest card.
+ * @param items - Ranked digest items.
+ * @returns Section card for the digest.
+ */
+function regulatoryDigestCard(
+  items: readonly RegulatoryDigestItem[]
+): HTMLElement {
+  return SectionCard({
+    title: `Regulatory digest (${items.length.toLocaleString()})`,
+    attrs: { class: "regulatory-digest-card" },
+    body: items.length
+      ? el(
+          "div",
+          { class: "regulatory-digest-list" },
+          ...items.map(regulatoryDigestRow)
+        )
+      : "No recent regulatory digest items on file.",
+  });
+}
+
+/**
+ * Builds one ranked digest row.
+ * @param item - Digest item to render.
+ * @param index - Zero-based ranking index.
+ * @returns Row element.
+ */
+function regulatoryDigestRow(
+  item: RegulatoryDigestItem,
+  index: number
+): HTMLElement {
+  const disclosure = item.disclosure;
+  const eventType = humanize(disclosure.disclosureType) || "Disclosure";
+  return el(
+    "article",
+    { class: "regulatory-digest-row" },
+    el("div", { class: "regulatory-digest-rank" }, index + 1),
+    el(
+      "div",
+      { class: "regulatory-digest-main" },
+      el(
+        "div",
+        { class: "regulatory-digest-title" },
+        Tag({ kind: "danger", children: eventType }),
+        disclosure.regulator
+          ? Tag({ kind: "default", children: humanize(disclosure.regulator) })
+          : null,
+        disclosure.status
+          ? Tag({ kind: "warn", children: humanize(disclosure.status) })
+          : null,
+        el("strong", {}, digestContext(item))
+      ),
+      el("p", { class: "regulatory-digest-meta" }, digestSourceLabel(item)),
+      disclosure.allegationText
+        ? el(
+            "p",
+            { class: "regulatory-digest-summary" },
+            disclosure.allegationText
+          )
+        : null,
+      el(
+        "div",
+        { class: "regulatory-digest-links" },
+        disclosure.advisor
+          ? el(
+              "a",
+              { href: entityPath("advisor", disclosure.advisor) },
+              "Advisor profile"
+            )
+          : null,
+        el("a", { href: articlePath(item.article) }, "Source article")
+      )
+    )
+  );
 }
 
 /**

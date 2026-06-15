@@ -848,6 +848,78 @@ body.drawer-open .nav .nav-scrim {
   font-weight: 600;
 }
 
+/* ── Public regulatory digest ───────────────────────────────── */
+
+.regulatory-digest-card .card-body {
+  display: grid;
+  gap: 10px;
+}
+
+.regulatory-digest-list {
+  display: grid;
+  gap: 10px;
+}
+
+.regulatory-digest-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-red);
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.regulatory-digest-rank {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--accent-red);
+  font-weight: 800;
+  border: 1px solid var(--border);
+}
+
+.regulatory-digest-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.regulatory-digest-title,
+.regulatory-digest-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.regulatory-digest-title strong,
+.regulatory-digest-summary {
+  overflow-wrap: anywhere;
+}
+
+.regulatory-digest-meta,
+.regulatory-digest-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.regulatory-digest-summary {
+  color: var(--text);
+}
+
+.regulatory-digest-links a {
+  font-size: 13px;
+  font-weight: 700;
+}
+
 /* ── Entity chips (advisors, firms, teams) ──────────────────── */
 
 .chip-row {
