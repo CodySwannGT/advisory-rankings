@@ -95,7 +95,6 @@ const INVALID_DETAIL_ROUTE_CHECKS: readonly InvalidDetailRouteCheck[] = [
  * routes (`/AdvisorProfile/<id>`, `/FirmProfile/<id>`, `/TeamProfile/<id>`,
  * `/ArticleView/<id>`) renders the in-app not-found shell and recovers to a
  * working public route, and that the SPA's own JSON data fetch is unaffected.
- *
  * @param page - Browser page used for scenario navigation.
  * @returns Smoke assertions for shell handoff, recovery, and JSON parity.
  */
@@ -109,7 +108,6 @@ export async function smokeInvalidDetailRecovery(
  * Recursively executes each invalid-detail route check and flattens the
  * results. Modeled after the analogous helper in `web_smoke_not_found.ts` so
  * both scenarios share the same fold-without-mutation shape.
- *
  * @param page - Browser page used for navigation.
  * @param routeChecks - Remaining route checks to run.
  * @returns Collected checks from every route scenario.
@@ -137,7 +135,6 @@ async function runRouteChecks(
  * 4. The same path probed with `Accept: application/json` still returns the
  *    JSON resource payload — the shell handoff is browser-only, so the
  *    SPA's `api()` data fetch is unchanged.
- *
  * @param page - Browser page used for navigation.
  * @param routeCheck - Resource configuration for the route under test.
  * @returns Checks for shell rendering, JSON-leak safety, recovery, and JSON
@@ -190,43 +187,65 @@ async function runRouteCheck(
   });
   await smokeWaitForSelector(page, routeCheck.destinationSelector);
 
+  return invalidDetailChecks({
+    bodyText,
+    cardText,
+    hasTitle,
+    jsonBodyText,
+    jsonContentType,
+    page,
+    routeCheck,
+  });
+}
+
+async function invalidDetailChecks(facts: {
+  readonly bodyText: string;
+  readonly cardText: string | undefined;
+  readonly hasTitle: boolean;
+  readonly jsonBodyText: string;
+  readonly jsonContentType: string;
+  readonly page: Page;
+  readonly routeCheck: InvalidDetailRouteCheck;
+}): Promise<readonly Check[]> {
   return [
     check(
-      hasTitle,
-      `invalid-detail ${routeCheck.kind}: resource-specific title rendered`
+      facts.hasTitle,
+      `invalid-detail ${facts.routeCheck.kind}: resource-specific title rendered`
     ),
     check(
-      !HTTP_VERB_RE.test(cardText || "") &&
-        !HTTP_STATUS_RE.test(cardText || ""),
-      `invalid-detail ${routeCheck.kind}: no raw backend error text in card`,
-      cardText
+      !HTTP_VERB_RE.test(facts.cardText || "") &&
+        !HTTP_STATUS_RE.test(facts.cardText || ""),
+      `invalid-detail ${facts.routeCheck.kind}: no raw backend error text in card`,
+      facts.cardText
     ),
     check(
-      !RAW_JSON_NEEDLE.test(bodyText),
-      `invalid-detail ${routeCheck.kind}: raw JSON error envelope not rendered as page body`,
-      bodyText.slice(0, 160)
+      !RAW_JSON_NEEDLE.test(facts.bodyText),
+      `invalid-detail ${facts.routeCheck.kind}: raw JSON error envelope not rendered as page body`,
+      facts.bodyText.slice(0, 160)
     ),
     check(
-      new URL(page.url()).pathname === routeCheck.destinationPath,
-      `invalid-detail ${routeCheck.kind}: recovery navigates to ${routeCheck.destinationPath}`,
-      page.url()
+      new URL(facts.page.url()).pathname === facts.routeCheck.destinationPath,
+      `invalid-detail ${facts.routeCheck.kind}: recovery navigates to ${facts.routeCheck.destinationPath}`,
+      facts.page.url()
     ),
     check(
-      (await page.locator(routeCheck.destinationSelector).count()) >= 1,
-      `invalid-detail ${routeCheck.kind}: recovery destination is interactive`
+      (await facts.page
+        .locator(facts.routeCheck.destinationSelector)
+        .count()) >= 1,
+      `invalid-detail ${facts.routeCheck.kind}: recovery destination is interactive`
     ),
     // JSON contract parity — Accept: application/json must NOT receive the
     // shell. The negotiation honors the explicit JSON Accept and the resource
     // returns its normal not-found JSON payload (or any non-HTML body).
     check(
-      !/text\/html/i.test(jsonContentType),
-      `invalid-detail ${routeCheck.kind}: api() Accept=json still receives JSON, not HTML shell`,
-      `content-type=${jsonContentType}`
+      !/text\/html/i.test(facts.jsonContentType),
+      `invalid-detail ${facts.routeCheck.kind}: api() Accept=json still receives JSON, not HTML shell`,
+      `content-type=${facts.jsonContentType}`
     ),
     check(
-      !jsonBodyText.trimStart().startsWith("<"),
-      `invalid-detail ${routeCheck.kind}: api() Accept=json response body is not HTML`,
-      jsonBodyText.slice(0, 80)
+      !facts.jsonBodyText.trimStart().startsWith("<"),
+      `invalid-detail ${facts.routeCheck.kind}: api() Accept=json response body is not HTML`,
+      facts.jsonBodyText.slice(0, 80)
     ),
   ];
 }

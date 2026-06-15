@@ -204,6 +204,18 @@ export async function smokeAdvisor(
   await shot(page, "03-advisor-cairnes");
 
   const cairnesChecks = [
+    ...(await cairnesProfileChecks(page)),
+    ...(await advisorEvidenceChecks(page)),
+    ...(await advisorCopyGuardrailChecks(page)),
+  ];
+  // CRD badge: verify on an advisor that actually has one (derived from live
+  // data). Cairnes's deployed record has no finraCrd, so asserting it on
+  // Cairnes specifically was brittle; the badge rendering is what we prove.
+  return [...cairnesChecks, await verifyCrdBadgeRenders(page)];
+}
+
+async function cairnesProfileChecks(page: Page): Promise<readonly Check[]> {
+  return [
     check(
       cleanProfilePath("advisors", page.url()),
       "advisor URL: clean /advisors/... path",
@@ -239,6 +251,14 @@ export async function smokeAdvisor(
       ),
       "advisor.html: career status flagged"
     ),
+    ...(await brokerCheckAttributionChecks(page)),
+  ];
+}
+
+async function brokerCheckAttributionChecks(
+  page: Page
+): Promise<readonly Check[]> {
+  return [
     check(
       isLocalDev || (await page.locator(".ab-source-attr").count()) >= 1,
       "advisor.html: BrokerCheck attribution footer present"
@@ -261,13 +281,7 @@ export async function smokeAdvisor(
           .count()) >= 1,
       "advisor.html: attribution links to BrokerCheck ToU"
     ),
-    ...(await advisorEvidenceChecks(page)),
-    ...(await advisorCopyGuardrailChecks(page)),
   ];
-  // CRD badge: verify on an advisor that actually has one (derived from live
-  // data). Cairnes's deployed record has no finraCrd, so asserting it on
-  // Cairnes specifically was brittle; the badge rendering is what we prove.
-  return [...cairnesChecks, await verifyCrdBadgeRenders(page)];
 }
 
 /**

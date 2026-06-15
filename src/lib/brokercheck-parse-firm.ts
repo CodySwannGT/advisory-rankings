@@ -95,23 +95,7 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
     };
   const payload = content as BrokerCheckFirmPayload;
   const bi = payload.basicInformation ?? {};
-  const firmFinraId = String(bi.firmId ?? "");
-  const addr = payload.firmAddressDetails?.officeAddress ?? {};
-  const firm = {
-    finraCrd: firmFinraId,
-    name: bi.firmName ? title(bi.firmName)?.replaceAll("Llc", "LLC") : null,
-    legalName: bi.firmName ?? null,
-    _iaFirmName: bi.iaFirmName ?? null,
-    _bdSecNumber: bi.bdSECNumber ?? null,
-    _iaSecNumber: bi.iaSECNumber ?? null,
-    secFilerId: bi.bdSECNumber ?? bi.iaSECNumber ?? null,
-    _firmType: bi.firmType ?? null,
-    _firmStatus: bi.firmStatus ?? null,
-    _finraLastApprovalDate: toIsoDate(bi.finraLastApprovalDate),
-    hqCity: title(addr.city),
-    hqState: addr.state ?? null,
-    hqCountry: addr.country ?? null,
-  };
+  const firm = parsedFirmRow(payload);
   const otherNames = [...(bi.otherNames ?? [])];
   const successions = otherNames
     .filter(
@@ -151,5 +135,30 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
       branchCount: bi.firm_branches_count ?? payload.firm_branches_count ?? 0,
       stateRegistrationCount: regs.approvedStateRegistrationCount ?? 0,
     },
+  };
+}
+
+/**
+ * Normalizes core BrokerCheck firm identity fields.
+ * @param payload - BrokerCheck firm payload.
+ * @returns Parsed firm row fields.
+ */
+function parsedFirmRow(payload: BrokerCheckFirmPayload): ParsedFirmRow {
+  const bi = payload.basicInformation ?? {};
+  const addr = payload.firmAddressDetails?.officeAddress ?? {};
+  return {
+    finraCrd: String(bi.firmId ?? ""),
+    name: bi.firmName ? title(bi.firmName)?.replaceAll("Llc", "LLC") : null,
+    legalName: bi.firmName ?? null,
+    _iaFirmName: bi.iaFirmName ?? null,
+    _bdSecNumber: bi.bdSECNumber ?? null,
+    _iaSecNumber: bi.iaSECNumber ?? null,
+    secFilerId: bi.bdSECNumber ?? bi.iaSECNumber ?? null,
+    _firmType: bi.firmType ?? null,
+    _firmStatus: bi.firmStatus ?? null,
+    _finraLastApprovalDate: toIsoDate(bi.finraLastApprovalDate),
+    hqCity: title(addr.city),
+    hqState: addr.state ?? null,
+    hqCountry: addr.country ?? null,
   };
 }

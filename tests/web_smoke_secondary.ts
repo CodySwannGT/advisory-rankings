@@ -120,41 +120,57 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
   const homeNavClass = await homeNavLink.getAttribute("class");
   await shot(page, "06-compliance");
 
+  return complianceChecks({
+    complianceCardVisible: await complianceCard.isVisible(),
+    complianceNavClass,
+    disclosureCount: await page.locator(DISCLOSURE_CARD_SELECTOR).count(),
+    homeNavClass,
+    legacyStatus: legacyResponse.status(),
+    legacyOk: legacyResponse.ok(),
+    loadErrorCount: await loadError.count(),
+    pageUrl: page.url(),
+    regulatoryDisclosureText: await regulatoryDisclosure.textContent(),
+  });
+}
+
+function complianceChecks(facts: {
+  readonly complianceCardVisible: boolean;
+  readonly complianceNavClass: string | null;
+  readonly disclosureCount: number;
+  readonly homeNavClass: string | null;
+  readonly legacyOk: boolean;
+  readonly legacyStatus: number;
+  readonly loadErrorCount: number;
+  readonly pageUrl: string;
+  readonly regulatoryDisclosureText: string | null;
+}): readonly Check[] {
   return [
     check(
-      new URL(page.url()).pathname === "/regulatory",
+      new URL(facts.pageUrl).pathname === "/regulatory",
       "regulatory: clean URL"
     ),
     check(
-      legacyResponse.ok(),
+      facts.legacyOk,
       "regulatory.html: legacy route remains compatible",
-      String(legacyResponse.status())
+      String(facts.legacyStatus)
     ),
-    check(await complianceCard.isVisible(), "regulatory: compliance card"),
+    check(facts.complianceCardVisible, "regulatory: compliance card"),
     check(
-      hasActiveClass(complianceNavClass),
+      hasActiveClass(facts.complianceNavClass),
       "regulatory: compliance nav item active",
-      complianceNavClass ?? "missing class"
+      facts.complianceNavClass ?? "missing class"
     ),
     check(
-      !hasActiveClass(homeNavClass),
+      !hasActiveClass(facts.homeNavClass),
       "regulatory: home nav item inactive",
-      homeNavClass ?? "missing class"
+      facts.homeNavClass ?? "missing class"
     ),
+    check(facts.disclosureCount >= 1, "regulatory: disclosure events rendered"),
     check(
-      (await page.locator(DISCLOSURE_CARD_SELECTOR).count()) >= 1,
-      "regulatory: disclosure events rendered"
-    ),
-    check(
-      /FINRA|regulatory|disclosure/i.test(
-        (await regulatoryDisclosure.textContent()) ?? ""
-      ),
+      /FINRA|regulatory|disclosure/i.test(facts.regulatoryDisclosureText ?? ""),
       "regulatory: event shows regulatory context"
     ),
-    check(
-      (await loadError.count()) === 0,
-      "regulatory: no compliance load error"
-    ),
+    check(facts.loadErrorCount === 0, "regulatory: no compliance load error"),
   ];
 }
 
