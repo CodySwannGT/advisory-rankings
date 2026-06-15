@@ -14,6 +14,10 @@ const FIXTURE_DIR = "tests/fixtures/firm-sources/wells-fargo";
 const SCRAPER_PATH = "src/scripts/scrape_wells_fargo.ts";
 const searchHtml = readFileSync(`${FIXTURE_DIR}/search-response.html`, "utf8");
 const branchHtml = readFileSync(`${FIXTURE_DIR}/branch-response.html`, "utf8");
+const SEARCH_URL =
+  "https://www.wellsfargo.com/locator/wellsfargoadvisors/search?zip5=10022";
+const BRANCH_URL = "https://home.wellsfargoadvisors.com/001_NYKC";
+const BUSINESS_PHONE = "6099268600";
 
 describe("Wells Fargo Advisors scraper mapping", () => {
   it("builds the public HTML locator URL used for ZIP search", () => {
@@ -54,10 +58,7 @@ describe("Wells Fargo Advisors scraper mapping", () => {
   });
 
   it("parses locator branches and branch advisor lists", () => {
-    const branches = parseWellsFargoLocatorBranches(
-      searchHtml,
-      "https://www.wellsfargo.com/locator/wellsfargoadvisors/search?zip5=10022"
-    );
+    const branches = parseWellsFargoLocatorBranches(searchHtml, SEARCH_URL);
     const advisors = parseWellsFargoBranchAdvisors(
       branchHtml,
       branches[0].branchUrl ?? "",
@@ -66,8 +67,8 @@ describe("Wells Fargo Advisors scraper mapping", () => {
 
     expect(branches[0]).toMatchObject({
       name: "WELLS FARGO ADVISORS",
-      branchUrl: "https://home.wellsfargoadvisors.com/001_NYKC",
-      phone: "6099268600",
+      branchUrl: BRANCH_URL,
+      phone: BUSINESS_PHONE,
       tollFree: "8005469094",
       fax: "6099267884",
     });
@@ -86,11 +87,66 @@ describe("Wells Fargo Advisors scraper mapping", () => {
     });
   });
 
-  it("maps advisors, branches, employment, aliases, and provenance", () => {
-    const branches = parseWellsFargoLocatorBranches(
-      searchHtml,
-      "https://www.wellsfargo.com/locator/wellsfargoadvisors/search?zip5=10022"
+  it("ignores malformed locator rows while preserving partial branches", () => {
+    const malformedHtml = `
+      <table>
+        <tr><td class="tableData">Only one cell</td></tr>
+        <tr>
+          <td class="tableData"><strong>2. </strong></td>
+          <td class="tableData">distance</td>
+          <td class="tableData">Phone: (111) 222-3333</td>
+        </tr>
+        <tr>
+          <td class="tableData">
+            <strong><a>3. Partial Branch</a></strong>
+            <div>Unknown Address</div>
+            <div>Not a city block</div>
+          </td>
+          <td class="tableData">distance</td>
+          <td class="tableData">No contact labels</td>
+        </tr>
+      </table>
+    `;
+
+    const branches = parseWellsFargoLocatorBranches(malformedHtml, SEARCH_URL);
+
+    expect(branches).toEqual([
+      {
+        branchUrl: undefined,
+        fax: undefined,
+        name: "Partial Branch",
+        phone: undefined,
+        tollFree: undefined,
+      },
+    ]);
+  });
+
+  it("filters nameless branch advisor anchors and keeps fallback metadata", () => {
+    const advisors = parseWellsFargoBranchAdvisors(
+      `<html><body><ul id="ourFAs"><li><a href="/named">Named Advisor</a></li><li><a href="/blank"> </a></li></ul></body></html>`,
+      BRANCH_URL,
+      {
+        branchUrl: BRANCH_URL,
+        name: "Fallback Branch",
+        phone: BUSINESS_PHONE,
+      }
     );
+
+    expect(advisors).toEqual([
+      {
+        advisorName: "Named Advisor",
+        advisorUrl: "https://home.wellsfargoadvisors.com/named",
+        branch: {
+          branchUrl: BRANCH_URL,
+          name: "Fallback Branch",
+          phone: BUSINESS_PHONE,
+        },
+      },
+    ]);
+  });
+
+  it("maps advisors, branches, employment, aliases, and provenance", () => {
+    const branches = parseWellsFargoLocatorBranches(searchHtml, SEARCH_URL);
     const advisors = parseWellsFargoBranchAdvisors(
       branchHtml,
       branches[0].branchUrl ?? "",
@@ -107,13 +163,13 @@ describe("Wells Fargo Advisors scraper mapping", () => {
       name: "NEW YORK Branch",
       city: "NEW YORK",
       state: "NY",
-      phone: "6099268600",
+      phone: BUSINESS_PHONE,
     });
     expect(rows.Advisor[0]).toMatchObject({
       legalName: "CHRISTOPHER COBB",
       firstName: "CHRISTOPHER",
       lastName: "COBB",
-      businessPhone: "6099268600",
+      businessPhone: BUSINESS_PHONE,
     });
     expect(rows.EmploymentHistory[0]).toMatchObject({
       roleTitle: "Financial Advisor",
@@ -124,7 +180,7 @@ describe("Wells Fargo Advisors scraper mapping", () => {
       checkedAt: CHECKED_AT,
       sourcesChecked: [
         "https://home.wellsfargoadvisors.com/christopher.cobb",
-        "https://home.wellsfargoadvisors.com/001_NYKC",
+        BRANCH_URL,
       ],
     });
   });

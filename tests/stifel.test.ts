@@ -118,4 +118,26 @@ describe("Stifel scraper mapping", () => {
     ).toEqual([]);
     expect(parseStifelSearchResults(blockedHtml, SEARCH_URL)).toEqual([]);
   });
+
+  it("skips nameless rows and preserves partial advisor details", () => {
+    const edgeHtml = searchHtml
+      .replace("Kyle Abruzzo", "   ")
+      .replace("Robert Campolongo, CFP&reg;", "Robert Campolongo")
+      .replace('href="/fa/robert-campolongo-cfp-aif?state=ny"', "")
+      .replace('src="/images/photos/robert-campolongo.jpg"', "")
+      .replace("New York, New York", "New York, District of Columbia");
+
+    const advisors = parseStifelSearchResults(edgeHtml, SEARCH_URL);
+
+    expect(advisors).toEqual([
+      expect.objectContaining({
+        advisorName: "Robert Campolongo",
+        advisorUrl: undefined,
+        city: "New York",
+        headshotUrl: undefined,
+        state: "District of Columbia",
+        tollFreePhone: undefined,
+      }),
+    ]);
+  });
 });

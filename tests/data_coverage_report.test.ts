@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildDataCoverageReport } from "../src/lib/data-coverage-report.js";
 import { renderDataCoverageReport } from "../src/lib/data-coverage-render.js";
 
@@ -27,6 +27,8 @@ const TABLE_COUNTS: Record<string, number> = {
 
 const SPARSE_ADVISOR_LABEL = "Sparse Advisor";
 const RECRUITING_GAP_HEADLINE = "Raymond James Snags $7M Team From RBC";
+const FRESH_DATE = "2026-06-14";
+const STALE_DATE = "2026-04-01";
 type SqlRow = Readonly<Record<string, unknown>>;
 
 const QUERY_FIXTURES: ReadonlyArray<
@@ -194,5 +196,112 @@ describe("data coverage report", () => {
     expect(rendered).toContain("Recruiting articles missing moves\n  none");
     expect(rendered).toContain("articles: no dated rows");
     expect(rendered).not.toContain("recruiting extraction gap:");
+  });
+
+  it("handles empty query result sets as zero coverage", async () => {
+    const report = await buildDataCoverageReport(async () => []);
+
+    expect(report.counts.Advisor).toBe(0);
+    expect(report.completeness.Advisor[0]).toMatchObject({
+      field: "legalName",
+      filled: 0,
+      total: 0,
+      pct: 0,
+    });
+    expect(report.freshness).toEqual({
+      articles: null,
+      firmSourceChecks: null,
+      transitions: null,
+    });
+    expect(renderDataCoverageReport(report, "empty-target")).toContain(
+      "Freshness warnings"
+    );
+  });
+
+  it("renders empty warnings, unknown labels, and sparse fallback labels", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00Z"));
+
+    const rendered = renderDataCoverageReport(
+      {
+        articleCategories: [{ n: 1 }],
+        completeness: {
+          Advisor: [],
+          Firm: [],
+        },
+        counts: {
+          Advisor: 0,
+          Firm: 0,
+        },
+        firmSourceCoverage: {
+          advisors: [],
+          branches: [],
+          firmAliases: [],
+          researchChecks: [],
+          sourceBackedFacts: [{ n: 2 }],
+        },
+        freshness: {
+          articles: FRESH_DATE,
+          firmSourceChecks: FRESH_DATE,
+          transitions: FRESH_DATE,
+        },
+        generatedAt: "2026-06-15T12:00:00.000Z",
+        recruitingCoverage: [],
+        sourceCounts: [{ n: 3 }],
+        sparseAdvisors: [
+          { id: "advisor-fallback", missing: 1 },
+          { id: "advisor-complete", missing: 0 },
+        ],
+        sparseFirms: [{ id: "firm-complete", missing: 0 }],
+        unextractedRecruitingArticles: [{ id: "article-without-headline" }],
+        warnings: [],
+      },
+      "fresh-target"
+    );
+
+    expect(rendered).toContain("unknown                            3");
+    expect(rendered).toContain("unknown                            1");
+    expect(rendered).toContain("advisor-fallback                   missing=1");
+    expect(rendered).not.toContain("advisor-complete");
+    expect(rendered).toContain(
+      "article-without-headline  (article-without-headline)"
+    );
+    expect(rendered).toContain("Freshness warnings\n  none");
+
+    const staleRendered = renderDataCoverageReport(
+      {
+        articleCategories: [],
+        completeness: {},
+        counts: {},
+        firmSourceCoverage: {
+          advisors: [],
+          branches: [],
+          firmAliases: [],
+          researchChecks: [],
+          sourceBackedFacts: [],
+        },
+        freshness: {
+          articles: STALE_DATE,
+          firmSourceChecks: STALE_DATE,
+          transitions: STALE_DATE,
+        },
+        generatedAt: "2026-06-15T12:00:00.000Z",
+        recruitingCoverage: [],
+        sourceCounts: [],
+        sparseAdvisors: [],
+        sparseFirms: [],
+        unextractedRecruitingArticles: [],
+        warnings: [],
+      },
+      "stale-target"
+    );
+
+    expect(staleRendered).toContain("articles: latest row is 75 days old");
+    expect(staleRendered).toContain("transitions: latest row is 75 days old");
+    expect(staleRendered).toContain(
+      "firm source checks: latest row is 75 days old"
+    );
+
+    vi.useRealTimers();
   });
 });
