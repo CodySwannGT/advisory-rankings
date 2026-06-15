@@ -16,8 +16,8 @@ const browserDescribe =
     : describe.skip;
 
 browserDescribe("regulatory digest public-data regression", () => {
-  let browser: Browser;
-  let server: Server;
+  let browser: Browser | undefined;
+  let server: Server | undefined;
   let baseUrl: string;
 
   beforeAll(async () => {
@@ -33,11 +33,18 @@ browserDescribe("regulatory digest public-data regression", () => {
   afterAll(async () => {
     await browser?.close();
     await new Promise<void>((resolveClose, rejectClose) => {
+      if (!server) {
+        resolveClose();
+        return;
+      }
       server.close(error => (error ? rejectClose(error) : resolveClose()));
     });
   });
 
   it("renders digest rows from deployed public resources on desktop and mobile", async () => {
+    if (!browser) {
+      throw new Error("Browser was not initialized");
+    }
     const desktop = await browser.newPage({
       viewport: { width: 1280, height: 900 },
     });
@@ -69,6 +76,12 @@ browserDescribe("regulatory digest public-data regression", () => {
       expect(desktopFacts.privateHrefCount).toBe(0);
       expect(desktopFacts.overflow).toBe(false);
       expect(mobileFacts.digestCount).toBeGreaterThan(0);
+      expect(mobileFacts.eventCount).toBeGreaterThan(0);
+      expect(mobileFacts.firstDigestText).toMatch(
+        /Event date|source published|source date unavailable/i
+      );
+      expect(mobileFacts.evidenceHrefs.some(isPublicEvidenceHref)).toBe(true);
+      expect(mobileFacts.privateHrefCount).toBe(0);
       expect(mobileFacts.overflow).toBe(false);
 
       console.log(
