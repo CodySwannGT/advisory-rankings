@@ -47,6 +47,21 @@ interface EventFilterResult {
   readonly url: string;
 }
 
+interface SemanticModeResult {
+  readonly allHaveCards: boolean;
+  readonly canonicalUrl: boolean;
+  readonly selectedMode: string;
+  readonly summary: string;
+  readonly summaryMatches: boolean;
+  readonly url: string;
+}
+
+interface UnsupportedModeResult {
+  readonly normalizedUrl: boolean;
+  readonly selectedMode: string;
+  readonly url: string;
+}
+
 /**
  * Checks feed filter URL state, event-backed rows, and filtered empty states.
  * @param page - Browser page already positioned on the feed.
@@ -66,6 +81,20 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
     ? await selectEmptyMoveCategory(page, emptyCategory)
     : true;
 
+  return feedFilterChecks(
+    semanticMode,
+    unsupportedMode,
+    eventFilter,
+    emptyVisible
+  );
+}
+
+function feedFilterChecks(
+  semanticMode: SemanticModeResult,
+  unsupportedMode: UnsupportedModeResult,
+  eventFilter: EventFilterResult,
+  emptyVisible: boolean
+): readonly Check[] {
   return [
     check(
       semanticMode.canonicalUrl &&
@@ -124,14 +153,7 @@ export async function smokeFeedFilters(page: Page): Promise<readonly Check[]> {
  * @param page - Browser page used for the scenario.
  * @returns Captured URL, select value, summary, and card state.
  */
-async function verifySemanticModeUrl(page: Page): Promise<{
-  readonly allHaveCards: boolean;
-  readonly canonicalUrl: boolean;
-  readonly selectedMode: string;
-  readonly summary: string;
-  readonly summaryMatches: boolean;
-  readonly url: string;
-}> {
+async function verifySemanticModeUrl(page: Page): Promise<SemanticModeResult> {
   // Test the semantic-mode canonicalization (`event-backed` → `event`) on its
   // own. Pinning it to a hardcoded `category=firm_bio` was brittle: the deployed
   // dataset has event-backed posts and firm_bio posts but none that are both, so
@@ -163,11 +185,9 @@ async function verifySemanticModeUrl(page: Page): Promise<{
  * @param page - Browser page used for the scenario.
  * @returns Captured URL and selected mode.
  */
-async function verifyUnsupportedModeUrl(page: Page): Promise<{
-  readonly normalizedUrl: boolean;
-  readonly selectedMode: string;
-  readonly url: string;
-}> {
+async function verifyUnsupportedModeUrl(
+  page: Page
+): Promise<UnsupportedModeResult> {
   await smokeGoto(
     page,
     `${BASE}/?mode=unsupported-feed-mode&category=${SEMANTIC_URL_CATEGORY}`

@@ -31,6 +31,8 @@ interface LiveFilterFacts {
   readonly urlUpdated: boolean;
 }
 
+type FilteredState = Awaited<ReturnType<typeof captureFilteredState>>;
+
 /**
  * Checks URL-backed filter controls for firm and team directories.
  * @param page - Browser page used for the directory scenario.
@@ -176,6 +178,24 @@ async function smokeTeamDirectoryFilters(
   );
   const liveFacts = await captureLiveTeamFilterFacts(page, fixture);
 
+  return teamDirectoryFilterChecks(
+    fixture,
+    filtered,
+    { wide390, wide320, emptyControlsAvailable },
+    liveFacts
+  );
+}
+
+function teamDirectoryFilterChecks(
+  fixture: TeamFixture,
+  filtered: FilteredState,
+  layout: {
+    readonly wide390: boolean;
+    readonly wide320: boolean;
+    readonly emptyControlsAvailable: boolean;
+  },
+  liveFacts: LiveFilterFacts
+): readonly Check[] {
   return [
     check(
       !fixture.currentFirmName ||
@@ -206,10 +226,16 @@ async function smokeTeamDirectoryFilters(
       "teams filters: first row links to canonical team profile",
       filtered.firstHref
     ),
-    check(!wide390, "teams filters: 390px layout has no horizontal overflow"),
-    check(!wide320, "teams filters: 320px layout has no horizontal overflow"),
     check(
-      emptyControlsAvailable,
+      !layout.wide390,
+      "teams filters: 390px layout has no horizontal overflow"
+    ),
+    check(
+      !layout.wide320,
+      "teams filters: 320px layout has no horizontal overflow"
+    ),
+    check(
+      layout.emptyControlsAvailable,
       "teams filters: empty state keeps controls available"
     ),
   ];

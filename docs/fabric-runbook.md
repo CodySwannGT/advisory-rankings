@@ -524,10 +524,11 @@ re-reads files on reload; no special handling.
 >    `POST` fails fast rather than double-applying.
 > 4. **Bundled page entries** — `bun run build` uses Bun's browser bundler to
 >    emit one JavaScript module per HTML shell entrypoint (`index.js`,
->    `regulatory.js`, `advisor.js`, and peers) instead of copying the full
->    transitive `dist/web/**` module tree. That removes the reset-prone burst of
->    separate `design-system/*.js` and helper-module requests during boot while
->    preserving the same source files and HTML entrypoint names.
+>    `login.js`, `regulatory.js`, `advisor.js`, and peers) instead of copying
+>    the full transitive `dist/web/**` module tree. That removes the
+>    reset-prone burst of separate `design-system/*.js` and helper-module
+>    requests during boot while preserving the same source files and HTML
+>    entrypoint names.
 >
 > Tempting but wrong: cache-busting the failed module via a query string —
 > blocked by the query-string caveat above, and a failed transitive import is
