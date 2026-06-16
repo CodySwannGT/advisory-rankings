@@ -209,39 +209,70 @@ function entryRow(
     note,
     moveButton(ctx, list, entry, "up", "↑", "Move up"),
     moveButton(ctx, list, entry, "down", "↓", "Move down"),
-    ButtonC({
-      variant: "neutral",
-      type: "button",
-      children: "Save note",
-      attrs: { class: "watchlist-save-note" },
-      onClick: () =>
-        void mutate(
-          ctx,
-          updateEntryBody(
-            list.id,
-            entry.advisorId,
-            entry.rank ?? 1,
-            note.value
-          ),
-          status,
-          "Could not save note"
-        ),
-    }),
-    ButtonC({
-      variant: "danger",
-      type: "button",
-      children: "Remove",
-      attrs: { class: "watchlist-remove-button" },
-      onClick: () =>
-        void mutate(
-          ctx,
-          deleteEntryBody(list.id, entry.advisorId),
-          status,
-          "Could not remove advisor"
-        ),
-    }),
+    saveNoteButton(ctx, list, entry, note, status),
+    removeEntryButton(ctx, list, entry, status),
     status
   );
+}
+
+/**
+ * Builds the save-note mutation button for a watchlist entry.
+ * @param ctx - Render context.
+ * @param list - Owning watchlist.
+ * @param entry - Entry being updated.
+ * @param note - Note input whose value will be persisted.
+ * @param status - Inline status node for mutation feedback.
+ * @returns Save-note button element.
+ */
+function saveNoteButton(
+  ctx: WatchlistRenderContext,
+  list: WatchlistView,
+  entry: WatchlistEntryView,
+  note: HTMLInputElement,
+  status: HTMLElement
+): HTMLElement {
+  return ButtonC({
+    variant: "neutral",
+    type: "button",
+    children: "Save note",
+    attrs: { class: "watchlist-save-note" },
+    onClick: () =>
+      void mutate(
+        ctx,
+        updateEntryBody(list.id, entry.advisorId, entry.rank ?? 1, note.value),
+        status,
+        "Could not save note"
+      ),
+  });
+}
+
+/**
+ * Builds the remove mutation button for a watchlist entry.
+ * @param ctx - Render context.
+ * @param list - Owning watchlist.
+ * @param entry - Entry being removed.
+ * @param status - Inline status node for mutation feedback.
+ * @returns Remove button element.
+ */
+function removeEntryButton(
+  ctx: WatchlistRenderContext,
+  list: WatchlistView,
+  entry: WatchlistEntryView,
+  status: HTMLElement
+): HTMLElement {
+  return ButtonC({
+    variant: "danger",
+    type: "button",
+    children: "Remove",
+    attrs: { class: "watchlist-remove-button" },
+    onClick: () =>
+      void mutate(
+        ctx,
+        deleteEntryBody(list.id, entry.advisorId),
+        status,
+        "Could not remove advisor"
+      ),
+  });
 }
 
 /**

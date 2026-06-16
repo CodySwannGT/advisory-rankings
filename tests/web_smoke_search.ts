@@ -29,6 +29,15 @@ interface SearchNavigationEvidence {
   readonly enterOpenedCleanPath: boolean;
   readonly enteredUrl: string;
 }
+
+interface SearchEmptyDismissEvidence {
+  readonly activeAfterEscape: number;
+  readonly activeBeforeEscape: number;
+  readonly dropdownHidden: boolean;
+  readonly emptyStateRows: number;
+  readonly emptyStateText: string;
+}
+
 const SEARCH_RESULTS_SELECTOR = "#global-search-results";
 const SEARCH_RESULT_ROWS_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-item`;
 const SEARCH_EMPTY_SELECTOR = `${SEARCH_RESULTS_SELECTOR} .gs-empty`;
@@ -362,26 +371,39 @@ async function smokeSearchEmptyAndDismissChecks(
     node.hasAttribute("hidden")
   );
 
+  return searchEmptyDismissChecks(shell, {
+    activeAfterEscape,
+    activeBeforeEscape,
+    dropdownHidden,
+    emptyStateRows,
+    emptyStateText,
+  });
+}
+
+function searchEmptyDismissChecks(
+  shell: "desktop" | "mobile",
+  facts: SearchEmptyDismissEvidence
+): readonly Check[] {
   return [
     check(
-      emptyStateRows === 0,
+      facts.emptyStateRows === 0,
       `${shell}: global search no-result query clears stale suggestion rows`
     ),
     check(
-      /No matches for/.test(emptyStateText),
+      /No matches for/.test(facts.emptyStateText),
       `${shell}: global search renders explicit empty state`,
-      emptyStateText
+      facts.emptyStateText
     ),
     check(
-      activeBeforeEscape === 1,
+      facts.activeBeforeEscape === 1,
       `${shell}: global search ArrowDown selects one suggestion before Escape`
     ),
     check(
-      dropdownHidden,
+      facts.dropdownHidden,
       `${shell}: global search Escape collapses suggestion surface`
     ),
     check(
-      activeAfterEscape === 0,
+      facts.activeAfterEscape === 0,
       `${shell}: global search Escape clears active row state`
     ),
   ];

@@ -421,6 +421,15 @@ async function runScenarios(
   page: Parameters<typeof smokeFeed>[0],
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[]> {
+  const scoped = await runScopedScenarios(browser, page, extraHTTPHeaders);
+  return scoped ?? (await runDefaultScenarios(browser, page, extraHTTPHeaders));
+}
+
+async function runScopedScenarios(
+  browser: Browser,
+  page: Parameters<typeof smokeFeed>[0],
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[] | null> {
   // SMOKE_SCOPE=core runs only the resource-backed scenarios that pass against
   // the small seeded fixture used by the PR-time local-Harper run (`test:e2e`).
   // These cover the highest-value backend-regression classes — the /Search
@@ -462,6 +471,14 @@ async function runScenarios(
   if (process.env.SMOKE_SCOPE === "coverage") {
     return await smokeCoverageDashboard(page, browser, extraHTTPHeaders);
   }
+  return null;
+}
+
+async function runDefaultScenarios(
+  browser: Browser,
+  page: Parameters<typeof smokeFeed>[0],
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
   return [
     ...(await smokeRootBootResilience(page)),
     ...(await smokeFavicon(page)),

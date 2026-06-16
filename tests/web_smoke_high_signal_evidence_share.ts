@@ -89,6 +89,22 @@ export async function captureFeedFilterUrlStateEvidence(
     shareUrl
   );
 
+  return feedFilterUrlStateChecks(
+    shareUrl,
+    category,
+    reloadMode,
+    reloadCategory,
+    restored
+  );
+}
+
+function feedFilterUrlStateChecks(
+  shareUrl: string,
+  category: string,
+  reloadMode: string,
+  reloadCategory: string,
+  restored: RestoredUrlState
+): readonly Check[] {
   return [
     check(
       shareUrl.includes("mode=event") &&

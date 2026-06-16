@@ -208,53 +208,46 @@ const runSelectedMode = async (
   log: LogFn
 ): Promise<unknown> => {
   const force = has("--force");
-  if (arg("--crd"))
-    return await fetchOneCrd(
-      client,
-      rest,
-      resolver,
-      state,
-      arg("--crd") ?? "",
-      { write, force, log }
-    );
-  if (arg("--firm-id"))
-    return await fetchOneFirm(
-      client,
-      rest,
-      resolver,
-      state,
-      arg("--firm-id") ?? "",
-      { write, force, log }
-    );
+  const crd = arg("--crd");
+  if (crd)
+    return await fetchOneCrd(client, rest, resolver, state, crd, {
+      write,
+      force,
+      log,
+    });
+  const firmId = arg("--firm-id");
+  if (firmId)
+    return await fetchOneFirm(client, rest, resolver, state, firmId, {
+      write,
+      force,
+      log,
+    });
+  const crawls = await import("./fetch_brokercheck_crawls.js");
   if (has("--enrich"))
-    return await (
-      await import("./fetch_brokercheck_crawls.js")
-    ).enrichExistingAdvisors(client, rest, resolver, state, {
+    return await crawls.enrichExistingAdvisors(client, rest, resolver, state, {
       write,
       max,
       force,
       log,
     });
-  if (arg("--search-name"))
-    return await (
-      await import("./fetch_brokercheck_crawls.js")
-    ).crawlNameSearch(
+  const searchName = arg("--search-name");
+  if (searchName)
+    return await crawls.crawlNameSearch(
       client,
       rest,
       resolver,
       state,
-      arg("--search-name") ?? "",
+      searchName,
       { write, max, force, log }
     );
-  if (arg("--firm-roster"))
-    return await (
-      await import("./fetch_brokercheck_crawls.js")
-    ).crawlFirmRoster(
+  const firmRoster = arg("--firm-roster");
+  if (firmRoster)
+    return await crawls.crawlFirmRoster(
       client,
       rest,
       resolver,
       state,
-      arg("--firm-roster") ?? "",
+      firmRoster,
       { write, max, force, log }
     );
   throw new Error(

@@ -34,6 +34,20 @@ const LOGIN_RECOVERY_COPY = "Forgot your password or cannot sign in?";
 const hasActiveClass = (className: string | null): boolean =>
   className?.split(/\s+/).includes("active") ?? false;
 
+interface WatchlistGateEvidence {
+  readonly loginCopyVisible: boolean;
+  readonly loginPath: string;
+  readonly loginRecoveryVisible: boolean;
+  readonly overflow: {
+    readonly clientWidth: number;
+    readonly scrollWidth: number;
+  };
+  readonly signInGuidanceVisible: boolean;
+  readonly signInHref: string | null;
+  readonly watchlistsHeadingVisible: boolean;
+  readonly watchlistsPath: string;
+}
+
 /**
  * Finds an article with extracted provenance and checks the detail page.
  * @param page - Browser page used for the scenario.
@@ -216,38 +230,53 @@ export async function smokeWatchlists(
     .getByRole("heading", { name: LOGIN_ACCESS_HEADING })
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "06-watchlists-login-access-path");
+  const loginPath = new URL(page.url()).pathname;
+  const loginCopyVisible = await page.getByText(LOGIN_ACCESS_COPY).isVisible();
+  const loginRecoveryVisible = await page
+    .getByText(LOGIN_RECOVERY_COPY)
+    .isVisible();
 
-  return await closeWithChecks(context, [
-    check(watchlistsPath === "/watchlists", "watchlists: clean URL"),
-    check(watchlistsHeadingVisible, "watchlists: heading visible"),
-    check(
+  return await closeWithChecks(
+    context,
+    watchlistGateChecks({
+      loginCopyVisible,
+      loginPath,
+      loginRecoveryVisible,
+      overflow,
       signInGuidanceVisible,
+      signInHref,
+      watchlistsHeadingVisible,
+      watchlistsPath,
+    })
+  );
+}
+
+function watchlistGateChecks(facts: WatchlistGateEvidence): readonly Check[] {
+  return [
+    check(facts.watchlistsPath === "/watchlists", "watchlists: clean URL"),
+    check(facts.watchlistsHeadingVisible, "watchlists: heading visible"),
+    check(
+      facts.signInGuidanceVisible,
       "watchlists: anonymous sign-in guidance visible"
     ),
     check(
-      signInHref === "/login",
+      facts.signInHref === "/login",
       "watchlists: sign-in action points to login",
-      signInHref ?? "missing href"
+      facts.signInHref ?? "missing href"
     ),
     check(
-      new URL(page.url()).pathname === "/login",
+      facts.loginPath === "/login",
       "watchlists: sign-in action opens login",
-      page.url()
+      facts.loginPath
     ),
+    check(facts.loginCopyVisible, "login: request-access guidance visible"),
+    check(facts.loginRecoveryVisible, "login: recovery guidance visible"),
     check(
-      await page.getByText(LOGIN_ACCESS_COPY).isVisible(),
-      "login: request-access guidance visible"
-    ),
-    check(
-      await page.getByText(LOGIN_RECOVERY_COPY).isVisible(),
-      "login: recovery guidance visible"
-    ),
-    check(
-      overflow.scrollWidth <= overflow.clientWidth,
+      facts.overflow.scrollWidth <= facts.overflow.clientWidth,
       "watchlists: no horizontal overflow",
-      `scrollWidth ${overflow.scrollWidth}, clientWidth ${overflow.clientWidth}`
+      `scrollWidth ${facts.overflow.scrollWidth}, clientWidth ${facts.overflow.clientWidth}`
     ),
-  ]);
+  ];
 }
 
 /**
