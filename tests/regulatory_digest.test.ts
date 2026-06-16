@@ -104,7 +104,7 @@ describe("regulatory digest ranking", () => {
     expect(digestLimitations(row)).toEqual([]);
   });
 
-  it("recognizes spaced and hyphenated public BrokerCheck cues", () => {
+  it("recognizes normalized public BrokerCheck cues", () => {
     const rows = regulatoryDigestItems([
       feedItem("spaced-broker-check", {
         allegationText: "See Broker Check summary",
@@ -114,9 +114,17 @@ describe("regulatory digest ranking", () => {
         allegationCategories: ["broker-check disclosure"],
         sanctions: [sanction("suspension")],
       }),
+      feedItem("compact-brokercheck", {
+        forum: "BROKERCHECK",
+        sanctions: [sanction("fine")],
+      }),
+      feedItem("mixed-case-brokercheck-rule", {
+        ruleViolations: ["BrokerCheck source record"],
+        sanctions: [sanction("suspension")],
+      }),
     ]);
 
-    expect(rows.map(row => digestLimitations(row))).toEqual([[], []]);
+    expect(rows.map(row => digestLimitations(row))).toEqual([[], [], [], []]);
   });
 });
 
