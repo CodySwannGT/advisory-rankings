@@ -430,6 +430,30 @@ fields plus current firm context. `q` matches team names by
 case-insensitive substring; `firm` matches the current firm id or canonical
 firm name; `serviceModel` exactly matches `service_model`.
 
+#### Team continuity timeline
+
+Public team profiles (`GET /TeamProfile/<id>`) render a continuity
+timeline from the public profile slices already exposed for the team:
+current and past `TeamMembership` rows, `TeamMetricSnapshot` rows,
+`TransitionEvent` rows, and article mentions. The timeline is a view of
+those records, not a separate persistence model.
+
+Timeline rows must identify their source class and evidence limitations:
+
+| Timeline item | Source fields | Public evidence expectation |
+|---|---|---|
+| Current roster | `currentMembers[].advisor`, `role`, `startDate` | Link the first public advisor profile when present. Label the date as the earliest available member start date and note that the roster may predate loaded records. |
+| Past roster change | `pastMembers[].advisor`, `role`, `startDate`, `endDate` | Link the public advisor profile when present. Prefer `endDate`; otherwise label the date as unavailable and use `startDate` only for ordering. |
+| Metric snapshot | `metricSnapshots[].asOf`, `aum`, `annualRevenue`, `householdCount`, `teamSize`, `sourceType` | Render source type and metric values. Do not invent a link when only profile summary fields back the snapshot. |
+| Transition | `transitions[].moveDate`, `fromFirm`, `toFirm` | Link the destination public firm profile when present. Label missing move dates as approximate ordering. |
+| Article evidence | `articles[].headline`, `publishedDate`, `category`, article slug/id | Link the public article profile when a routable article path exists. Label missing publication dates as approximate ordering. |
+
+Every row must preserve uncertainty instead of implying continuity from
+similar names alone. Date gaps, missing evidence links, and ambiguous team
+identity should be visible in row copy. The public boundary is explicit:
+team continuity rows exclude watchlists, ratings, correction internals,
+analyst discrepancy rows, reviewer notes, and authenticated raw-table data.
+
 ### 4.10 `TeamMembership`
 
 | Field | Type |
