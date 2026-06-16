@@ -207,6 +207,7 @@ Self-contained UI sections.
 | `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.ts` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |
 | `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. Reads `fmts.articleSource(article)` for the publisher chip + footer CTA, so a Morgan Stanley firm-bio post renders as "MS · Morgan Stanley" / "Read original on Morgan Stanley →" instead of falling back to "AH · AdvisorHub". |
 | `CareerTimeline({ career, fmtDate })` | Vertical timeline on advisor profile. |
+| `teamContinuityCard({ currentMembers, pastMembers, metricSnapshots, transitions, articles })` | Team profile continuity timeline. Renders public roster, metric snapshot, transition, and article evidence rows from `GET /TeamProfile/<id>`, including source-confidence copy, missing-date/evidence limitations, public advisor/firm/article links when available, and explicit private-data exclusions. |
 | `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
 | `ScrollableTable(table)` | Wraps a wide `<table>` (e.g. provenance, snapshots) in a horizontally-scrollable container so it doesn't blow out a card on mobile. |
 | `SkeletonCard()` | Loading placeholder. |
@@ -438,7 +439,7 @@ The pages have been migrated to the system:
 | `index.html` | `mountThreeColumnPage` | `FeedPostCard`, `BrowseCard`, `RollupCard`, `EntityRow`, `SectionCard` |
 | `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `Tag`, `SourceAttribution` (Career + Licenses + reviewed discrepancy notes cite FINRA BrokerCheck; evidence freshness and fact confidence panels collapse into the center column on mobile) |
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
-| `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
+| `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `teamContinuityCard`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `/rankings` (`rankings.html`) | `mountThreeColumnPage` | `SectionCard`, `ScrollableTable`, `RollupCard`, `DetailsCard`, `Tag` |
