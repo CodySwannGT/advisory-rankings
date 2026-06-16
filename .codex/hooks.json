@@ -66,6 +66,18 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.codex/hooks/lisa/shell-write-nudge.sh\"",
+            "_lisaManaged": true,
+            "_lisaId": "shell-write-nudge",
+            "statusMessage": "Checking shell write visibility"
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|apply_patch",
         "hooks": [
           {

@@ -167,6 +167,38 @@ fi
 | `tracker` | **yes** | — | Destination for ticket writes. One of `"jira"`, `"github"`, `"linear"`. Missing → fail with instruction to run the matching `/lisa:setup:*` skill. |
 | `source` | no | — | Default PRD source for batch skills (`/lisa:intake`) and arg-less single-PRD skills. One of `"notion"`, `"confluence"`, `"linear"`, `"github"`, `"jira"`. Explicit URLs/keys passed to a skill always win over `source`; this is a default, not a lock. |
 | `usage` | no | — | Optional token/cost pricing metadata consumed by the `usage-accounting` rule. Missing pricing never blocks a lifecycle flow; Lisa records token counts with `estimated_cost: null` when no trustworthy price source is configured. |
+| `wiki` | no | — | Wiki location for the `wiki-knowledge-source` rule. Omit for a local in-repo wiki (`wiki/`). See **Wiki source** below. |
+
+### Wiki source (`wiki`)
+
+Declares **where this repo's LLM Wiki lives** so the query/ingest skills can resolve and (for a remote wiki) mirror it. `wiki.source` has two shapes — **local** (`path`) and **remote** (`url`) — and the block belongs in the **consumer** repo's `.lisa.config.json`, not in `wiki/lisa-wiki.config.json` (which describes a wiki from the inside and is unavailable until a remote wiki is mirrored — chicken-and-egg). The whole `wiki` block is optional; omit it and the resolver falls back to the in-repo `wiki/` convention.
+
+```json
+// local: an explicit path (optional — equivalent to the default convention)
+"wiki": { "source": { "path": "wiki" } }
+
+// remote: mirror a separate wiki repo
+"wiki": {
+  "source": {
+    "url": "git@github.com:org/wiki.git",
+    "ref": "main",
+    "mirrorPath": ".lisa/wiki",
+    "subdir": "wiki"
+  },
+  "ttlSeconds": 300
+}
+```
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `wiki.source.path` | no | `wiki` (via convention) | **Local** wiki root, relative to the repo. The explicit form of the in-repo default. Mutually exclusive with `url`. |
+| `wiki.source.url` | no | — | Clone URL of a separate wiki repo. **Its presence selects REMOTE mode.** Mutually exclusive with `path`. |
+| `wiki.source.ref` | no | remote HEAD | Branch/ref to mirror (remote only). |
+| `wiki.source.mirrorPath` | no | `.lisa/wiki` | Where the gitignored mirror is materialized (remote only). `ensure-wiki` keeps this path gitignored automatically. |
+| `wiki.source.subdir` | no | auto | Wiki root within the cloned repo (remote only). Auto-detected as `wiki/` if present, else the repo root. |
+| `wiki.ttlSeconds` | no | `300` | Skip the refresh fetch if the mirror was synced more recently than this (remote only). |
+
+`scripts/ensure-wiki.mjs` is the single resolver (`node scripts/ensure-wiki.mjs --json` → `{mode, wikiRoot, …}`). **LOCAL** mode (no `url`) is a no-op that resolves the wiki root in precedence order `wiki.source.path` → `wikiRoot` in `wiki/lisa-wiki.config.json` → `wiki`; **REMOTE** mode (`url` set) clones-if-missing, fast-forwards when stale, and is offline-tolerant (proceeds with the existing mirror and warns rather than blocking). Callers (`lisa-wiki-query`, `lisa-wiki-ingest`) invoke it as step 0 and never hardcode `wiki/`; the freshness guarantee is the tool's, not the caller's.
 
 ### Vendor sections
 
@@ -404,9 +436,15 @@ Rules:
 
 - **Single-environment projects** (one entry in `deploy.branches`) may omit
   `deploy.order`; the derived chain is empty and the back-sync no-ops.
-- **Multi-environment projects MUST set `deploy.order`** for config-driven
-  back-sync. If it is absent, the Action fails rather than guessing the rank
-  (or the workflow wrapper must pass an explicit `chain`, which always wins).
+- **Projects whose environments all map to the same branch** (e.g.
+  `dev`/`staging`/`production` all → `main`) may also omit `deploy.order`: the
+  branches resolve to a single distinct branch, so there is nothing to back-sync
+  and the derived chain is the empty no-op. `deploy.order` is only required when
+  `deploy.branches` resolves to **more than one distinct branch**.
+- **Multi-branch projects MUST set `deploy.order`** for config-driven back-sync.
+  If `deploy.branches` resolves to more than one distinct branch and `deploy.order`
+  is absent, the Action fails rather than guessing the rank (or the workflow
+  wrapper must pass an explicit `chain`, which always wins).
 - The env-name set of `deploy.order` and `deploy.branches` **must match exactly**
   — every env in one appears in the other. A mismatch is a config error.
 
@@ -475,9 +513,12 @@ Doctor must validate config in three layers:
      and `deploy.branches`.
 
 4. **Deploy env-order correctness**
-   - When `deploy.branches` defines more than one environment but `deploy.order` is absent, `WARN`:
-     config-driven back-sync cannot derive a chain without the ranking (the wrapper must add
-     `deploy.order` or pass an explicit `chain`).
+   - When `deploy.branches` resolves to more than one **distinct** branch but `deploy.order` is
+     absent, `WARN`: config-driven back-sync cannot derive a chain without the ranking (the wrapper
+     must add `deploy.order` or pass an explicit `chain`).
+   - When `deploy.branches` defines multiple environments that all map to the **same** branch (e.g.
+     `dev`/`staging`/`production` all → `main`), `deploy.order` is **not** required — the chain is the
+     empty no-op. Do not `WARN` in this case.
    - When `deploy.order` is present but its env names do not exactly match the `deploy.branches`
      keys, `FAIL` — the derived sync-down chain would be wrong or empty.
 

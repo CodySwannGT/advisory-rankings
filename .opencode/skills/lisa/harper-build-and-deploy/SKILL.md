@@ -27,14 +27,42 @@ The CLI binary is `harper` (v5; older installs use `harperdb`). Key commands:
 In this project, dev typically runs against the component dir, e.g.
 `harper dev harper-app` (use the project's documented run command if it wraps this).
 
-## The build step (TypeScript → generated artifacts)
+## The build step (TypeScript -> generated artifacts)
 
 Harper loads JavaScript (`resources.js`) and serves static files (`web/**`). In this
-project those are **generated**, not authored:
+project those are **generated**, not authored.
 
-- **TypeScript under `src/` is source.** `bun run build` compiles it into
-  `harper-app/resources.js` and `harper-app/web/**`.
-- **Never edit `resources.js` or `web/**` directly** — change the TypeScript and
+What the build actually does:
+
+1. Compiles the TypeScript source under `src/` into deployable JavaScript.
+2. Emits `harper-app/resources.js`, the aggregate resource module loaded by the
+   `jsResource` extension.
+3. Emits per-resource modules such as `harper-app/resource-*.js` when the project
+   build splits resources for Harper's runtime loader.
+4. Copies browser/static output into `harper-app/web/**` for the `static`
+   extension to serve.
+5. Mirrors shared library output into `harper-app/lib/**` and rewrites imports
+   such as `../lib/foo.js` to `./lib/foo.js`. Fabric packages the component root
+   as a flat deploy unit, and Node resolves real paths at runtime, so imports must
+   point at files that exist inside the packaged `harper-app/` root.
+6. Adds cache-busting `?v=` query parameters to browser-module imports when the
+   project build owns web asset versioning.
+
+Generated Harper deploy artifacts usually include:
+
+- `harper-app/resources.js`
+- `harper-app/resource-*.js`
+- `harper-app/web/**`
+- `harper-app/lib/**`
+
+Every lint, format, dead-code, search, or generated-artifact guard must ignore
+those generated paths unless it is explicitly validating the build output itself.
+When a new generated path appears, add it to every relevant ignore surface in the
+same change; partial ignores fail later gates in non-obvious ways.
+
+- **TypeScript under `src/` is source.** `bun run build` produces the deployable
+  Harper assets from it.
+- **Never edit generated Harper assets directly** — change the TypeScript and
   rebuild. See [[harper-resources]] and [[harper-component-model]].
 - **Build before symlinking, packaging, or deploying `harper-app/`.** Deploying
   stale artifacts ships code that does not match `src/`.
@@ -53,8 +81,25 @@ relevant deployed or smoke path agree.
 
 ## Deploying to Fabric
 
-Fabric is Harper's distributed deploy network. Deploy packages the component and
-sends it to a target instance:
+Fabric is Harper's distributed deploy network. Lisa ships a create-only GitHub
+Actions workflow at `.github/workflows/deploy.yml` for Harper/Fabric projects. Use
+that workflow as the canonical deployment path for repositories that have adopted
+the template: it builds the project, runs `harper deploy_component` against the
+configured Fabric target, and then runs the project's smoke verification script.
+
+Required GitHub secrets:
+
+- `CLI_TARGET` or `HARPER_FABRIC_TARGET` — Fabric target URL.
+- `CLI_TARGET_USERNAME` — deploy username.
+- `CLI_TARGET_PASSWORD` — deploy password.
+
+Optional GitHub variables:
+
+- `HARPER_PROJECT` — Fabric project name; defaults to the repository name.
+- `HARPER_PACKAGE` — package path; defaults to `harper-app`.
+
+For local debugging or one-off deploys, the equivalent CLI command packages the
+component and sends it to a target instance:
 
 ```bash
 harper deploy_component \
@@ -69,10 +114,44 @@ harper deploy_component \
 
 - Omitting `package` deploys the current directory.
 - `restart=true` restarts threads after deploy so new code loads.
-- `replicated=true` replicates the deploy across all nodes in a cluster — include it
-  when targeting Fabric/a cluster.
+- `replicated=true` asks Harper/Fabric to apply the component deploy across the
+  cluster rather than only the node receiving the deploy request. Include it when
+  targeting Fabric or any clustered deployment.
 - Credentials can come from `CLI_TARGET_USERNAME` / `CLI_TARGET_PASSWORD` instead of
   inline flags — prefer that so secrets never land in shell history or tracked files.
+
+## Replication and topology
+
+Fabric is a distributed runtime: a project can run on one or more Harper nodes,
+often grouped by region or environment. Your application code is packaged as a
+component, and the data layer is replicated through Harper's database and
+clustering model.
+
+Keep these semantics separate:
+
+- **Component code replication** is controlled by deploy behavior. With
+  `replicated=true`, the deployed component package should reach the cluster nodes
+  that serve the application. Without it, you may update only the target node and
+  leave other nodes running older code.
+- **Data replication** is runtime/database behavior. Deploying code does not by
+  itself prove that existing rows, schema changes, caches, or realtime state are
+  consistent across regions or nodes.
+- **Thread restart** is local process behavior. `restart=true` reloads code after
+  the package lands; it is not a substitute for checking every node or region that
+  receives traffic.
+
+After a replicated deploy, verify from the topology the app actually uses:
+
+1. Confirm the deploy command or workflow used `replicated=true` for Fabric/cluster
+   targets.
+2. Read `harper status` or the project's Fabric status command to see the expected
+   nodes/regions.
+3. Hit the public smoke endpoint through the production route, then hit a direct
+   node or region endpoint when the project exposes one.
+4. For schema or data changes, verify a write/read path that proves the expected
+   data is visible where traffic can land.
+5. If one node serves old assets or resources, treat the deploy as incomplete even
+   when the initial target node passed smoke.
 
 ## Secrets
 
@@ -85,8 +164,11 @@ env var, which store) without recording their values.
 1. `bun run build` — produces fresh `resources.js` / `web/**`.
 2. `bun run typecheck`.
 3. The smallest relevant test command.
-4. For deploy-affecting changes, the project **smoke command** against the local or
-   deployed Harper endpoint.
+4. For deploy-affecting changes, run the create-only GitHub deploy workflow when
+   available, or manually run `harper deploy_component` plus the project **smoke
+   command** against the local or deployed Harper endpoint.
+5. For public HTTP surfaces, run the create-only ZAP baseline workflow or
+   `bash scripts/zap-baseline.sh` with `ZAP_TARGET_URL` set to the deployed app.
 
 If a verification command cannot run, report the exact command and the blocker —
 do not claim completion. When you hit a Harper/Fabric limitation or workaround,

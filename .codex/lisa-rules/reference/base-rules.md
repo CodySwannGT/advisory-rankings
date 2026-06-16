@@ -36,7 +36,7 @@ Code Quality:
 - Make atomic commits with clear conventional commit messages.
 - Create clear documentation preambles for new code. Update preambles when modifying existing code.
 - Document the "why", not the "what". Code explains what it does; documentation explains why it exists.
-- Always add new imports and their first usage in the same edit. The lint-on-edit hook runs `eslint --fix` after every Edit, which auto-removes unused imports. If you add an import in one edit and plan to use it in a second edit, the hook will strip the import before the second edit runs.
+- Always add new imports and their first usage in the same edit. The lint-on-edit hook verifies changed files after every Edit, so unused-import diagnostics should be fixed in the same edit that introduced them.
 - Add language specifiers to fenced code blocks in Markdown.
 - Use project-relative paths rather than absolute paths in documentation and Markdown.
 - Delete old code completely when replacing it. No deprecation unless specifically requested.
@@ -50,6 +50,7 @@ Git Discipline:
 - Prefix git push with `GIT_SSH_COMMAND="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=5"`.
 - Never commit directly to an environment branch (dev, staging, main).
 - Never use --no-verify or attempt to bypass a git hook.
+- When a pre-commit, pre-push, CI, or other quality gate fails, fix the root cause first: upgrade the vulnerable dependency, fix the lint/type/test failure, remove the secret, or repair the failing check. If a fix is genuinely impossible, ask the user to make the risk-acceptance decision and add a narrow, documented ignore for the specific failing rule or advisory. Never use `--no-verify`, hook environment switches, blanket ignores, or threshold reductions as a substitute for fixing the gate.
 - Never bypass branch protection. Never use `--admin`, `--force`, or any other flag to merge a PR that has failing CI checks. If CI fails, fix it. If you cannot fix it, escalate to the human. There are zero exceptions. "Green in CI" is the definition of done — not "green locally." A PR is not complete until CI passes on the actual PR branch.
 - Never stash changes you cannot commit. Either fix whatever is preventing the commit or fail out and let the human know why.
 - Never add "BREAKING CHANGE" to a commit message unless there is actually a breaking change.
