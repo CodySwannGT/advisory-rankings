@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-15
+updated: 2026-06-16
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -22,6 +22,7 @@ sources:
   - ../sources/git/2026-06-13-advisory-rankings-git.md
   - ../sources/git/2026-06-14-advisory-rankings-git.md
   - ../sources/git/2026-06-15-advisory-rankings-git.md
+  - ../sources/git/2026-06-16-advisory-rankings-git.md
 ---
 
 # Git history
@@ -115,6 +116,11 @@ commits since the 2026-06-14 cursor, bringing the branch total to 1623 commits, 
 PR metadata through #1242, "Restore root static serving." Source:
 wiki/sources/git/2026-06-15-advisory-rankings-git.md.
 
+The 2026-06-16 git ingest ran at HEAD `d9293a060de17f6b4cb17edc4c7e139853c8555d`. It added 23
+commits since the 2026-06-15 cursor, bringing the branch total to 1657 commits, and refreshed merged
+PR metadata through #1260, "fix: bundle web boot entrypoints." Source:
+wiki/sources/git/2026-06-16-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -191,6 +197,10 @@ wiki/sources/git/2026-06-15-advisory-rankings-git.md.
   clarification.
 - The 2026-06-14 wiki ingest PR merged, followed by an unknown-document route recovery attempt and
   an immediate revert that restored root static serving as the durable Fabric static-route behavior.
+- The 2026-06-15 wiki ingest PR merged after its source-note repair, followed by regulatory digest
+  ranking, evidence documentation, public/privacy regression coverage, BrokerCheck cue handling, and
+  a static reset boot fix that bundles web boot entrypoints and pins patched audit transitive
+  dependencies.
 
 ## Use
 
@@ -211,4 +221,5 @@ wiki/sources/git/2026-06-11-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-12-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-13-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-14-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-15-advisory-rankings-git.md.
+wiki/sources/git/2026-06-15-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-16-advisory-rankings-git.md.
