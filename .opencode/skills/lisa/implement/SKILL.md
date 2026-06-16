@@ -17,7 +17,7 @@ Use the team tool for the current runtime:
 - Codex: do not call `TeamCreate`; Codex does not expose that Claude tool. Use `tool_search` with a query like `multi-agent tools` to load `multi_agent_v1`, then use `multi_agent_v1.spawn_agent` for teammate delegation. Treat the first successful `spawn_agent` call as establishing team orchestration.
 - Other runtimes: use the current runtime's tool-discovery mechanism to discover and call the appropriate multi-agent/team tool.
 
-If no team creation or subagent delegation tool is available, explicitly state that team orchestration is unavailable in this runtime, continue as the lead agent, and preserve the workflow's review, verification, and task-tracking obligations locally. Every team must include the Explore agent.
+If no team creation or subagent delegation tool is available, explicitly state that team orchestration is unavailable in this runtime, continue as the lead agent, and preserve the workflow's review, verification, and task-tracking obligations locally.
 
 Until the team is established, the first Codex teammate has been spawned, or the no-team fallback has been declared, do NOT call any of: `Agent`, `TaskCreate`, `Skill` (including `lisa:tracker-read`, `lisa:jira-read-ticket`, `lisa:github-read-issue`), MCP tools (Atlassian / Linear / GitHub / Notion), `Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`. Reading the ticket, exploring the code, fetching context — every one of those is a task for the team you are about to create, not for the lead session before orchestration exists. Doing them inline is the exact bypass path that produces a 1-agent ad-hoc fix instead of a real team flow.
 
@@ -32,7 +32,7 @@ Treat the first successful lead-spawn request (or, on the Codex fallback, the fi
 
 $ARGUMENTS is either a url to a ticket containing the request, a pointer to a file containing the request, or the request in text format.
 
-The team lead does NOT read the input directly. The first task on the team's plan is "resolve the input" — assigned to a teammate, which then:
+The team lead does NOT read the input directly. The first task on the team's plan is "resolve the input" — assigned to a bounded input-resolver teammate, which then:
 
 - If it's a ticket, calls `lisa:tracker-read` (preferred — vendor-agnostic; dispatches per `.lisa.config.json` `tracker`). **Mismatch guard**: if the ticket format doesn't match the configured tracker (e.g., a GitHub URL when `tracker` is `jira`), `tracker-read` stops and reports the error — never auto-translates vendors:
   - JIRA ticket → `lisa:tracker-read` → `lisa:jira-read-ticket`
@@ -43,9 +43,23 @@ The team lead does NOT read the input directly. The first task on the team's pla
 - If it's a plain-text request, uses the provided text verbatim as the resolved input.
 - Returns the resolved input to the team lead, who then proceeds to roster selection.
 
+The input resolver is the only teammate that may be spawned before the Roster Decision exists. After it returns the resolved input, do not spawn any lifecycle, research, implementation, review, verification, or learning teammate until the Roster Decision has been recorded.
+
 ## Select the agent roster
 
-Review all available agent types listed in the Task tool's `subagent_type` options. This includes built-in agents (like `Explore`, `general-purpose`), custom agents (from `.claude/agents/`), and plugin agents (from `.claude/settings.json` `enabledPlugins`). For each agent, explain in one sentence why it IS or IS NOT relevant to this task. Then select all agents that are relevant. You MUST justify excluding an agent — inclusion is the default.
+Before spawning any teammate beyond the bounded input resolver, record a **Roster Decision** artifact. It must enumerate every agent or specialist type exposed by the current runtime's delegation tool and record one line per type:
+
+```text
+INCLUDE|EXCLUDE - <agent type> - <one-sentence reason>
+```
+
+Review all available agent types listed in the current runtime's delegation options. In Claude, this includes the Task tool's `subagent_type` options: built-in agents such as `Explore` and `general-purpose`, custom agents from `.claude/agents/`, and plugin agents from enabled plugins. In Codex, Cursor, Copilot, agy, OpenCode, or another runtime, use that runtime's tool-discovery and delegation surfaces to enumerate the equivalent available specialists. If the runtime exposes no specialist list, record that explicitly in the Roster Decision and justify the fallback agent type you will use.
+
+Persist the Roster Decision where the flow can be audited later. Prefer task-list metadata `metadata.roster` when a task list exists; otherwise write `${LISA_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}/.lisa/roster.md` or post the Roster Decision in the plan/tracker artifact the flow is already updating. The later verification/evidence step must reference the recorded artifact; absence of the artifact is a workflow failure.
+
+Inclusion is the default. You MUST justify excluding an agent. Every team must include the Explore agent, or the runtime's nearest read-only search/research equivalent; if no equivalent exists, record that gap in the Roster Decision.
+
+Do not spawn a teammate whose agent type is not included in the recorded Roster Decision. `general-purpose` is a fallback, not a default: using it requires an explicit INCLUDE line explaining why no more specific specialist fits or why the runtime exposes no specialist type. If the task changes enough that a different specialist is needed, update the Roster Decision before spawning that teammate.
 
 When deciding the agents to use, consider:
 * Before any task is implemented, the agent team must explore the codebase for relevant research (documentation, code, git history, etc) and update each task's `metadata.relevant_documentation` with the findings.
@@ -97,6 +111,17 @@ IF it is a Fix (bug), execute the Reproduce sub-flow FIRST:
    1. Write a simple API client and call the offending API
    2. Start the server on localhost and use the Playwright CLI or Chrome DevTools
 
+For any Fix flow, and for any Build flow that changes user-visible behavior, regression coverage is a required deliverable at the highest practical observation level for the reported surface. If the project has a browser, device, or end-to-end harness for that platform (for example Playwright, Maestro, Detox, Cypress, or an equivalent runtime), the task plan and definition of done MUST include a deterministic regression spec against the reported surface, using mocked or seeded data where needed. This is alongside unit or integration coverage, not a substitute for it.
+
+The team lead may not waive, defer, demote, or phrase this regression spec as "optional", "if cheap", "nice to have", or equivalent. The only permitted exits are:
+
+1. The project genuinely has no end-to-end harness for the affected platform; record the checked locations and that absence in the task metadata, PR, and work-item evidence.
+2. A genuine technical blocker prevents adding or executing the spec in this PR; before merge, create a linked build-ready follow-up ticket, reference it from the PR and source work item, and keep the current item blocked or explicitly non-terminal until that follow-up is accepted.
+
+Completion evidence for the regression spec must prove execution, not mere existence. A green CI run is insufficient unless the PR evidence includes a CI log line, reporter output, or equivalent record naming the new spec and showing that it ran and passed. Guard explicitly against `test.skip`, suite-level environment gates, shard filters, and "0 tests" passes.
+
+If the required regression spec is still in flight on an auto-merge-enabled PR, pause auto-merge or use an equivalent merge gate until the spec commit is pushed and its execution proof is available. The flow must not allow the PR to merge before this non-demotable deliverable is satisfied or formally blocked through the linked follow-up path above.
+
 Using the general-purpose agent in Team Lead session, determine how you will know that the task is fully complete. Write this as an **effective completion condition** — one an independent verifier could confirm from observed output alone, not from your assertion that it works. A strong condition has:
 
 - **One measurable end state** — a status code, an exit code, a row count, an observable UI state, an empty queue. Not "it looks right" or "the code is correct".
@@ -132,13 +157,15 @@ Every task MUST include this JSON metadata block. Do NOT omit `skills` (use `[]`
 
 Before any task is implemented, the agent team must explore the codebase for relevant research (documentation, code, git history, etc) and update each task's `metadata.relevant_documentation` with the findings.
 
+For Fix tasks and user-visible Build tasks, `testing_requirements` must include the highest-practical-observation regression requirement above, including the selected harness or the recorded absence/blocker path. The completion condition must include the proof command and the required CI execution evidence for the new spec.
+
 Each task must be reviewed by the team to make sure their verification passes.
 Each task must have their learnings reviewed by the learner subagent.
 
 Before shutting down the team, execute the Verify flow:
 
 1. Run quality gates: lint, typecheck, tests — all must pass. These are prerequisites, NOT verification.
-2. `verification-specialist`: verify locally by running the actual system and observing results (empirical proof that the change works). This is the real verification step.
+2. `verification-specialist`: verify locally by running the actual system and observing results (empirical proof that the change works). This is the real verification step. For UI-surface bugs, the proof must observe the UI surface with browser/device automation against the target environment whenever such a harness exists; unit-level or API-only proof cannot satisfy the empirical verification contract for a UI-surface defect.
 2a. **Record the verification verdict** — the independent, machine-readable proof that gates completion. The `verification-specialist` writes `${CLAUDE_PROJECT_DIR:-.}/.lisa/verification-status.json` with one entry per acceptance criterion, each carrying the proof command's observed evidence:
 
     ```json
@@ -155,7 +182,7 @@ Before shutting down the team, execute the Verify flow:
     Set `status: "pass"` only when every criterion is `pass` with real evidence (output from running the system, not a claim). The verdict must be judged by an agent that did NOT implement the change (the `verification-specialist`), never self-certified by the implementer. This is runtime scratch — it is gitignored and MUST NOT be committed (treat it like the secrets exclusion in the commit step).
 
     On Claude, the `enforce-verification-gate.sh` Stop hook reads this file and **will not let the flow stop** until it shows a terminal, all-`pass` verdict — carrying over the non-bypassable completion gate of the `/goal` primitive, but checked deterministically against real evidence rather than by a transcript-only evaluator model. If you must stop before completion (a readiness gate failed, a blocker was found, a dependency is unresolved), write the verdict with `status: "blocked"` and the reason: that records the outcome and releases the gate instead of leaving it to spin. Other harnesses fall back to this prose obligation.
-3. Write e2e test encoding the verification
+3. Write the highest-practical-observation regression test encoding the verification. For user-visible bugs or user-visible Build changes with an available browser/device/e2e harness, this means a deterministic spec on the reported surface. Prove the new spec actually executed and passed in PR CI by recording a named spec log/reporter line or equivalent execution record; green CI without that named evidence does not satisfy this step.
 4. Record Implement usage on the originating work artifact via `lisa:usage-accounting` so the work item (or other implementation-owned artifact) gains a direct `implement` usage entry in the canonical `## Lisa Usage` section. If the parent / child graph is already known, prefer `record_and_rollup` so ancestor totals refresh in the same write; otherwise still write the direct entry, and if runtime usage is unavailable, use `source: unavailable` with nullable token/cost fields instead of skipping the row.
 5. Commit ALL outstanding changes in logical batches on the branch (minus sensitive data/information) — not just changes made by the agent team. This includes pre-existing uncommitted changes that were on the branch before the plan started. Do NOT filter commits to only "task-related" files. If it shows up in git status, it gets committed (unless it contains secrets).
 6. Push the changes - if any pre-push hook blocks you, create a task for the agent team to fix the error/problem whether it was pre-existing or not
