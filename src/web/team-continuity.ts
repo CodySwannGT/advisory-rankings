@@ -35,9 +35,14 @@ interface ContinuityItem {
   readonly date?: HarperDate;
   readonly dateLimit: string;
   readonly confidence: string;
+  readonly evidence: string;
+  readonly privacy: string;
   readonly href?: string;
   readonly order: number;
 }
+
+const PUBLIC_TIMELINE_PRIVACY =
+  "Public boundary: excludes watchlists, ratings, correction internals, analyst discrepancies, reviewer notes, and authenticated raw-table data.";
 
 /**
  * Builds the unified public continuity timeline card.
@@ -96,6 +101,9 @@ function memberItems(
             "Earliest available member start date; roster may predate loaded records.",
           confidence:
             "Source confidence: public TeamProfile current member rows.",
+          evidence:
+            "Evidence link: first public advisor profile in the loaded roster.",
+          privacy: PUBLIC_TIMELINE_PRIVACY,
           href: memberHref(currentMembers[0]),
           order: 10,
         },
@@ -117,6 +125,10 @@ function memberItems(
         ? "Past-member end date."
         : "Past-member date unavailable; using start date when present.",
       confidence: "Source confidence: public TeamProfile past member row.",
+      evidence: memberHref(member)
+        ? "Evidence link: public advisor profile."
+        : "Evidence link unavailable in the public TeamProfile member row.",
+      privacy: PUBLIC_TIMELINE_PRIVACY,
       href: memberHref(member),
       order: 20,
     })),
@@ -150,6 +162,9 @@ function metricItem(snapshot: MetricSnapshotView): ContinuityItem {
       ? "Snapshot as-of date."
       : "Snapshot date unavailable; position is approximate.",
     confidence: "Source confidence: public TeamProfile metric snapshot.",
+    evidence:
+      "Evidence link unavailable; metric snapshots render from public profile summary fields.",
+    privacy: PUBLIC_TIMELINE_PRIVACY,
     order: 30,
   };
 }
@@ -174,6 +189,10 @@ function transitionItem(value: unknown): readonly ContinuityItem[] {
         ? "Recruiting transition move date."
         : "Move date unavailable; transition order is approximate.",
       confidence: "Source confidence: public TransitionEvent row.",
+      evidence: value.toFirm
+        ? "Evidence link: destination public firm profile."
+        : "Evidence link unavailable because no public destination firm is loaded.",
+      privacy: PUBLIC_TIMELINE_PRIVACY,
       href: value.toFirm
         ? `/firm.html?id=${encodeURIComponent(value.toFirm.id)}`
         : undefined,
@@ -201,7 +220,12 @@ function articleItem(value: unknown): readonly ContinuityItem[] {
         ? "Article published date."
         : "Article date unavailable; evidence order is approximate.",
       confidence: "Source confidence: public article mention.",
-      href: articlePath(value),
+      evidence:
+        articlePath(value) === "#"
+          ? "Evidence link unavailable in this public article row."
+          : "Evidence link: public article profile.",
+      privacy: PUBLIC_TIMELINE_PRIVACY,
+      href: publicHref(articlePath(value)),
       order: 50,
     },
   ];
@@ -231,7 +255,10 @@ function continuityStep(item: ContinuityItem): HTMLElement {
         title
       ),
       el("div", { class: "role" }, item.body),
-      el("div", { class: "role" }, item.confidence)
+      el("div", { class: "role" }, item.dateLimit),
+      el("div", { class: "role" }, item.confidence),
+      el("div", { class: "role" }, item.evidence),
+      el("div", { class: "role" }, item.privacy)
     )
   );
 }
@@ -266,7 +293,7 @@ function dateRank(value: HarperDate | undefined): number {
  */
 function formatItemDate(item: ContinuityItem): string {
   const date = item.date ? fmtDate(item.date, { mode: "short" }) : null;
-  return date ? `${date} · ${item.dateLimit}` : item.dateLimit;
+  return date || "Date unavailable";
 }
 
 /**
@@ -322,9 +349,19 @@ function transitionBody(transition: TransitionRow): string {
       ? `${fmtMoney(transition.productionT12)} T-12 production`
       : null,
   ].filter((part): part is string => part != null);
-  return metrics.length
+  const metricCopy = metrics.length
     ? metrics.join("; ")
     : "Transition metrics are limited to loaded public fields.";
+  return `${metricCopy}; team identity continuity is limited to the loaded public transition row and should not be inferred from similar names alone.`;
+}
+
+/**
+ * Keeps timeline links on public destinations and drops placeholder links.
+ * @param href - Candidate public href.
+ * @returns Safe public href or undefined when no public destination exists.
+ */
+function publicHref(href: string): string | undefined {
+  return href === "#" ? undefined : href;
 }
 
 /**

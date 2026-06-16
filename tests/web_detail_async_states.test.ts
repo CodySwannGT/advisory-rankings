@@ -372,10 +372,16 @@ describe("detail async states", () => {
         await timeline.getByText("Roster", { exact: true }).isVisible()
       ).toBe(true);
       expect(
-        await timeline.getByText("Metric snapshot", { exact: true }).isVisible()
+        await timeline
+          .getByText("Metric snapshot", { exact: true })
+          .first()
+          .isVisible()
       ).toBe(true);
       expect(
-        await timeline.getByText("Transition", { exact: true }).isVisible()
+        await timeline
+          .getByText("Transition", { exact: true })
+          .first()
+          .isVisible()
       ).toBe(true);
       expect(
         await timeline
@@ -385,7 +391,38 @@ describe("detail async states", () => {
       expect(
         await timeline.getByText("Source confidence").first().isVisible()
       ).toBe(true);
+      await timeline
+        .getByText("Date unavailable", { exact: true })
+        .first()
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await timeline.getByText("Past-member date unavailable").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await timeline.getByText("Evidence link unavailable").first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await timeline
+        .getByText("similar names alone", { exact: false })
+        .first()
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await timeline
+        .getByText("Public boundary: excludes watchlists", { exact: false })
+        .first()
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await timeline.locator("a[href^='/advisor'], a[href^='/firm']").count()
+      ).toBeGreaterThanOrEqual(2);
       expect(await timeline.locator(".step").count()).toBeGreaterThanOrEqual(4);
+      const bodyText = await page.locator("body").innerText();
+      for (const privateValue of [
+        "Private watchlist note",
+        "rating: 2",
+        FIRM_BIO_SUBMITTER_NOTE,
+        ANALYST_FIXTURE_EMAIL,
+        "raw_authenticated_table",
+      ]) {
+        expect(bodyText).not.toContain(privateValue);
+      }
       expect(
         await page.evaluate(
           tolerance =>
@@ -1941,7 +1978,18 @@ function teamProfile(): TeamProfileFixture {
         startDate: "2024-01-01",
       },
     ],
-    pastMembers: [],
+    pastMembers: [
+      {
+        advisor: {
+          id: "advisor-past",
+          name: "Riley Chen",
+          careerStatus: "inactive",
+        },
+        role: "client_associate",
+        startDate: null,
+        endDate: null,
+      },
+    ],
     metricSnapshots: [
       {
         asOf: "2026-05-27",
@@ -1989,6 +2037,19 @@ function teamContinuityProfile(): TeamProfileFixture {
         teamSize: 3,
         sourceType: "manual",
       },
+      {
+        asOf: null,
+        aum: null,
+        annualRevenue: null,
+        householdCount: null,
+        teamSize: null,
+        sourceType: null,
+        reviewerNote: FIRM_BIO_SUBMITTER_NOTE,
+        analystEmail: ANALYST_FIXTURE_EMAIL,
+        rawTable: "raw_authenticated_table",
+        privateWatchlistNote: "Private watchlist note",
+        privateRating: "rating: 2",
+      },
     ],
     transitions: [
       {
@@ -2010,6 +2071,17 @@ function teamContinuityProfile(): TeamProfileFixture {
         aumMoved: 1000000000,
         headcountMoved: 2,
         productionT12: 5000000,
+        deal: null,
+      },
+      {
+        id: "transition-2",
+        subject: { kind: "team", id: "team-1", name: TEAM_FIXTURE_NAME },
+        fromFirm: null,
+        toFirm: null,
+        moveDate: null,
+        aumMoved: null,
+        headcountMoved: null,
+        productionT12: null,
         deal: null,
       },
     ],
