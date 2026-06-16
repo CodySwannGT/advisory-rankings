@@ -1,6 +1,5 @@
 import { createServer, type Server } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
-import type { AddressInfo } from "node:net";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -21,8 +20,8 @@ const PRIVATE_VALUES = [
 ];
 
 describe("team continuity browser regression", () => {
-  let browser: Browser;
-  let server: Server;
+  let browser: Browser | undefined;
+  let server: Server | undefined;
   let baseUrl: string;
 
   beforeAll(async () => {
@@ -34,6 +33,9 @@ describe("team continuity browser regression", () => {
 
   afterAll(async () => {
     await browser?.close();
+    if (!server) {
+      return;
+    }
     await new Promise<void>((resolveClose, rejectClose) => {
       server.close(error => (error ? rejectClose(error) : resolveClose()));
     });
@@ -51,17 +53,20 @@ describe("team continuity browser regression", () => {
       await routePublicTeamProfile(desktop);
       await routePublicTeamProfile(mobile);
 
-      const desktopFacts = await timelineFacts(desktop, baseUrl);
-      await desktop.screenshot({
-        path: join(SHOTS, "team-continuity-regression-desktop.png"),
-        fullPage: true,
-      });
-
-      const mobileFacts = await timelineFacts(mobile, baseUrl);
-      await mobile.screenshot({
-        path: join(SHOTS, "team-continuity-regression-mobile.png"),
-        fullPage: true,
-      });
+      const [desktopFacts, mobileFacts] = await Promise.all([
+        timelineFacts(desktop, baseUrl),
+        timelineFacts(mobile, baseUrl),
+      ]);
+      await Promise.all([
+        desktop.screenshot({
+          path: join(SHOTS, "team-continuity-regression-desktop.png"),
+          fullPage: true,
+        }),
+        mobile.screenshot({
+          path: join(SHOTS, "team-continuity-regression-mobile.png"),
+          fullPage: true,
+        }),
+      ]);
 
       expect(desktopFacts.kinds).toEqual([
         "Roster",
@@ -105,7 +110,7 @@ describe("team continuity browser regression", () => {
       await desktop.close();
       await mobile.close();
     }
-  });
+  }, 60_000);
 });
 
 interface TimelineFacts {
@@ -275,7 +280,10 @@ function teamContinuityProfile() {
 }
 
 function baseUrlOf(localServer: Server): string {
-  const address = localServer.address() as AddressInfo;
+  const address = localServer.address();
+  if (!address || typeof address === "string") {
+    throw new Error("Static test server did not expose a TCP address.");
+  }
   return `http://127.0.0.1:${address.port}`;
 }
 
