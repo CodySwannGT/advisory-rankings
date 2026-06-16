@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 
 const REPO_ROOT = new URL("../", import.meta.url).pathname;
 const HARPER_APP = join(REPO_ROOT, "harper-app");
+const HARPER_WEB = join(HARPER_APP, "web");
 
 // Match any relative `from "./lib/<file>.js"` or `from "../lib/<file>.js"`
 // import. We check BOTH forms because:
@@ -46,6 +47,14 @@ const harperJsFiles = (): readonly string[] => {
     .filter(path => statSync(path).isFile());
 };
 
+const webHtmlFiles = (): readonly string[] => {
+  if (!existsSync(HARPER_WEB)) return [];
+  return readdirSync(HARPER_WEB)
+    .filter(name => name.endsWith(".html"))
+    .map(name => join(HARPER_WEB, name))
+    .filter(path => statSync(path).isFile());
+};
+
 /**
  *
  */
@@ -62,6 +71,47 @@ const libImportsIn = (file: string): readonly LibImport[] => {
     prefix: match[1],
     specifier: match[2],
   }));
+};
+
+interface ModuleEntrypoint {
+  readonly html: string;
+  readonly src: string;
+}
+
+const externalModuleEntrypointsIn = (
+  file: string
+): readonly ModuleEntrypoint[] => {
+  const source = readFileSync(file, "utf8");
+  return scriptOpenTags(source)
+    .map(tag => moduleSrc(tag))
+    .filter((src): src is string => Boolean(src?.endsWith(".js")))
+    .map(src => ({ html: file.replace(REPO_ROOT, ""), src }));
+};
+
+const scriptOpenTags = (source: string): readonly string[] =>
+  source
+    .split("<script")
+    .slice(1)
+    .map(chunk => chunk.slice(0, chunk.indexOf(">")))
+    .filter(
+      tag => tag.includes('type="module"') || tag.includes("type='module'")
+    );
+
+const moduleSrc = (tag: string): string | null => {
+  const src = quotedAttributeValue(tag, "src");
+  return src?.startsWith("/") ? src.slice(1) : null;
+};
+
+const quotedAttributeValue = (tag: string, name: string): string | null => {
+  for (const quote of ['"', "'"]) {
+    const prefix = `${name}=${quote}`;
+    const start = tag.indexOf(prefix);
+    if (start < 0) continue;
+    const valueStart = start + prefix.length;
+    const valueEnd = tag.indexOf(quote, valueStart);
+    return valueEnd < 0 ? null : tag.slice(valueStart, valueEnd);
+  }
+  return null;
 };
 
 describe("build invariant — harper-app/ lib imports must be self-contained", () => {
@@ -98,6 +148,17 @@ describe("build invariant — harper-app/ lib imports must be self-contained", (
     expect(
       missing,
       `harper-app/*.js files import lib helpers that the build forgot to ship. \`src/build/build.ts\` must copy \`dist/lib/\` → \`harper-app/lib/\` so Fabric can resolve these imports. Missing targets:\n${JSON.stringify(missing, null, 2)}`
+    ).toEqual([]);
+  });
+
+  it("ships every external web module referenced by generated HTML shells", () => {
+    const missing = webHtmlFiles()
+      .flatMap(externalModuleEntrypointsIn)
+      .filter(({ src }) => !existsSync(join(HARPER_WEB, src)));
+
+    expect(
+      missing,
+      `harper-app/web/*.html references module entrypoints that the build did not bundle into harper-app/web/. Missing targets:\n${JSON.stringify(missing, null, 2)}`
     ).toEqual([]);
   });
 });
