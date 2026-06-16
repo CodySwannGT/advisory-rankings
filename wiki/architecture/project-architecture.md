@@ -16,6 +16,7 @@ sources:
   - ../sources/git/2026-06-13-advisory-rankings-git.md
   - ../sources/git/2026-06-14-advisory-rankings-git.md
   - ../sources/git/2026-06-15-advisory-rankings-git.md
+  - ../sources/git/2026-06-16-advisory-rankings-git.md
 ---
 
 # Project architecture

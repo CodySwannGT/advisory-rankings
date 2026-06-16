@@ -12,7 +12,7 @@
     "pages": 0,
     "lastIngest": "2026-06-16"
   },
-  "sourceNote": "wiki/sources/roles/2026-06-16-roles.md",
+  "sourceNotes": ["wiki/sources/roles/2026-06-16-roles.md"],
   "safety": {
     "reviewRequired": false,
     "findings": []
