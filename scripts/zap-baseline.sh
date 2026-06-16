@@ -12,6 +12,7 @@ SCAN_TARGET_URL="$TARGET_URL"
 ZAP_RULES_FILE="${ZAP_RULES_FILE:-.zap/baseline.conf}"
 REPORT_FILE="zap-report.html"
 SERVER_PID=""
+LOCAL_HDB_ROOT=""
 
 cd "$PROJECT_ROOT"
 
@@ -41,6 +42,9 @@ cleanup() {
     echo "==> Stopping Harper app..."
     kill "$SERVER_PID" 2>/dev/null || true
   fi
+  if [ -n "${LOCAL_HDB_ROOT:-}" ]; then
+    rm -rf "$LOCAL_HDB_ROOT"
+  fi
 }
 trap cleanup EXIT
 
@@ -57,12 +61,22 @@ if [ "$should_start_local" = true ]; then
   fi
 
   echo "==> Starting Harper app locally..."
-  "$HARPER_BIN" run harper-app &
+  tmp_base="${TMPDIR:-/tmp}"
+  tmp_base="${tmp_base%/}"
+  LOCAL_HDB_ROOT="$(mktemp -d "$tmp_base/advisorbook-zap-hdb-XXXXXX")"
+  TC_AGREEMENT=yes \
+    ROOTPATH="$LOCAL_HDB_ROOT" \
+    HDB_ROOT="$LOCAL_HDB_ROOT" \
+    HDB_ADMIN_USERNAME=HDB_ADMIN \
+    HDB_ADMIN_PASSWORD=HDB_ADMIN_PASSWORD \
+    DEFAULTS_MODE=dev \
+    REPLICATION_HOSTNAME=localhost \
+    "$HARPER_BIN" run harper-app &
   SERVER_PID=$!
 
   echo "==> Waiting for Harper app..."
   retries=30
-  until curl -sf http://localhost:9926 >/dev/null 2>&1 || [ "$retries" -eq 0 ]; do
+  until curl -s -o /dev/null http://localhost:9926 || [ "$retries" -eq 0 ]; do
     retries=$((retries - 1))
     sleep 2
   done
