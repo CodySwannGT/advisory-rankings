@@ -1656,17 +1656,28 @@ body.drawer-open .nav .nav-scrim {
 }
 .timeline .step .body {
   flex: 1;
+  min-width: 0;
 }
 .timeline .step .title {
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .timeline .step .when {
   color: var(--text-muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .timeline .step .role {
   color: var(--text-muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.timeline .step .timeline-kind {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 8px;
+  text-transform: uppercase;
 }
 .timeline .step.current .marker {
   background: var(--accent-green);

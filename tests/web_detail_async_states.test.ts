@@ -42,6 +42,7 @@ const ANALYST_FIXTURE_EMAIL = "analyst@example.test";
 const FIRM_BIO_REVIEW_NOTE = "Firm bio supports the update.";
 const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
 const CORRECTION_REVIEWED_AT = "2026-06-11T12:00:00Z";
+const TEAM_FIXTURE_NAME = "Summit Wealth Team";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -234,7 +235,7 @@ describe("detail async states", () => {
         path: "/team.html?id=team-1",
         resource: "/TeamProfile/team-1",
         title: "Could not load team",
-        successText: "Summit Wealth Team",
+        successText: TEAM_FIXTURE_NAME,
         payload: teamProfile(),
       },
     ];
@@ -339,6 +340,60 @@ describe("detail async states", () => {
         firmProfileRequests.map(requestUrl => new URL(requestUrl).pathname)
       ).toEqual(["/FirmProfile/firm-1", "/FirmProfile/firm-1"]);
       expect(await page.getByText(COULD_NOT_LOAD_FIRM).count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("renders a public team continuity timeline without mobile overflow", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/TeamProfile/team-1", async route => {
+        await route.fulfill({ json: teamContinuityProfile() });
+      });
+
+      await page.goto(`${baseUrl}/team.html?id=team-1`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      const timeline = page.locator(".team-continuity-timeline");
+      await timeline.waitFor({ timeout: QUICK_TIMEOUT });
+      await page.getByText("Continuity timeline").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      expect(
+        await timeline.getByText("Roster", { exact: true }).isVisible()
+      ).toBe(true);
+      expect(
+        await timeline.getByText("Metric snapshot", { exact: true }).isVisible()
+      ).toBe(true);
+      expect(
+        await timeline.getByText("Transition", { exact: true }).isVisible()
+      ).toBe(true);
+      expect(
+        await timeline
+          .getByText("Article evidence", { exact: true })
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await timeline.getByText("Source confidence").first().isVisible()
+      ).toBe(true);
+      expect(await timeline.locator(".step").count()).toBeGreaterThanOrEqual(4);
+      expect(
+        await page.evaluate(
+          tolerance =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + tolerance,
+          LAYOUT_TOLERANCE_PX
+        )
+      ).toBe(true);
     } finally {
       await page.close();
     }
@@ -1863,7 +1918,7 @@ function teamProfile(): TeamProfileFixture {
   return {
     team: {
       id: "team-1",
-      name: "Summit Wealth Team",
+      name: TEAM_FIXTURE_NAME,
       serviceModel: "ensemble",
       firmProgram: "Private wealth",
       foundedYear: 2020,
@@ -1899,6 +1954,74 @@ function teamProfile(): TeamProfileFixture {
     ],
     transitions: [],
     articles: [],
+  };
+}
+
+function teamContinuityProfile(): TeamProfileFixture {
+  return {
+    ...teamProfile(),
+    currentMembers: [
+      {
+        advisor: {
+          id: "advisor-1",
+          name: ADVISOR_NAME,
+          careerStatus: "active",
+        },
+        role: "lead_advisor",
+        startDate: "2024-01-01",
+      },
+      {
+        advisor: {
+          id: "advisor-2",
+          name: "Jordan Lee",
+          careerStatus: "active",
+        },
+        role: "portfolio_manager",
+        startDate: "2025-02-01",
+      },
+    ],
+    metricSnapshots: [
+      {
+        asOf: "2026-05-27",
+        aum: 1000000000,
+        annualRevenue: 5000000,
+        householdCount: 120,
+        teamSize: 3,
+        sourceType: "manual",
+      },
+    ],
+    transitions: [
+      {
+        id: "transition-1",
+        subject: { kind: "team", id: "team-1", name: TEAM_FIXTURE_NAME },
+        fromFirm: {
+          id: "firm-0",
+          kind: "firm",
+          name: "Legacy Wealth LLC",
+          short: "Legacy Wealth",
+        },
+        toFirm: {
+          id: "firm-1",
+          kind: "firm",
+          name: EXAMPLE_WEALTH_SHORT,
+          short: EXAMPLE_WEALTH_SHORT,
+        },
+        moveDate: "2026-06-01",
+        aumMoved: 1000000000,
+        headcountMoved: 2,
+        productionT12: 5000000,
+        deal: null,
+      },
+    ],
+    articles: [
+      {
+        id: ARTICLE_FIXTURE_ID,
+        headline: HEADLINE_TEXT,
+        publishedDate: ARTICLE_FIXTURE_DATE,
+        category: "recruiting",
+        url: ARTICLE_FIXTURE_URL,
+      },
+    ],
   };
 }
 
