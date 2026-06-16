@@ -99,8 +99,12 @@ const scriptOpenTags = (source: string): readonly string[] =>
 
 const moduleSrc = (tag: string): string | null => {
   const src = quotedAttributeValue(tag, "src");
-  return src?.startsWith("/") ? src.slice(1) : null;
+  if (!src || !isLocalModuleSrc(src)) return null;
+  return src.startsWith("/") ? src.slice(1) : src;
 };
+
+const isLocalModuleSrc = (src: string): boolean =>
+  !src.startsWith("//") && !/^[a-z][a-z\d+.-]*:/i.test(src);
 
 const quotedAttributeValue = (tag: string, name: string): string | null => {
   for (const quote of ['"', "'"]) {
