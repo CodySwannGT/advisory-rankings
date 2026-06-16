@@ -42,6 +42,7 @@ import {
   teamProfileHead,
   transitionsCard,
 } from "./team-sections.js";
+import { teamContinuityCard } from "./team-continuity.js";
 
 /**
  * Narrow callable type for design-system helpers whose producer modules
@@ -161,6 +162,13 @@ function render(
   canonicalizeEntityRoute("team", t);
   appendSections(center, [
     teamProfileHead(t, d, currentFirm, latest),
+    teamContinuityCard({
+      currentMembers,
+      pastMembers,
+      metricSnapshots,
+      transitions,
+      articles,
+    }),
     currentMembersCard(currentMembers),
     PartialFailureCard("Current members", d.currentMembers),
     pastMembersCard(pastMembers),
