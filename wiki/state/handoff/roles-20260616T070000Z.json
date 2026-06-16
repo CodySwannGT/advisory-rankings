@@ -1,0 +1,21 @@
+{
+  "connector": "roles",
+  "profile": "project",
+  "ranAt": "2026-06-16T07:00:00.000Z",
+  "cursorBefore": {
+    "roles": 0,
+    "pages": 0,
+    "lastIngest": "2026-06-15"
+  },
+  "cursorAfter": {
+    "roles": 0,
+    "pages": 0,
+    "lastIngest": "2026-06-16"
+  },
+  "sourceNote": "wiki/sources/roles/2026-06-16-roles.md",
+  "safety": {
+    "reviewRequired": false,
+    "findings": []
+  },
+  "summary": "Roles ingest confirmed there are still no declared digital staff roles or staff pages."
+}
