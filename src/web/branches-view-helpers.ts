@@ -139,9 +139,64 @@ export const locationLabel = (row: BranchDirectoryRow): string => {
 };
 
 export const coverageLabel = (row: BranchDirectoryRow): string => {
-  if (row.coverageStatus === "loaded") return "Loaded";
-  if (row.coverageStatus === "partial") return "Partial branch coverage";
+  if (row.coverageStatus === "loaded") return "Advisor links available";
+  if (row.coverageStatus === "partial") return "Advisor links incomplete";
   return "Branch context unavailable";
+};
+
+export const branchLevelLabel = (row: BranchDirectoryRow): string => {
+  if (row.level === "market") return "Market-level aggregate";
+  if (row.level === "complex") return "Regional complex";
+  return "Branch office";
+};
+
+export const advisorCountLabel = (row: BranchDirectoryRow): string => {
+  if (row.currentAdvisorCount > 0) {
+    return `${formatInteger(row.currentAdvisorCount)} linked current advisors`;
+  }
+  if (row.level === "market") {
+    return "No linked advisors in this market aggregate yet";
+  }
+  if (row.coverageStatus === "partial") {
+    return "No linked advisors yet; coverage is still incomplete";
+  }
+  return "No linked current advisors";
+};
+
+export const branchCoverageContext = (row: BranchDirectoryRow): string => {
+  const rowKind =
+    row.level === "market"
+      ? "This is a recruiting market aggregate, not one physical office."
+      : `${branchLevelLabel(row)} row.`;
+  if (row.coverageStatus === "loaded") {
+    return `${rowKind} Advisor links are available for this row.`;
+  }
+  if (row.coverageStatus === "partial") {
+    return `${rowKind} Some advisor links are still missing from public coverage.`;
+  }
+  return `${rowKind} Firm or advisor context could not be resolved from public data.`;
+};
+
+export const branchSourceContext = (row: BranchDirectoryRow): string => {
+  const sources = row.sourceMetadata.sourceTypes.map(sourceContextLabel);
+  if (!sources.length) {
+    return "Source context: public source details are not available for this row.";
+  }
+  return `Source context: ${sources.join("; ")}.`;
+};
+
+const sourceContextLabel = (source: string): string => {
+  const known = SOURCE_CONTEXT[source];
+  if (known) return known;
+  const label = humanize(source) ?? source;
+  return `${label} public source`;
+};
+
+const SOURCE_CONTEXT: Readonly<Record<string, string>> = {
+  brokercheck: "FINRA BrokerCheck registration data",
+  edward_jones_advisor_results_api: "Edward Jones public advisor search",
+  morgan_stanley_text: "Morgan Stanley public branch text",
+  wells_fargo_locator: "Wells Fargo public branch locator",
 };
 
 export const coverageTagKind = (
