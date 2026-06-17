@@ -342,10 +342,16 @@ async function expectUniqueBranchRows(page: Page): Promise<void> {
  * @param page - Browser page under test.
  */
 async function expectRawPipelineLabelsHidden(page: Page): Promise<void> {
-  const bodyText = await page.locator("body").innerText();
-  expect(bodyText).not.toContain("PARTIAL BRANCH COVERAGE");
-  expect(bodyText).not.toContain("BROKERCHECK");
-  expect(bodyText).not.toContain("EDWARD JONES ADVISOR RESULTS API");
+  const rawPipelineLabels = [
+    "PARTIAL BRANCH COVERAGE",
+    "EDWARD JONES ADVISOR RESULTS API",
+    "WELLS_FARGO_LOCATOR",
+  ];
+  const bodyText = (await page.locator("body").innerText()).toLowerCase();
+  for (const label of rawPipelineLabels) {
+    expect(bodyText).not.toContain(label.toLowerCase());
+  }
+  expect(await page.locator("body").innerText()).not.toContain("BROKERCHECK");
 }
 
 /**

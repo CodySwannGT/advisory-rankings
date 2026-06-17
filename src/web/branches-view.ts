@@ -254,9 +254,18 @@ const coverageLegendCard = (): HTMLElement => {
     body: el(
       "div",
       { class: "branches-legend" },
-      legendRow("Loaded", "Firm and active advisor links are present."),
-      legendRow("Partial", "Branch exists, but advisor linkage is incomplete."),
-      legendRow("Unavailable", "Firm context could not be resolved.")
+      legendRow(
+        "Advisor links available",
+        "Firm and active advisor links are present."
+      ),
+      legendRow(
+        "Advisor links incomplete",
+        "Branch exists, but advisor linkage is incomplete."
+      ),
+      legendRow(
+        "Branch context unavailable",
+        "Firm context could not be resolved."
+      )
     ),
   });
 };
