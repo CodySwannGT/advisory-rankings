@@ -60,15 +60,21 @@ function localAdminPassword(): string {
 export function harperConfig(
   env: NodeJS.ProcessEnv = currentEnv()
 ): HarperConfig {
-  const creds = loadCreds(env);
+  const needsFabricCreds =
+    env.HDB_TARGET_URL === undefined ||
+    env.HDB_ADMIN_USERNAME === undefined ||
+    env.HDB_ADMIN_PASSWORD === undefined;
+  const creds = needsFabricCreds ? loadCreds(env) : undefined;
   const target = stripTrailingSlashes(
-    env.HDB_TARGET_URL ?? defaultOperationsTarget(creds.clusterUrl)
+    env.HDB_TARGET_URL !== undefined
+      ? env.HDB_TARGET_URL
+      : defaultOperationsTarget(creds?.clusterUrl)
   );
   const hdbRoot = env.HDB_ROOT ?? `${env.HOME}/.harperdb`;
   const socket = `${hdbRoot}/operations-server`;
-  const user = env.HDB_ADMIN_USERNAME ?? creds.username ?? "admin";
+  const user = env.HDB_ADMIN_USERNAME ?? creds?.username ?? "admin";
   const password =
-    env.HDB_ADMIN_PASSWORD ?? creds.password ?? localAdminPassword();
+    env.HDB_ADMIN_PASSWORD ?? creds?.password ?? localAdminPassword();
   const auth = Buffer.from(`${user}:${password}`).toString("base64");
   return { target, socket, auth };
 }

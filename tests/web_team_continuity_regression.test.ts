@@ -8,9 +8,11 @@ const WEB_ROOT = resolve("harper-app/web");
 const SHOTS = resolve("tests/screenshots");
 const REGRESSION_TIMEOUT = 5_000;
 const TEAM_FIXTURE_ID = "team-continuity-regression";
+const TEAM_FIXTURE_NAME = "Summit Wealth Team";
 const CURRENT_FIRM_ID = "firm-1";
 const CURRENT_FIRM_NAME = "Example Wealth";
 const ACTIVE_CAREER_STATUS = "active";
+const METRIC_SNAPSHOT_KIND = "Metric snapshot";
 const PRIVATE_VALUES = [
   "Private watchlist note",
   "rating: 2",
@@ -29,7 +31,7 @@ describe("team continuity browser regression", () => {
     baseUrl = baseUrlOf(server);
     browser = await chromium.launch({ headless: true });
     await mkdir(SHOTS, { recursive: true });
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await browser?.close();
@@ -71,10 +73,10 @@ describe("team continuity browser regression", () => {
       expect(desktopFacts.kinds).toEqual([
         "Roster",
         "Roster change",
-        "Metric snapshot",
+        METRIC_SNAPSHOT_KIND,
         "Article evidence",
         "Transition",
-        "Metric snapshot",
+        METRIC_SNAPSHOT_KIND,
       ]);
       expect(desktopFacts.firstRow).toContain(
         "Current roster: Avery Stone, Jordan Lee"
@@ -111,6 +113,47 @@ describe("team continuity browser regression", () => {
       await mobile.close();
     }
   }, 60_000);
+
+  it("keeps sparse public continuity rows readable without placeholder links", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+
+    try {
+      await routePublicTeamProfile(page, sparsePublicTeamProfile());
+
+      const facts = await timelineFacts(page, baseUrl);
+
+      expect(facts.kinds).toEqual([
+        "Roster change",
+        METRIC_SNAPSHOT_KIND,
+        "Transition",
+        "Article evidence",
+      ]);
+      expect(facts.timelineText).toContain(
+        "Continuity article without a public URL"
+      );
+      expect(facts.timelineText).toContain("Evidence link unavailable");
+      expect(facts.timelineText).toContain("Move date unavailable");
+      expect(facts.publicHrefs).toEqual([
+        "/advisor.html?id=advisor-undated",
+        "/articles/continuity-article-without-a-public-url-article-without-url",
+      ]);
+      expect(facts.publicHrefs.some(href => href.startsWith("/firm"))).toBe(
+        false
+      );
+      expect(facts.privateLeakCount).toBe(0);
+      expect(facts.hasOverflow).toBe(false);
+      expect(facts.unavailableDateCount).toBe(4);
+
+      console.log(
+        "[EVIDENCE: sparse-team-continuity-browser-regression]",
+        JSON.stringify(facts)
+      );
+    } finally {
+      await page.close();
+    }
+  }, 60_000);
 });
 
 interface TimelineFacts {
@@ -120,14 +163,18 @@ interface TimelineFacts {
   readonly privateLeakCount: number;
   readonly publicHrefs: readonly string[];
   readonly timelineText: string;
+  readonly unavailableDateCount: number;
 }
 
-async function routePublicTeamProfile(page: Page): Promise<void> {
+async function routePublicTeamProfile(
+  page: Page,
+  profile: unknown = teamContinuityProfile()
+): Promise<void> {
   await page.route("**/Me", async route => {
     await route.fulfill({ json: { authenticated: false } });
   });
   await page.route(`**/TeamProfile/${TEAM_FIXTURE_ID}`, async route => {
-    await route.fulfill({ json: teamContinuityProfile() });
+    await route.fulfill({ json: profile });
   });
 }
 
@@ -165,6 +212,11 @@ async function timelineFacts(
         .length,
       publicHrefs,
       timelineText: timeline?.textContent?.trim() ?? "",
+      unavailableDateCount: steps.filter(
+        step =>
+          step.querySelector(".when")?.textContent?.trim() ===
+          "Date unavailable"
+      ).length,
     };
   }, PRIVATE_VALUES);
 }
@@ -173,7 +225,7 @@ function teamContinuityProfile() {
   return {
     team: {
       id: TEAM_FIXTURE_ID,
-      name: "Summit Wealth Team",
+      name: TEAM_FIXTURE_NAME,
       serviceModel: "ensemble",
       firmProgram: "Private wealth",
       foundedYear: 2020,
@@ -246,7 +298,7 @@ function teamContinuityProfile() {
         subject: {
           kind: "team",
           id: TEAM_FIXTURE_ID,
-          name: "Summit Wealth Team",
+          name: TEAM_FIXTURE_NAME,
         },
         fromFirm: {
           id: "firm-0",
@@ -274,6 +326,61 @@ function teamContinuityProfile() {
         publishedDate: "2026-01-15",
         category: "recruiting",
         url: "https://example.com/article-1",
+      },
+    ],
+  };
+}
+
+function sparsePublicTeamProfile() {
+  return {
+    ...teamContinuityProfile(),
+    currentMembers: [],
+    pastMembers: [
+      {
+        advisor: {
+          id: "advisor-undated",
+          name: "No Date Advisor",
+          careerStatus: ACTIVE_CAREER_STATUS,
+        },
+        role: null,
+        startDate: null,
+        endDate: null,
+      },
+    ],
+    metricSnapshots: [
+      {
+        asOf: null,
+        aum: null,
+        annualRevenue: null,
+        householdCount: null,
+        teamSize: null,
+        sourceType: null,
+      },
+    ],
+    transitions: [
+      {
+        id: "transition-without-public-firm",
+        subject: {
+          kind: "team",
+          id: TEAM_FIXTURE_ID,
+          name: "Summit Wealth Team",
+        },
+        fromFirm: null,
+        toFirm: null,
+        moveDate: null,
+        aumMoved: null,
+        headcountMoved: null,
+        productionT12: null,
+        deal: null,
+      },
+    ],
+    articles: [
+      {
+        id: "article-without-url",
+        headline: "Continuity article without a public URL",
+        publishedDate: null,
+        category: null,
+        url: null,
       },
     ],
   };
