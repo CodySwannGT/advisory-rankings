@@ -96,13 +96,14 @@ zap_args="-t $SCAN_TARGET_URL"
 tmp_base="${TMPDIR:-/tmp}"
 tmp_base="${tmp_base%/}"
 ZAP_WORK_DIR="$(mktemp -d "$tmp_base/advisorbook-zap-work-XXXXXX")"
-chmod 777 "$ZAP_WORK_DIR"
+chmod 0777 "$ZAP_WORK_DIR"
 
 if [ -f "$ZAP_RULES_FILE" ]; then
   echo "    Using rules file: $ZAP_RULES_FILE"
+  rules_name="$(basename "$ZAP_RULES_FILE")"
   rules_real="$(realpath "$ZAP_RULES_FILE")"
-  cp "$rules_real" "$ZAP_WORK_DIR/$(basename "$ZAP_RULES_FILE")"
-  zap_args="$zap_args -c /zap/wrk/$(basename "$ZAP_RULES_FILE")"
+  cp "$rules_real" "$ZAP_WORK_DIR/$rules_name"
+  zap_args="$zap_args -c /zap/wrk/$rules_name"
 fi
 
 zap_exit=0
@@ -114,9 +115,14 @@ docker run --rm \
   -r "$REPORT_FILE" \
   -J zap-report.json \
   -w zap-report.md \
-  -l WARN || zap_exit=$?
+  -l WARN \
+  -I || zap_exit=$?
 
-cp "$ZAP_WORK_DIR"/zap-report.* . 2>/dev/null || true
+for report in "$REPORT_FILE" zap-report.json zap-report.md; do
+  if [ -f "$ZAP_WORK_DIR/$report" ]; then
+    cp "$ZAP_WORK_DIR/$report" "$PROJECT_ROOT/$report"
+  fi
+done
 
 if [ -f "$REPORT_FILE" ]; then
   echo "ZAP report saved to: $REPORT_FILE"

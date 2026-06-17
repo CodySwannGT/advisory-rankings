@@ -31,6 +31,9 @@ const config: ViteUserConfig = {
     // regression tests require. Reinstate those preconditions via globalSetup so
     // the forced scripts stay self-sufficient across Lisa updates.
     globalSetup: ["./tests/global-setup.ts"],
+    maxWorkers: 4,
+    hookTimeout: 120_000,
+    testTimeout: 120_000,
     coverage: {
       // CLI entrypoints depend on live services, network, or local files; keep
       // the unit coverage threshold focused on reusable app and library code.

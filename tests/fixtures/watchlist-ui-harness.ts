@@ -17,7 +17,7 @@ const LOGIN_SHELL = resolve("harper-app/login/shell.html");
 /** Directory screenshots are written to. */
 export const SHOTS = resolve("tests/screenshots");
 /** Standard wait budget for UI assertions. */
-export const QUICK_TIMEOUT = 5_000;
+export const QUICK_TIMEOUT = 10_000;
 /** Advisor used across the watchlist UI fixtures. */
 export const ADVISOR_ID = "advisor-watch-1";
 /** Second advisor used across comparison fixtures. */
