@@ -60,6 +60,7 @@ function localAdminPassword(): string {
 export function harperConfig(
   env: NodeJS.ProcessEnv = currentEnv()
 ): HarperConfig {
+  // Empty HDB_* values are explicit local-mode settings in test and shell flows.
   const needsFabricCreds =
     env.HDB_TARGET_URL === undefined ||
     env.HDB_ADMIN_USERNAME === undefined ||

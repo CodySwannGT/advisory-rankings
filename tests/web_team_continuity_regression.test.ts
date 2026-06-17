@@ -166,9 +166,11 @@ interface TimelineFacts {
   readonly unavailableDateCount: number;
 }
 
+type TeamProfileFixture = ReturnType<typeof teamContinuityProfile>;
+
 async function routePublicTeamProfile(
   page: Page,
-  profile: unknown = teamContinuityProfile()
+  profile: TeamProfileFixture = teamContinuityProfile()
 ): Promise<void> {
   await page.route("**/Me", async route => {
     await route.fulfill({ json: { authenticated: false } });
@@ -331,7 +333,7 @@ function teamContinuityProfile() {
   };
 }
 
-function sparsePublicTeamProfile() {
+function sparsePublicTeamProfile(): TeamProfileFixture {
   return {
     ...teamContinuityProfile(),
     currentMembers: [],
@@ -363,7 +365,7 @@ function sparsePublicTeamProfile() {
         subject: {
           kind: "team",
           id: TEAM_FIXTURE_ID,
-          name: "Summit Wealth Team",
+          name: TEAM_FIXTURE_NAME,
         },
         fromFirm: null,
         toFirm: null,
