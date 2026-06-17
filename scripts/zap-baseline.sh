@@ -13,6 +13,7 @@ ZAP_RULES_FILE="${ZAP_RULES_FILE:-.zap/baseline.conf}"
 REPORT_FILE="zap-report.html"
 SERVER_PID=""
 LOCAL_HDB_ROOT=""
+ZAP_WORK_DIR=""
 
 cd "$PROJECT_ROOT"
 
@@ -44,6 +45,9 @@ cleanup() {
   fi
   if [ -n "${LOCAL_HDB_ROOT:-}" ]; then
     rm -rf "$LOCAL_HDB_ROOT"
+  fi
+  if [ -n "${ZAP_WORK_DIR:-}" ]; then
+    rm -rf "$ZAP_WORK_DIR"
   fi
 }
 trap cleanup EXIT
@@ -89,21 +93,33 @@ fi
 
 echo "==> Running OWASP ZAP baseline scan against $SCAN_TARGET_URL..."
 zap_args="-t $SCAN_TARGET_URL"
+tmp_base="${TMPDIR:-/tmp}"
+tmp_base="${tmp_base%/}"
+ZAP_WORK_DIR="$(mktemp -d "$tmp_base/advisorbook-zap-work-XXXXXX")"
+chmod 0777 "$ZAP_WORK_DIR"
 
 if [ -f "$ZAP_RULES_FILE" ]; then
   echo "    Using rules file: $ZAP_RULES_FILE"
-  zap_args="$zap_args -c /zap/wrk/${ZAP_RULES_FILE#./}"
+  rules_name="$(basename "$ZAP_RULES_FILE")"
+  cp "$ZAP_RULES_FILE" "$ZAP_WORK_DIR/$rules_name"
+  zap_args="$zap_args -c /zap/wrk/$rules_name"
 fi
 
 docker run --rm \
   --add-host=host.docker.internal:host-gateway \
-  -v "$(pwd)":/zap/wrk/:rw \
+  -v "$ZAP_WORK_DIR":/zap/wrk/:rw \
   ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py $zap_args \
   -r "$REPORT_FILE" \
   -J zap-report.json \
   -w zap-report.md \
   -l WARN || zap_exit=$?
+
+for report in "$REPORT_FILE" zap-report.json zap-report.md; do
+  if [ -f "$ZAP_WORK_DIR/$report" ]; then
+    cp "$ZAP_WORK_DIR/$report" "$PROJECT_ROOT/$report"
+  fi
+done
 
 if [ -f "$REPORT_FILE" ]; then
   echo "ZAP report saved to: $REPORT_FILE"
