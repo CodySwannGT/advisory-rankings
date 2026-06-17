@@ -14,6 +14,7 @@ const WEB_ENTRYPOINTS = [
   "article.js",
   "branches.js",
   "compare.js",
+  "compare-selection.js",
   "correction-inbox.js",
   "coverage.js",
   "design-system/index.js",

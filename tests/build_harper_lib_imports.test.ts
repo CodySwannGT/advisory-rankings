@@ -82,8 +82,10 @@ const externalModuleEntrypointsIn = (
   file: string
 ): readonly ModuleEntrypoint[] => {
   const source = readFileSync(file, "utf8");
-  return scriptOpenTags(source)
-    .map(tag => moduleSrc(tag))
+  return [
+    ...scriptOpenTags(source).map(tag => moduleSrc(tag)),
+    ...inlineModuleImports(source),
+  ]
     .filter((src): src is string => Boolean(src?.endsWith(".js")))
     .map(src => ({ html: file.replace(REPO_ROOT, ""), src }));
 };
@@ -102,6 +104,43 @@ const moduleSrc = (tag: string): string | null => {
   if (!src || !isLocalModuleSrc(src)) return null;
   return src.startsWith("/") ? src.slice(1) : src;
 };
+
+const inlineModuleImports = (source: string): readonly string[] =>
+  inlineModuleScriptBodies(source)
+    .flatMap(body => body.split(";"))
+    .filter(statement => statement.includes("import"))
+    .map(quotedJavaScriptModuleSpecifier)
+    .filter((src): src is string => src !== null)
+    .filter(isLocalModuleSrc)
+    .map(src => (src.startsWith("/") ? src.slice(1) : src));
+
+const quotedJavaScriptModuleSpecifier = (statement: string): string | null => {
+  for (const quote of ['"', "'"]) {
+    const parts = statement.split(quote);
+    for (let index = 1; index < parts.length; index += 2) {
+      const value = parts[index];
+      if (value.endsWith(".js")) return value;
+    }
+  }
+  return null;
+};
+
+const inlineModuleScriptBodies = (source: string): readonly string[] =>
+  source
+    .split("<script")
+    .slice(1)
+    .map(chunk => {
+      const tagEnd = chunk.indexOf(">");
+      if (tagEnd < 0) return null;
+      const tag = chunk.slice(0, tagEnd);
+      if (moduleSrc(tag)) return null;
+      if (!tag.includes('type="module"') && !tag.includes("type='module'")) {
+        return null;
+      }
+      const scriptEnd = chunk.indexOf("</script>", tagEnd);
+      return scriptEnd < 0 ? null : chunk.slice(tagEnd + 1, scriptEnd);
+    })
+    .filter((body): body is string => body !== null);
 
 const isLocalModuleSrc = (src: string): boolean =>
   !src.startsWith("//") && !/^[a-z][a-z\d+.-]*:/i.test(src);
