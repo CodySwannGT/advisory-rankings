@@ -167,7 +167,8 @@ describe("legacy directory and compliance route retries", () => {
       } finally {
         await page.close();
       }
-    }
+    },
+    BOOT_TIMEOUT
   );
 
   it("auto-recovers when a transient module reset clears on reload", async () => {

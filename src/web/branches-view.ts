@@ -1,4 +1,3 @@
-import { humanize } from "./app.js";
 import {
   SectionCard,
   EmptyCard,
@@ -16,14 +15,17 @@ import {
 } from "./branches-url.js";
 import {
   activeFilter,
+  advisorCountLabel,
   branchAnchor,
+  branchCoverageContext,
+  branchLevelLabel,
+  branchSourceContext,
   coverageGapCount,
   coverageLabel,
   coverageTagKind,
   emptyStateCopy,
   field,
   firmHref,
-  formatInteger,
   legendRow,
   locationLabel,
   metric,
@@ -162,7 +164,7 @@ const branchRow = (row: BranchDirectoryRow): HTMLElement => {
     rowMain(row),
     rowField("Firm", row.firmName ?? "Unavailable"),
     rowField("Location", locationLabel(row)),
-    rowField("Current advisors", formatInteger(row.currentAdvisorCount)),
+    rowField("Current advisors", advisorCountLabel(row)),
     rowActions(row)
   );
 };
@@ -184,10 +186,13 @@ const rowMain = (row: BranchDirectoryRow): HTMLElement => {
         kind: coverageTagKind(row.coverageStatus),
         children: coverageLabel(row),
       }),
-      row.level ? Tag({ children: humanize(row.level) ?? row.level }) : null,
-      ...row.sourceMetadata.sourceTypes.map(source =>
-        Tag({ kind: "ok", children: humanize(source) ?? source })
-      )
+      Tag({ children: branchLevelLabel(row) })
+    ),
+    el("p", { class: "branches-row-context" }, branchCoverageContext(row)),
+    el(
+      "p",
+      { class: "branches-row-context branches-row-source-context" },
+      branchSourceContext(row)
     )
   );
 };

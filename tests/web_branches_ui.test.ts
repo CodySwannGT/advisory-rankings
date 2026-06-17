@@ -16,6 +16,12 @@ import type {
   DirectoryPage,
 } from "../src/harper/resource-directory-types.js";
 
+const BRANCH_EMPTY_SELECTOR = '[data-branch-id="branch-empty"]';
+const BRANCH_MARKET_SELECTOR = '[data-branch-id="branch-market"]';
+const BRANCH_NY_SELECTOR = '[data-branch-id="branch-ny"]';
+const FIRM_WELLS_ID = "firm-wells";
+const WELLS_FARGO_ADVISORS = "Wells Fargo Advisors";
+
 describe("branch explorer route (#1224)", () => {
   let browser: Browser;
   let server: Server;
@@ -55,16 +61,14 @@ describe("branch explorer route (#1224)", () => {
     await page.getByText("Branch network explorer").waitFor({
       timeout: QUICK_TIMEOUT,
     });
-    expect(await page.locator('[data-branch-id="branch-ny"]').count()).toBe(1);
-    expect(await page.locator('[data-branch-id="branch-empty"]').count()).toBe(
-      0
-    );
+    expect(await page.locator(BRANCH_NY_SELECTOR).count()).toBe(1);
+    expect(await page.locator(BRANCH_EMPTY_SELECTOR).count()).toBe(0);
     expect(await inputValue(page, "Firm")).toBe("wells");
     expect(await inputValue(page, "State")).toBe("NY");
     expect(await inputValue(page, "Source type")).toBe("brokercheck");
     expect(await inputValue(page, "Minimum advisors")).toBe("2");
     expect(await selectValue(page, "Level")).toBe("branch");
-    const branchRow = page.locator('[data-branch-id="branch-ny"]');
+    const branchRow = page.locator(BRANCH_NY_SELECTOR);
     expect(
       await branchRow.getByRole("link", { name: "Firm" }).getAttribute("href")
     ).toContain("/firms/wells-fargo-advisors-firm-wells");
@@ -83,12 +87,34 @@ describe("branch explorer route (#1224)", () => {
 
     await page.getByRole("button", { name: "Clear" }).click();
     await page.getByRole("button", { name: "Load more" }).click();
-    await page.locator('[data-branch-id="branch-empty"]').waitFor({
+    await page.locator(BRANCH_EMPTY_SELECTOR).waitFor({
       timeout: QUICK_TIMEOUT,
     });
-    await page.getByText("Partial branch coverage").waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
+    await page
+      .locator(BRANCH_EMPTY_SELECTOR)
+      .getByText("Advisor links incomplete")
+      .waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    await page
+      .locator(BRANCH_EMPTY_SELECTOR)
+      .getByText("Some advisor links are still missing from public coverage.")
+      .waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    await page
+      .locator(BRANCH_EMPTY_SELECTOR)
+      .getByText("Wells Fargo public branch locator")
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .locator(BRANCH_MARKET_SELECTOR)
+      .getByText("Market-level aggregate")
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await page
+      .locator(BRANCH_MARKET_SELECTOR)
+      .getByText("No linked advisors in this market aggregate yet")
+      .waitFor({ timeout: QUICK_TIMEOUT });
+    await expectRawPipelineLabelsHidden(page);
     await expectUniqueBranchRows(page);
     expect(await hasHorizontalOverflow(page)).toBe(false);
 
@@ -210,7 +236,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
   return [
     {
       id: "branch-ny",
-      firmId: "firm-wells",
+      firmId: FIRM_WELLS_ID,
       parentBranchId: null,
       level: "branch",
       name: "Midtown Manhattan Branch",
@@ -221,7 +247,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
       country: "USA",
       postalCode: "10153",
       displayName: "Midtown Manhattan Branch",
-      firmName: "Wells Fargo Advisors",
+      firmName: WELLS_FARGO_ADVISORS,
       currentAdvisorCount: 12,
       coverageStatus: "loaded",
       sourceMetadata: {
@@ -231,7 +257,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
     },
     {
       id: "branch-empty",
-      firmId: "firm-wells",
+      firmId: FIRM_WELLS_ID,
       parentBranchId: null,
       level: "complex",
       name: "Brooklyn Complex",
@@ -242,12 +268,33 @@ function branchRows(): readonly BranchDirectoryRow[] {
       country: "USA",
       postalCode: "11201",
       displayName: "Brooklyn Complex",
-      firmName: "Wells Fargo Advisors",
+      firmName: WELLS_FARGO_ADVISORS,
       currentAdvisorCount: 0,
       coverageStatus: "partial",
       sourceMetadata: {
         sourceTypes: ["wells_fargo_locator"],
         sourceRefs: ["branch:brooklyn"],
+      },
+    },
+    {
+      id: "branch-market",
+      firmId: FIRM_WELLS_ID,
+      parentBranchId: null,
+      level: "market",
+      name: "Long Island Recruiting Market",
+      buildingName: null,
+      address: null,
+      city: "Long Island",
+      state: "NY",
+      country: "USA",
+      postalCode: null,
+      displayName: "Long Island Recruiting Market",
+      firmName: WELLS_FARGO_ADVISORS,
+      currentAdvisorCount: 0,
+      coverageStatus: "partial",
+      sourceMetadata: {
+        sourceTypes: ["brokercheck", "edward_jones_advisor_results_api"],
+        sourceRefs: ["market:long-island"],
       },
     },
   ];
@@ -288,6 +335,17 @@ async function expectUniqueBranchRows(page: Page): Promise<void> {
       rows.map(row => row.getAttribute("data-branch-id") ?? "")
     );
   expect(branchIds).toHaveLength(new Set(branchIds).size);
+}
+
+/**
+ * Proves branch rows translate source/status values before display.
+ * @param page - Browser page under test.
+ */
+async function expectRawPipelineLabelsHidden(page: Page): Promise<void> {
+  const bodyText = await page.locator("body").innerText();
+  expect(bodyText).not.toContain("PARTIAL BRANCH COVERAGE");
+  expect(bodyText).not.toContain("BROKERCHECK");
+  expect(bodyText).not.toContain("EDWARD JONES ADVISOR RESULTS API");
 }
 
 /**
