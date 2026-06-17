@@ -92,8 +92,15 @@ zap_args="-t $SCAN_TARGET_URL"
 
 if [ -f "$ZAP_RULES_FILE" ]; then
   echo "    Using rules file: $ZAP_RULES_FILE"
-  zap_args="$zap_args -c /zap/wrk/$(basename "$ZAP_RULES_FILE")"
-  mount_rules="-v $(dirname "$(realpath "$ZAP_RULES_FILE")"):/zap/wrk:ro"
+  rules_real="$(realpath "$ZAP_RULES_FILE")"
+  project_real="$(realpath "$PROJECT_ROOT")"
+  if [[ "$rules_real" == "$project_real"/* ]]; then
+    zap_args="$zap_args -c /zap/wrk/${rules_real#"$project_real"/}"
+    mount_rules=""
+  else
+    zap_args="$zap_args -c /zap/rules/$(basename "$ZAP_RULES_FILE")"
+    mount_rules="-v $(dirname "$rules_real"):/zap/rules:ro"
+  fi
 else
   mount_rules=""
 fi
