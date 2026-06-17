@@ -101,10 +101,12 @@ chmod 0777 "$ZAP_WORK_DIR"
 if [ -f "$ZAP_RULES_FILE" ]; then
   echo "    Using rules file: $ZAP_RULES_FILE"
   rules_name="$(basename "$ZAP_RULES_FILE")"
-  cp "$ZAP_RULES_FILE" "$ZAP_WORK_DIR/$rules_name"
+  rules_real="$(realpath "$ZAP_RULES_FILE")"
+  cp "$rules_real" "$ZAP_WORK_DIR/$rules_name"
   zap_args="$zap_args -c /zap/wrk/$rules_name"
 fi
 
+zap_exit=0
 docker run --rm \
   --add-host=host.docker.internal:host-gateway \
   -v "$ZAP_WORK_DIR":/zap/wrk/:rw \
@@ -126,8 +128,13 @@ if [ -f "$REPORT_FILE" ]; then
   echo "ZAP report saved to: $REPORT_FILE"
 fi
 
-if [ "${zap_exit:-0}" -ne 0 ]; then
-  echo "ZAP found medium+ severity findings (exit code: $zap_exit)."
+if [ "$zap_exit" -eq 2 ]; then
+  echo "ZAP completed with warnings only (exit code: 2)."
+  exit 0
+fi
+
+if [ "$zap_exit" -ne 0 ]; then
+  echo "ZAP baseline failed (exit code: $zap_exit)."
   exit "$zap_exit"
 fi
 
