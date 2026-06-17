@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-16
+updated: 2026-06-17
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -23,6 +23,7 @@ sources:
   - ../sources/git/2026-06-14-advisory-rankings-git.md
   - ../sources/git/2026-06-15-advisory-rankings-git.md
   - ../sources/git/2026-06-16-advisory-rankings-git.md
+  - ../sources/git/2026-06-17-advisory-rankings-git.md
 ---
 
 # Git history
@@ -121,6 +122,11 @@ commits since the 2026-06-15 cursor, bringing the branch total to 1657 commits, 
 PR metadata through #1260, "fix: bundle web boot entrypoints." Source:
 wiki/sources/git/2026-06-16-advisory-rankings-git.md.
 
+The 2026-06-17 git ingest ran at HEAD `1671adf221243bf992c7625cbd6ae0c8b0ef375f`. It added 31
+commits since the 2026-06-16 cursor, bringing the branch total to 1688 commits, and refreshed merged
+PR metadata through #1278, "chore(deps): update @codyswann/lisa to 2.171.3." Source:
+wiki/sources/git/2026-06-17-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -201,6 +207,9 @@ wiki/sources/git/2026-06-16-advisory-rankings-git.md.
   ranking, evidence documentation, public/privacy regression coverage, BrokerCheck cue handling, and
   a static reset boot fix that bundles web boot entrypoints and pins patched audit transitive
   dependencies.
+- The 2026-06-16 wiki ingest PR merged after review follow-up, followed by team-continuity timeline
+  rendering, evidence-boundary preservation, browser and regression coverage, team-timeline evidence
+  documentation, nightly threshold maintenance, and a Lisa 2.171.3 template update.
 
 ## Use
 
@@ -222,4 +231,5 @@ wiki/sources/git/2026-06-12-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-13-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-14-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-15-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-16-advisory-rankings-git.md.
+wiki/sources/git/2026-06-16-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-17-advisory-rankings-git.md.

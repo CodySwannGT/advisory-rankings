@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-16
+updated: 2026-06-17
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -17,6 +17,7 @@ sources:
   - ../sources/git/2026-06-14-advisory-rankings-git.md
   - ../sources/git/2026-06-15-advisory-rankings-git.md
   - ../sources/git/2026-06-16-advisory-rankings-git.md
+  - ../sources/git/2026-06-17-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -97,3 +98,8 @@ The 2026-06-15 git ingest shows Fabric route handling returning to the post-reve
 serving arrangement after a brief unknown-document route recovery attempt. The runbook and
 Harper-app notes should be read with PR #1242 as the current durable state for root static serving.
 Source: wiki/sources/git/2026-06-15-advisory-rankings-git.md.
+
+The 2026-06-17 git ingest shows architecture work around team-continuity timelines: timeline
+rendering, evidence-boundary preservation, browser/regression coverage, and evidence expectation
+documentation. It also records continued test-threshold maintenance and a Lisa 2.171.3 template
+update with a CI unblock fix. Source: wiki/sources/git/2026-06-17-advisory-rankings-git.md.
