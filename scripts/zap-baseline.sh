@@ -113,7 +113,8 @@ docker run --rm \
   -r "$REPORT_FILE" \
   -J zap-report.json \
   -w zap-report.md \
-  -l WARN || zap_exit=$?
+  -l WARN \
+  -I || zap_exit=$?
 
 for report in "$REPORT_FILE" zap-report.json zap-report.md; do
   if [ -f "$ZAP_WORK_DIR/$report" ]; then
