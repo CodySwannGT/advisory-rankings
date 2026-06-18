@@ -102,6 +102,8 @@ export async function smokeAdvisorDirectoryFilters(
   await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile320 = await viewportOverflow(page);
   await shot(page, "06-advisors-filtered-mobile-320");
+  await page.setViewportSize({ width: 375, height: 812 });
+  const mobileSearch = await captureMobileAdvisorSearchState(page);
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
@@ -112,6 +114,7 @@ export async function smokeAdvisorDirectoryFilters(
     liveFacts,
     mobile320,
     mobile390,
+    mobileSearch,
     restoredFacts,
   });
 }
@@ -208,6 +211,7 @@ interface FilterCheckFacts {
   readonly liveFacts: LiveAdvisorFilterFacts;
   readonly mobile320: ViewportOverflow;
   readonly mobile390: ViewportOverflow;
+  readonly mobileSearch: MobileAdvisorSearchFacts;
   readonly restoredFacts: AdvisorFilterFacts;
 }
 
@@ -263,6 +267,7 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
       "advisors filters: no mobile horizontal overflow at 390px and 320px",
       `390 ${facts.mobile390.scrollWidth}/${facts.mobile390.clientWidth}, 320 ${facts.mobile320.scrollWidth}/${facts.mobile320.clientWidth}`
     ),
+    ...mobileAdvisorSearchChecks(facts.mobileSearch),
     advisorDesktopLayoutCheck(facts.desktopLayout),
   ];
 }
@@ -310,6 +315,30 @@ function advisorLiveFilterChecks(
     check(
       facts.firmTypeahead,
       "advisors filters: current firm offers typeahead suggestions"
+    ),
+  ];
+}
+
+/**
+ * Builds checks for the mobile navbar search on the advisor directory.
+ * @param facts - Captured global-search and directory-filter observations.
+ * @returns Mobile advisor search smoke checks.
+ */
+function mobileAdvisorSearchChecks(
+  facts: MobileAdvisorSearchFacts
+): readonly Check[] {
+  return [
+    check(
+      facts.dropdownLabel === "Global search results" &&
+        facts.globalRows > 0 &&
+        facts.directoryTitle.startsWith("All advisors"),
+      "advisors filters: mobile navbar search is labeled separately from directory state",
+      JSON.stringify(facts)
+    ),
+    check(
+      facts.filterUrlUpdated && facts.filteredRows > 0,
+      "advisors filters: mobile page-level advisor filter still updates directory",
+      JSON.stringify(facts)
     ),
   ];
 }
@@ -434,6 +463,61 @@ async function captureLiveAdvisorFilterFacts(
   );
 }
 
+/**
+ * Exercises the reported mobile mixed-state path on `/advisors`.
+ * @param page - Mobile page rendering the advisor directory.
+ * @returns Facts for global-search separation and page-level filtering.
+ */
+async function captureMobileAdvisorSearchState(
+  page: Page
+): Promise<MobileAdvisorSearchFacts> {
+  await smokeGoto(page, `${BASE}/advisors`);
+  await page.locator(FILTER_FORM_SELECTOR).waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  const globalInput = page.locator("#global-search");
+  await globalInput.fill("Morgan");
+  await page
+    .locator("#global-search-results .gs-item")
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const separatedFacts = await page.evaluate(() => {
+    const directoryTitle =
+      Array.from(document.querySelectorAll(".center h2.card-title"))
+        .map(title => title.textContent?.trim() ?? "")
+        .find(title => /\b(advisors)\b/i.test(title) && title !== "Filters") ??
+      "";
+    return {
+      directoryTitle,
+      dropdownLabel:
+        document
+          .querySelector("#global-search-results .gs-heading")
+          ?.textContent?.trim() ?? "",
+      globalRows: document.querySelectorAll("#global-search-results .gs-item")
+        .length,
+    };
+  });
+
+  await page.keyboard.press("Escape");
+  await page.locator('[name="q"]').fill("Morgan");
+  await page.waitForURL(url => url.searchParams.get("q") === "Morgan", {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
+  const filteredRows = await page.locator(DIRECTORY_ROW_SELECTOR).count();
+
+  return {
+    ...separatedFacts,
+    filteredRows,
+    filterUrlUpdated: new URL(page.url()).searchParams.get("q") === "Morgan",
+  };
+}
+
 async function liveAdvisorQuery(page: Page): Promise<string> {
   const rowText = await page
     .locator(DIRECTORY_ROW_SELECTOR)
@@ -495,6 +579,15 @@ interface LiveAdvisorFilterFacts {
   readonly noApplyButton: boolean;
   readonly rowsRender: boolean;
   readonly urlUpdated: boolean;
+}
+
+/** Mobile facts for the navbar search versus page filter behavior. */
+interface MobileAdvisorSearchFacts {
+  readonly directoryTitle: string;
+  readonly dropdownLabel: string;
+  readonly filteredRows: number;
+  readonly filterUrlUpdated: boolean;
+  readonly globalRows: number;
 }
 
 /** Document width metrics for a responsive viewport. */
