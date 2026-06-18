@@ -12,12 +12,12 @@ import {
 } from "./article-types.js";
 import type {
   ArticleEventCard,
+  ArticleHeadOptions,
   ArticleMetadata,
   ArticleProvenancePayload,
   ArticleSourceMetadata,
   ArticleViewErrorPayload,
   ArticleViewPayload,
-  ArticleViewSuccessPayload,
   CompactProvenanceAccumulator,
   EntityChipPayload,
   EvidenceTableRow,
@@ -39,6 +39,10 @@ import {
   linkOutCard,
   metadataSection,
 } from "./article-presentation.js";
+import {
+  limitationsSection,
+  type ArticleLimitationResources,
+} from "./article-limitations.js";
 import {
   mountThreeColumnPage,
   el,
@@ -118,12 +122,19 @@ function render(
     return;
   }
   const a = d.article;
-  const evidenceRows = compactProvenance(
-    resourceRows(d.provenance) as readonly ArticleProvenancePayload[]
-  );
+  const resources = articleResources(d);
 
   canonicalizeArticleRoute(a);
-  center.appendChild(articleHead(d, a));
+  center.appendChild(
+    articleHead({
+      article: a,
+      events: resources.events,
+      firms: resources.firmRows,
+      teams: resources.teamRows,
+      advisors: resources.advisorRows,
+    })
+  );
+  appendIfPresent(center, limitationsSection(resources));
   appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
   appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));
   appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
@@ -131,25 +142,56 @@ function render(
   appendIfPresent(center, articleBodyCard(d.body));
   appendIfPresent(center, linkOutCard(a, d.body));
   appendIfPresent(center, PartialFailureCard("Article body", d.body));
-  appendIfPresent(center, evidenceSection(evidenceRows));
+  appendIfPresent(center, evidenceSection(resources.evidenceRows));
   appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
   right.appendChild(metadataSection(a));
 }
 
 /**
+ * Normalizes public ArticleView resource fields for article sections.
+ * @param d - Successful ArticleView payload.
+ * @returns Public resource rows and their raw payloads.
+ */
+function articleResources(
+  d: Exclude<ArticleViewPayload, ArticleViewErrorPayload>
+): ArticleLimitationResources {
+  const provenanceRows = resourceRows(
+    d.provenance
+  ) as readonly ArticleProvenancePayload[];
+  return {
+    body: d.body,
+    eventCards: d.eventCards,
+    events: resourceRows(d.eventCards) as readonly ArticleEventCard[],
+    firms: d.firms,
+    firmRows: resourceRows(d.firms) as readonly EntityChipPayload[],
+    teams: d.teams,
+    teamRows: resourceRows(d.teams) as readonly EntityChipPayload[],
+    advisors: d.advisors,
+    advisorRows: resourceRows(d.advisors) as readonly EntityChipPayload[],
+    provenance: d.provenance,
+    provenanceRows,
+    evidenceRows: compactProvenance(provenanceRows),
+  };
+}
+
+/**
  * Builds the article header card with event cards and mentioned entities.
- * @param d - ArticleView response payload.
- * @param article - Article metadata row.
+ * @param options - Public article content rows.
+ * @param options.article - Article metadata row.
+ * @param options.events - Public article event cards.
+ * @param options.firms - Public firm chip rows.
+ * @param options.teams - Public team chip rows.
+ * @param options.advisors - Public advisor chip rows.
  * @returns Header card for the article detail page.
  */
-function articleHead(
-  d: ArticleViewSuccessPayload,
-  article: ArticleMetadata
-): HTMLElement {
+function articleHead({
+  article,
+  events,
+  firms,
+  teams,
+  advisors,
+}: ArticleHeadOptions): HTMLElement {
   const src = articleSource(article) as ArticleSourceMetadata;
-  const eventCardRows = resourceRows(
-    d.eventCards
-  ) as readonly ArticleEventCard[];
   return CardComponent({
     tag: "article",
     children: [
@@ -162,11 +204,11 @@ function articleHead(
       }),
       el("h1", { class: "post-headline" }, article.headline || "(untitled)"),
       article.dek ? el("div", { class: "post-dek" }, article.dek) : null,
-      ...eventCards(eventCardRows),
+      ...eventCards(events),
       ChipRowComponent({
-        firms: resourceRows(d.firms) as readonly EntityChipPayload[],
-        teams: resourceRows(d.teams) as readonly EntityChipPayload[],
-        advisors: resourceRows(d.advisors) as readonly EntityChipPayload[],
+        firms,
+        teams,
+        advisors,
       }),
       articleFooter(article, src),
     ],

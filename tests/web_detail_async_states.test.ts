@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const WEB_ROOT = resolve("harper-app/web");
 const QUICK_TIMEOUT = 2_000;
 const HEADLINE_TEXT = "Advisor moves in test market";
+const ARTICLE_DEK_TEXT = "Primary article metadata loaded.";
 const ARTICLE_FIXTURE_ID = "article-1";
 const ARTICLE_FIXTURE_DATE = "2026-05-24";
 const ARTICLE_FIXTURE_URL = "https://example.com/article-1";
@@ -30,6 +31,9 @@ const PROFILE_PROVENANCE = "Profile provenance";
 const PROFILE_PROVENANCE_EXPLANATION = "Profile provenance explanation";
 const STATUS_COUNTS = "Status counts";
 const EXAMPLE_WEALTH_SHORT = "Example Wealth";
+const ARTICLE_LIMITATIONS_HEADING = "Article evidence limitations";
+const PUBLIC_BOUNDARY_PREFIX = "Public boundary: excludes watchlists";
+const FACT_CONTEXT_QUOTE = "The team managed $7 million in client assets.";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
@@ -43,6 +47,10 @@ const FIRM_BIO_REVIEW_NOTE = "Firm bio supports the update.";
 const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
 const CORRECTION_REVIEWED_AT = "2026-06-11T12:00:00Z";
 const TEAM_FIXTURE_NAME = "Summit Wealth Team";
+const PRIVATE_WATCHLIST_NOTE_MARKER = "Private watchlist note";
+const PRIVATE_RATING_MARKER = "rating: 2";
+const PENDING_CORRECTION_MARKER = "pending correction internals";
+const RAW_AUTH_TABLE_MARKER = "raw_authenticated_table";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -406,7 +414,7 @@ describe("detail async states", () => {
         .first()
         .waitFor({ timeout: QUICK_TIMEOUT });
       await timeline
-        .getByText("Public boundary: excludes watchlists", { exact: false })
+        .getByText(PUBLIC_BOUNDARY_PREFIX, { exact: false })
         .first()
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
@@ -415,11 +423,11 @@ describe("detail async states", () => {
       expect(await timeline.locator(".step").count()).toBeGreaterThanOrEqual(4);
       const bodyText = await page.locator("body").innerText();
       for (const privateValue of [
-        "Private watchlist note",
-        "rating: 2",
+        PRIVATE_WATCHLIST_NOTE_MARKER,
+        PRIVATE_RATING_MARKER,
         FIRM_BIO_SUBMITTER_NOTE,
         ANALYST_FIXTURE_EMAIL,
-        "raw_authenticated_table",
+        RAW_AUTH_TABLE_MARKER,
       ]) {
         expect(bodyText).not.toContain(privateValue);
       }
@@ -581,13 +589,36 @@ describe("detail async states", () => {
       });
       await page.getByText("Article body could not load").waitFor();
       await page.getByText("Extracted facts could not load").waitFor();
-      await page.getByText("Mentioned advisors could not load").waitFor();
+      await page
+        .getByText(
+          "Mentioned advisors could not load. The rest of this profile remains available."
+        )
+        .waitFor();
+      await page
+        .getByRole("heading", { name: ARTICLE_LIMITATIONS_HEADING })
+        .waitFor();
+      await page
+        .getByText("Article body text could not load", { exact: false })
+        .waitFor();
+      await page
+        .getByText("Source-backed facts could not load", { exact: false })
+        .waitFor();
+      await page.getByText(PUBLIC_BOUNDARY_PREFIX, { exact: false }).waitFor();
       const metadataHeading = page.getByRole("heading", {
         name: ABOUT_THIS_ARTICLE,
       });
       await metadataHeading.waitFor();
       expect(await headline.isVisible()).toBe(true);
       expect(await metadataHeading.isVisible()).toBe(true);
+      const bodyText = await page.locator("body").innerText();
+      for (const privateValue of [
+        PRIVATE_WATCHLIST_NOTE_MARKER,
+        PRIVATE_RATING_MARKER,
+        PENDING_CORRECTION_MARKER,
+        RAW_AUTH_TABLE_MARKER,
+      ]) {
+        expect(bodyText).not.toContain(privateValue);
+      }
     } finally {
       await page.close();
     }
@@ -619,7 +650,12 @@ describe("detail async states", () => {
       expect(await page.getByText("Slug").count()).toBe(0);
       expect(await page.getByText("Modified").count()).toBe(0);
       expect(await page.getByText("Article metadata").count()).toBe(0);
-      expect(await page.getByText("Article body").count()).toBe(0);
+      await page
+        .getByRole("heading", { name: ARTICLE_LIMITATIONS_HEADING })
+        .waitFor();
+      await page
+        .getByText("Stored article body text is unavailable", { exact: false })
+        .waitFor();
       expect(await page.getByText("Source: Example").isVisible()).toBe(true);
       expect(
         await page.locator(".article-linkout-button").getAttribute("href")
@@ -656,11 +692,7 @@ describe("detail async states", () => {
       expect(
         await page.getByText("$7 million (Reported amount)").isVisible()
       ).toBe(true);
-      expect(
-        await page
-          .getByText("The team managed $7 million in client assets.")
-          .isVisible()
-      ).toBe(true);
+      expect(await page.getByText(FACT_CONTEXT_QUOTE).isVisible()).toBe(true);
       expect(await page.getByText("$5").count()).toBe(0);
       expect(await page.getByText("Money Mention").count()).toBe(0);
       expect(await page.getByText("Extracted facts").count()).toBe(0);
@@ -669,6 +701,43 @@ describe("detail async states", () => {
           .getByRole("heading", { name: ABOUT_THIS_ARTICLE })
           .isVisible()
       ).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("omits article evidence limitations when public evidence is complete", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
+        await route.fulfill({ json: articleWithoutLimitations() });
+      });
+
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: HEADLINE_TEXT }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      await page
+        .getByRole("heading", { name: "Source-backed facts (1)" })
+        .waitFor();
+      expect(
+        await page
+          .getByRole("heading", {
+            name: ARTICLE_LIMITATIONS_HEADING,
+          })
+          .count()
+      ).toBe(0);
+      expect(
+        await page.getByText(PUBLIC_BOUNDARY_PREFIX, { exact: false }).count()
+      ).toBe(0);
     } finally {
       await page.close();
     }
@@ -1206,7 +1275,7 @@ describe("detail async states", () => {
       expect(await page.getByText(FIRM_BIO_SUBMITTER_NOTE).isVisible()).toBe(
         true
       );
-      expect(await page.getByText("Example Wealth").isVisible()).toBe(true);
+      expect(await page.getByText(EXAMPLE_WEALTH_SHORT).isVisible()).toBe(true);
 
       await page
         .locator('textarea[name="reviewerNote"]')
@@ -1347,19 +1416,29 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
     article: {
       id: ARTICLE_FIXTURE_ID,
       headline: HEADLINE_TEXT,
-      dek: "Primary article metadata loaded.",
+      dek: ARTICLE_DEK_TEXT,
       category: "transitions",
       publishedDate: ARTICLE_FIXTURE_DATE,
       modifiedDate: ARTICLE_FIXTURE_DATE,
       authors: ["AdvisorBook"],
       url: ARTICLE_FIXTURE_URL,
     },
-    body: { error: "body unavailable" },
+    body: {
+      error: "body unavailable",
+      privateWatchlistNote: PRIVATE_WATCHLIST_NOTE_MARKER,
+    },
     eventCards: { error: "events unavailable" },
     firms: [],
     teams: [],
-    advisors: { error: "advisors unavailable" },
-    provenance: { error: "provenance unavailable" },
+    advisors: {
+      error: "advisors unavailable",
+      privateRating: PRIVATE_RATING_MARKER,
+    },
+    provenance: {
+      error: "provenance unavailable",
+      pendingCorrection: PENDING_CORRECTION_MARKER,
+      rawTable: RAW_AUTH_TABLE_MARKER,
+    },
   };
 }
 
@@ -1397,7 +1476,7 @@ function articleWithFactContext(): Readonly<Record<string, unknown>> {
     article: {
       id: ARTICLE_FIXTURE_ID,
       headline: HEADLINE_TEXT,
-      dek: "Primary article metadata loaded.",
+      dek: ARTICLE_DEK_TEXT,
       category: "transitions",
       publishedDate: ARTICLE_FIXTURE_DATE,
       modifiedDate: ARTICLE_FIXTURE_DATE,
@@ -1415,7 +1494,7 @@ function articleWithFactContext(): Readonly<Record<string, unknown>> {
         targetId: ARTICLE_FIXTURE_ID,
         fieldName: "money_mention",
         assertedValue: "$7 million",
-        quotePhrase: "The team managed $7 million in client assets.",
+        quotePhrase: FACT_CONTEXT_QUOTE,
         confidence: "medium",
       },
       {
@@ -1425,6 +1504,40 @@ function articleWithFactContext(): Readonly<Record<string, unknown>> {
         assertedValue: "$5",
         quotePhrase: "",
         confidence: "low",
+      },
+    ],
+  };
+}
+
+/**
+ * Builds a complete ArticleView payload without evidence limitations.
+ * @returns ArticleView response with all public evidence categories available.
+ */
+function articleWithoutLimitations(): Readonly<Record<string, unknown>> {
+  return {
+    article: {
+      id: ARTICLE_FIXTURE_ID,
+      headline: HEADLINE_TEXT,
+      dek: ARTICLE_DEK_TEXT,
+      category: "transitions",
+      publishedDate: ARTICLE_FIXTURE_DATE,
+      modifiedDate: ARTICLE_FIXTURE_DATE,
+      authors: ["AdvisorBook"],
+      url: ARTICLE_FIXTURE_URL,
+    },
+    body: { text: "The public article body remains visible." },
+    eventCards: [{ kind: "unknown" }],
+    firms: [{ kind: "firm", id: "firm-1", name: EXAMPLE_WEALTH_SHORT }],
+    teams: [{ kind: "team", id: "team-1", name: "Summit Wealth Team" }],
+    advisors: [{ kind: "advisor", id: "advisor-1", name: ADVISOR_NAME }],
+    provenance: [
+      {
+        targetTable: "Article",
+        targetId: ARTICLE_FIXTURE_ID,
+        fieldName: "money_mention",
+        assertedValue: "$7 million",
+        quotePhrase: FACT_CONTEXT_QUOTE,
+        confidence: "high",
       },
     ],
   };
@@ -2207,6 +2320,7 @@ type MissingDetailResponse = Readonly<{
  */
 type FailedResource = Readonly<{
   error: string;
+  [key: string]: unknown;
 }>;
 
 /**
