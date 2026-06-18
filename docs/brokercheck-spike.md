@@ -268,6 +268,13 @@ bun run brokercheck:crawl -- --max-per-firm 200
 tail -f research/brokercheck-crawl.log
 ```
 
+For scheduled Codex runs, the orchestrator resolves deployed Harper
+configuration with the shared `_auth.loadCreds()` helper. Explicit
+`HDB_TARGET_URL`, `HDB_ADMIN_USERNAME`, and `HDB_ADMIN_PASSWORD` still
+override local credentials, but the weekly roster automation can run
+from the default keychain / credentials-file setup without a shell env
+wrapper.
+
 State + log files (`research/brokercheck-state.json` and
 `research/brokercheck-crawl.log`) are gitignored — they're runtime
 output, not source-of-truth data. To bump the cap and continue the

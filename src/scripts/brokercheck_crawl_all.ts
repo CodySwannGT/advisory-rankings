@@ -2,7 +2,8 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { BrokerCheckClient } from "../lib/brokercheck.js";
 import { HarperREST, Resolver } from "../lib/brokercheck-load.js";
-import { loadState, saveState } from "./fetch_brokercheck.js";
+import { loadCreds } from "./_auth.js";
+import { loadState, saveState } from "./fetch_brokercheck_core.js";
 import { runSelectedPhases } from "./brokercheck_crawl_all_helpers.js";
 
 const LOG_FILE = "research/brokercheck-crawl.log";
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
     ? Number(arg("--rate-seconds"))
     : undefined;
   const force = has("--force");
-  const rest = new HarperREST({ verbose: false });
+  const rest = createHarperRest();
   const resolver = new Resolver(rest);
   const client = new BrokerCheckClient({ rateSeconds, verbose: false });
   const state = await loadState();
@@ -88,5 +89,21 @@ async function main(): Promise<void> {
   await log(`summaries: ${JSON.stringify(summaries)}`);
   await log(`resolver stats: ${JSON.stringify(resolver.stats)}`);
 }
+
+const createHarperRest = (): HarperREST => {
+  const creds = loadCreds();
+  return new HarperREST({
+    baseUrl: process.env.HDB_TARGET_URL ?? creds.clusterUrl,
+    user:
+      process.env.HDB_ADMIN_USERNAME ??
+      process.env.HARPER_ADMIN_USERNAME ??
+      creds.username,
+    password:
+      process.env.HDB_ADMIN_PASSWORD ??
+      process.env.HARPER_ADMIN_PASSWORD ??
+      creds.password,
+    verbose: false,
+  });
+};
 
 await main();
