@@ -31,6 +31,14 @@ interface LiveFilterFacts {
   readonly urlUpdated: boolean;
 }
 
+/** Clear-action behavior captured from the Team directory filters. */
+interface TeamClearFacts {
+  readonly activeClearHref: string;
+  readonly activeClearVisible: boolean;
+  readonly clearReturnsToBase: boolean;
+  readonly inactiveClearAbsent: boolean;
+}
+
 type FilteredState = Awaited<ReturnType<typeof captureFilteredState>>;
 
 /**
@@ -177,12 +185,14 @@ async function smokeTeamDirectoryFilters(
     "06-teams-filtered-empty-state"
   );
   const liveFacts = await captureLiveTeamFilterFacts(page, fixture);
+  const clearFacts = await captureTeamClearFacts(page, qs);
 
   return teamDirectoryFilterChecks(
     fixture,
     filtered,
     { wide390, wide320, emptyControlsAvailable },
-    liveFacts
+    liveFacts,
+    clearFacts
   );
 }
 
@@ -194,7 +204,8 @@ function teamDirectoryFilterChecks(
     readonly wide320: boolean;
     readonly emptyControlsAvailable: boolean;
   },
-  liveFacts: LiveFilterFacts
+  liveFacts: LiveFilterFacts,
+  clearFacts: TeamClearFacts
 ): readonly Check[] {
   return [
     check(
@@ -237,6 +248,30 @@ function teamDirectoryFilterChecks(
     check(
       layout.emptyControlsAvailable,
       "teams filters: empty state keeps controls available"
+    ),
+    ...teamClearChecks(clearFacts),
+  ];
+}
+
+/**
+ * Builds checks for Team directory Clear affordance behavior.
+ * @param clearFacts - Captured Clear affordance observations.
+ * @returns Team Clear smoke checks.
+ */
+function teamClearChecks(clearFacts: TeamClearFacts): readonly Check[] {
+  return [
+    check(
+      clearFacts.inactiveClearAbsent,
+      "teams filters: inactive Clear action is absent"
+    ),
+    check(
+      clearFacts.activeClearVisible,
+      "teams filters: active Clear action is visible"
+    ),
+    check(
+      clearFacts.activeClearHref === "/teams" && clearFacts.clearReturnsToBase,
+      "teams filters: Clear returns to unfiltered directory",
+      clearFacts.activeClearHref
     ),
   ];
 }
@@ -382,6 +417,39 @@ async function captureLiveTeamFilterFacts(
       rowSelector: DIRECTORY_ROW_SELECTOR,
     }
   );
+}
+
+/**
+ * Exercises inactive and active Team directory Clear affordance states.
+ * @param page - Browser page used for the directory scenario.
+ * @param qs - Filter query used to activate the Clear action.
+ * @returns Clear affordance observations.
+ */
+async function captureTeamClearFacts(
+  page: Page,
+  qs: URLSearchParams
+): Promise<TeamClearFacts> {
+  await page.goto(`${BASE}/teams`, { waitUntil: "domcontentloaded" });
+  await page.locator(DIRECTORY_FILTER_SELECTOR).waitFor();
+  const inactiveClearAbsent =
+    (await page.locator(".directory-filters .feed-filter-clear").count()) === 0;
+
+  await page.goto(`${BASE}/teams?${qs.toString()}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.locator(DIRECTORY_FILTER_SELECTOR).waitFor();
+  const clear = page.locator(".directory-filters .feed-filter-clear");
+  const activeClearVisible = await clear.isVisible();
+  const activeClearHref = (await clear.getAttribute("href")) || "";
+  await clear.click();
+  await page.waitForURL(url => url.pathname === "/teams" && !url.search);
+  const clearUrl = new URL(page.url());
+  return {
+    activeClearHref,
+    activeClearVisible,
+    clearReturnsToBase: clearUrl.pathname === "/teams" && !clearUrl.search,
+    inactiveClearAbsent,
+  };
 }
 
 /**
