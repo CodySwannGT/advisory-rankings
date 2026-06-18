@@ -43,6 +43,7 @@ import {
   limitationsSection,
   type ArticleLimitationResources,
 } from "./article-limitations.js";
+import { articleEvidenceMap } from "./article-evidence-map.js";
 import {
   mountThreeColumnPage,
   el,
@@ -134,6 +135,7 @@ function render(
       advisors: resources.advisorRows,
     })
   );
+  center.appendChild(articleEvidenceMap(a, resources));
   appendIfPresent(center, limitationsSection(resources));
   appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
   appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));

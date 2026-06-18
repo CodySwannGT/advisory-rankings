@@ -34,6 +34,8 @@ const EXAMPLE_WEALTH_SHORT = "Example Wealth";
 const ARTICLE_LIMITATIONS_HEADING = "Article evidence limitations";
 const PUBLIC_BOUNDARY_PREFIX = "Public boundary: excludes watchlists";
 const FACT_CONTEXT_QUOTE = "The team managed $7 million in client assets.";
+const FACT_AMOUNT_LABEL = "$7 million (Reported amount)";
+const SOURCE_BACKED_FACTS_HEADING = "Source-backed facts (1)";
 const SOURCE_TIMESTAMP_NOTE = "Source timestamp loaded.";
 const MAY_2_TIMESTAMP = "2026-05-02T00:00:00.000Z";
 const FUTURE_CHECK_TIMESTAMP = "2026-06-15T00:00:00Z";
@@ -655,6 +657,7 @@ describe("detail async states", () => {
         .waitFor();
       await page
         .getByText("Stored article body text is unavailable", { exact: false })
+        .first()
         .waitFor();
       expect(await page.getByText("Source: Example").isVisible()).toBe(true);
       expect(
@@ -685,17 +688,21 @@ describe("detail async states", () => {
       });
 
       const factsHeading = page.getByRole("heading", {
-        name: "Source-backed facts (1)",
+        name: SOURCE_BACKED_FACTS_HEADING,
       });
       await factsHeading.waitFor();
       expect(await factsHeading.isVisible()).toBe(true);
       expect(
-        await page.getByText("$7 million (Reported amount)").isVisible()
+        await page.getByRole("cell", { name: FACT_AMOUNT_LABEL }).isVisible()
       ).toBe(true);
-      expect(await page.getByText(FACT_CONTEXT_QUOTE).isVisible()).toBe(true);
+      expect(
+        await page.getByRole("cell", { name: FACT_CONTEXT_QUOTE }).isVisible()
+      ).toBe(true);
       expect(await page.getByText("$5").count()).toBe(0);
       expect(await page.getByText("Money Mention").count()).toBe(0);
-      expect(await page.getByText("Extracted facts").count()).toBe(0);
+      expect(
+        await page.getByText("Extracted facts could not load").count()
+      ).toBe(0);
       expect(
         await page
           .getByRole("heading", { name: ABOUT_THIS_ARTICLE })
@@ -726,7 +733,7 @@ describe("detail async states", () => {
       });
 
       await page
-        .getByRole("heading", { name: "Source-backed facts (1)" })
+        .getByRole("heading", { name: SOURCE_BACKED_FACTS_HEADING })
         .waitFor();
       expect(
         await page
@@ -738,6 +745,70 @@ describe("detail async states", () => {
       expect(
         await page.getByText(PUBLIC_BOUNDARY_PREFIX, { exact: false }).count()
       ).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("renders article evidence map groups from public ArticleView data", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
+        await route.fulfill({ json: articleWithoutLimitations() });
+      });
+
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: HEADLINE_TEXT }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const map = page.locator(".article-evidence-map");
+      await page
+        .getByRole("heading", { name: "Article evidence map" })
+        .waitFor();
+      expect(
+        await map
+          .getByRole("heading", { name: "Connected entities" })
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await map.getByRole("heading", { name: "Extracted facts" }).isVisible()
+      ).toBe(true);
+      expect(
+        await map.getByRole("heading", { name: "Event signals" }).isVisible()
+      ).toBe(true);
+      expect(
+        await map.getByRole("heading", { name: "Source status" }).isVisible()
+      ).toBe(true);
+      expect(
+        await map.getByRole("heading", { name: "Next steps" }).isVisible()
+      ).toBe(true);
+      expect(
+        await map
+          .getByRole("link", { name: EXAMPLE_WEALTH_SHORT })
+          .getAttribute("href")
+      ).toMatch(/\/firms\/example-wealth-firm-1/u);
+      expect(await map.getByText(FACT_AMOUNT_LABEL).isVisible()).toBe(true);
+      expect(await map.getByText("Original source").isVisible()).toBe(true);
+      expect(await map.getByText("Open firm profile").isVisible()).toBe(true);
+      expect(
+        await page
+          .getByRole("heading", { name: SOURCE_BACKED_FACTS_HEADING })
+          .isVisible()
+      ).toBe(true);
+      expect(await page.locator(".ext-link").first().getAttribute("href")).toBe(
+        ARTICLE_FIXTURE_URL
+      );
+      expect(await hasHorizontalOverflow(page)).toBe(false);
     } finally {
       await page.close();
     }
@@ -1541,6 +1612,19 @@ function articleWithoutLimitations(): Readonly<Record<string, unknown>> {
       },
     ],
   };
+}
+
+/**
+ * Checks whether the page overflows horizontally.
+ * @param page - Browser page under test.
+ * @returns Whether horizontal overflow is present.
+ */
+async function hasHorizontalOverflow(page: Page): Promise<boolean> {
+  return await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth
+  );
 }
 
 /**
