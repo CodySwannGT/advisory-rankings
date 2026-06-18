@@ -19,6 +19,7 @@ const EXAMPLE_WEALTH_LLC = "Example Wealth LLC";
 const EXAMPLE_WEALTH_SHORT_NAME = "Example Wealth";
 const EXAMPLE_WM_SHORT = "Example WM";
 const BETA_ADVISORS = "Beta Advisors";
+const BETA_ADVISORS_FIRM_CURSOR = "YmV0YSBhZHZpc29ycwBmaXJtLWI";
 const AVERY_STONE_NAME = "Avery Stone";
 const AVERY_STONE_SLUG = "avery-stone";
 const AVERY_STONE_FIRM_BIO_URL = "https://example.com/avery";
@@ -34,6 +35,8 @@ const CORRECTION_UNKNOWN_ID = "correction-unknown";
 const CORRECTION_UNKNOWN_ADVISOR_ID = "advisor-missing";
 const BLAKE_YOUNG_NAME = "Blake Young";
 const STONE_GROUP_NAME = "Stone Group";
+const STONE_ALPHA_CURSOR = "c3RvbmUgYWxwaGEAdGVhbS1h";
+const STONE_GROUP_CURSOR = "c3RvbmUgZ3JvdXAAdGVhbS1h";
 const STONE_GROUP_SLUG = "stone-group";
 const NON_COMPLIANT_TEAM_NAME = "545 Group - NON-COMPLIANT";
 const JORDAN_EXAMPLE_NAME = "Jordan Example";
@@ -47,7 +50,11 @@ const CASEY_STONE_NAME = "Casey Stone";
 const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
 const BRANCH_ATLANTA_ID = "branch-atlanta";
 const BRANCH_AUSTIN_ID = "branch-austin";
+const BRANCH_ORPHAN_ID = "branch-orphan";
+const BRANCH_ATLANTA_CURSOR =
+  "ZXhhbXBsZSB3ZWFsdGggbWFuYWdlbWVudABnYQBhdGxhbnRhAGF0bGFudGEgbWFya2V0AGJyYW5jaC1hdGxhbnRh";
 const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
+const COBALT_CAPITAL_FIRM_CURSOR = "Y29iYWx0IGNhcGl0YWwAZmlybS1j";
 const EMPLOYMENT_A_ID = "employment-a";
 const EMPLOYMENT_B_ID = "employment-b";
 const RANKING_ENTRY_A_ID = "ranking-entry-a";
@@ -84,6 +91,7 @@ const MISSING_BACKEND_METRICS_REASON = "missing-backend-metrics";
 const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
 const EXAMPLE_WEALTH_QUERY = "example wealth";
+const OFFSET_ONE_CURSOR = "MQ";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
 const CLIENT_EMAIL = "client@example.test";
@@ -3995,13 +4003,13 @@ describe("Harper directory and search resources", () => {
     expect(firms).toMatchObject({
       items: [expect.objectContaining({ name: BETA_ADVISORS })],
       total: 2,
+      nextCursor: BETA_ADVISORS_FIRM_CURSOR,
     });
-    expect(firms.nextCursor).toBeTruthy();
     expect(advisors).toMatchObject({
       items: [expect.objectContaining({ id: "advisor-a" })],
       total: 2,
+      nextCursor: OFFSET_ONE_CURSOR,
     });
-    expect(advisors.nextCursor).toBeTruthy();
     expect(teams.total).toBe(1);
     expect(teams.nextCursor).toBeNull();
     expect(teams.items).toHaveLength(1);
@@ -4290,8 +4298,8 @@ describe("Harper directory and search resources", () => {
     expect(first).toMatchObject({
       total: 2,
       items: [expect.objectContaining({ id: "advisor-a" })],
+      nextCursor: OFFSET_ONE_CURSOR,
     });
-    expect(first.nextCursor).toBeTruthy();
     expect(second).toMatchObject({
       total: 2,
       items: [expect.objectContaining({ id: "advisor-c" })],
@@ -4358,7 +4366,7 @@ describe("Harper directory and search resources", () => {
       total: 2,
       items: [expect.objectContaining({ id: "advisor-c" })],
     });
-    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(first.nextCursor).toBe(OFFSET_ONE_CURSOR);
     expect(second).toMatchObject({
       total: 2,
       items: [expect.objectContaining({ id: "advisor-b" })],
@@ -4679,7 +4687,7 @@ describe("Harper directory and search resources", () => {
       id: "team-a",
       currentFirmName: EXAMPLE_WEALTH_MANAGEMENT,
     });
-    expect(teamsFirst.nextCursor).toBeTruthy();
+    expect(teamsFirst.nextCursor).toBe(STONE_GROUP_CURSOR);
     expect(teamsSecond.total).toBe(2);
     expect(teamsSecond.items).toHaveLength(1);
     expect(teamsSecond.items[0]).toMatchObject({ id: "team-b" });
@@ -4732,8 +4740,8 @@ describe("Harper directory and search resources", () => {
     expect(first).toMatchObject({
       total: 2,
       items: [expect.objectContaining({ id: "firm-c" })],
+      nextCursor: COBALT_CAPITAL_FIRM_CURSOR,
     });
-    expect(first.nextCursor).toBeTruthy();
     expect(second).toMatchObject({
       total: 2,
       items: [expect.objectContaining({ id: "firm-a" })],
@@ -4771,7 +4779,7 @@ describe("Harper directory and search resources", () => {
         state: "TX",
       },
       {
-        id: "branch-orphan",
+        id: BRANCH_ORPHAN_ID,
         firmId: MISSING_FIRM_REASON,
         level: "market",
         city: "Miami",
@@ -4846,6 +4854,14 @@ describe("Harper directory and search resources", () => {
     const third = await new (resources as any).PublicBranches().get(
       routeTarget("", { cursor: String(second.nextCursor), limit: "2" })
     );
+    const invalidMinimumAdvisorCount = await new (
+      resources as any
+    ).PublicBranches().get(
+      routeTarget("", {
+        limit: "10",
+        minAdvisorCount: "2x",
+      })
+    );
     const pagedBranchIds = [...second.items, ...third.items].map(
       (row: any) => row.id
     );
@@ -4878,10 +4894,10 @@ describe("Harper directory and search resources", () => {
     expect(second).toMatchObject({
       total: 3,
       items: expect.arrayContaining([
-        expect.objectContaining({ id: "branch-orphan" }),
+        expect.objectContaining({ id: BRANCH_ORPHAN_ID }),
       ]),
     });
-    expect(second.nextCursor).toEqual(expect.any(String));
+    expect(second.nextCursor).toBe(BRANCH_ATLANTA_CURSOR);
     expect(third).toMatchObject({
       total: 3,
       nextCursor: null,
@@ -4890,6 +4906,13 @@ describe("Harper directory and search resources", () => {
       ]),
     });
     expect(new Set(pagedBranchIds).size).toBe(3);
+    expect(invalidMinimumAdvisorCount).toMatchObject({
+      total: 3,
+      items: expect.arrayContaining([
+        expect.objectContaining({ id: BRANCH_ORPHAN_ID }),
+      ]),
+      nextCursor: null,
+    });
   });
 
   it("bounds public branch employment lookup concurrency", async () => {
@@ -5039,8 +5062,8 @@ describe("Harper directory and search resources", () => {
           slug: "stone-alpha",
         }),
       ],
+      nextCursor: STONE_ALPHA_CURSOR,
     });
-    expect(first.nextCursor).toBeTruthy();
     expect(second).toMatchObject({
       total: 2,
       items: [
