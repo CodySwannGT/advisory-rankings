@@ -107,11 +107,8 @@
       const PAGE_SIZE = 50;
       const SERVICE_MODEL_OPTIONS = [
         ["", "Any service model"],
-        ["ensemble", "Ensemble"],
-        ["solo", "Solo"],
-        ["hybrid", "Hybrid"],
-        ["family_office", "Family office"],
-        ["institutional", "Institutional"],
+        ["uhnw", "Ultra-high-net-worth"],
+        ["hnw", "High-net-worth"],
       ];
 
       mountThreeColumnPage({
@@ -177,11 +174,7 @@
                           href: entityPath("team", t),
                         });
                       },
-                      empty: filterEmptyCopy(
-                        filters,
-                        "No teams match the selected filters.",
-                        "No teams are available yet."
-                      ),
+                      empty: teamEmptyCopy(filters),
                       onTotal: updateStats,
                     }),
                   ],
@@ -329,6 +322,17 @@
 
       function filterEmptyCopy(filters, filteredCopy, defaultCopy) {
         return activeFilters(filters) ? filteredCopy : defaultCopy;
+      }
+
+      function teamEmptyCopy(filters) {
+        if (filters.serviceModel && !filters.q && !filters.firm) {
+          return "No current public teams have that service model.";
+        }
+        return filterEmptyCopy(
+          filters,
+          "No teams match the selected filters.",
+          "No teams are available yet."
+        );
       }
 
       function installLiveFilters(form, path) {

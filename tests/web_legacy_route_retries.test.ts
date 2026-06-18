@@ -11,6 +11,7 @@ const QUICK_TIMEOUT = 4_000;
 // Boot recovery may auto-reload several times before booting or falling back.
 const BOOT_TIMEOUT = 25_000;
 const ACME_ADVISORY = "Acme Advisory";
+const SUPPORTED_TEAM_SERVICE_MODELS = ["", "uhnw", "hnw"];
 
 /** Browser retry fixture for one legacy public route. */
 interface RetryRouteCase {
@@ -61,7 +62,7 @@ const retryRouteCases: readonly RetryRouteCase[] = [
           id: "team-1",
           name: "Summit Wealth Team",
           currentFirmName: ACME_ADVISORY,
-          serviceModel: "ensemble",
+          serviceModel: "uhnw",
         },
       ],
       nextCursor: null,
@@ -170,6 +171,102 @@ describe("legacy directory and compliance route retries", () => {
     },
     BOOT_TIMEOUT
   );
+
+  it("only offers service model filters backed by public team data", async () => {
+    const page = await browser.newPage();
+    const selectedRequests: string[] = [];
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/PublicTeams?**", async route => {
+        const url = new URL(route.request().url());
+        const serviceModel = url.searchParams.get("serviceModel") ?? "";
+        selectedRequests.push(serviceModel);
+        await route.fulfill({
+          json: {
+            items: [
+              {
+                id: "team-uhnw",
+                name: "Taylor Group",
+                currentFirmName: ACME_ADVISORY,
+                serviceModel: "uhnw",
+              },
+            ],
+            nextCursor: null,
+            total: 1,
+          },
+        });
+      });
+
+      await page.goto(`${baseUrl}/teams`, { waitUntil: "domcontentloaded" });
+      const serviceModel = page.locator('[name="serviceModel"]');
+      await serviceModel.waitFor({ timeout: QUICK_TIMEOUT });
+      const values = await serviceModel
+        .locator("option")
+        .evaluateAll(options =>
+          options.map(option => option.getAttribute("value") ?? "")
+        );
+
+      expect(values).toEqual(SUPPORTED_TEAM_SERVICE_MODELS);
+      expect(values).not.toEqual(
+        expect.arrayContaining(["ensemble", "solo", "hybrid", "family_office"])
+      );
+
+      await serviceModel.selectOption("uhnw");
+      await page.waitForURL(
+        url => url.searchParams.get("serviceModel") === "uhnw"
+      );
+      await page.getByText("Taylor Group").waitFor({ timeout: QUICK_TIMEOUT });
+      await page.getByText("1 matching teams").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      expect(selectedRequests).toContain("uhnw");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("explains empty service model results only for service-model-only filters", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/PublicTeams?**", async route => {
+        await route.fulfill({
+          json: {
+            items: [],
+            nextCursor: null,
+            total: 0,
+          },
+        });
+      });
+
+      await page.goto(`${baseUrl}/teams`, { waitUntil: "domcontentloaded" });
+      await page.locator('[name="serviceModel"]').selectOption("uhnw");
+      await page
+        .getByText("No current public teams have that service model.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      await page.goto(`${baseUrl}/teams?q=Taylor&serviceModel=uhnw`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .getByText("No teams match the selected filters.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await page
+          .getByText("No current public teams have that service model.")
+          .count()
+      ).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
 
   it("auto-recovers when a transient module reset clears on reload", async () => {
     const page = await browser.newPage();
