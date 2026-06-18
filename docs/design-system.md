@@ -204,6 +204,7 @@ Self-contained UI sections.
 | `SiteFooter()` | Footer with source link and package version. |
 | `TransitionEventCard(t, fmts)` | Green-bordered event card for a `TransitionEvent`. |
 | `DisclosureEventCard(d, fmts)` | Red-bordered event card for a `Disclosure`. |
+| `articleEvidenceMap(article, resources)` | Article detail evidence brief. Groups public `ArticleView` rows into connected entities, extracted facts, event signals, source status, and next-step links while preserving limitation copy for missing public evidence. |
 | `ArticleListBlock({ articles, fmtDate, articleSource })` | "Coverage" list on every profile page. Pass `articleSource` from `app.ts` so non-AdvisorHub sources (firm bios, Barron's, …) get the right initials and "Source →" label. |
 | `FeedPostCard(item, fmts)` | A whole article rendered as a Facebook-style post. Reads `fmts.articleSource(article)` for the publisher chip + footer CTA, so a Morgan Stanley firm-bio post renders as "MS · Morgan Stanley" / "Read original on Morgan Stanley →" instead of falling back to "AH · AdvisorHub". |
 | `CareerTimeline({ career, fmtDate })` | Vertical timeline on advisor profile. |
@@ -440,7 +441,7 @@ The pages have been migrated to the system:
 | `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `Tag`, `SourceAttribution` (Career + Licenses + reviewed discrepancy notes cite FINRA BrokerCheck; evidence freshness and fact confidence panels collapse into the center column on mobile) |
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `teamContinuityCard`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
-| `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `TransitionEventCard`, `DisclosureEventCard`, `DetailsCard` |
+| `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `articleEvidenceMap`, `TransitionEventCard`, `DisclosureEventCard`, `ScrollableTable`, `DetailsCard` |
 | `/firms`, `/advisors`, `/teams` (`*.html`) | `mountThreeColumnPage` | `SectionCard`, `EntityList`, `EntityRow`, `DetailsCard` |
 | `/rankings` (`rankings.html`) | `mountThreeColumnPage` | `SectionCard`, `ScrollableTable`, `RollupCard`, `DetailsCard`, `Tag` |
 | `/regulatory` (`regulatory.html`) | `mountThreeColumnPage` | `SectionCard`, `DisclosureEventCard`, `DetailsCard` |
