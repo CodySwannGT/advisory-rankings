@@ -62,7 +62,7 @@ export function limitationsSection(
 function limitationItems(
   options: ArticleLimitationResources
 ): readonly string[] {
-  return [
+  const gaps = [
     bodyLimitation(options.body),
     rowLimitation({
       rows: options.events,
@@ -103,8 +103,13 @@ function limitationItems(
     hasHighConfidenceFact(options.provenanceRows)
       ? null
       : "No high-confidence source-backed facts are available; candidate extraction may be incomplete.",
-    "Public boundary: excludes watchlists, ratings, correction internals, analyst notes, and raw authenticated table data.",
   ].filter((item): item is string => Boolean(item));
+  return gaps.length
+    ? [
+        ...gaps,
+        "Public boundary: excludes watchlists, ratings, correction internals, analyst notes, and raw authenticated table data.",
+      ]
+    : gaps;
 }
 
 /**
