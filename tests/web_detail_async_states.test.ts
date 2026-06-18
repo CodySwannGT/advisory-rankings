@@ -43,6 +43,10 @@ const FIRM_BIO_REVIEW_NOTE = "Firm bio supports the update.";
 const FIRM_BIO_SUBMITTER_NOTE = "Firm bio uses the CFP suffix.";
 const CORRECTION_REVIEWED_AT = "2026-06-11T12:00:00Z";
 const TEAM_FIXTURE_NAME = "Summit Wealth Team";
+const PRIVATE_WATCHLIST_NOTE_MARKER = "Private watchlist note";
+const PRIVATE_RATING_MARKER = "rating: 2";
+const PENDING_CORRECTION_MARKER = "pending correction internals";
+const RAW_AUTH_TABLE_MARKER = "raw_authenticated_table";
 
 describe("detail async states", () => {
   let browser: Browser;
@@ -415,11 +419,11 @@ describe("detail async states", () => {
       expect(await timeline.locator(".step").count()).toBeGreaterThanOrEqual(4);
       const bodyText = await page.locator("body").innerText();
       for (const privateValue of [
-        "Private watchlist note",
-        "rating: 2",
+        PRIVATE_WATCHLIST_NOTE_MARKER,
+        PRIVATE_RATING_MARKER,
         FIRM_BIO_SUBMITTER_NOTE,
         ANALYST_FIXTURE_EMAIL,
-        "raw_authenticated_table",
+        RAW_AUTH_TABLE_MARKER,
       ]) {
         expect(bodyText).not.toContain(privateValue);
       }
@@ -581,13 +585,38 @@ describe("detail async states", () => {
       });
       await page.getByText("Article body could not load").waitFor();
       await page.getByText("Extracted facts could not load").waitFor();
-      await page.getByText("Mentioned advisors could not load").waitFor();
+      await page
+        .getByText(
+          "Mentioned advisors could not load. The rest of this profile remains available."
+        )
+        .waitFor();
+      await page
+        .getByRole("heading", { name: "Article evidence limitations" })
+        .waitFor();
+      await page
+        .getByText("Article body text could not load", { exact: false })
+        .waitFor();
+      await page
+        .getByText("Source-backed facts could not load", { exact: false })
+        .waitFor();
+      await page
+        .getByText("Public boundary: excludes watchlists", { exact: false })
+        .waitFor();
       const metadataHeading = page.getByRole("heading", {
         name: ABOUT_THIS_ARTICLE,
       });
       await metadataHeading.waitFor();
       expect(await headline.isVisible()).toBe(true);
       expect(await metadataHeading.isVisible()).toBe(true);
+      const bodyText = await page.locator("body").innerText();
+      for (const privateValue of [
+        PRIVATE_WATCHLIST_NOTE_MARKER,
+        PRIVATE_RATING_MARKER,
+        PENDING_CORRECTION_MARKER,
+        RAW_AUTH_TABLE_MARKER,
+      ]) {
+        expect(bodyText).not.toContain(privateValue);
+      }
     } finally {
       await page.close();
     }
@@ -619,7 +648,12 @@ describe("detail async states", () => {
       expect(await page.getByText("Slug").count()).toBe(0);
       expect(await page.getByText("Modified").count()).toBe(0);
       expect(await page.getByText("Article metadata").count()).toBe(0);
-      expect(await page.getByText("Article body").count()).toBe(0);
+      await page
+        .getByRole("heading", { name: "Article evidence limitations" })
+        .waitFor();
+      await page
+        .getByText("Stored article body text is unavailable", { exact: false })
+        .waitFor();
       expect(await page.getByText("Source: Example").isVisible()).toBe(true);
       expect(
         await page.locator(".article-linkout-button").getAttribute("href")
@@ -1354,12 +1388,22 @@ function articleWithPartialFailures(): ArticleWithPartialFailures {
       authors: ["AdvisorBook"],
       url: ARTICLE_FIXTURE_URL,
     },
-    body: { error: "body unavailable" },
+    body: {
+      error: "body unavailable",
+      privateWatchlistNote: PRIVATE_WATCHLIST_NOTE_MARKER,
+    },
     eventCards: { error: "events unavailable" },
     firms: [],
     teams: [],
-    advisors: { error: "advisors unavailable" },
-    provenance: { error: "provenance unavailable" },
+    advisors: {
+      error: "advisors unavailable",
+      privateRating: PRIVATE_RATING_MARKER,
+    },
+    provenance: {
+      error: "provenance unavailable",
+      pendingCorrection: PENDING_CORRECTION_MARKER,
+      rawTable: RAW_AUTH_TABLE_MARKER,
+    },
   };
 }
 
@@ -2207,6 +2251,7 @@ type MissingDetailResponse = Readonly<{
  */
 type FailedResource = Readonly<{
   error: string;
+  [key: string]: unknown;
 }>;
 
 /**

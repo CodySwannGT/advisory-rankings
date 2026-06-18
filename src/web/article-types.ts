@@ -88,6 +88,15 @@ export interface EvidenceTableRow {
   readonly value: string;
 }
 
+/** Public rows needed to render the article header. */
+export interface ArticleHeadOptions {
+  readonly article: ArticleMetadata;
+  readonly events: readonly ArticleEventCard[];
+  readonly firms: readonly EntityChipPayload[];
+  readonly teams: readonly EntityChipPayload[];
+  readonly advisors: readonly EntityChipPayload[];
+}
+
 /** Accumulator used while compacting provenance rows. */
 export interface CompactProvenanceAccumulator {
   readonly keys: readonly string[];
