@@ -209,6 +209,16 @@
 
       function teamFilterForm(filters) {
         const basePath = currentDirectoryPath("/teams");
+        const clearAction = activeFilters(filters)
+          ? el(
+              "a",
+              {
+                class: "feed-filter-clear",
+                href: basePath,
+              },
+              "Clear"
+            )
+          : null;
         const form = el(
           "form",
           { class: "directory-filters", method: "get", action: basePath },
@@ -226,15 +236,7 @@
             filters.serviceModel,
             SERVICE_MODEL_OPTIONS
           ),
-          el(
-            "a",
-            {
-              class: "feed-filter-clear",
-              href: basePath,
-              "aria-disabled": activeFilters(filters) ? undefined : "true",
-            },
-            "Clear"
-          )
+          clearAction
         );
         installLiveFilters(form, basePath);
         installTypeahead(form, "q", "team");
