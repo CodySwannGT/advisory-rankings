@@ -985,6 +985,75 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text-muted);
 }
 
+/* ── Article evidence map ───────────────────────────────────── */
+
+.article-evidence-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.article-evidence-map-group {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.article-evidence-map-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.article-evidence-map-group h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.article-evidence-map-count {
+  flex: 0 0 auto;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.article-evidence-map-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.article-evidence-map-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.article-evidence-map-row > a,
+.article-evidence-map-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+
+.article-evidence-map-detail {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 /* Even tinier "tag" used in headers / row metadata */
 .tag {
   display: inline-block;
