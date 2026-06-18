@@ -325,7 +325,7 @@
       }
 
       function teamEmptyCopy(filters) {
-        if (filters.serviceModel) {
+        if (filters.serviceModel && !filters.q && !filters.firm) {
           return "No current public teams have that service model.";
         }
         return filterEmptyCopy(

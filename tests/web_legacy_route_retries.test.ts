@@ -229,6 +229,45 @@ describe("legacy directory and compliance route retries", () => {
     }
   });
 
+  it("explains empty service model results only for service-model-only filters", async () => {
+    const page = await browser.newPage();
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/PublicTeams?**", async route => {
+        await route.fulfill({
+          json: {
+            items: [],
+            nextCursor: null,
+            total: 0,
+          },
+        });
+      });
+
+      await page.goto(`${baseUrl}/teams`, { waitUntil: "domcontentloaded" });
+      await page.locator('[name="serviceModel"]').selectOption("uhnw");
+      await page
+        .getByText("No current public teams have that service model.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      await page.goto(`${baseUrl}/teams?q=Taylor&serviceModel=uhnw`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .getByText("No teams match the selected filters.")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(
+        await page
+          .getByText("No current public teams have that service model.")
+          .count()
+      ).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
   it("auto-recovers when a transient module reset clears on reload", async () => {
     const page = await browser.newPage();
     let indexRequests = 0;
