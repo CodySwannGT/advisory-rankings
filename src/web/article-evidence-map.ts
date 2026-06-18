@@ -176,7 +176,7 @@ function extractedFactRows(
     return resources.evidenceRows.slice(0, 4).map(evidenceFactRow);
   }
   if (resources.provenanceRows.length) {
-    return resources.provenanceRows.slice(0, 4).flatMap(candidateProvenanceRow);
+    return resources.provenanceRows.flatMap(candidateProvenanceRow).slice(0, 4);
   }
   return [
     {

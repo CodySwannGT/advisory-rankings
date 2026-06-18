@@ -68,7 +68,7 @@ browserDescribe("article evidence map public-data regression", () => {
         fullPage: true,
       });
 
-      const profileTitle = await followFirstProfileLink(desktop);
+      const profileTitle = await followWellsFargoProfileLink(desktop);
 
       expect(desktopFacts.articleId).toBe(ARTICLE_ID);
       expect(desktopFacts.groupTitles).toEqual([
@@ -81,12 +81,14 @@ browserDescribe("article evidence map public-data regression", () => {
       expect(desktopFacts.connectedCount).toBeGreaterThan(0);
       expect(desktopFacts.provenanceCount).toBeGreaterThan(0);
       expect(desktopFacts.originalSourceVisible).toBe(true);
+      expect(desktopFacts.sourceBackedFactsVisible).toBe(false);
       expect(
         desktopFacts.profileHrefs.some(href => href.startsWith("/firms/"))
       ).toBe(true);
       expect(desktopFacts.overflow).toBe(false);
       expect(mobileFacts.connectedCount).toBe(desktopFacts.connectedCount);
       expect(mobileFacts.provenanceCount).toBe(desktopFacts.provenanceCount);
+      expect(mobileFacts.sourceBackedFactsVisible).toBe(false);
       expect(mobileFacts.overflow).toBe(false);
       expect(profileTitle).toMatch(/Wells Fargo/i);
 
@@ -169,9 +171,10 @@ async function articleMapFacts(
   }, ARTICLE_ID);
 }
 
-async function followFirstProfileLink(page: Page): Promise<string> {
+async function followWellsFargoProfileLink(page: Page): Promise<string> {
   const profileLink = page
     .locator(".article-evidence-map a[href^='/firms/']")
+    .filter({ hasText: /Wells Fargo/u })
     .first();
   await profileLink.click();
   await page
