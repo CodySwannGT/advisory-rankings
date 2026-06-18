@@ -7,11 +7,20 @@ import {
   smokeGoto,
   type Check,
 } from "./web_smoke_support.js";
+import {
+  readAdvisorFilterFacts,
+  type AdvisorFilterFacts,
+} from "./web_smoke_advisor_filter_facts.js";
 
 const ADVISOR_STATS_TITLE = "Advisor directory";
 const DIRECTORY_ROW_SELECTOR = ".center .entity-list .row";
 const FILTER_FORM_SELECTOR = ".advisor-directory-filters";
 const STATS_CARD_SELECTOR = ".right .card";
+const ADVISOR_FACTS = {
+  rowSelector: DIRECTORY_ROW_SELECTOR,
+  statsSelector: STATS_CARD_SELECTOR,
+  title: ADVISOR_STATS_TITLE,
+} as const;
 
 interface DirectoryPayload<T> {
   readonly items?: readonly T[];
@@ -64,10 +73,10 @@ export async function smokeAdvisorDirectoryFilters(
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await waitForDirectoryTotalCount(page);
-  const filteredFacts = await readAdvisorFilterFacts(page);
+  const filteredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   await page.reload();
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const restoredFacts = await readAdvisorFilterFacts(page);
+  const restoredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   const liveFacts = await captureLiveAdvisorFilterFacts(page);
   await shot(page, "06-advisors-filtered");
 
@@ -76,7 +85,7 @@ export async function smokeAdvisorDirectoryFilters(
     .locator(".empty")
     .first()
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const emptyFacts = await readAdvisorFilterFacts(page);
+  const emptyFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   await shot(page, "06-advisors-filter-empty");
 
   const desktopLayout = await sweepAdvisorFilterLayouts(page, filteredUrl);
@@ -463,74 +472,6 @@ async function waitForDirectoryTotalCount(page: Page): Promise<void> {
 }
 
 /**
- * Reads advisor filter form, result, and empty-state facts.
- * @param page - Browser page rendering the advisor directory.
- * @returns Current filter values and visible result facts.
- */
-async function readAdvisorFilterFacts(page: Page): Promise<AdvisorFilterFacts> {
-  return await page.evaluate(
-    ({ rowSelector, statsSelector, title }) => {
-      const valueOf = (name: string) =>
-        (document.querySelector(`[name="${name}"]`) as HTMLInputElement | null)
-          ?.value || "";
-      const stats = Array.from(document.querySelectorAll(statsSelector)).find(
-        card => card.textContent?.includes(title)
-      );
-      const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-      const total = labels.find(label => label.textContent === "Matches");
-      const loaded = labels.find(label => label.textContent === "Showing");
-      const totalValue = total?.nextElementSibling?.textContent ?? "";
-      const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
-      const countFrom = (value: string) => {
-        const match = /\d+/.exec(value.replace(/,/g, ""));
-        return match ? Number(match[0]) : NaN;
-      };
-      const rows = Array.from(document.querySelectorAll(rowSelector));
-
-      return {
-        accessibleLabels: [
-          ["Advisor", "advisor-filter-q", "q"],
-          ["Current firm", "advisor-filter-firm", "firm"],
-          ["Career status", "advisor-filter-careerStatus", "careerStatus"],
-          ["CRD", "advisor-filter-hasCrd", "hasCrd"],
-        ].every(([labelText, id, name]) => {
-          const labelNode = document.querySelector(`label[for="${id}"]`);
-          const control = document.getElementById(id);
-          return Boolean(
-            labelNode?.textContent?.trim() === labelText &&
-            control &&
-            ["INPUT", "SELECT"].includes(control.tagName) &&
-            control.getAttribute("name") === name
-          );
-        }),
-        bodyText: document.body.textContent || "",
-        careerStatus: valueOf("careerStatus"),
-        firm: valueOf("firm"),
-        firstHref:
-          rows[0]?.closest("a")?.getAttribute("href") ||
-          rows[0]?.querySelector("a")?.getAttribute("href") ||
-          "",
-        hasCrd: valueOf("hasCrd"),
-        loaded: countFrom(loadedValue),
-        rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
-          label => !labels.some(item => item.textContent?.trim() === label)
-        ),
-        rowCount: rows.length,
-        rowTexts: rows
-          .slice(0, 5)
-          .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
-        total: countFrom(totalValue),
-      };
-    },
-    {
-      rowSelector: DIRECTORY_ROW_SELECTOR,
-      statsSelector: STATS_CARD_SELECTOR,
-      title: ADVISOR_STATS_TITLE,
-    }
-  );
-}
-
-/**
  * Reads document overflow metrics for the current viewport.
  * @param page - Browser page to inspect.
  * @returns Width values used to detect horizontal overflow.
@@ -540,21 +481,6 @@ async function viewportOverflow(page: Page): Promise<ViewportOverflow> {
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-}
-
-/** Captured DOM facts for the advisor filter page. */
-interface AdvisorFilterFacts {
-  readonly accessibleLabels: boolean;
-  readonly bodyText: string;
-  readonly careerStatus: string;
-  readonly firm: string;
-  readonly firstHref: string;
-  readonly hasCrd: string;
-  readonly loaded: number;
-  readonly rawMetricsHidden: boolean;
-  readonly rowCount: number;
-  readonly rowTexts: readonly string[];
-  readonly total: number;
 }
 
 /** Advisor filter card layout facts for one viewport width. */
