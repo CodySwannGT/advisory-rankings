@@ -199,6 +199,7 @@ export function renderItems(
 ): void {
   const { dropdown } = view;
   clear(dropdown);
+  appendSearchHeading(dropdown);
   if (!items.length) {
     dropdown.appendChild(
       el("div", { class: "gs-empty" }, `No matches for "${query}".`)
@@ -220,6 +221,7 @@ export function renderItems(
  */
 export function renderSearching(view: SearchView, query: string): void {
   clear(view.dropdown);
+  appendSearchHeading(view.dropdown);
   view.dropdown.appendChild(
     el("div", { class: "gs-empty" }, `Searching for "${query}"…`)
   );
@@ -234,6 +236,7 @@ export function renderSearching(view: SearchView, query: string): void {
 export function renderSearchError(view: SearchView, error: unknown): void {
   const message = error instanceof Error ? error.message : "unknown error";
   clear(view.dropdown);
+  appendSearchHeading(view.dropdown);
   view.dropdown.appendChild(
     el("div", { class: "gs-empty" }, `Search failed: ${message}`)
   );
@@ -251,4 +254,15 @@ export function syncKindControls(view: SearchView, kind: SearchKind): void {
     button.classList.toggle("gs-kind-toggle-active", active);
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
+}
+
+/**
+ * Labels the navbar result surface so page-local filters below it are not read
+ * as part of the same search state.
+ * @param dropdown - Search dropdown receiving transient rows.
+ */
+function appendSearchHeading(dropdown: HTMLElement): void {
+  dropdown.appendChild(
+    el("div", { class: "gs-heading" }, "Global search results")
+  );
 }
