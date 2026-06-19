@@ -312,6 +312,7 @@ function advisorCenterSections(
   const articles = resourceRows(d.articles);
   const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [];
   const reviewedCorrections = d.reviewedCorrectionRequests ?? [];
+  const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
   return [
     compareAdvisorCard(d.advisor.id),
     addToWatchlistCard(d.advisor.id),
@@ -339,10 +340,7 @@ function advisorCenterSections(
       reviewedCorrections,
       d.brokerCheckSnapshot
     ),
-    PartialFailureCard("Reviewed discrepancy notes", [
-      ...reviewedDiscrepancies,
-      ...reviewedCorrections,
-    ]),
+    PartialFailureCard("Reviewed discrepancy notes", reviewedRows),
     outsideActivitiesSection(
       narrowRows(
         resourceRows(d.outsideBusinessActivities),
