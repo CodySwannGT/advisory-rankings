@@ -775,6 +775,13 @@ describe("detail async states", () => {
       await page
         .getByRole("heading", { name: "Article evidence map" })
         .waitFor();
+      expect(await evidenceMapCounts(page)).toEqual({
+        "Connected entities": 3,
+        "Event signals": 1,
+        "Extracted facts": 1,
+        "Next steps": 4,
+        "Source status": 3,
+      });
       expect(
         await map
           .getByRole("heading", { name: "Connected entities" })
@@ -808,6 +815,57 @@ describe("detail async states", () => {
       expect(await page.locator(".ext-link").first().getAttribute("href")).toBe(
         ARTICLE_FIXTURE_URL
       );
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("renders evidence map fallback rows for source-only articles", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 900 },
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(ARTICLE_FIXTURE_ROUTE, async route => {
+        await route.fulfill({ json: articleWithoutBodyText() });
+      });
+
+      await page.goto(`${baseUrl}${ARTICLE_FIXTURE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page.getByRole("heading", { name: HEADLINE_TEXT }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page
+        .getByRole("heading", { name: "Article evidence map" })
+        .waitFor();
+
+      const map = page.locator(".article-evidence-map");
+      expect(await evidenceMapCounts(page)).toEqual({
+        "Connected entities": 0,
+        "Event signals": 0,
+        "Extracted facts": 0,
+        "Next steps": 1,
+        "Source status": 1,
+      });
+      await map.getByText("No connected profiles").waitFor();
+      await map.getByText("No public facts").waitFor();
+      await map.getByText("No event card").waitFor();
+      expect(
+        await map
+          .getByText("Stored article body text is unavailable")
+          .isVisible()
+      ).toBe(true);
+      expect(
+        await map
+          .getByRole("link", { name: "Open original article" })
+          .getAttribute("href")
+      ).toBe(ARTICLE_FIXTURE_URL);
       expect(await hasHorizontalOverflow(page)).toBe(false);
     } finally {
       await page.close();
@@ -1624,6 +1682,28 @@ async function hasHorizontalOverflow(page: Page): Promise<boolean> {
     () =>
       document.documentElement.scrollWidth >
       document.documentElement.clientWidth
+  );
+}
+
+/**
+ * Reads user-visible evidence-map group counts by heading.
+ * @param page - Browser page rendering an article detail route.
+ * @returns Group title to displayed count.
+ */
+async function evidenceMapCounts(page: Page): Promise<Record<string, number>> {
+  return await page.evaluate(() =>
+    Object.fromEntries(
+      [...document.querySelectorAll<HTMLElement>(".article-evidence-map-group")]
+        .map(group => [
+          group.querySelector("h3")?.textContent?.trim() ?? "",
+          Number(
+            group
+              .querySelector(".article-evidence-map-count")
+              ?.textContent?.trim() ?? "0"
+          ),
+        ])
+        .filter(([title]) => title)
+    )
   );
 }
 
