@@ -188,7 +188,8 @@ const derivedReadinessQuery = async (
   const { matched, truncated } = await collectReadinessMatches(
     searchable,
     scanConditions,
-    filters
+    filters,
+    offset + limit + 1
   );
   return finalizeInMemory(matched, offset, limit, truncated);
 };
@@ -197,10 +198,13 @@ const collectReadinessMatches = async (
   searchable: SearchableAdvisorTable,
   conditions: readonly HarperCondition[],
   filters: AdvisorDirectoryFilters,
+  targetMatches: number,
   scanned = 0,
   matched: ReadonlyArray<AdvisorRow> = []
 ): Promise<ReadinessMatchScanResult> => {
-  if (scanned >= READINESS_SCAN_LIMIT) return { matched, truncated: true };
+  if (scanned >= READINESS_SCAN_LIMIT || matched.length >= targetMatches) {
+    return { matched, truncated: true };
+  }
   const batch = await Array.fromAsync(
     searchable.search({
       conditions,
@@ -213,12 +217,16 @@ const collectReadinessMatches = async (
     ...matched,
     ...batch.filter(advisor => advisorMatchesNonFirmFilters(advisor, filters)),
   ];
+  if (nextMatched.length >= targetMatches) {
+    return { matched: nextMatched.slice(0, targetMatches), truncated: true };
+  }
   return batch.length < READINESS_SEARCH_PAGE_LIMIT
     ? { matched: nextMatched, truncated: false }
     : collectReadinessMatches(
         searchable,
         conditions,
         filters,
+        targetMatches,
         scanned + batch.length,
         nextMatched
       );
