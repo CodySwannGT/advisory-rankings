@@ -113,6 +113,8 @@ const DATE_2023_01_01 = "2023-01-01";
 const DATE_2024_01_01 = "2024-01-01";
 const DATE_2024_04_01 = "2024-04-01";
 const DATE_2025_01_02 = "2025-01-02";
+const ADVISOR_READY_ID = "advisor-ready";
+const ADVISOR_SUBSTANCE_GAP_ID = "advisor-substance-gap";
 const DATE_2026_05_25 = "2026-05-25";
 const RESEARCH_B_CHECKED_AT = "2026-05-25T12:00:00Z";
 
@@ -4356,7 +4358,7 @@ describe("Harper directory and search resources", () => {
   it("derives public-safe contact readiness on advisor directory rows", async () => {
     setRows("Advisor", [
       {
-        id: "advisor-ready",
+        id: ADVISOR_READY_ID,
         firstName: "Ready",
         lastName: "Advisor",
         legalName: "Ready Advisor",
@@ -4379,7 +4381,7 @@ describe("Harper directory and search resources", () => {
         bioText: "Public biography exists.",
       },
       {
-        id: "advisor-substance-gap",
+        id: ADVISOR_SUBSTANCE_GAP_ID,
         firstName: "Substance",
         lastName: "Gap",
         legalName: "Substance Gap",
@@ -4397,7 +4399,7 @@ describe("Harper directory and search resources", () => {
     const byId = new Map(
       result.items.map((advisor: any) => [advisor.id, advisor])
     );
-    expect(byId.get("advisor-ready")).toMatchObject({
+    expect(byId.get(ADVISOR_READY_ID)).toMatchObject({
       hasCrd: true,
       readiness: {
         contact: "ready",
@@ -4429,7 +4431,7 @@ describe("Harper directory and search resources", () => {
         "LinkedIn URL is unavailable in public source data.",
       ]),
     });
-    expect(byId.get("advisor-substance-gap").readiness).toMatchObject({
+    expect(byId.get(ADVISOR_SUBSTANCE_GAP_ID).readiness).toMatchObject({
       contact: "ready",
       profileSubstance: "missing_profile_substance",
       crd: "absent",
@@ -4450,6 +4452,28 @@ describe("Harper directory and search resources", () => {
     expect(JSON.stringify(result)).not.toMatch(
       /unsuitable|misconduct|lower quality|recommendation/i
     );
+
+    const contactReady = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        contactReadiness: "ready",
+        freshness: "unknown",
+        limit: "10",
+      })
+    );
+    expect(contactReady.items.map((advisor: any) => advisor.id)).toEqual([
+      ADVISOR_READY_ID,
+      ADVISOR_SUBSTANCE_GAP_ID,
+    ]);
+
+    const missingProfile = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        profileSubstance: "missing_profile_substance",
+        limit: "10",
+      })
+    );
+    expect(missingProfile.items.map((advisor: any) => advisor.id)).toEqual([
+      ADVISOR_SUBSTANCE_GAP_ID,
+    ]);
   });
 
   it("filters advisor directories with stable totals and cursor pages", async () => {

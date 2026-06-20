@@ -7,6 +7,7 @@ import type {
 } from "../types/harper-schema.js";
 import type { RouteTarget } from "../types/harper-resource.js";
 import { advisorDisplayName } from "./resource-routing.js";
+import { advisorReadiness } from "./resource-advisor-readiness.js";
 import type {
   AdvisorDirectoryFilters,
   BranchDirectoryFilters,
@@ -46,6 +47,9 @@ export function parseAdvisorDirectoryFilters(
     firm: normalizedParam(target, "firm"),
     careerStatus: normalizedParam(target, "careerStatus"),
     hasCrd: booleanParam(target, "hasCrd"),
+    contactReadiness: normalizedParam(target, "contactReadiness"),
+    profileSubstance: normalizedParam(target, "profileSubstance"),
+    freshness: normalizedParam(target, "freshness"),
   };
 }
 
@@ -144,7 +148,29 @@ export function advisorMatchesNonFirmFilters(
       advisor.lastName,
     ]) &&
     exactMatches(filters.careerStatus, advisor.careerStatus) &&
-    booleanMatches(filters.hasCrd, Boolean(advisor.finraCrd))
+    booleanMatches(filters.hasCrd, Boolean(advisor.finraCrd)) &&
+    advisorReadinessMatches(advisor, filters)
+  );
+}
+
+/**
+ * Checks public-safe readiness query params against derived advisor readiness.
+ * @param advisor - Advisor row from the public table.
+ * @param filters - Normalized advisor filters.
+ * @returns Whether the advisor matches readiness finder filters.
+ */
+function advisorReadinessMatches(
+  advisor: AdvisorRow,
+  filters: AdvisorDirectoryFilters
+): boolean {
+  const readiness = advisorReadiness({
+    ...advisor,
+    finraCrd: advisor.finraCrd || null,
+  });
+  return (
+    exactMatches(filters.contactReadiness, readiness.contact) &&
+    exactMatches(filters.profileSubstance, readiness.profileSubstance) &&
+    exactMatches(filters.freshness, readiness.freshness)
   );
 }
 

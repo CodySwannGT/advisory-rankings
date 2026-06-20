@@ -21,6 +21,9 @@ const browserDescribe =
     ? describe.sequential
     : describe.skip;
 const COMPARE_BUTTON_SELECTOR = ".compare-entry-button";
+const ADVISOR_DIRECTORY_ROW_SELECTOR = ".advisor-directory-row";
+const READINESS_BADGE_SELECTOR = ".advisor-readiness-badge";
+const CONTACT_READY_LABEL = "Contact ready";
 const SECOND_ADVISOR_ID = "advisor-watch-2";
 
 browserDescribe("public comparison entry actions (#810)", () => {
@@ -51,7 +54,7 @@ browserDescribe("public comparison entry actions (#810)", () => {
       waitUntil: "domcontentloaded",
     });
 
-    const rows = page.locator(".advisor-directory-row");
+    const rows = page.locator(ADVISOR_DIRECTORY_ROW_SELECTOR);
     await rows.first().waitFor({ timeout: QUICK_TIMEOUT });
     await rows.nth(0).locator(COMPARE_BUTTON_SELECTOR).click();
 
@@ -71,6 +74,34 @@ browserDescribe("public comparison entry actions (#810)", () => {
       `${ADVISOR_ID},${SECOND_ADVISOR_ID}`
     );
     await captureViewports(page, "issue-1165-directory-in-place-compare");
+    await page.close();
+  });
+
+  it("renders shareable contact-readiness finder state", async () => {
+    const page = await browser.newPage();
+    const advisorRequests: string[] = [];
+    await routeAuth(page, false);
+    await routeAdvisorDirectory(page, advisorRequests);
+
+    await page.goto(
+      `${baseUrl}/advisors?contactReadiness=ready&profileSubstance=present&hasCrd=true&freshness=unknown`,
+      { waitUntil: "domcontentloaded" }
+    );
+
+    await page.locator(ADVISOR_DIRECTORY_ROW_SELECTOR).first().waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await expectFinderState(page, advisorRequests);
+    await captureViewports(page, "issue-1327-readiness-finder");
+
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(ADVISOR_DIRECTORY_ROW_SELECTOR).first().waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBe(await page.evaluate(() => document.documentElement.clientWidth));
     await page.close();
   });
 
@@ -100,9 +131,14 @@ browserDescribe("public comparison entry actions (#810)", () => {
 /**
  * Routes the public advisor directory to one deterministic row.
  * @param page - Browser page under test.
+ * @param requests - Captured PublicAdvisors request URLs.
  */
-async function routeAdvisorDirectory(page: Page): Promise<void> {
+async function routeAdvisorDirectory(
+  page: Page,
+  requests: string[] = []
+): Promise<void> {
   await page.route("**/PublicAdvisors?**", async route => {
+    requests.push(route.request().url());
     await route.fulfill({
       json: {
         items: [
@@ -115,6 +151,7 @@ async function routeAdvisorDirectory(page: Page): Promise<void> {
             yearsExperience: 12,
             finraCrd: "12345",
             headshotUrl: null,
+            readiness: readyReadiness("present"),
           },
           {
             id: SECOND_ADVISOR_ID,
@@ -125,6 +162,7 @@ async function routeAdvisorDirectory(page: Page): Promise<void> {
             yearsExperience: 9,
             finraCrd: "67890",
             headshotUrl: null,
+            readiness: readyReadiness("present"),
           },
         ],
         nextCursor: null,
@@ -132,4 +170,85 @@ async function routeAdvisorDirectory(page: Page): Promise<void> {
       },
     });
   });
+}
+
+/**
+ * Asserts URL-backed readiness controls and visible row badges.
+ * @param page - Browser page under test.
+ * @param requests - Captured PublicAdvisors request URLs.
+ */
+async function expectFinderState(
+  page: Page,
+  requests: readonly string[]
+): Promise<void> {
+  await expectControlValue(page, "contactReadiness", "ready");
+  await expectControlValue(page, "profileSubstance", "present");
+  await expectControlValue(page, "hasCrd", "true");
+  await expectControlValue(page, "freshness", "unknown");
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: CONTACT_READY_LABEL })
+    .first()
+    .waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: "Profile substance" })
+    .first()
+    .waitFor({ timeout: QUICK_TIMEOUT });
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: "CRD present" })
+    .first()
+    .waitFor({ timeout: QUICK_TIMEOUT });
+  expect(
+    requests.some(url => {
+      const requestUrl = new URL(url);
+      return (
+        requestUrl.searchParams.get("contactReadiness") === "ready" &&
+        requestUrl.searchParams.get("profileSubstance") === "present" &&
+        requestUrl.searchParams.get("hasCrd") === "true" &&
+        requestUrl.searchParams.get("freshness") === "unknown"
+      );
+    })
+  ).toBe(true);
+}
+
+/**
+ * Asserts a form control value by name.
+ * @param page - Browser page under test.
+ * @param name - Control name.
+ * @param value - Expected value.
+ */
+async function expectControlValue(
+  page: Page,
+  name: string,
+  value: string
+): Promise<void> {
+  await expect(page.locator(`[name="${name}"]`).inputValue()).resolves.toBe(
+    value
+  );
+}
+
+/**
+ * Builds a deterministic public readiness payload.
+ * @param profileSubstance - Profile substance status.
+ * @returns Advisor readiness payload.
+ */
+function readyReadiness(profileSubstance: string): object {
+  return {
+    contact: "ready",
+    profileSubstance,
+    crd: "present",
+    freshness: "unknown",
+    fields: {
+      businessEmail: "present",
+      businessPhone: "present",
+      linkedinUrl: "present",
+      headshotUrl: "present",
+      bioText: "present",
+      crd: "present",
+    },
+    limitations: [
+      "Research freshness is unavailable from public source checks.",
+    ],
+  };
 }

@@ -259,6 +259,37 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }
   });
+
+  it("bounds derived readiness finder scans with explicit page limits", async () => {
+    const rows = seedAdvisors(250).map(row => ({
+      ...row,
+      bioText: "Ready profile",
+      businessEmail: `${row.id}@example.com`,
+      businessPhone: "555-0100",
+      headshotUrl: "https://example.com/headshot.jpg",
+      linkedinUrl: "https://www.linkedin.com/in/example",
+    }));
+    setAdvisorRows(rows);
+    const recorded = recordedTable(rows);
+    const originalAdvisor = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = recorded;
+
+    try {
+      const page = await new (resources as any).PublicAdvisors().get(
+        routeTarget({ contactReadiness: "ready", limit: "10" })
+      );
+
+      expect(page.items.length).toBe(10);
+      expect(page.total).toBe(250);
+      for (const call of recorded.calls) {
+        expect(call.limit).toBeDefined();
+        expect(call.limit).toBeLessThanOrEqual(MAX_PAGE_LIMIT);
+      }
+      expect(recorded.calls.map(call => call.offset)).toEqual([0, 100, 200]);
+    } finally {
+      (globalThis as any).tables.Advisor = originalAdvisor;
+    }
+  });
 });
 
 describe("issue #721 — AC #2: /Search is token-index-bounded", () => {

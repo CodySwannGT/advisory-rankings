@@ -208,6 +208,7 @@
                     ]
                       .filter(Boolean)
                       .join(" · "),
+                    extras: readinessBadges(a.readiness),
                     tail: compareEntryAction({
                       advisorId: a.id,
                       selectedIds: () => selectedIds,
@@ -378,6 +379,32 @@
             ["true", "Has CRD"],
             ["false", "Missing CRD"],
           ]),
+          filterSelect(
+            "Contact",
+            "contactReadiness",
+            filters.contactReadiness,
+            [
+              ["", "Any contact state"],
+              ["ready", "Contact ready"],
+              ["missing_contact_data", "Missing contact data"],
+            ]
+          ),
+          filterSelect(
+            "Profile",
+            "profileSubstance",
+            filters.profileSubstance,
+            [
+              ["", "Any profile state"],
+              ["present", "Profile substance"],
+              ["missing_profile_substance", "Missing profile substance"],
+            ]
+          ),
+          filterSelect("Freshness", "freshness", filters.freshness, [
+            ["", "Any freshness"],
+            ["current", "Current"],
+            ["stale", "Stale"],
+            ["unknown", "Unknown"],
+          ]),
           clearFiltersButton(filters.active, renderDirectory)
         );
         installLiveFilters(
@@ -458,6 +485,9 @@
           firm: params.get("firm") || "",
           careerStatus: params.get("careerStatus") || "",
           hasCrd: params.get("hasCrd") || "",
+          contactReadiness: params.get("contactReadiness") || "",
+          profileSubstance: params.get("profileSubstance") || "",
+          freshness: params.get("freshness") || "",
         };
         return { ...filters, active: [...advisorQuery(filters)].length > 0 };
       }
@@ -468,10 +498,53 @@
           firm: String(formData.get("firm") || "").trim(),
           careerStatus: String(formData.get("careerStatus") || "").trim(),
           hasCrd: String(formData.get("hasCrd") || "").trim(),
+          contactReadiness: String(
+            formData.get("contactReadiness") || ""
+          ).trim(),
+          profileSubstance: String(
+            formData.get("profileSubstance") || ""
+          ).trim(),
+          freshness: String(formData.get("freshness") || "").trim(),
         };
         const qs = directoryParams(filters, selectedComparisonIds()).toString();
         const path = currentDirectoryPath("/advisors");
         history.pushState(null, "", qs ? `${path}?${qs}` : path);
+      }
+
+      function readinessBadges(readiness) {
+        if (!readiness) return [];
+        return [
+          readinessBadge(
+            readiness.contact === "ready"
+              ? "Contact ready"
+              : "Missing contact data",
+            readiness.contact === "ready" ? "ready" : "missing"
+          ),
+          readinessBadge(
+            readiness.profileSubstance === "present"
+              ? "Profile substance"
+              : "Missing profile substance",
+            readiness.profileSubstance === "present" ? "ready" : "missing"
+          ),
+          readinessBadge(
+            readiness.crd === "present" ? "CRD present" : "CRD absent",
+            readiness.crd === "present" ? "ready" : "missing"
+          ),
+          readinessBadge(
+            `Freshness ${humanize(readiness.freshness || "unknown")}`,
+            readiness.freshness === "current" ? "ready" : "neutral"
+          ),
+        ];
+      }
+
+      function readinessBadge(label, tone) {
+        return el(
+          "span",
+          {
+            class: `advisor-readiness-badge advisor-readiness-badge--${tone}`,
+          },
+          label
+        );
       }
 
       function currentDirectoryPath(fallback) {
