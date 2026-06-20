@@ -26,6 +26,7 @@ const WEB_ENTRYPOINTS = [
   "not-found.js",
   "rankings.js",
   "recruiting.js",
+  "recruiting-shortlist.js",
   "regulatory.js",
   "report-packet.js",
   "research-freshness.js",
