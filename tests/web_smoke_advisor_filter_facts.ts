@@ -5,10 +5,13 @@ export interface AdvisorFilterFacts {
   readonly accessibleLabels: boolean;
   readonly bodyText: string;
   readonly careerStatus: string;
+  readonly contactReadiness: string;
+  readonly freshness: string;
   readonly firm: string;
   readonly firstHref: string;
   readonly hasCrd: string;
   readonly loaded: number;
+  readonly profileSubstance: string;
   readonly rawMetricsHidden: boolean;
   readonly rowCount: number;
   readonly rowTexts: readonly string[];
@@ -21,6 +24,16 @@ interface AdvisorFilterFactSelectors {
   readonly title: string;
 }
 
+const ADVISOR_FILTER_LABELS = [
+  ["Advisor", "advisor-filter-q", "q"],
+  ["Current firm", "advisor-filter-firm", "firm"],
+  ["Career status", "advisor-filter-careerStatus", "careerStatus"],
+  ["CRD", "advisor-filter-hasCrd", "hasCrd"],
+  ["Contact", "advisor-filter-contactReadiness", "contactReadiness"],
+  ["Profile", "advisor-filter-profileSubstance", "profileSubstance"],
+  ["Freshness", "advisor-filter-freshness", "freshness"],
+] as const;
+
 /**
  * Reads advisor filter form, result, and empty-state facts.
  * @param page - Browser page rendering the advisor directory.
@@ -31,57 +44,58 @@ export async function readAdvisorFilterFacts(
   page: Page,
   selectors: AdvisorFilterFactSelectors
 ): Promise<AdvisorFilterFacts> {
-  return await page.evaluate(({ rowSelector, statsSelector, title }) => {
-    const valueOf = (name: string) =>
-      (document.querySelector(`[name="${name}"]`) as HTMLInputElement | null)
-        ?.value || "";
-    const stats = Array.from(document.querySelectorAll(statsSelector)).find(
-      card => card.textContent?.includes(title)
-    );
-    const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-    const total = labels.find(label => label.textContent === "Matches");
-    const loaded = labels.find(label => label.textContent === "Showing");
-    const totalValue = total?.nextElementSibling?.textContent ?? "";
-    const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
-    const countFrom = (value: string) => {
-      const match = /\d+/.exec(value.replace(/,/g, ""));
-      return match ? Number(match[0]) : NaN;
-    };
-    const rows = Array.from(document.querySelectorAll(rowSelector));
+  return await page.evaluate(
+    ({ rowSelector, statsSelector, title, expectedLabels }) => {
+      const valueOf = (name: string) =>
+        (document.querySelector(`[name="${name}"]`) as HTMLInputElement | null)
+          ?.value || "";
+      const stats = Array.from(document.querySelectorAll(statsSelector)).find(
+        card => card.textContent?.includes(title)
+      );
+      const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
+      const total = labels.find(label => label.textContent === "Matches");
+      const loaded = labels.find(label => label.textContent === "Showing");
+      const totalValue = total?.nextElementSibling?.textContent ?? "";
+      const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
+      const countFrom = (value: string) => {
+        const match = /\d+/.exec(value.replace(/,/g, ""));
+        return match ? Number(match[0]) : NaN;
+      };
+      const rows = Array.from(document.querySelectorAll(rowSelector));
 
-    return {
-      accessibleLabels: [
-        ["Advisor", "advisor-filter-q", "q"],
-        ["Current firm", "advisor-filter-firm", "firm"],
-        ["Career status", "advisor-filter-careerStatus", "careerStatus"],
-        ["CRD", "advisor-filter-hasCrd", "hasCrd"],
-      ].every(([labelText, id, name]) => {
-        const labelNode = document.querySelector(`label[for="${id}"]`);
-        const control = document.getElementById(id);
-        return Boolean(
-          labelNode?.textContent?.trim() === labelText &&
-          control &&
-          ["INPUT", "SELECT"].includes(control.tagName) &&
-          control.getAttribute("name") === name
-        );
-      }),
-      bodyText: document.body.textContent || "",
-      careerStatus: valueOf("careerStatus"),
-      firm: valueOf("firm"),
-      firstHref:
-        rows[0]?.closest("a")?.getAttribute("href") ||
-        rows[0]?.querySelector("a")?.getAttribute("href") ||
-        "",
-      hasCrd: valueOf("hasCrd"),
-      loaded: countFrom(loadedValue),
-      rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
-        label => !labels.some(item => item.textContent?.trim() === label)
-      ),
-      rowCount: rows.length,
-      rowTexts: rows
-        .slice(0, 5)
-        .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
-      total: countFrom(totalValue),
-    };
-  }, selectors);
+      return {
+        accessibleLabels: expectedLabels.every(([labelText, id, name]) => {
+          const labelNode = document.querySelector(`label[for="${id}"]`);
+          const control = document.getElementById(id);
+          return Boolean(
+            labelNode?.textContent?.trim() === labelText &&
+            control &&
+            ["INPUT", "SELECT"].includes(control.tagName) &&
+            control.getAttribute("name") === name
+          );
+        }),
+        bodyText: document.body.textContent || "",
+        careerStatus: valueOf("careerStatus"),
+        contactReadiness: valueOf("contactReadiness"),
+        freshness: valueOf("freshness"),
+        firm: valueOf("firm"),
+        firstHref:
+          rows[0]?.closest("a")?.getAttribute("href") ||
+          rows[0]?.querySelector("a")?.getAttribute("href") ||
+          "",
+        hasCrd: valueOf("hasCrd"),
+        loaded: countFrom(loadedValue),
+        profileSubstance: valueOf("profileSubstance"),
+        rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
+          label => !labels.some(item => item.textContent?.trim() === label)
+        ),
+        rowCount: rows.length,
+        rowTexts: rows
+          .slice(0, 5)
+          .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
+        total: countFrom(totalValue),
+      };
+    },
+    { ...selectors, expectedLabels: ADVISOR_FILTER_LABELS }
+  );
 }

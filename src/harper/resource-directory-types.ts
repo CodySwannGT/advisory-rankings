@@ -23,6 +23,9 @@ export interface AdvisorDirectoryFilters {
   readonly firm: string;
   readonly careerStatus: string;
   readonly hasCrd: boolean | null;
+  readonly contactReadiness: string;
+  readonly profileSubstance: string;
+  readonly freshness: string;
 }
 
 /** Normalized firm directory filters. */

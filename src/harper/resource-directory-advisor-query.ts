@@ -31,6 +31,23 @@ export interface TruncatedDirectoryPage<T> extends DirectoryPage<T> {
   readonly truncated?: boolean;
 }
 
+/** Accumulator shape for bounded derived-readiness scans. */
+interface ReadinessMatchScanResult {
+  readonly matched: ReadonlyArray<AdvisorRow>;
+  readonly truncated: boolean;
+}
+
+/** Narrow Harper table surface used for derived readiness filtering. */
+type SearchableAdvisorTable = Readonly<
+  Record<
+    "search",
+    (query: Readonly<Record<string, unknown>>) => AsyncIterable<AdvisorRow>
+  >
+>;
+
+const READINESS_SEARCH_PAGE_LIMIT = 100;
+const READINESS_SCAN_LIMIT = 10_000;
+
 /**
  * Picks the most selective indexed condition for the
  * `/PublicAdvisors` request shape and routes to the matching query
@@ -94,6 +111,9 @@ const harperNativeQuery = async (
   offset: number,
   limit: number
 ): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
+  if (requiresDerivedReadinessScan(filters)) {
+    return derivedReadinessQuery(filters, offset, limit);
+  }
   const conditions = buildAdvisorConditions(filters);
   const { items, total } = await advisorDirectoryPage(
     conditions,
@@ -146,6 +166,62 @@ const tokenFirmQuery = async (
     tokenIdSet.has(advisor.id)
   );
   return finalizeInMemory(intersected, offset, limit, tokenResult.truncated);
+};
+
+const requiresDerivedReadinessScan = (
+  filters: AdvisorDirectoryFilters
+): boolean =>
+  Boolean(
+    filters.contactReadiness || filters.profileSubstance || filters.freshness
+  );
+
+const derivedReadinessQuery = async (
+  filters: AdvisorDirectoryFilters,
+  offset: number,
+  limit: number
+): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
+  const conditions = buildAdvisorConditions(filters);
+  const scanConditions = conditions.length
+    ? conditions
+    : [{ attribute: "id", comparator: "greater_than", value: "" }];
+  const searchable = tables.Advisor as unknown as SearchableAdvisorTable;
+  const { matched, truncated } = await collectReadinessMatches(
+    searchable,
+    scanConditions,
+    filters
+  );
+  return finalizeInMemory(matched, offset, limit, truncated);
+};
+
+const collectReadinessMatches = async (
+  searchable: SearchableAdvisorTable,
+  conditions: readonly HarperCondition[],
+  filters: AdvisorDirectoryFilters,
+  scanned = 0,
+  matched: ReadonlyArray<AdvisorRow> = []
+): Promise<ReadinessMatchScanResult> => {
+  if (scanned >= READINESS_SCAN_LIMIT) return { matched, truncated: true };
+  const batch = await Array.fromAsync(
+    searchable.search({
+      conditions,
+      sort: { attribute: "lastName" },
+      limit: READINESS_SEARCH_PAGE_LIMIT,
+      offset: scanned,
+    })
+  );
+  const nextMatched = [
+    ...matched,
+    ...batch.filter(advisor => advisorMatchesNonFirmFilters(advisor, filters)),
+  ];
+  return batch.length < READINESS_SEARCH_PAGE_LIMIT
+    ? { matched: nextMatched, truncated: false }
+    : collectReadinessMatches(
+        searchable,
+        conditions,
+        filters,
+        scanned + batch.length,
+        nextMatched
+      );
 };
 
 const finalizePage = (

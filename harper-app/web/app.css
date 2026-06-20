@@ -2482,6 +2482,32 @@ body.drawer-open .nav .nav-scrim {
 .advisor-directory-row {
   align-items: center;
 }
+.advisor-readiness-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  margin: 6px 6px 0 0;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.advisor-readiness-badge--ready {
+  border-color: var(--success-border, var(--border));
+  background: var(--success-bg, var(--chip-bg-firm));
+  color: var(--text);
+}
+.advisor-readiness-badge--missing {
+  border-color: var(--warning-border, var(--border));
+  background: var(--warning-bg, var(--chip-bg-advisor));
+  color: var(--text);
+}
 .compare-selection-bar {
   position: sticky;
   z-index: 8;

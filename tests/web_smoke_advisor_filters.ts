@@ -68,7 +68,7 @@ export async function smokeAdvisorDirectoryFilters(
   const firm = await discoverFilterableFirm(page);
   const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(
     firm
-  )}&careerStatus=active`;
+  )}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown`;
 
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -183,7 +183,7 @@ async function firstFirmWithActiveAdvisors(
   for (const firm of firms) {
     const url = `${BASE}/PublicAdvisors?firm=${encodeURIComponent(
       firm
-    )}&careerStatus=active&limit=1`;
+    )}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown&limit=1`;
     const payload = await readDirectoryPayload<unknown>(page, url);
     if ((payload.total ?? 0) > 0) return firm;
   }
@@ -250,9 +250,7 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
       "advisors filters: rows reflect status filter"
     ),
     check(
-      facts.restoredFacts.firm === facts.filteredFacts.firm &&
-        facts.restoredFacts.careerStatus === facts.filteredFacts.careerStatus &&
-        facts.restoredFacts.hasCrd === facts.filteredFacts.hasCrd,
+      reloadRestoresAdvisorControls(facts),
       "advisors filters: reload restores controls",
       JSON.stringify(facts.restoredFacts)
     ),
@@ -272,11 +270,27 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
   ];
 }
 
+function reloadRestoresAdvisorControls(facts: FilterCheckFacts): boolean {
+  return (
+    facts.restoredFacts.firm === facts.filteredFacts.firm &&
+    facts.restoredFacts.careerStatus === facts.filteredFacts.careerStatus &&
+    facts.restoredFacts.hasCrd === facts.filteredFacts.hasCrd &&
+    facts.restoredFacts.contactReadiness ===
+      facts.filteredFacts.contactReadiness &&
+    facts.restoredFacts.profileSubstance ===
+      facts.filteredFacts.profileSubstance &&
+    facts.restoredFacts.freshness === facts.filteredFacts.freshness
+  );
+}
+
 function advisorUrlControlCheck(facts: FilterCheckFacts): Check {
   return check(
     facts.filteredFacts.firm === facts.expectedFirm &&
       facts.filteredFacts.careerStatus === "active" &&
-      facts.filteredFacts.hasCrd === "",
+      facts.filteredFacts.hasCrd === "" &&
+      facts.filteredFacts.contactReadiness === "ready" &&
+      facts.filteredFacts.profileSubstance === "present" &&
+      facts.filteredFacts.freshness === "unknown",
     "advisors filters: controls reflect URL",
     JSON.stringify(facts.filteredFacts)
   );
