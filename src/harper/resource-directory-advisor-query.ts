@@ -18,6 +18,7 @@ import { encodeOffsetCursor } from "./resource-pagination.js";
 import { advisorMatchesNonFirmFilters } from "./resource-directory-filters.js";
 import { advisorsMatchingFirm } from "./resource-directory-advisor-firm.js";
 import { compareAdvisorDirectoryRows } from "./resource-directory-sorting.js";
+import { advisorReadiness } from "./resource-advisor-readiness.js";
 import {
   advisorDirectoryPage,
   rowsByIds,
@@ -180,5 +181,10 @@ const publicAdvisorDirectoryRow = (
   advisor: AdvisorRow
 ): AdvisorDirectoryRow => {
   const finraCrd = advisor.finraCrd || null;
-  return { ...advisor, finraCrd, hasCrd: finraCrd !== null };
+  return {
+    ...advisor,
+    finraCrd,
+    hasCrd: finraCrd !== null,
+    readiness: advisorReadiness({ ...advisor, finraCrd }),
+  };
 };

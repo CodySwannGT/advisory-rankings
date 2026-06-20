@@ -4344,6 +4344,105 @@ describe("Harper directory and search resources", () => {
     });
   });
 
+  it("derives public-safe contact readiness on advisor directory rows", async () => {
+    setRows("Advisor", [
+      {
+        id: "advisor-ready",
+        firstName: "Ready",
+        lastName: "Advisor",
+        legalName: "Ready Advisor",
+        careerStatus: "active",
+        finraCrd: "1234567",
+        businessEmail: "ready@example.com",
+        businessPhone: "2125550100",
+        linkedinUrl: "https://linkedin.example/ready",
+        headshotUrl: "https://example.com/ready.jpg",
+        bioText: "Source-backed public biography.",
+      },
+      {
+        id: "advisor-contact-gap",
+        firstName: "Contact",
+        lastName: "Gap",
+        legalName: "Contact Gap",
+        careerStatus: "active",
+        finraCrd: "7654321",
+        headshotUrl: "https://example.com/gap.jpg",
+        bioText: "Public biography exists.",
+      },
+      {
+        id: "advisor-substance-gap",
+        firstName: "Substance",
+        lastName: "Gap",
+        legalName: "Substance Gap",
+        careerStatus: "active",
+        businessEmail: "substance@example.com",
+        businessPhone: "2125550199",
+        linkedinUrl: "https://linkedin.example/substance",
+      },
+    ]);
+
+    const result = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", { careerStatus: "active", limit: "10" })
+    );
+
+    const byId = new Map(
+      result.items.map((advisor: any) => [advisor.id, advisor])
+    );
+    expect(byId.get("advisor-ready")).toMatchObject({
+      hasCrd: true,
+      readiness: {
+        contact: "ready",
+        profileSubstance: "present",
+        crd: "present",
+        freshness: "unknown",
+        fields: {
+          businessEmail: "present",
+          businessPhone: "present",
+          linkedinUrl: "present",
+          headshotUrl: "present",
+          bioText: "present",
+          crd: "present",
+        },
+      },
+    });
+    expect(byId.get("advisor-contact-gap").readiness).toMatchObject({
+      contact: "missing_contact_data",
+      profileSubstance: "present",
+      crd: "present",
+      fields: {
+        businessEmail: "missing",
+        businessPhone: "missing",
+        linkedinUrl: "missing",
+      },
+      limitations: expect.arrayContaining([
+        "Business email is unavailable in public source data.",
+        "Business phone is unavailable in public source data.",
+        "LinkedIn URL is unavailable in public source data.",
+      ]),
+    });
+    expect(byId.get("advisor-substance-gap").readiness).toMatchObject({
+      contact: "ready",
+      profileSubstance: "missing_profile_substance",
+      crd: "absent",
+      fields: {
+        businessEmail: "present",
+        businessPhone: "present",
+        linkedinUrl: "present",
+        headshotUrl: "missing",
+        bioText: "missing",
+        crd: "missing",
+      },
+      limitations: expect.arrayContaining([
+        "Headshot is unavailable in public source data.",
+        "Profile substance is unavailable in public source data.",
+        "FINRA CRD is unavailable in public source data.",
+      ]),
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /unsuitable|misconduct|lower quality|recommendation/i
+    );
+  });
+
   it("filters advisor directories with stable totals and cursor pages", async () => {
     setRows("Advisor", [
       {

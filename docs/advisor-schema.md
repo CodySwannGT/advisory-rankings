@@ -757,6 +757,16 @@ checked profiles, and never-checked profiles. `status=never_checked` filters
 rows with no existing check for the selected source type. It does not read or
 return private user rating/watchlist tables.
 
+`GET /PublicAdvisors` also derives a public `readiness` summary from public
+advisor fields. The summary keeps contact readiness, profile substance, FINRA
+CRD presence, and research freshness as separate labels. Missing values are
+reported as public source-data gaps such as unavailable business email,
+business phone, LinkedIn URL, headshot, profile substance, or CRD. The
+readiness summary does not read user watchlists, ratings, analyst discrepancy
+queues, correction internals, reviewer notes, or raw authenticated tables, and
+it must not describe missing public data as suitability, misconduct,
+recommendation, or lower-quality signals.
+
 Priority groups are computed from the returned row slice and include stable
 ids, display labels, counts, replay filters, and up to three representative
 advisor ids. The replay filters preserve the active `sourceType`, `staleDays`,
