@@ -48,30 +48,35 @@ browserDescribe("recruiting shortlist brief route (#1320)", () => {
   it("renders repeated firm queries with public evidence and no mobile overflow", async () => {
     const page = await browser.newPage();
     const requestedFirmParams: string[][] = [];
+    const requestedLimits: Array<string | null> = [];
     await routeAuth(page, false);
-    await routeRecruitingMarket(page, requestedFirmParams);
+    await routeRecruitingMarket(page, requestedFirmParams, requestedLimits);
 
-    await page.goto(`${baseUrl}/recruiting/shortlist?${firmQuery()}`, {
-      waitUntil: "domcontentloaded",
-    });
+    try {
+      await page.goto(`${baseUrl}/recruiting/shortlist?${firmQuery()}`, {
+        waitUntil: "domcontentloaded",
+      });
 
-    await page.locator(".shortlist-brief-firms").waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    expect(requestedFirmParams).toEqual([FIRMS]);
-    const bodyText = await page.locator("body").textContent();
-    expect(bodyText).toContain(MORGAN_STANLEY);
-    expect(bodyText).toContain(`Unresolved: ${RBC}`);
-    expect(bodyText).toContain("Unresolved Firm");
-    expect(bodyText).toContain("Recruiting replay");
-    expect(bodyText).toContain("Branch explorer");
-    expect(bodyText).not.toMatch(PRIVATE_TERMS);
-    await expectPublicLinks(page);
-    await expectNoOverflow(page);
-    await page.emulateMedia({ media: "print" });
-    await expectNoOverflow(page);
-    await captureViewports(page, "issue-1320-recruiting-shortlist-brief");
-    await page.close();
+      await page.locator(".shortlist-brief-firms").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(requestedFirmParams).toEqual([FIRMS]);
+      expect(requestedLimits).toEqual(["30"]);
+      const bodyText = await page.locator("body").textContent();
+      expect(bodyText).toContain(MORGAN_STANLEY);
+      expect(bodyText).toContain(`Unresolved: ${RBC}`);
+      expect(bodyText).toContain("Unresolved Firm");
+      expect(bodyText).toContain("Recruiting replay");
+      expect(bodyText).toContain("Branch explorer");
+      expect(bodyText).not.toMatch(PRIVATE_TERMS);
+      await expectPublicLinks(page);
+      await expectNoOverflow(page);
+      await page.emulateMedia({ media: "print" });
+      await expectNoOverflow(page);
+      await captureViewports(page, "issue-1320-recruiting-shortlist-brief");
+    } finally {
+      await page.close();
+    }
   });
 });
 
@@ -79,14 +84,17 @@ browserDescribe("recruiting shortlist brief route (#1320)", () => {
  * Routes RecruitingMarket with a deterministic shortlist payload.
  * @param page - Playwright page.
  * @param requests - Captured firm query values.
+ * @param limits - Captured limit query values.
  */
 async function routeRecruitingMarket(
   page: Page,
-  requests: string[][]
+  requests: string[][],
+  limits: Array<string | null>
 ): Promise<void> {
   await page.route("**/RecruitingMarket**", async route => {
     const url = new URL(route.request().url());
     requests.push(url.searchParams.getAll("firm"));
+    limits.push(url.searchParams.get("limit"));
     await route.fulfill({ json: recruitingMarketPayload() });
   });
 }
