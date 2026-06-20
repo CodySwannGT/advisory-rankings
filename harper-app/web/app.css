@@ -1752,6 +1752,22 @@ body.drawer-open .nav .nav-scrim {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+.timeline .step .team-continuity-provenance {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.timeline .step .team-continuity-provenance summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.timeline .step .team-continuity-provenance ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.timeline .step .team-continuity-provenance li {
+  overflow-wrap: anywhere;
+}
 .timeline .step .timeline-kind {
   color: var(--text-muted);
   font-size: 12px;

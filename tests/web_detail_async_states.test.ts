@@ -399,8 +399,19 @@ describe("detail async states", () => {
           .isVisible()
       ).toBe(true);
       expect(
-        await timeline.getByText("Source confidence").first().isVisible()
+        await timeline.getByText("Source details").first().isVisible()
       ).toBe(true);
+      await timeline
+        .locator(".team-continuity-provenance")
+        .evaluateAll(detailsRows => {
+          for (const details of detailsRows) {
+            if (details instanceof HTMLDetailsElement) {
+              details.open = true;
+            }
+          }
+        });
+      expect(await timeline.getByText("Source confidence").count()).toBe(0);
+      expect(await timeline.getByText("TeamProfile").count()).toBe(0);
       await timeline
         .getByText("Date unavailable", { exact: true })
         .first()
@@ -408,7 +419,7 @@ describe("detail async states", () => {
       await timeline.getByText("Past-member date unavailable").waitFor({
         timeout: QUICK_TIMEOUT,
       });
-      await timeline.getByText("Evidence link unavailable").first().waitFor({
+      await timeline.getByText("Evidence unavailable").first().waitFor({
         timeout: QUICK_TIMEOUT,
       });
       await timeline
@@ -416,7 +427,7 @@ describe("detail async states", () => {
         .first()
         .waitFor({ timeout: QUICK_TIMEOUT });
       await timeline
-        .getByText(PUBLIC_BOUNDARY_PREFIX, { exact: false })
+        .getByText("Public view excludes watchlists", { exact: false })
         .first()
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(

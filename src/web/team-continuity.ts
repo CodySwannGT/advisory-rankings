@@ -4,6 +4,7 @@ import type { TransitionRow } from "../harper/resource-feed-types.js";
 import { articlePath, type ArticleLike } from "./urls.js";
 import { fmtDate, fmtMoney, humanize } from "./app-formatters.js";
 import { el, SectionCard } from "./design-system/index.js";
+import { metricContinuityItem } from "./team-continuity-metrics.js";
 import type { MetricSnapshotView } from "./team-sections.js";
 
 /** Uniform adapter for opaque design-system DOM factories. */
@@ -33,16 +34,14 @@ interface ContinuityItem {
   readonly title: string;
   readonly body: string;
   readonly date?: HarperDate;
-  readonly dateLimit: string;
-  readonly confidence: string;
-  readonly evidence: string;
-  readonly privacy: string;
   readonly href?: string;
   readonly order: number;
+  readonly provenance: readonly string[];
+  readonly trust: string;
 }
 
 const PUBLIC_TIMELINE_PRIVACY =
-  "Public boundary: excludes watchlists, ratings, correction internals, analyst discrepancies, reviewer notes, and authenticated raw-table data.";
+  "Public view excludes watchlists, ratings, correction internals, analyst discrepancies, reviewer notes, and authenticated raw-table data.";
 
 /**
  * Builds the unified public continuity timeline card.
@@ -74,7 +73,7 @@ function continuityItems(
 ): readonly ContinuityItem[] {
   return [
     ...memberItems(inputs.currentMembers, inputs.pastMembers),
-    ...inputs.metricSnapshots.map(metricItem),
+    ...inputs.metricSnapshots.map(metricContinuityItem),
     ...inputs.transitions.flatMap(transitionItem),
     ...inputs.articles.flatMap(articleItem),
   ].sort(compareContinuityItems);
@@ -97,15 +96,16 @@ function memberItems(
           title: `Current roster: ${summarizeMembers(currentMembers)}`,
           body: `${currentMembers.length.toLocaleString()} public current member row${currentMembers.length === 1 ? "" : "s"} support this team roster.`,
           date: earliestMemberStart(currentMembers),
-          dateLimit:
-            "Earliest available member start date; roster may predate loaded records.",
-          confidence:
-            "Source confidence: public TeamProfile current member rows.",
-          evidence:
-            "Evidence link: first public advisor profile in the loaded roster.",
-          privacy: PUBLIC_TIMELINE_PRIVACY,
           href: memberHref(currentMembers[0]),
           order: 10,
+          provenance: [
+            "Date note: earliest available member start date; roster may predate loaded records.",
+            "Source: public team profile current member rows.",
+            "Evidence: first public advisor profile in the loaded roster.",
+            PUBLIC_TIMELINE_PRIVACY,
+          ],
+          trust:
+            "Built from loaded public roster records; open details for dates and evidence.",
         },
       ]
     : [];
@@ -121,52 +121,22 @@ function memberItems(
           : "departure date is not loaded",
       ].join("; "),
       date: member.endDate ?? member.startDate,
-      dateLimit: member.endDate
-        ? "Past-member end date."
-        : "Past-member date unavailable; using start date when present.",
-      confidence: "Source confidence: public TeamProfile past member row.",
-      evidence: memberHref(member)
-        ? "Evidence link: public advisor profile."
-        : "Evidence link unavailable in the public TeamProfile member row.",
-      privacy: PUBLIC_TIMELINE_PRIVACY,
       href: memberHref(member),
       order: 20,
+      provenance: [
+        member.endDate
+          ? "Date note: past-member end date."
+          : "Date note: past-member date unavailable; using start date when present.",
+        "Source: public team profile past member row.",
+        memberHref(member)
+          ? "Evidence: public advisor profile."
+          : "Evidence unavailable in this public member row.",
+        PUBLIC_TIMELINE_PRIVACY,
+      ],
+      trust:
+        "Supported by public roster history; open details for date and evidence notes.",
     })),
   ];
-}
-
-/**
- * Converts one team metric snapshot into a continuity item.
- * @param snapshot - Metric snapshot row from TeamProfile.
- * @returns Metric snapshot continuity item.
- */
-function metricItem(snapshot: MetricSnapshotView): ContinuityItem {
-  const metrics = [
-    snapshot.aum != null ? `${fmtMoney(snapshot.aum)} AUM` : null,
-    snapshot.teamSize != null ? `${snapshot.teamSize} members` : null,
-    snapshot.householdCount != null
-      ? `${snapshot.householdCount} households`
-      : null,
-    snapshot.annualRevenue != null
-      ? `${fmtMoney(snapshot.annualRevenue)} revenue`
-      : null,
-  ].filter((part): part is string => part != null);
-  return {
-    kind: "Metric snapshot",
-    title: metrics.length ? metrics.join(" · ") : "Team metric snapshot",
-    body: snapshot.sourceType
-      ? `Snapshot source type: ${humanize(snapshot.sourceType) || snapshot.sourceType}.`
-      : "Snapshot source type is not loaded.",
-    date: snapshot.asOf,
-    dateLimit: snapshot.asOf
-      ? "Snapshot as-of date."
-      : "Snapshot date unavailable; position is approximate.",
-    confidence: "Source confidence: public TeamProfile metric snapshot.",
-    evidence:
-      "Evidence link unavailable; metric snapshots render from public profile summary fields.",
-    privacy: PUBLIC_TIMELINE_PRIVACY,
-    order: 30,
-  };
 }
 
 /**
@@ -185,18 +155,22 @@ function transitionItem(value: unknown): readonly ContinuityItem[] {
       title: `Moved from ${fromFirm} to ${toFirm}`,
       body: transitionBody(value),
       date: value.moveDate,
-      dateLimit: value.moveDate
-        ? "Recruiting transition move date."
-        : "Move date unavailable; transition order is approximate.",
-      confidence: "Source confidence: public TransitionEvent row.",
-      evidence: value.toFirm
-        ? "Evidence link: destination public firm profile."
-        : "Evidence link unavailable because no public destination firm is loaded.",
-      privacy: PUBLIC_TIMELINE_PRIVACY,
       href: value.toFirm
         ? `/firm.html?id=${encodeURIComponent(value.toFirm.id)}`
         : undefined,
       order: 40,
+      provenance: [
+        value.moveDate
+          ? "Date note: recruiting transition move date."
+          : "Date note: move date unavailable; transition order is approximate.",
+        "Source: public recruiting transition row.",
+        value.toFirm
+          ? "Evidence: destination public firm profile."
+          : "Evidence unavailable because no public destination firm is loaded.",
+        PUBLIC_TIMELINE_PRIVACY,
+      ],
+      trust:
+        "Recruiting event uses loaded public transition fields; open details for evidence limits.",
     },
   ];
 }
@@ -216,17 +190,20 @@ function articleItem(value: unknown): readonly ContinuityItem[] {
         ? `Article mention categorized as ${humanize(value.category) || value.category}.`
         : "Article mention backs this team profile.",
       date: value.publishedDate,
-      dateLimit: value.publishedDate
-        ? "Article published date."
-        : "Article date unavailable; evidence order is approximate.",
-      confidence: "Source confidence: public article mention.",
-      evidence:
-        articlePath(value) === "#"
-          ? "Evidence link unavailable in this public article row."
-          : "Evidence link: public article profile.",
-      privacy: PUBLIC_TIMELINE_PRIVACY,
       href: publicHref(articlePath(value)),
       order: 50,
+      provenance: [
+        value.publishedDate
+          ? "Date note: article published date."
+          : "Date note: article date unavailable; evidence order is approximate.",
+        "Source: public article mention.",
+        articlePath(value) === "#"
+          ? "Evidence unavailable in this public article row."
+          : "Evidence: public article profile.",
+        PUBLIC_TIMELINE_PRIVACY,
+      ],
+      trust:
+        "Coverage adds public context for this team; open details for date and evidence notes.",
     },
   ];
 }
@@ -255,11 +232,23 @@ function continuityStep(item: ContinuityItem): HTMLElement {
         title
       ),
       el("div", { class: "role" }, item.body),
-      el("div", { class: "role" }, item.dateLimit),
-      el("div", { class: "role" }, item.confidence),
-      el("div", { class: "role" }, item.evidence),
-      el("div", { class: "role" }, item.privacy)
+      el("div", { class: "role" }, item.trust),
+      provenanceDetails(item)
     )
+  );
+}
+
+/**
+ * Renders detailed source notes without making them the default reading path.
+ * @param item - Continuity item with audit notes.
+ * @returns Expandable provenance details.
+ */
+function provenanceDetails(item: ContinuityItem): HTMLElement {
+  return el(
+    "details",
+    { class: "team-continuity-provenance" },
+    el("summary", {}, "Source details"),
+    el("ul", {}, ...item.provenance.map(note => el("li", {}, note)))
   );
 }
 
