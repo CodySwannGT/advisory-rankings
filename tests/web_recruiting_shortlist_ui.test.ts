@@ -24,7 +24,14 @@ const UBS = "UBS";
 const RBC = "RBC";
 const DATA_COVERAGE_RESOURCE = "/DataCoverage";
 const FIRMS = [MORGAN_STANLEY, UBS, RBC] as const;
-const PRIVATE_TERMS = /UserWatchlists|UserRating|private note|packet-only/i;
+const PRIVATE_ENDPOINTS = [
+  "/UserWatchlists",
+  "/UserRating",
+  "/AdvisorCorrectionRequest",
+  "/RegulatoryDiscrepancyQueue",
+  "/User/",
+] as const;
+const PRIVATE_CONTENT = /private note|packet-only|reviewer-only|analyst-only/i;
 
 browserDescribe("recruiting shortlist brief route (#1320)", () => {
   let browser: Browser;
@@ -45,10 +52,16 @@ browserDescribe("recruiting shortlist brief route (#1320)", () => {
     });
   });
 
-  it("renders repeated firm queries with public evidence and no mobile overflow", async () => {
+  it("renders repeated firm queries with public evidence and no private-data overflow", async () => {
     const page = await browser.newPage();
     const requestedFirmParams: string[][] = [];
     const requestedLimits: Array<string | null> = [];
+    const requestedPrivatePaths: string[] = [];
+    page.on("request", request => {
+      const url = new URL(request.url());
+      if (isPrivateEndpoint(url.pathname))
+        requestedPrivatePaths.push(url.pathname);
+    });
     await routeAuth(page, false);
     await routeRecruitingMarket(page, requestedFirmParams, requestedLimits);
 
@@ -68,12 +81,18 @@ browserDescribe("recruiting shortlist brief route (#1320)", () => {
       expect(bodyText).toContain("Unresolved Firm");
       expect(bodyText).toContain("Recruiting replay");
       expect(bodyText).toContain("Branch explorer");
-      expect(bodyText).not.toMatch(PRIVATE_TERMS);
+      expect(bodyText).toContain(
+        "It excludes private watchlists, ratings, correction internals, analyst discrepancy rows, and reviewer notes."
+      );
+      expect(bodyText).not.toMatch(PRIVATE_CONTENT);
       await expectPublicLinks(page);
-      await expectNoOverflow(page);
+      await expectNoPrivateDestinations(page, requestedPrivatePaths);
+      await expectNoOverflow(page, { width: 1280, height: 900 });
+      await expectNoOverflow(page, { width: 390, height: 844 });
       await page.emulateMedia({ media: "print" });
-      await expectNoOverflow(page);
-      await captureViewports(page, "issue-1320-recruiting-shortlist-brief");
+      await expectNoOverflow(page, { width: 390, height: 844 });
+      await page.emulateMedia({ media: "screen" });
+      await captureViewports(page, "issue-1321-recruiting-shortlist-brief");
     } finally {
       await page.close();
     }
@@ -104,30 +123,119 @@ async function routeRecruitingMarket(
  * @param page - Playwright page.
  */
 async function expectPublicLinks(page: Page): Promise<void> {
-  const hrefs = await page
-    .locator(".shortlist-link-list a")
+  const hrefsByFirm = await page
+    .locator(".shortlist-firm")
     .evaluateAll(nodes =>
-      nodes.map(node => (node as HTMLAnchorElement).getAttribute("href"))
+      nodes.map(node =>
+        [...node.querySelectorAll(".shortlist-link-list a")].map(link =>
+          (link as HTMLAnchorElement).getAttribute("href")
+        )
+      )
     );
-  expect(hrefs).toContain("/recruiting?firm=Morgan%20Stanley");
-  expect(hrefs).toContain("/firm.html?id=firm-morgan");
-  expect(hrefs).toContain("/branches?firm=firm-morgan");
-  expect(hrefs).toContain("/coverage");
+  expect(hrefsByFirm).toHaveLength(3);
+  expect(hrefsByFirm[0]).toEqual([
+    "/recruiting?firm=Morgan%20Stanley",
+    "/firm.html?id=firm-morgan",
+    "/branches?firm=firm-morgan",
+    "/coverage",
+    "/RecruitingMarket?firm=Morgan%20Stanley",
+    "/FirmProfile/firm-morgan",
+    "/PublicBranches?firm=firm-morgan",
+    DATA_COVERAGE_RESOURCE,
+  ]);
+  expect(hrefsByFirm[1]).toEqual([
+    "/recruiting?firm=UBS",
+    "/firm.html?id=firm-ubs",
+    "/branches?firm=firm-ubs",
+    "/coverage",
+    "/RecruitingMarket?firm=UBS",
+    "/FirmProfile/firm-ubs",
+    "/PublicBranches?firm=firm-ubs",
+    DATA_COVERAGE_RESOURCE,
+  ]);
+  expect(hrefsByFirm[2]).toEqual([
+    "/recruiting?firm=RBC",
+    "/coverage",
+    "/RecruitingMarket?firm=RBC",
+    DATA_COVERAGE_RESOURCE,
+  ]);
 }
 
 /**
  * Verifies the rendered brief does not overflow horizontally.
  * @param page - Playwright page.
+ * @param viewport - Browser viewport to check.
  */
-async function expectNoOverflow(page: Page): Promise<void> {
-  await page.setViewportSize({ width: 390, height: 844 });
-  const metrics = await page.evaluate(() => ({
-    bodyOverflow: document.documentElement.scrollWidth > window.innerWidth,
-    firmOverflow: [...document.querySelectorAll(".shortlist-firm")].some(
-      node => node.scrollWidth > (node as HTMLElement).clientWidth
-    ),
-  }));
-  expect(metrics).toEqual({ bodyOverflow: false, firmOverflow: false });
+async function expectNoOverflow(
+  page: Page,
+  viewport: Readonly<{ height: number; width: number }>
+): Promise<void> {
+  await page.setViewportSize(viewport);
+  const metrics = await page.evaluate(() => {
+    const maxOverflow = (selector: string): number =>
+      Math.max(
+        0,
+        ...[...document.querySelectorAll(selector)].map(node =>
+          Math.max(0, node.scrollWidth - (node as HTMLElement).clientWidth)
+        )
+      );
+    return {
+      documentOverflow: Math.max(
+        0,
+        document.documentElement.scrollWidth -
+          document.documentElement.clientWidth
+      ),
+      firmOverflow: maxOverflow(".shortlist-firm"),
+      linkOverflow: maxOverflow(".shortlist-link-list a"),
+      statusOverflow: maxOverflow(".shortlist-firm .tag-list"),
+      linksWiderThanList: [
+        ...document.querySelectorAll(".shortlist-link-list"),
+      ].some(list =>
+        [...list.querySelectorAll("a")].some(
+          link =>
+            link.getBoundingClientRect().width >
+            list.getBoundingClientRect().width
+        )
+      ),
+    };
+  });
+  expect(metrics).toEqual({
+    documentOverflow: 0,
+    firmOverflow: 0,
+    linkOverflow: 0,
+    linksWiderThanList: false,
+    statusOverflow: 0,
+  });
+}
+
+/**
+ * Verifies anonymous replay does not request or link private resources.
+ * @param page - Playwright page.
+ * @param requestedPrivatePaths - Private paths observed during browser load.
+ */
+async function expectNoPrivateDestinations(
+  page: Page,
+  requestedPrivatePaths: readonly string[]
+): Promise<void> {
+  const hrefs = await page
+    .locator("a")
+    .evaluateAll(nodes =>
+      nodes.map(node => (node as HTMLAnchorElement).getAttribute("href") ?? "")
+    );
+  const privateHrefs = hrefs.filter(href =>
+    isPrivateEndpoint(new URL(href, "https://advisorbook.test").pathname)
+  );
+  expect(requestedPrivatePaths).toEqual([]);
+  expect(privateHrefs).toEqual([]);
+}
+
+/**
+ * Checks whether a path belongs to a private resource surface.
+ * @param path - URL path.
+ * @returns Whether the path is private.
+ */
+function isPrivateEndpoint(path: string): boolean {
+  return PRIVATE_ENDPOINTS.some(endpoint => path.startsWith(endpoint));
 }
 
 /**
@@ -266,6 +374,16 @@ function morganItem(): unknown {
 function ubsItem(): unknown {
   return shortlistItem(UBS, {
     firm: { id: "firm-ubs", name: UBS, short: UBS },
+    evidenceLinks: {
+      recruiting: "/recruiting?firm=UBS",
+      recruitingResource: "/RecruitingMarket?firm=UBS",
+      firmProfile: "/firm.html?id=firm-ubs",
+      firmProfileResource: "/FirmProfile/firm-ubs",
+      branchExplorer: "/branches?firm=firm-ubs",
+      publicBranchesResource: "/PublicBranches?firm=firm-ubs",
+      dataCoverage: "/coverage",
+      dataCoverageResource: DATA_COVERAGE_RESOURCE,
+    },
     sourceStatus: ["no-matching-moves"],
   });
 }
