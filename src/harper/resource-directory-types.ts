@@ -5,6 +5,7 @@ import type {
   FirmRow,
   TeamRow,
 } from "../types/harper-schema.js";
+import type { AdvisorReadiness } from "./resource-advisor-readiness.js";
 
 /** Entity kinds accepted by the global search endpoint. */
 export type SearchKind = "all" | "firm" | "advisor" | "team";
@@ -87,6 +88,7 @@ export interface BranchDirectoryRow extends Pick<
 export interface AdvisorDirectoryRow extends Omit<AdvisorRow, "finraCrd"> {
   readonly finraCrd: string | null;
   readonly hasCrd: boolean;
+  readonly readiness: AdvisorReadiness;
 }
 
 /** Canonicalized firm rows returned by the firm alias normalizer. */
