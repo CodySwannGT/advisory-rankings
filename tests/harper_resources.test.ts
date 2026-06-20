@@ -3753,6 +3753,7 @@ describe("Harper resource endpoints", () => {
       firm: [
         "Example Wealth LLC, Beta Advisors",
         EXAMPLE_WEALTH_LLC,
+        EXAMPLE_WEALTH_LLC,
         "Missing One",
         "Missing Two",
         "Missing Three",
@@ -3787,20 +3788,28 @@ describe("Harper resource endpoints", () => {
       firmId: null,
       firmQuery: null,
       state: "GA",
-      watchlistFirmIds: ["firm-a", "firm-b"],
+      watchlistFirmIds: ["firm-a", "firm-b", "firm-a", "firm-a"],
       watchlistFirmQueries: [
         EXAMPLE_WEALTH_LLC,
         BETA_ADVISORS,
+        EXAMPLE_WEALTH_LLC,
+        EXAMPLE_WEALTH_LLC,
         "Missing One",
         "Missing Two",
         "Missing Three",
         "Missing Four",
-        "Missing Five",
-        "Missing Six",
       ],
       year: "2024",
     });
-    expect(first.watchlist.items.slice(2)).toEqual(
+    for (const duplicate of first.watchlist.items.slice(2, 4)) {
+      expect(duplicate).toMatchObject({
+        query: EXAMPLE_WEALTH_LLC,
+        firm: expect.objectContaining({ id: "firm-a" }),
+        sourceMoveIds: first.watchlist.items[0].sourceMoveIds,
+        sourceStatus: first.watchlist.items[0].sourceStatus,
+      });
+    }
+    expect(first.watchlist.items.slice(4)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           firm: null,

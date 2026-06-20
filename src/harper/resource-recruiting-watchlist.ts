@@ -122,22 +122,12 @@ export function watchlistFilters(
   target: WatchlistTarget,
   db: ResourceIndex
 ): ReadonlyArray<WatchlistFilterItem> {
-  const { items } = collectFirmFilters(target).reduce(
-    (acc, query) => {
-      const firm = resolveFirm(db, normalizeId(query));
-      const key = firm?.id || `query:${query.toLowerCase()}`;
-      if (acc.seen.has(key)) return acc;
-      return {
-        seen: new Set([...acc.seen, key]),
-        items: [...acc.items, { query, firm }],
-      };
-    },
-    {
-      seen: new Set<string>(),
-      items: [] as ReadonlyArray<WatchlistFilterItem>,
-    }
-  );
-  return items.slice(0, MAX_WATCHLIST_ITEMS);
+  return collectFirmFilters(target)
+    .slice(0, MAX_WATCHLIST_ITEMS)
+    .map(query => ({
+      query,
+      firm: resolveFirm(db, normalizeId(query)),
+    }));
 }
 
 /**
@@ -227,9 +217,10 @@ function targetValues(
 ): ReadonlyArray<string> {
   const fromGetAll =
     typeof target?.getAll === "function" ? [...target.getAll(name)] : [];
+  if (fromGetAll.length > 0) return fromGetAll.map(String);
   const single = target?.get?.(name);
   const fromGet = single != null && single !== "" ? [single] : [];
-  return [...new Set([...fromGetAll, ...fromGet].map(String))];
+  return fromGet.map(String);
 }
 
 /**
