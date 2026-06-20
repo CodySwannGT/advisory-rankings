@@ -259,6 +259,8 @@ const table = (name: string) => ({
   TeamMetricSnapshot: table("TeamMetricSnapshot"),
   TransitionEvent: table("TransitionEvent"),
   UserRating: table("UserRating"),
+  UserWatchlist: table("UserWatchlist"),
+  UserWatchlistEntry: table("UserWatchlistEntry"),
 };
 
 const resources = await import("../src/harper/resources.js");
@@ -4474,6 +4476,97 @@ describe("Harper directory and search resources", () => {
     expect(missingProfile.items.map((advisor: any) => advisor.id)).toEqual([
       ADVISOR_SUBSTANCE_GAP_ID,
     ]);
+  });
+
+  it("keeps readiness rows isolated from private advisor data", async () => {
+    setRows("Advisor", [
+      {
+        id: ADVISOR_SUBSTANCE_GAP_ID,
+        firstName: "Substance",
+        lastName: "Gap",
+        legalName: "Substance Gap",
+        careerStatus: "active",
+        businessEmail: "substance@example.com",
+        businessPhone: "2125550199",
+        linkedinUrl: "https://linkedin.example/substance",
+      },
+    ]);
+    setRows("UserRating", [
+      {
+        id: "rating-private-readiness",
+        userId: "private-user",
+        advisorId: ADVISOR_SUBSTANCE_GAP_ID,
+        ratingInt: 1,
+        reviewText: "private watchlist rating note",
+      },
+    ]);
+    setRows("UserWatchlist", [
+      {
+        id: "watchlist-private-readiness",
+        userId: "private-user",
+        name: "Analyst private shortlist",
+      },
+    ]);
+    setRows("UserWatchlistEntry", [
+      {
+        id: "watchlist-entry-private-readiness",
+        listId: "watchlist-private-readiness",
+        advisorId: ADVISOR_SUBSTANCE_GAP_ID,
+        note: "private watchlist entry note",
+      },
+    ]);
+    setRows(REGULATORY_DISCREPANCY_TABLE, [
+      {
+        id: "reg-private-readiness",
+        advisorId: ADVISOR_SUBSTANCE_GAP_ID,
+        fieldName: "finraCrd",
+        advisorHubValue: "private analyst discrepancy row",
+        brokerCheckValue: "reviewer-only correction context",
+        status: "pending",
+        reviewerNote: "do not expose reviewer note",
+      },
+    ]);
+    setRows(ADVISOR_CORRECTION_REQUEST_TABLE, [
+      {
+        id: "correction-private-readiness",
+        advisorId: ADVISOR_SUBSTANCE_GAP_ID,
+        submitterEmail: CLIENT_EMAIL,
+        fieldName: "bioText",
+        proposedValue: "private correction proposed value",
+        submitterNote: "private correction submitter note",
+        status: "pending",
+        reviewerNote: "private correction reviewer note",
+      },
+    ]);
+
+    const result = await new (resources as any).PublicAdvisors().get(
+      routeTarget("", {
+        contactReadiness: "ready",
+        profileSubstance: "missing_profile_substance",
+        limit: "10",
+      })
+    );
+
+    expect(result).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: ADVISOR_SUBSTANCE_GAP_ID,
+          readiness: expect.objectContaining({
+            contact: "ready",
+            profileSubstance: "missing_profile_substance",
+            limitations: expect.arrayContaining([
+              "Headshot is unavailable in public source data.",
+              "Profile substance is unavailable in public source data.",
+              "FINRA CRD is unavailable in public source data.",
+            ]),
+          }),
+        }),
+      ],
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /private|watchlist|rating|analyst|discrepancy|reviewer|correction|suitability|misconduct|lower quality|recommendation/i
+    );
   });
 
   it("filters advisor directories with stable totals and cursor pages", async () => {
