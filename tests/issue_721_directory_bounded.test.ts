@@ -280,12 +280,14 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
       );
 
       expect(page.items.length).toBe(10);
-      expect(page.total).toBe(250);
+      expect(page.nextCursor).not.toBeNull();
+      expect(page.total).toBe(11);
+      expect(page.truncated).toBe(true);
       for (const call of recorded.calls) {
         expect(call.limit).toBeDefined();
         expect(call.limit).toBeLessThanOrEqual(MAX_PAGE_LIMIT);
       }
-      expect(recorded.calls.map(call => call.offset)).toEqual([0, 100, 200]);
+      expect(recorded.calls.map(call => call.offset)).toEqual([0]);
     } finally {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }
