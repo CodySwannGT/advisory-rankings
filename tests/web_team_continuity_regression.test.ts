@@ -82,13 +82,26 @@ describe("team continuity browser regression", () => {
         "Current roster: Avery Stone, Jordan Lee"
       );
       expect(desktopFacts.firstRow).toContain("Jan 2024");
-      expect(desktopFacts.timelineText).toContain("Past-member end date.");
-      expect(desktopFacts.timelineText).toContain("Snapshot as-of date.");
-      expect(desktopFacts.timelineText).toContain("Article published date.");
+      expect(desktopFacts.timelineText).toContain("past-member end date.");
+      expect(desktopFacts.timelineText).toContain("snapshot as-of date.");
+      expect(desktopFacts.timelineText).toContain("article published date.");
       expect(desktopFacts.timelineText).toContain(
-        "Recruiting transition move date."
+        "recruiting transition move date."
       );
       expect(desktopFacts.timelineText).toContain("similar names alone");
+      expect(desktopFacts.visibleTimelineText).toContain("Source details");
+      expect(desktopFacts.visibleTimelineText).toContain(
+        "Published profile metrics from manual source data."
+      );
+      expect(desktopFacts.visibleTimelineText).not.toContain(
+        "Snapshot source type"
+      );
+      expect(desktopFacts.visibleTimelineText).not.toContain(
+        "Source confidence"
+      );
+      expect(desktopFacts.visibleTimelineText).not.toContain("TeamProfile");
+      expect(desktopFacts.visibleTimelineText).not.toContain("Public boundary");
+      expect(desktopFacts.sourceDetailsCount).toBe(6);
       expect(desktopFacts.publicHrefs).toEqual(
         expect.arrayContaining([
           "/advisor.html?id=advisor-1",
@@ -133,8 +146,11 @@ describe("team continuity browser regression", () => {
       expect(facts.timelineText).toContain(
         "Continuity article without a public URL"
       );
-      expect(facts.timelineText).toContain("Evidence link unavailable");
-      expect(facts.timelineText).toContain("Move date unavailable");
+      expect(facts.timelineText).toContain("Evidence unavailable");
+      expect(facts.timelineText).toContain("move date unavailable");
+      expect(facts.visibleTimelineText).toContain("Source details");
+      expect(facts.visibleTimelineText).not.toContain("Source confidence");
+      expect(facts.visibleTimelineText).not.toContain("TeamProfile");
       expect(facts.publicHrefs).toEqual([
         "/advisor.html?id=advisor-undated",
         "/articles/continuity-article-without-a-public-url-article-without-url",
@@ -162,8 +178,10 @@ interface TimelineFacts {
   readonly kinds: readonly string[];
   readonly privateLeakCount: number;
   readonly publicHrefs: readonly string[];
+  readonly sourceDetailsCount: number;
   readonly timelineText: string;
   readonly unavailableDateCount: number;
+  readonly visibleTimelineText: string;
 }
 
 type TeamProfileFixture = ReturnType<typeof teamContinuityProfile>;
@@ -201,6 +219,8 @@ async function timelineFacts(
       ),
     ].map(link => link.getAttribute("href") ?? "");
     const bodyText = document.body.textContent ?? "";
+    const visibleTimelineText =
+      timeline instanceof HTMLElement ? timeline.innerText.trim() : "";
 
     return {
       firstRow: steps[0]?.textContent?.trim() ?? "",
@@ -213,12 +233,16 @@ async function timelineFacts(
       privateLeakCount: privateValues.filter(value => bodyText.includes(value))
         .length,
       publicHrefs,
+      sourceDetailsCount: document.querySelectorAll(
+        ".team-continuity-provenance"
+      ).length,
       timelineText: timeline?.textContent?.trim() ?? "",
       unavailableDateCount: steps.filter(
         step =>
           step.querySelector(".when")?.textContent?.trim() ===
           "Date unavailable"
       ).length,
+      visibleTimelineText,
     };
   }, PRIVATE_VALUES);
 }
