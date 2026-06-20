@@ -26,6 +26,7 @@ fastifyRoutes:
     - 'articles/index.js'
     - 'data-coverage/index.js'
     - 'recruiting/index.js'
+    - 'recruiting-shortlist/index.js'
     - 'research-freshness/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'

@@ -2360,6 +2360,101 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-status {
   padding-top: 2px;
 }
+.shortlist-brief-hero {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.shortlist-brief-hero h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 26px;
+  line-height: 1.15;
+}
+.shortlist-brief-summary .card-body,
+.shortlist-brief-firms .card-body,
+.shortlist-firm,
+.shortlist-firm-list {
+  display: grid;
+  gap: 12px;
+}
+.shortlist-brief-note,
+.shortlist-firm-title p,
+.shortlist-coverage-limitation {
+  margin: 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.shortlist-firm {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.shortlist-firm-header {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 0;
+}
+.shortlist-firm-title {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.shortlist-firm-title h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.shortlist-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.shortlist-coverage-metric {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.shortlist-coverage-metric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.shortlist-coverage-metric strong {
+  display: block;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.shortlist-coverage-limitation {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+.shortlist-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.shortlist-link-list a {
+  max-width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
 .compare-entry-card .card-body,
 .compare-entry-action {
   display: flex;
@@ -2610,8 +2705,12 @@ body.drawer-open .nav .nav-scrim {
     border-bottom: 0;
   }
   .watchlist-firms,
-  .watchlist-grid {
+  .watchlist-grid,
+  .shortlist-coverage-grid {
     grid-template-columns: 1fr;
+  }
+  .shortlist-firm-header {
+    flex-direction: column;
   }
   .watchlist-summary,
   .watchlist-metrics {
