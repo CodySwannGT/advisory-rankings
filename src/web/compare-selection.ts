@@ -5,7 +5,8 @@ import type {
   AdvisorComparisonPayload,
   AdvisorComparisonSelection,
 } from "../types/advisor-comparison.js";
-import { Button, el } from "./design-system/index.js";
+import { Button, Icon, el } from "./design-system/index.js";
+import type { IconName } from "./design-system/index.js";
 
 const IDS_PARAM = "ids";
 const LEGACY_ADVISOR_IDS_PARAM = "advisorIds";
@@ -134,21 +135,21 @@ export function comparisonColumnHeader(
         label: `Move ${item.displayName} left`,
         className: "comparison-move-left",
         disabled: index === 0,
-        children: "<",
+        icon: "arrow-left",
         onClick: () => actions.move(item.id, -1),
       }),
       comparisonControlButton({
         label: `Move ${item.displayName} right`,
         className: "comparison-move-right",
         disabled: index === count - 1,
-        children: ">",
+        icon: "arrow-right",
         onClick: () => actions.move(item.id, 1),
       }),
       comparisonControlButton({
         label: `Remove ${item.displayName}`,
         className: "comparison-remove",
         disabled: count <= 1,
-        children: "Remove",
+        icon: "x",
         onClick: () => actions.remove(item.id),
       })
     )
@@ -214,7 +215,7 @@ interface ComparisonControlButtonOptions {
   readonly label: string;
   readonly className: string;
   readonly disabled: boolean;
-  readonly children: string;
+  readonly icon: IconName;
   readonly onClick: EventListener;
 }
 
@@ -224,7 +225,7 @@ interface ComparisonControlButtonOptions {
  * @param root0.label - Accessible button label.
  * @param root0.className - Extra button class.
  * @param root0.disabled - Whether the control is disabled.
- * @param root0.children - Visible button text.
+ * @param root0.icon - Visible button icon.
  * @param root0.onClick - Click handler.
  * @returns Rendered button.
  */
@@ -232,12 +233,12 @@ function comparisonControlButton({
   label,
   className,
   disabled,
-  children,
+  icon,
   onClick,
 }: ComparisonControlButtonOptions): HTMLElement {
   return Button({
     variant: "ghost",
-    children,
+    children: Icon({ name: icon }),
     onClick,
     attrs: {
       class: `comparison-control ${className}`,

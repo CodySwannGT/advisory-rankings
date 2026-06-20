@@ -3068,11 +3068,32 @@ body.drawer-open .nav .nav-scrim {
 }
 
 .comparison-control {
-  min-height: 30px;
-  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
   border-radius: 6px;
-  font-size: 12px;
-  line-height: 1;
+  color: var(--text-muted);
+}
+
+.comparison-control:hover:not([disabled]),
+.comparison-control:focus-visible {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.comparison-control .ab-icon,
+.comparison-control svg {
+  width: 16px;
+  height: 16px;
+}
+
+.comparison-remove:hover:not([disabled]),
+.comparison-remove:focus-visible {
+  color: var(--accent-red);
 }
 
 .comparison-control[disabled] {

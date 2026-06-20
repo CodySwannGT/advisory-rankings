@@ -11,7 +11,10 @@ export type IconName =
   | "watchlist"
   | "compliance"
   | "research"
-  | "discrepancies";
+  | "discrepancies"
+  | "arrow-left"
+  | "arrow-right"
+  | "x";
 
 /**
  * Builds a small line icon for the named design-system set.
@@ -36,6 +39,8 @@ export function iconSvg(name: IconName): SVGSVGElement {
 
 const ICON_PATHS: Readonly<Record<IconName, string>> = {
   advisor: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0",
+  "arrow-left": "M19 12H5m7-7-7 7 7 7",
+  "arrow-right": "M5 12h14m-7-7 7 7-7 7",
   branches: "M6 3v6m12-6v6M6 9h12M6 9v12m12-12v12M4 21h4m8 0h4",
   building:
     "M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M8 7h1m4 0h1M8 11h1m4 0h1M8 15h1m4 0h1M3 21h18",
@@ -50,4 +55,5 @@ const ICON_PATHS: Readonly<Record<IconName, string>> = {
     "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 21a5 5 0 0 1 10 0m-2 0a5 5 0 0 1 10 0",
   watchlist:
     "M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2 7.5 14 3 9.6l6.2-.9L12 3Z",
+  x: "M18 6 6 18M6 6l12 12",
 };
