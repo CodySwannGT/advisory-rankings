@@ -29,6 +29,8 @@ const browserDescribe =
 const COMPARISON_TABLE_SELECTOR = ".comparison-table";
 const COMPARISON_AFTER_REMOVE = "adv-a,adv-c";
 const COMPARISON_AFTER_REORDER = "adv-c,adv-a";
+const MOVE_ADVISOR_1_LEFT = "Move Advisor 1 left";
+const REMOVE_ADVISOR_2 = "Remove Advisor 2";
 
 browserDescribe("watchlist management UI (#228)", () => {
   let browser: Browser;
@@ -230,13 +232,29 @@ browserDescribe("watchlist management UI (#228)", () => {
     await page.locator(COMPARISON_TABLE_SELECTOR).waitFor({
       timeout: QUICK_TIMEOUT,
     });
+    const controls = page.locator(".comparison-control");
+    expect(
+      await controls.evaluateAll(buttons =>
+        buttons.map(button => button.textContent?.trim() || "")
+      )
+    ).toEqual(["", "", "", "", "", "", "", "", ""]);
+    expect(
+      await page
+        .getByRole("button", { name: MOVE_ADVISOR_1_LEFT })
+        .getAttribute("title")
+    ).toBe(MOVE_ADVISOR_1_LEFT);
+    expect(
+      await page
+        .getByRole("button", { name: REMOVE_ADVISOR_2 })
+        .getAttribute("title")
+    ).toBe(REMOVE_ADVISOR_2);
     expect(await comparisonColumnIds(page)).toEqual([
       "adv-a",
       "adv-b",
       "adv-c",
     ]);
 
-    await page.getByRole("button", { name: "Remove Advisor 2" }).click();
+    await page.getByRole("button", { name: REMOVE_ADVISOR_2 }).click();
     expect(new URL(page.url()).searchParams.get("ids")).toBe(
       COMPARISON_AFTER_REMOVE
     );

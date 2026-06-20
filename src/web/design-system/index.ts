@@ -13,6 +13,7 @@
 // and re-export it from this file. See docs/design-system.md.
 
 export { el, $, clear } from "./dom.js";
+export type { IconName } from "./atoms-icons.js";
 
 export {
   Button,
