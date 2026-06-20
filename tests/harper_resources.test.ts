@@ -43,6 +43,10 @@ const JORDAN_EXAMPLE_NAME = "Jordan Example";
 const MORGAN_STANLEY_ID = "8e106b7e-efcc-5aed-8827-fd0ea645b6df";
 const MORGAN_STANLEY_NAME = "Morgan Stanley";
 const MORGAN_ADVISOR_ID = "advisor-morgan";
+const SHORTLIST_MORGAN_FIRM_ID = "firm-morgan";
+const SHORTLIST_UBS_NAME = "UBS";
+const SHORTLIST_RBC_NAME = "RBC";
+const SHORTLIST_MORGAN_LOADED_BRANCH_ID = "branch-morgan-loaded";
 const UNRESOLVED_CAPITAL = "Unresolved Capital";
 const MORGAN_GAP_NAME = "Morgan Gap";
 const TAYLOR_MARKET_NAME = "Taylor Market";
@@ -104,6 +108,7 @@ const ANALYST_EMAIL = "analyst@example.test";
 const DATE_2018_01_01 = "2018-01-01";
 const DATE_2020_01_01 = "2020-01-01";
 const DATE_2021_01_01 = "2021-01-01";
+const DATE_2022_01_01 = "2022-01-01";
 const DATE_2023_01_01 = "2023-01-01";
 const DATE_2024_01_01 = "2024-01-01";
 const DATE_2024_04_01 = "2024-04-01";
@@ -526,7 +531,7 @@ const baseRows = () => {
       firmIdAtTime: "firm-a",
       disclosureType: "customer",
       regulator: "FINRA",
-      dateInitiated: "2022-01-01",
+      dateInitiated: DATE_2022_01_01,
       allegationText: "Unsuitable recommendation",
     },
   ]);
@@ -3588,6 +3593,121 @@ describe("Harper resource endpoints", () => {
         ]),
       }),
     ]);
+  });
+
+  it("adds public branch and coverage context to shortlist-style watchlist firms", async () => {
+    setRows("Firm", [
+      ...(tableRows.get("Firm") ?? []),
+      {
+        id: SHORTLIST_MORGAN_FIRM_ID,
+        name: MORGAN_STANLEY_NAME,
+        channel: "wirehouse",
+      },
+      { id: "firm-ubs", name: SHORTLIST_UBS_NAME, channel: "wirehouse" },
+    ]);
+    setRows("Branch", [
+      ...(tableRows.get("Branch") ?? []),
+      {
+        id: SHORTLIST_MORGAN_LOADED_BRANCH_ID,
+        firmId: SHORTLIST_MORGAN_FIRM_ID,
+        level: "office",
+        city: "New York",
+        state: "NY",
+      },
+      {
+        id: "branch-morgan-partial",
+        firmId: SHORTLIST_MORGAN_FIRM_ID,
+        level: "office",
+        city: "Boston",
+        state: "MA",
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      ...(tableRows.get("EmploymentHistory") ?? []),
+      {
+        id: "employment-morgan-sourced",
+        advisorId: "advisor-a",
+        firmId: SHORTLIST_MORGAN_FIRM_ID,
+        branchId: SHORTLIST_MORGAN_LOADED_BRANCH_ID,
+        roleTitle: "Advisor",
+        startDate: DATE_2022_01_01,
+        sourceType: "firm_roster",
+        sourceRef: "morgan-roster",
+      },
+      {
+        id: "employment-morgan-unsourced",
+        advisorId: "advisor-b",
+        firmId: SHORTLIST_MORGAN_FIRM_ID,
+        branchId: SHORTLIST_MORGAN_LOADED_BRANCH_ID,
+        roleTitle: "Advisor",
+        startDate: "2023-01-01",
+      },
+    ]);
+
+    const market = await new (resources as any).RecruitingMarket().get(
+      routeTarget("", {
+        firm: [MORGAN_STANLEY_NAME, SHORTLIST_UBS_NAME, SHORTLIST_RBC_NAME],
+      })
+    );
+
+    const [morgan, ubs, rbc] = market.watchlist.items;
+    expect(morgan).toMatchObject({
+      query: MORGAN_STANLEY_NAME,
+      firm: expect.objectContaining({ id: SHORTLIST_MORGAN_FIRM_ID }),
+      branchCoverage: {
+        status: "partial",
+        branchCount: 2,
+        currentAdvisorCount: 2,
+        branchesWithCurrentAdvisors: 1,
+        partialBranchCount: 1,
+        sourceTypes: ["firm_roster"],
+        sourceRefCount: 1,
+        missingSourceCount: 1,
+        limitation: expect.stringContaining("branch rows"),
+      },
+      evidenceLinks: {
+        recruiting: "/recruiting?firm=Morgan%20Stanley",
+        recruitingResource: "/RecruitingMarket?firm=Morgan%20Stanley",
+        firmProfile: `/firm.html?id=${SHORTLIST_MORGAN_FIRM_ID}`,
+        firmProfileResource: `/FirmProfile/${SHORTLIST_MORGAN_FIRM_ID}`,
+        branchExplorer: `/branches?firm=${SHORTLIST_MORGAN_FIRM_ID}`,
+        publicBranchesResource: `/PublicBranches?firm=${SHORTLIST_MORGAN_FIRM_ID}`,
+        dataCoverage: "/coverage",
+        dataCoverageResource: "/DataCoverage",
+      },
+    });
+    expect(ubs.branchCoverage).toMatchObject({
+      status: "partial",
+      branchCount: 0,
+      currentAdvisorCount: null,
+      limitation: expect.stringContaining("No public branch rows"),
+    });
+    expect(rbc).toMatchObject({
+      query: SHORTLIST_RBC_NAME,
+      firm: null,
+      branchCoverage: {
+        status: "unavailable",
+        branchCount: null,
+        currentAdvisorCount: null,
+        branchesWithCurrentAdvisors: null,
+        partialBranchCount: null,
+        sourceTypes: [],
+        sourceRefCount: null,
+        missingSourceCount: null,
+        limitation: expect.stringContaining("did not resolve"),
+      },
+      evidenceLinks: {
+        firmProfile: null,
+        firmProfileResource: null,
+        branchExplorer: null,
+        publicBranchesResource: null,
+        dataCoverage: "/coverage",
+        dataCoverageResource: "/DataCoverage",
+      },
+    });
+    expect(JSON.stringify(market.watchlist)).not.toMatch(
+      /UserWatchlists|watchlistNote|privateWatchlist|RegulatoryDiscrepancy|reviewer/i
+    );
   });
 
   it("surfaces complementary recruiting deal term gaps", async () => {

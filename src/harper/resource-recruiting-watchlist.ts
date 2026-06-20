@@ -1,7 +1,16 @@
 import type { FirmRow } from "../types/harper-schema.js";
 import type { ResourceIndex } from "./resource-data.js";
+import type {
+  WatchlistBranchCoverage,
+  WatchlistEvidenceLinks,
+} from "./resource-recruiting-watchlist-coverage.js";
 
 import { firmChip } from "./resource-feed.js";
+import {
+  branchCoverage,
+  evidenceLinks,
+  unresolvedBranchCoverage,
+} from "./resource-recruiting-watchlist-coverage.js";
 import { normalizeId, resolveFirm } from "./resource-routing.js";
 
 const MAX_WATCHLIST_ITEMS = 8;
@@ -75,6 +84,8 @@ export interface WatchlistItem {
   readonly netMoveCount: number;
   readonly netKnownAum: number;
   readonly sourceCoverage: WatchlistSourceCoverage;
+  readonly branchCoverage: WatchlistBranchCoverage;
+  readonly evidenceLinks: WatchlistEvidenceLinks;
   readonly sourceMoveIds: ReadonlyArray<string>;
   readonly sourceStatus: ReadonlyArray<string>;
 }
@@ -256,6 +267,8 @@ function watchlistItem(
       netMoveCount: 0,
       netKnownAum: 0,
       sourceCoverage: emptyCoverage(),
+      branchCoverage: unresolvedBranchCoverage(query),
+      evidenceLinks: evidenceLinks(query, null),
       sourceMoveIds: [],
       sourceStatus: [UNRESOLVED_FIRM],
     };
@@ -274,6 +287,8 @@ function watchlistItem(
     netMoveCount: inbound.count - outbound.count,
     netKnownAum: inbound.knownAum - outbound.knownAum,
     sourceCoverage: sourceCoverage(relatedMoves),
+    branchCoverage: branchCoverage(db, firm),
+    evidenceLinks: evidenceLinks(query, firm),
     sourceMoveIds: relatedMoves.map(move => move.id),
     sourceStatus: watchlistSourceStatus(relatedMoves),
   };
