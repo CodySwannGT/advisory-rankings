@@ -248,7 +248,9 @@ function evidenceLinks(item: WatchlistItem): HTMLElement {
     ["Branch explorer", item.evidenceLinks.branchExplorer],
     ["Data coverage", item.evidenceLinks.dataCoverage],
     ["Recruiting resource", item.evidenceLinks.recruitingResource],
+    ["Firm profile resource", item.evidenceLinks.firmProfileResource],
     ["Public branches resource", item.evidenceLinks.publicBranchesResource],
+    ["Data coverage resource", item.evidenceLinks.dataCoverageResource],
   ];
   return linkList(
     links.filter((link): link is readonly [string, string] => Boolean(link[1]))
