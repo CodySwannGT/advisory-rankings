@@ -181,13 +181,10 @@ const derivedReadinessQuery = async (
   limit: number
 ): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
   const conditions = buildAdvisorConditions(filters);
-  const scanConditions = conditions.length
-    ? conditions
-    : [{ attribute: "id", comparator: "greater_than", value: "" }];
   const searchable = tables.Advisor as unknown as SearchableAdvisorTable;
   const { matched, truncated } = await collectReadinessMatches(
     searchable,
-    scanConditions,
+    conditions,
     filters,
     offset + limit + 1
   );
