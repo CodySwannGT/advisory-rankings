@@ -187,9 +187,9 @@ function browserFailures(
       viewport.tableCount,
       1
     ),
-    viewport.summaryText.includes("Moves")
+    /\bmoves?\b/i.test(viewport.summaryText)
       ? ""
-      : `${viewport.viewport} summary does not include Moves`,
+      : `${viewport.viewport} summary does not include move count`,
     REQUIRED_BROWSER_STATUS_LABELS.every(status =>
       viewport.sourceStatusText.toUpperCase().includes(status)
     )
