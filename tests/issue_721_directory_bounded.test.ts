@@ -293,15 +293,15 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
     }
   });
 
-  it("keeps CRD-ready finder scans bounded without CRD search conditions", async () => {
-    const rows = seedAdvisors(8).map((row, index) => ({
+  it("keeps sparse CRD-ready finder scans bounded by indexed CRD search", async () => {
+    const rows = seedAdvisors(250).map((row, index) => ({
       ...row,
-      bioText: "Ready profile",
-      businessEmail: `${row.id}@example.com`,
-      businessPhone: "555-0100",
+      bioText: index > 220 ? "Ready profile" : null,
+      businessEmail: index > 220 ? `${row.id}@example.com` : null,
+      businessPhone: index > 220 ? "555-0100" : null,
       finraCrd: index % 3 === 0 ? null : row.finraCrd,
-      headshotUrl: "https://example.com/headshot.jpg",
-      linkedinUrl: "https://www.linkedin.com/in/example",
+      headshotUrl: index > 220 ? "https://example.com/headshot.jpg" : null,
+      linkedinUrl: index > 220 ? "https://www.linkedin.com/in/example" : null,
     }));
     setAdvisorRows(rows);
     const recorded = recordedTable(rows);
@@ -328,8 +328,10 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
           call.conditions.some(
             (condition: any) => condition.attribute === "finraCrd"
           )
-        ).toBe(false);
+        ).toBe(true);
+        expect(call.sort).toBeUndefined();
       }
+      expect(recorded.calls.map(call => call.offset)).toEqual([0, 100]);
     } finally {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }

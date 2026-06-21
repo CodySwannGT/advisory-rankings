@@ -37,6 +37,12 @@ interface ReadinessMatchScanResult {
   readonly truncated: boolean;
 }
 
+/** Query-plan inputs for derived-readiness scans. */
+interface ReadinessSearchPlan {
+  readonly conditions: readonly HarperCondition[];
+  readonly sortInHarper: boolean;
+}
+
 /** Narrow Harper table surface used for derived readiness filtering. */
 type SearchableAdvisorTable = Readonly<
   Record<
@@ -180,11 +186,11 @@ const derivedReadinessQuery = async (
   offset: number,
   limit: number
 ): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
-  const conditions = buildDerivedReadinessConditions(filters);
+  const plan = buildDerivedReadinessSearchPlan(filters);
   const searchable = tables.Advisor as unknown as SearchableAdvisorTable;
   const { matched, truncated } = await collectReadinessMatches(
     searchable,
-    conditions,
+    plan,
     filters,
     offset + limit + 1
   );
@@ -192,15 +198,18 @@ const derivedReadinessQuery = async (
 };
 
 // Harper's data plane can stall when `finraCrd greater_than ""` is combined
-// with a sorted derived-readiness scan; keep CRD matching in the row predicate.
-const buildDerivedReadinessConditions = (
+// with a sorted derived-readiness scan. Keep CRD as an indexed reducer, but
+// drop Harper-side sorting for that scan shape and sort bounded matches locally.
+const buildDerivedReadinessSearchPlan = (
   filters: AdvisorDirectoryFilters
-): readonly HarperCondition[] =>
-  buildAdvisorConditions({ ...filters, hasCrd: null });
+): ReadinessSearchPlan => ({
+  conditions: buildAdvisorConditions(filters),
+  sortInHarper: filters.hasCrd === null,
+});
 
 const collectReadinessMatches = async (
   searchable: SearchableAdvisorTable,
-  conditions: readonly HarperCondition[],
+  plan: ReadinessSearchPlan,
   filters: AdvisorDirectoryFilters,
   targetMatches: number,
   scanned = 0,
@@ -209,14 +218,19 @@ const collectReadinessMatches = async (
   if (scanned >= READINESS_SCAN_LIMIT || matched.length >= targetMatches) {
     return { matched, truncated: true };
   }
-  const batch = await Array.fromAsync(
-    searchable.search({
-      conditions,
-      sort: { attribute: "lastName" },
-      limit: READINESS_SEARCH_PAGE_LIMIT,
-      offset: scanned,
-    })
-  );
+  const query = plan.sortInHarper
+    ? {
+        conditions: plan.conditions,
+        sort: { attribute: "lastName" },
+        limit: READINESS_SEARCH_PAGE_LIMIT,
+        offset: scanned,
+      }
+    : {
+        conditions: plan.conditions,
+        limit: READINESS_SEARCH_PAGE_LIMIT,
+        offset: scanned,
+      };
+  const batch = await Array.fromAsync(searchable.search(query));
   const nextMatched = [
     ...matched,
     ...batch.filter(advisor => advisorMatchesNonFirmFilters(advisor, filters)),
@@ -228,7 +242,7 @@ const collectReadinessMatches = async (
     ? { matched: nextMatched, truncated: false }
     : collectReadinessMatches(
         searchable,
-        conditions,
+        plan,
         filters,
         targetMatches,
         scanned + batch.length,
