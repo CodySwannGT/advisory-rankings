@@ -191,6 +191,7 @@ function render(
     mobileRoot: mobileEvidenceRoot,
     sections: evidenceSections,
   });
+  mobileEvidenceRoot.appendChild(publicReadinessCard(d));
   appendSections(right, [
     registrationApplicationsSection(
       narrowRows(
