@@ -180,7 +180,7 @@ const derivedReadinessQuery = async (
   offset: number,
   limit: number
 ): Promise<TruncatedDirectoryPage<AdvisorDirectoryRow>> => {
-  const conditions = buildAdvisorConditions(filters);
+  const conditions = buildDerivedReadinessConditions(filters);
   const searchable = tables.Advisor as unknown as SearchableAdvisorTable;
   const { matched, truncated } = await collectReadinessMatches(
     searchable,
@@ -190,6 +190,13 @@ const derivedReadinessQuery = async (
   );
   return finalizeInMemory(matched, offset, limit, truncated);
 };
+
+// Harper's data plane can stall when `finraCrd greater_than ""` is combined
+// with a sorted derived-readiness scan; keep CRD matching in the row predicate.
+const buildDerivedReadinessConditions = (
+  filters: AdvisorDirectoryFilters
+): readonly HarperCondition[] =>
+  buildAdvisorConditions({ ...filters, hasCrd: null });
 
 const collectReadinessMatches = async (
   searchable: SearchableAdvisorTable,

@@ -292,6 +292,48 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }
   });
+
+  it("keeps CRD-ready finder scans bounded without CRD search conditions", async () => {
+    const rows = seedAdvisors(8).map((row, index) => ({
+      ...row,
+      bioText: "Ready profile",
+      businessEmail: `${row.id}@example.com`,
+      businessPhone: "555-0100",
+      finraCrd: index % 3 === 0 ? null : row.finraCrd,
+      headshotUrl: "https://example.com/headshot.jpg",
+      linkedinUrl: "https://www.linkedin.com/in/example",
+    }));
+    setAdvisorRows(rows);
+    const recorded = recordedTable(rows);
+    const originalAdvisor = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = recorded;
+
+    try {
+      const page = await new (resources as any).PublicAdvisors().get(
+        routeTarget({
+          contactReadiness: "ready",
+          hasCrd: "true",
+          limit: "2",
+          profileSubstance: "present",
+        })
+      );
+
+      expect(page.items).toHaveLength(2);
+      expect(page.items.every((advisor: any) => advisor.hasCrd)).toBe(true);
+      expect(page.nextCursor).not.toBeNull();
+      for (const call of recorded.calls) {
+        expect(call.limit).toBeDefined();
+        expect(call.limit).toBeLessThanOrEqual(MAX_PAGE_LIMIT);
+        expect(
+          call.conditions.some(
+            (condition: any) => condition.attribute === "finraCrd"
+          )
+        ).toBe(false);
+      }
+    } finally {
+      (globalThis as any).tables.Advisor = originalAdvisor;
+    }
+  });
 });
 
 describe("issue #721 — AC #2: /Search is token-index-bounded", () => {
