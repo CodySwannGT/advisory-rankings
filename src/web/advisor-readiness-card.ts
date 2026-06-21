@@ -3,7 +3,7 @@
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import { advisorReadiness } from "../harper/resource-advisor-readiness.js";
 import { humanize } from "./app.js";
-import { DetailsCardC } from "./design-system-adapters.js";
+import { DetailsCard } from "./design-system/index.js";
 
 /**
  * Builds public contact-readiness details for profile drilldown parity with
@@ -16,7 +16,7 @@ export function publicReadinessCard(
 ): HTMLElement {
   const readiness = advisorReadiness(profile.advisor, freshnessState(profile));
   const missingFields = readiness.limitations.join(" ");
-  return DetailsCardC({
+  return DetailsCard({
     title: "Public readiness",
     pairs: [
       [
@@ -49,9 +49,7 @@ export function publicReadinessCard(
  * @param profile - Advisor profile payload.
  * @returns Public readiness freshness state.
  */
-function freshnessState(
-  profile: AdvisorProfilePayload
-): "current" | "stale" | "unknown" {
+function freshnessState(profile: AdvisorProfilePayload): "current" | "unknown" {
   if (!profile.evidenceFreshness.hasData) return "unknown";
   return profile.evidenceFreshness.lastCheckedAt ? "current" : "unknown";
 }
