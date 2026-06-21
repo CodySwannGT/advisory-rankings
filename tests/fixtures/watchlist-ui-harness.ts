@@ -454,6 +454,9 @@ export async function startStaticServer(): Promise<Server> {
  */
 function resolveStaticPath(urlPath: string): string {
   if (urlPath === "/login") return LOGIN_SHELL;
+  if (/^\/advisors\/[^/]+$/u.test(urlPath)) {
+    return resolve(WEB_ROOT, "advisor.html");
+  }
   if (urlPath === "/recruiting/shortlist") {
     return resolve(WEB_ROOT, "recruiting-shortlist.html");
   }

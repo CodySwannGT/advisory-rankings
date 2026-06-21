@@ -324,6 +324,12 @@ export function identityCard(advisor: ResolvableAdvisor): HTMLElement {
   });
 }
 
+/**
+ * Builds public contact-readiness details for profile drilldown parity with
+ * the advisor finder.
+ * @param profile - Advisor profile payload.
+ * @returns Details card with public readiness facts.
+ */
 /** Firm slice surfaced on a registration application. */
 interface RegistrationFirmSlice {
   readonly name?: string;

@@ -46,6 +46,7 @@ import {
   identityCard,
   registrationApplicationsSection,
 } from "./advisor-sections.js";
+import { publicReadinessCard } from "./advisor-readiness-card.js";
 import { reviewedDiscrepancyNotesSection } from "./advisor-discrepancy-notes-section.js";
 import {
   advisorEvidenceProfileSections,
@@ -184,6 +185,7 @@ function render(
   ]);
   right.appendChild(identityCard(d.advisor));
   right.appendChild(desktopEvidenceRoot);
+  right.appendChild(publicReadinessCard(d));
   mountResponsiveEvidenceSections({
     desktopRoot: desktopEvidenceRoot,
     mobileRoot: mobileEvidenceRoot,
