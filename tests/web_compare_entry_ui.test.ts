@@ -153,6 +153,20 @@ browserDescribe("public comparison entry actions (#810)", () => {
     );
     await page.getByRole("link", { name: AVERY_STONE }).click();
     await expectProfileReadiness(page);
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expectProfileReadiness(page);
+    await page
+      .locator(".advisor-mobile-evidence .card", {
+        hasText: "Public readiness",
+      })
+      .waitFor({
+        state: "visible",
+        timeout: QUICK_TIMEOUT,
+      });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBe(await page.evaluate(() => document.documentElement.clientWidth));
     await page.close();
   });
 
