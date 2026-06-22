@@ -107,10 +107,32 @@ function buildAdvisorConditions(
       : filters.hasCrd === false
         ? { attribute: "finraCrd", comparator: "equals", value: null }
         : null;
-  return [careerStatusCondition, hasCrdCondition].filter(
-    (condition): condition is HarperCondition => condition !== null
-  );
+  return [
+    careerStatusCondition,
+    hasCrdCondition,
+    ...positiveReadinessConditions(filters),
+  ].filter((condition): condition is HarperCondition => condition !== null);
 }
+
+const positiveReadinessConditions = (
+  filters: AdvisorDirectoryFilters
+): readonly HarperCondition[] => [
+  ...(filters.contactReadiness === "ready"
+    ? presentStringConditions(["businessEmail", "businessPhone", "linkedinUrl"])
+    : []),
+  ...(filters.profileSubstance === "present"
+    ? presentStringConditions(["bioText", "headshotUrl"])
+    : []),
+];
+
+const presentStringConditions = (
+  attributes: readonly string[]
+): readonly HarperCondition[] =>
+  attributes.map(attribute => ({
+    attribute,
+    comparator: "greater_than",
+    value: "",
+  }));
 
 const harperNativeQuery = async (
   filters: AdvisorDirectoryFilters,

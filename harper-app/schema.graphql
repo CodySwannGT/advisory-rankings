@@ -128,11 +128,11 @@ type Advisor @table @export {
   careerStatus: String @indexed # active, retired, barred, suspended, deceased, withdrawn
   finraCrd: String @indexed
   secIard: String @indexed
-  headshotUrl: String
-  bioText: String
-  linkedinUrl: String
-  businessEmail: String
-  businessPhone: String
+  headshotUrl: String @indexed
+  bioText: String @indexed
+  linkedinUrl: String @indexed
+  businessEmail: String @indexed
+  businessPhone: String @indexed
   piiLevel: String # public, restricted
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime

@@ -321,6 +321,19 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
       expect(page.items).toHaveLength(2);
       expect(page.items.every((advisor: any) => advisor.hasCrd)).toBe(true);
       expect(page.nextCursor).not.toBeNull();
+      const conditionAttributes = recorded.calls.flatMap(call =>
+        call.conditions.map((condition: any) => condition.attribute)
+      );
+      expect(conditionAttributes).toEqual(
+        expect.arrayContaining([
+          "bioText",
+          "businessEmail",
+          "businessPhone",
+          "finraCrd",
+          "headshotUrl",
+          "linkedinUrl",
+        ])
+      );
       for (const call of recorded.calls) {
         expect(call.limit).toBeDefined();
         expect(call.limit).toBeLessThanOrEqual(MAX_PAGE_LIMIT);
@@ -331,7 +344,7 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
         ).toBe(true);
         expect(call.sort).toBeUndefined();
       }
-      expect(recorded.calls.map(call => call.offset)).toEqual([0, 100]);
+      expect(recorded.calls.map(call => call.offset)).toEqual([0]);
     } finally {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }

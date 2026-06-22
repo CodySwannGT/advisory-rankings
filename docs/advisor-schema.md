@@ -207,10 +207,10 @@ Field types: `id` = opaque PK, `str`, `int`, `decimal`, `date`, `bool`, `enum`, 
 | `industry_start_date` | date | "16-year broker" / "started his career at Merrill Lynch in 2000" → derive |
 | `years_experience` | int (derived) | `now - industry_start_date` |
 | `career_status` | enum (`active`, `retired`, `barred`, `suspended`, `deceased`, `withdrawn`) | |
-| `headshot_url?` | url | Single canonical advisor image URL from the best source-provided rendition. |
-| `bio_text?` | text | |
-| `linkedin_url?` | url | |
-| `business_email?` / `business_phone?` | str | |
+| `headshot_url?` | url | Single canonical advisor image URL from the best source-provided rendition; indexed for public readiness finder predicates. |
+| `bio_text?` | text | Indexed for public readiness finder predicates. |
+| `linkedin_url?` | url | Indexed for public readiness finder predicates. |
+| `business_email?` / `business_phone?` | str | Indexed for public readiness finder predicates. |
 | `finra_crd` | str | Primary external key — **unique** when present |
 | `sec_iard?` | str | RIA representatives |
 | `pii_level` | enum (`public`, `restricted`) | Per-record render gating |
@@ -220,7 +220,10 @@ these fields plus current employment context. `q` matches display, legal,
 preferred, first, and last names by case-insensitive substring;
 `careerStatus` exactly matches `career_status`; `hasCrd` filters on whether
 `finra_crd` is present; `firm` matches the current firm id or canonical firm
-name.
+name. Positive readiness filters (`contactReadiness=ready` and
+`profileSubstance=present`) are also pushed into indexed non-empty field
+conditions so strict CRD-ready finder requests do not scan the full CRD
+population before returning public rows.
 
 ### 4.1a `AdvisorSearchIndex`
 
