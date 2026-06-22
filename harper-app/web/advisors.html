@@ -531,10 +531,14 @@
             readiness.crd === "present" ? "ready" : "missing"
           ),
           readinessBadge(
-            `Freshness ${humanize(readiness.freshness || "unknown")}`,
+            `Freshness ${readinessFreshnessLabel(readiness.freshness)}`,
             readiness.freshness === "current" ? "ready" : "neutral"
           ),
         ];
+      }
+
+      function readinessFreshnessLabel(value) {
+        return humanize(value || "unknown") || "unknown";
       }
 
       function readinessBadge(label, tone) {

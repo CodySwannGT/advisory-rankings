@@ -38,7 +38,7 @@ export function publicReadinessCard(
         "FINRA CRD",
         readiness.crd === "present" ? profile.advisor.finraCrd : "Missing CRD",
       ],
-      ["Freshness", humanize(readiness.freshness)],
+      ["Freshness", readinessFreshnessLabel(readiness.freshness)],
       ["Missing public fields", missingFields || "No public readiness gaps"],
     ],
   });
@@ -52,4 +52,15 @@ export function publicReadinessCard(
 function freshnessState(profile: AdvisorProfilePayload): "current" | "unknown" {
   if (!profile.evidenceFreshness.hasData) return "unknown";
   return profile.evidenceFreshness.lastCheckedAt ? "current" : "unknown";
+}
+
+/**
+ * Formats public readiness freshness without leaking placeholder/null copy.
+ * @param value - Public readiness freshness state.
+ * @returns User-facing freshness label.
+ */
+function readinessFreshnessLabel(
+  value: "current" | "stale" | "unknown"
+): string {
+  return humanize(value) ?? "Unknown";
 }

@@ -282,6 +282,14 @@ async function expectFinderState(
     .locator(READINESS_BADGE_SELECTOR, { hasText: "CRD present" })
     .first()
     .waitFor({ timeout: QUICK_TIMEOUT });
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: "Freshness unknown" })
+    .first()
+    .waitFor({ timeout: QUICK_TIMEOUT });
+  await page.getByText("Freshness null").waitFor({
+    state: "detached",
+    timeout: QUICK_TIMEOUT,
+  });
   expect(
     requests.some(url => {
       const requestUrl = new URL(url);
