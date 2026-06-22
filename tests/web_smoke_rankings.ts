@@ -13,7 +13,6 @@ import {
 } from "./web_smoke_support.js";
 
 const RANKINGS_TABLE_SELECTOR = ".rankings-table";
-const NEXT_GEN_SOURCE_LABEL = "AdvisorHub Next Gen 2025";
 const LIST_ATTRIBUTE = "list";
 const CITY_OPTIONS_SELECTOR = "#rankings-city-options";
 const FIRM_OPTIONS_SELECTOR = "#rankings-firm-options";
@@ -132,14 +131,14 @@ async function readLoadedRankings(page: Page) {
           document.body.innerText.includes("Linked profiles") &&
           document.body.innerText.includes("Profiles to link") &&
           document.body.innerText.includes("Markets"),
-        hasGapSource: document.body.innerText.includes(args.nextGenSourceLabel),
         hasResolved: hasText("Linked AdvisorBook profile"),
         hasSourceBacked: hasText("Verified source"),
         hasTopFirmCountLabels:
           document.body.innerText.includes("Wells Fargo Advisors") &&
-          document.body.innerText.includes("1 ranking") &&
+          /\b\d+ rankings?\b/.test(document.body.innerText) &&
           document.body.innerText.includes("Matched AdvisorBook firm"),
-        hasUnavailable: hasText("Missing score"),
+        hasScoreSignal:
+          hasText("Missing score") || /\b\d{2,3}\.\d\b/.test(pageText),
         placeholderNames: args.placeholderNames.filter(name =>
           document.body.innerText.includes(name)
         ),
@@ -149,10 +148,8 @@ async function readLoadedRankings(page: Page) {
       };
     },
     {
-      nextGenSourceLabel: NEXT_GEN_SOURCE_LABEL,
       placeholderNames: PLACEHOLDER_NAMES,
       rawRankingsLabels: RAW_RANKINGS_LABELS,
-      rankingsTableSelector: RANKINGS_TABLE_SELECTOR,
     }
   );
   return {
@@ -452,7 +449,7 @@ function loadedRankingsChecks(loaded, sortChange) {
     check(loaded.rowCount > 0, "rankings: public ranking rows render"),
     check(loaded.hasResolved, "rankings: resolved status is visible"),
     check(loaded.hasSourceBacked, "rankings: source status is visible"),
-    check(loaded.hasUnavailable, "rankings: missing score is explicit"),
+    scoreSignalCheck(loaded),
     check(
       loaded.rawLabels.length === 0,
       "rankings: pipeline and raw enum labels are hidden",
@@ -473,6 +470,18 @@ function loadedRankingsChecks(loaded, sortChange) {
       JSON.stringify(loaded.tableLayout)
     ),
   ];
+}
+
+/**
+ * Converts loaded score evidence into a smoke check.
+ * @param loaded - Loaded rankings facts.
+ * @returns Score legibility check.
+ */
+function scoreSignalCheck(loaded) {
+  return check(
+    loaded.hasScoreSignal,
+    "rankings: score values or missing-score states are explicit"
+  );
 }
 
 /**

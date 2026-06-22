@@ -121,7 +121,6 @@ function regulatoryDigestRow(
 ): HTMLElement {
   const disclosure = item.disclosure;
   const eventType = humanize(disclosure.disclosureType) || "Disclosure";
-  const limitations = digestLimitations(item);
   return el(
     "article",
     { class: "regulatory-digest-row" },
@@ -149,29 +148,49 @@ function regulatoryDigestRow(
             disclosure.allegationText
           )
         : null,
-      limitations.length
-        ? el(
-            "ul",
-            { class: "regulatory-digest-limitations" },
-            ...limitations.map(limitation => el("li", {}, limitation))
-          )
-        : null,
-      el(
-        "div",
-        { class: "regulatory-digest-links" },
-        disclosure.advisor
-          ? el(
-              "a",
-              { href: entityPath("advisor", disclosure.advisor) },
-              "Advisor profile"
-            )
-          : null,
-        !disclosure.advisor && item.firm
-          ? el("a", { href: entityPath("firm", item.firm) }, "Firm profile")
-          : null,
-        el("a", { href: articlePath(item.article) }, "Source article")
-      )
+      digestLimitationsList(item),
+      regulatoryDigestLinks(item)
     )
+  );
+}
+
+/**
+ * Builds optional limitation bullets for a digest item.
+ * @param item - Digest item to summarize.
+ * @returns Limitation list or null when none are present.
+ */
+function digestLimitationsList(item: RegulatoryDigestItem): HTMLElement | null {
+  const limitations = digestLimitations(item);
+  return limitations.length
+    ? el(
+        "ul",
+        { class: "regulatory-digest-limitations" },
+        ...limitations.map(limitation => el("li", {}, limitation))
+      )
+    : null;
+}
+
+/**
+ * Builds profile and source links for a digest row.
+ * @param item - Digest item with source article and optional entity links.
+ * @returns Link group element.
+ */
+function regulatoryDigestLinks(item: RegulatoryDigestItem): HTMLElement {
+  const disclosure = item.disclosure;
+  return el(
+    "div",
+    { class: "regulatory-digest-links" },
+    disclosure.advisor
+      ? el(
+          "a",
+          { href: entityPath("advisor", disclosure.advisor) },
+          "Advisor profile"
+        )
+      : null,
+    !disclosure.advisor && item.firm
+      ? el("a", { href: entityPath("firm", item.firm) }, "Firm profile")
+      : null,
+    el("a", { href: articlePath(item.article) }, "Source article")
   );
 }
 

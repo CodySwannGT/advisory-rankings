@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Page } from "playwright";
+import type { Browser, BrowserContext, Locator, Page } from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
@@ -372,7 +372,30 @@ async function reviewCorrection(
     (await page.getByText(submitterNote).count()) >= 1;
   const rendersProposedValue =
     (await page.getByText(proposedValue).count()) >= 1;
-  const reviewPath = `/AdvisorCorrectionRequest/${encodeURIComponent(item.id)}`;
+  await submitCorrectionReview(page, card, item.id, reviewerNote);
+  await shot(page, "14-corrections-reviewed");
+
+  return [
+    check(true, "corrections: submitted request appears in analyst queue"),
+    check(rendersSubmitterNote, "corrections: inbox renders submitter note"),
+    check(rendersProposedValue, "corrections: inbox renders proposed value"),
+  ];
+}
+
+/**
+ * Submits the analyst disposition form and verifies the resource response.
+ * @param page - Browser page submitting the review.
+ * @param card - Inbox card for the submitted request.
+ * @param requestId - Correction request id.
+ * @param reviewerNote - Unique reviewer note to submit.
+ */
+async function submitCorrectionReview(
+  page: Page,
+  card: Locator,
+  requestId: string,
+  reviewerNote: string
+): Promise<void> {
+  const reviewPath = `/AdvisorCorrectionRequest/${encodeURIComponent(requestId)}`;
   const responsePromise = page.waitForResponse(
     response =>
       response.url().includes(reviewPath) &&
@@ -388,13 +411,6 @@ async function reviewCorrection(
       `correction review failed with HTTP ${response.status()} at ${reviewPath}`
     );
   }
-  await shot(page, "14-corrections-reviewed");
-
-  return [
-    check(true, "corrections: submitted request appears in analyst queue"),
-    check(rendersSubmitterNote, "corrections: inbox renders submitter note"),
-    check(rendersProposedValue, "corrections: inbox renders proposed value"),
-  ];
 }
 
 /**
