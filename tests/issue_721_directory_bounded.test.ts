@@ -46,6 +46,10 @@ class Resource {
 
 /** Page-size cap mirroring `resource-pagination.ts:MAX_LIMIT`. */
 const MAX_PAGE_LIMIT = 100;
+const READY_PROFILE_BIO = "Ready profile";
+const READY_PROFILE_PHONE = "555-0100";
+const READY_PROFILE_HEADSHOT = "https://example.com/headshot.jpg";
+const READY_PROFILE_LINKEDIN = "https://www.linkedin.com/in/example";
 
 /**
  *
@@ -263,11 +267,11 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
   it("bounds derived readiness finder scans with explicit page limits", async () => {
     const rows = seedAdvisors(250).map(row => ({
       ...row,
-      bioText: "Ready profile",
+      bioText: READY_PROFILE_BIO,
       businessEmail: `${row.id}@example.com`,
-      businessPhone: "555-0100",
-      headshotUrl: "https://example.com/headshot.jpg",
-      linkedinUrl: "https://www.linkedin.com/in/example",
+      businessPhone: READY_PROFILE_PHONE,
+      headshotUrl: READY_PROFILE_HEADSHOT,
+      linkedinUrl: READY_PROFILE_LINKEDIN,
     }));
     setAdvisorRows(rows);
     const recorded = recordedTable(rows);
@@ -296,12 +300,12 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
   it("keeps sparse CRD-ready finder scans bounded by indexed CRD search", async () => {
     const rows = seedAdvisors(250).map((row, index) => ({
       ...row,
-      bioText: index > 220 ? "Ready profile" : null,
+      bioText: index > 220 ? READY_PROFILE_BIO : null,
       businessEmail: index > 220 ? `${row.id}@example.com` : null,
-      businessPhone: index > 220 ? "555-0100" : null,
+      businessPhone: index > 220 ? READY_PROFILE_PHONE : null,
       finraCrd: index % 3 === 0 ? null : row.finraCrd,
-      headshotUrl: index > 220 ? "https://example.com/headshot.jpg" : null,
-      linkedinUrl: index > 220 ? "https://www.linkedin.com/in/example" : null,
+      headshotUrl: index > 220 ? READY_PROFILE_HEADSHOT : null,
+      linkedinUrl: index > 220 ? READY_PROFILE_LINKEDIN : null,
     }));
     setAdvisorRows(rows);
     const recorded = recordedTable(rows);
@@ -344,6 +348,46 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
         ).toBe(true);
         expect(call.sort).toBeUndefined();
       }
+      expect(recorded.calls.map(call => call.offset)).toEqual([0]);
+    } finally {
+      (globalThis as any).tables.Advisor = originalAdvisor;
+    }
+  });
+
+  it("returns locally sorted CRD-ready finder rows when Harper sorting is disabled", async () => {
+    const rows = seedAdvisors(4)
+      .map(row => ({
+        ...row,
+        bioText: READY_PROFILE_BIO,
+        businessEmail: `${row.id}@example.com`,
+        businessPhone: READY_PROFILE_PHONE,
+        finraCrd: row.finraCrd,
+        headshotUrl: READY_PROFILE_HEADSHOT,
+        linkedinUrl: READY_PROFILE_LINKEDIN,
+      }))
+      .reverse();
+    setAdvisorRows(rows);
+    const recorded = recordedTable(rows);
+    const originalAdvisor = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = recorded;
+
+    try {
+      const page = await new (resources as any).PublicAdvisors().get(
+        routeTarget({
+          contactReadiness: "ready",
+          hasCrd: "true",
+          limit: "3",
+          profileSubstance: "present",
+        })
+      );
+
+      expect(page.items.map((advisor: any) => advisor.lastName)).toEqual([
+        "Last0000",
+        "Last0001",
+        "Last0002",
+      ]);
+      expect(page.nextCursor).not.toBeNull();
+      expect(recorded.calls.map(call => call.sort)).toEqual([undefined]);
       expect(recorded.calls.map(call => call.offset)).toEqual([0]);
     } finally {
       (globalThis as any).tables.Advisor = originalAdvisor;
