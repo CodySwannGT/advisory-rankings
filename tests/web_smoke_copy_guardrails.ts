@@ -60,6 +60,21 @@ export async function feedCopyGuardrailChecks(
       "/ feed copy: card metadata avoids raw underscore identifiers",
       metadata.filter(text => RAW_IDENTIFIER_PATTERN.test(text)).join(" | ")
     ),
+    ...feedCategoryCopyChecks(categoryCopy),
+    ...(await browseLabelChecks(page, "/ feed")),
+    copyGuardFixtureCheck(),
+  ];
+}
+
+/**
+ * Checks filtered category copy facts on the feed.
+ * @param categoryCopy - Category option, summary, and URL facts.
+ * @returns Smoke checks for category filter copy.
+ */
+function feedCategoryCopyChecks(
+  categoryCopy: Awaited<ReturnType<typeof visibleFeedCategoryCopy>>
+): readonly Check[] {
+  return [
     check(
       categoryCopy.optionLabel === null ||
         categoryCopy.optionLabel === "Advisor research",
@@ -96,8 +111,6 @@ export async function feedCopyGuardrailChecks(
       "/ feed copy: unknown category keeps machine URL value",
       categoryCopy.unknownUrlCategory || UNCATEGORIZED_OPTION_MISSING
     ),
-    ...(await browseLabelChecks(page, "/ feed")),
-    copyGuardFixtureCheck(),
   ];
 }
 

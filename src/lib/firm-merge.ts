@@ -157,43 +157,7 @@ function curatedMergeState(
   const initialState = initialMergeAccumulator(rows);
 
   const state = firms.reduce<ReturnType<typeof initialMergeAccumulator>>(
-    (current, firm) => {
-      const name = String(firm.name ?? "");
-      if (!name) return current;
-      const identity = resolveFirmIdentity(name);
-      const firmIdValue = String(firm.id);
-      if (identity.canonicalId === firmIdValue) return current;
-      if (identity.canonicalName === name) return current;
-
-      const canonical = current.byId.get(identity.canonicalId) ?? {
-        id: identity.canonicalId,
-        name: identity.canonicalName,
-        channel: firm.channel ?? "unknown",
-      };
-      const merged = mergeFirmRows(canonical, firm, identity.canonicalName);
-      const alias = aliasRow(
-        identity.canonicalId,
-        name,
-        "curated_merge",
-        firmIdValue
-      );
-      return {
-        byId: new Map([...current.byId, [identity.canonicalId, merged]]),
-        aliasRows: new Map([
-          ...current.aliasRows,
-          [firmAliasId(identity.canonicalId, name), alias],
-        ]),
-        replacementPairs: [
-          ...current.replacementPairs,
-          { from: firmIdValue, to: identity.canonicalId },
-        ],
-        mergedFirmIds: [...current.mergedFirmIds, firmIdValue],
-        auditRows: [
-          ...current.auditRows,
-          auditRow(firm, merged, identity.canonicalId),
-        ],
-      };
-    },
+    applyCuratedMerge,
     initialState
   );
 
@@ -208,6 +172,53 @@ function curatedMergeState(
       state.replacementPairs.map(({ from, to }) => [from, to])
     ),
     mergedFirmIds: state.mergedFirmIds,
+  };
+}
+
+/**
+ * Applies one curated firm identity rule to the merge accumulator.
+ * @param current - Current immutable merge accumulator.
+ * @param firm - Source Firm row being evaluated.
+ * @returns Updated accumulator when the firm is merged, otherwise current.
+ */
+function applyCuratedMerge(
+  current: ReturnType<typeof initialMergeAccumulator>,
+  firm: Readonly<Record<string, unknown>>
+): ReturnType<typeof initialMergeAccumulator> {
+  const name = String(firm.name ?? "");
+  if (!name) return current;
+  const identity = resolveFirmIdentity(name);
+  const firmIdValue = String(firm.id);
+  if (identity.canonicalId === firmIdValue) return current;
+  if (identity.canonicalName === name) return current;
+
+  const canonical = current.byId.get(identity.canonicalId) ?? {
+    id: identity.canonicalId,
+    name: identity.canonicalName,
+    channel: firm.channel ?? "unknown",
+  };
+  const merged = mergeFirmRows(canonical, firm, identity.canonicalName);
+  const alias = aliasRow(
+    identity.canonicalId,
+    name,
+    "curated_merge",
+    firmIdValue
+  );
+  return {
+    byId: new Map([...current.byId, [identity.canonicalId, merged]]),
+    aliasRows: new Map([
+      ...current.aliasRows,
+      [firmAliasId(identity.canonicalId, name), alias],
+    ]),
+    replacementPairs: [
+      ...current.replacementPairs,
+      { from: firmIdValue, to: identity.canonicalId },
+    ],
+    mergedFirmIds: [...current.mergedFirmIds, firmIdValue],
+    auditRows: [
+      ...current.auditRows,
+      auditRow(firm, merged, identity.canonicalId),
+    ],
   };
 }
 
