@@ -366,7 +366,8 @@ async function reviewCorrection(
   await smokeWaitForSelector(page, INBOX_CARD_SELECTOR);
   const card = page
     .locator(INBOX_CARD_SELECTOR)
-    .filter({ hasText: proposedValue });
+    .filter({ hasText: proposedValue })
+    .filter({ hasText: item.id });
   await card.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const rendersSubmitterNote =
     (await page.getByText(submitterNote).count()) >= 1;
