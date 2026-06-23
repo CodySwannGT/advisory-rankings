@@ -62,7 +62,21 @@ const BRANCH_GAP_ZERO_ADVISOR_ID = "branch-zero-advisor";
 const BRANCH_GAP_MISSING_SOURCE_ID = "branch-missing-source";
 const BRANCH_ATLANTA_CURSOR =
   "ZXhhbXBsZSB3ZWFsdGggbWFuYWdlbWVudABnYQBhdGxhbnRhAGF0bGFudGEgbWFya2V0AGJyYW5jaC1hdGxhbnRh";
+const PUBLIC_ADVISORS_RESOURCE = "/PublicAdvisors";
 const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
+const PUBLIC_FIRMS_RESOURCE = "/PublicFirms";
+const PUBLIC_TEAMS_RESOURCE = "/PublicTeams";
+const FEED_RESOURCE = "/Feed";
+const SEARCH_RESOURCE = "/Search";
+const RANKINGS_EXPLORER_RESOURCE = "/RankingsExplorer";
+const RECRUITING_MARKET_RESOURCE = "/RecruitingMarket";
+const ADVISOR_RESEARCH_QUEUE_RESOURCE = "/AdvisorResearchQueue";
+const DATA_COVERAGE_RESOURCE = "/DataCoverage";
+const RESEARCH_FRESHNESS_SECTION = "research-freshness";
+const RANKING_ENTRIES_METRIC = "ranking-entries";
+const LATEST_RESEARCH_CHECK_METRIC = "latest-research-check";
+const FIELD_ASSERTIONS_METRIC = "field-assertions";
+const RESEARCH_FRESHNESS_UNAVAILABLE = "Research freshness is unavailable.";
 const COBALT_CAPITAL_FIRM_CURSOR = "Y29iYWx0IGNhcGl0YWwAZmlybS1j";
 const EMPLOYMENT_A_ID = "employment-a";
 const EMPLOYMENT_B_ID = "employment-b";
@@ -321,6 +335,9 @@ const metricById = (payload: any, id: string): any =>
   payload.sections
     .flatMap((section: any) => section.metrics)
     .find((metric: any) => metric.id === id);
+
+const proofLinkById = (payload: any, id: string): any =>
+  payload.proofLinks.find((link: any) => link.id === id);
 
 const dataCoverageMetrics = (payload: any): any[] =>
   payload.sections.flatMap((section: any) => section.metrics);
@@ -2100,19 +2117,19 @@ describe("Harper feed and profile builders", () => {
       "branch-coverage",
       "rankings",
       "recruiting",
-      "research-freshness",
+      RESEARCH_FRESHNESS_SECTION,
       "source-context",
     ]);
     expect(payload.provenance.publicResources).toEqual([
-      "/PublicAdvisors",
-      "/PublicFirms",
-      "/PublicTeams",
+      PUBLIC_ADVISORS_RESOURCE,
+      PUBLIC_FIRMS_RESOURCE,
+      PUBLIC_TEAMS_RESOURCE,
       PUBLIC_BRANCHES_RESOURCE,
-      "/Feed",
-      "/Search",
-      "/RankingsExplorer",
-      "/RecruitingMarket",
-      "/AdvisorResearchQueue",
+      FEED_RESOURCE,
+      SEARCH_RESOURCE,
+      RANKINGS_EXPLORER_RESOURCE,
+      RECRUITING_MARKET_RESOURCE,
+      ADVISOR_RESEARCH_QUEUE_RESOURCE,
     ]);
     expect(payload.provenance.sourceTables).toEqual(
       expect.arrayContaining(["Branch", "EmploymentHistory", "FirmAlias"])
@@ -2121,7 +2138,7 @@ describe("Harper feed and profile builders", () => {
     expect(metricById(payload, "advisors")).toMatchObject({
       value: 2,
       source: "Advisor",
-      publicResource: "/PublicAdvisors",
+      publicResource: PUBLIC_ADVISORS_RESOURCE,
       limitation: null,
     });
     expect(metricById(payload, "branches")).toMatchObject({
@@ -2136,10 +2153,10 @@ describe("Harper feed and profile builders", () => {
         limitation: null,
       }
     );
-    expect(metricById(payload, "ranking-entries")).toMatchObject({
+    expect(metricById(payload, RANKING_ENTRIES_METRIC)).toMatchObject({
       value: 2,
       source: "RankingEntry",
-      publicResource: "/RankingsExplorer",
+      publicResource: RANKINGS_EXPLORER_RESOURCE,
     });
     expect(metricById(payload, "ranking-gap-buckets")).toMatchObject({
       value: expect.any(Number),
@@ -2149,15 +2166,15 @@ describe("Harper feed and profile builders", () => {
     expect(metricById(payload, "moves")).toMatchObject({
       value: 3,
       source: "TransitionEvent",
-      publicResource: "/RecruitingMarket",
+      publicResource: RECRUITING_MARKET_RESOURCE,
     });
-    expect(metricById(payload, "latest-research-check")).toMatchObject({
+    expect(metricById(payload, LATEST_RESEARCH_CHECK_METRIC)).toMatchObject({
       value: "2026-05-25T12:00:00.000Z",
       source: "AdvisorResearchCheck.checkedAt",
-      publicResource: "/AdvisorResearchQueue",
+      publicResource: ADVISOR_RESEARCH_QUEUE_RESOURCE,
       limitation: null,
     });
-    expect(metricById(payload, "field-assertions")).toMatchObject({
+    expect(metricById(payload, FIELD_ASSERTIONS_METRIC)).toMatchObject({
       value: 3,
       source: "FieldAssertion",
       publicResource: null,
@@ -2190,7 +2207,7 @@ describe("Harper feed and profile builders", () => {
       value: 0,
       limitation: "No ranking-list rows are loaded.",
     });
-    expect(metricById(payload, "ranking-entries")).toMatchObject({
+    expect(metricById(payload, RANKING_ENTRIES_METRIC)).toMatchObject({
       value: 0,
       limitation: DATA_COVERAGE_RANKINGS_EMPTY,
     });
@@ -2203,14 +2220,155 @@ describe("Harper feed and profile builders", () => {
       limitation:
         "Branch rows are unavailable; this does not imply firms have no offices.",
     });
-    expect(metricById(payload, "latest-research-check")).toMatchObject({
+    expect(metricById(payload, LATEST_RESEARCH_CHECK_METRIC)).toMatchObject({
       value: null,
-      limitation: "Research freshness is unavailable.",
+      limitation: RESEARCH_FRESHNESS_UNAVAILABLE,
     });
-    expect(metricById(payload, "field-assertions")).toMatchObject({
+    expect(metricById(payload, FIELD_ASSERTIONS_METRIC)).toMatchObject({
       value: 0,
       limitation: "No field-level source assertions are loaded.",
     });
+  });
+
+  it("composes public investor proof packet data from coverage and research resources", async () => {
+    const payload = await new (resources as any).InvestorProofPacket().get();
+
+    expect(new (resources as any).InvestorProofPacket().allowRead()).toBe(true);
+    expect(payload.coverage.sections.map((section: any) => section.id)).toEqual(
+      [
+        "public-entity-groups",
+        "branch-coverage",
+        "rankings",
+        "recruiting",
+        RESEARCH_FRESHNESS_SECTION,
+        "source-context",
+      ]
+    );
+    expect(payload.coverage.keyMetrics.map((metric: any) => metric.id)).toEqual(
+      expect.arrayContaining([
+        "advisors",
+        "firms",
+        "articles",
+        "branches",
+        RANKING_ENTRIES_METRIC,
+        "moves",
+        LATEST_RESEARCH_CHECK_METRIC,
+        FIELD_ASSERTIONS_METRIC,
+      ])
+    );
+    expect(payload.freshness).toMatchObject({
+      totalDue: expect.any(Number),
+      returned: expect.any(Number),
+      limitation: null,
+    });
+    expect(payload.freshness.representativeAdvisors[0]).toMatchObject({
+      advisorId: "advisor-b",
+      profileUrl: "/advisor.html?id=advisor-b",
+      firm: { id: "firm-a", name: EXAMPLE_WEALTH_MANAGEMENT },
+      sourceType: "web_research",
+    });
+    expect(proofLinkById(payload, "coverage-dashboard")).toMatchObject({
+      url: "/coverage",
+      publicResource: DATA_COVERAGE_RESOURCE,
+      limitation: null,
+    });
+    expect(proofLinkById(payload, RESEARCH_FRESHNESS_SECTION)).toMatchObject({
+      url: "/research/freshness",
+      publicResource: ADVISOR_RESEARCH_QUEUE_RESOURCE,
+      sourceTable: "AdvisorResearchCheck",
+      limitation: null,
+    });
+    expect(proofLinkById(payload, "representative-feed")).toMatchObject({
+      url: `/articles/${STONE_JOINS_EXAMPLE_SLUG}-article-a`,
+      publicResource: FEED_RESOURCE,
+      sourceIds: ["article-a"],
+      limitation: null,
+    });
+    expect(proofLinkById(payload, "representative-firm")).toMatchObject({
+      url: "/firm.html?id=firm-a",
+      publicResource: PUBLIC_FIRMS_RESOURCE,
+      sourceIds: ["firm-a"],
+      limitation: null,
+    });
+    expect(proofLinkById(payload, "representative-ranking")).toMatchObject({
+      publicResource: RANKINGS_EXPLORER_RESOURCE,
+      sourceTable: "RankingEntry",
+      sourceIds: [RANKING_ENTRY_A_ID],
+      limitation: null,
+    });
+    expect(proofLinkById(payload, "representative-recruiting")).toMatchObject({
+      publicResource: RECRUITING_MARKET_RESOURCE,
+      sourceTable: "TransitionEvent",
+      sourceIds: [TRANSITION_A_ID],
+      limitation: null,
+    });
+    expect(payload.provenance.publicResources).toEqual([
+      DATA_COVERAGE_RESOURCE,
+      ADVISOR_RESEARCH_QUEUE_RESOURCE,
+      FEED_RESOURCE,
+      PUBLIC_FIRMS_RESOURCE,
+      RANKINGS_EXPLORER_RESOURCE,
+      RECRUITING_MARKET_RESOURCE,
+    ]);
+    expect(JSON.stringify(payload)).not.toContain("UserRating");
+    expect(JSON.stringify(payload)).not.toContain("UserWatchlist");
+    expect(JSON.stringify(payload)).not.toContain(
+      ADVISOR_CORRECTION_REQUEST_TABLE
+    );
+  });
+
+  it("keeps investor proof packet missing proof explicit instead of zero-filled", async () => {
+    setRows("Article", []);
+    setRows("Firm", []);
+    setRows("Ranking", []);
+    setRows("RankingEntry", []);
+    setRows("TransitionEvent", []);
+    setRows("AdvisorResearchCheck", []);
+
+    const payload = await new (resources as any).InvestorProofPacket().get();
+
+    expect(payload.coverage.limitations).toEqual(
+      expect.arrayContaining([
+        "No public article rows are loaded.",
+        DATA_COVERAGE_RANKINGS_EMPTY,
+        "No public recruiting moves are loaded.",
+        RESEARCH_FRESHNESS_UNAVAILABLE,
+      ])
+    );
+    expect(payload.freshness).toMatchObject({
+      returned: 2,
+      limitation: null,
+    });
+    expect(payload.freshness.representativeAdvisors).toHaveLength(2);
+    expect(proofLinkById(payload, RESEARCH_FRESHNESS_SECTION)).toMatchObject({
+      sourceIds: [],
+      limitation: "Research freshness proof has no check rows loaded.",
+    });
+    expect(proofLinkById(payload, "representative-feed")).toMatchObject({
+      sourceIds: [],
+      limitation: "No public feed article is available.",
+    });
+    expect(proofLinkById(payload, "representative-firm")).toMatchObject({
+      sourceIds: [],
+      limitation: "No public firm row is available.",
+    });
+    expect(proofLinkById(payload, "representative-ranking")).toMatchObject({
+      sourceIds: [],
+      limitation: "No public ranking entry is available.",
+    });
+    expect(proofLinkById(payload, "representative-recruiting")).toMatchObject({
+      sourceIds: [],
+      limitation: "No public recruiting move is available.",
+    });
+    expect(payload.unavailable).toEqual(
+      expect.arrayContaining([
+        "No public article rows are loaded.",
+        "Research freshness is unavailable.",
+        "Research freshness proof has no check rows loaded.",
+        "No public feed article is available.",
+        "No public firm row is available.",
+      ])
+    );
   });
 
   it("counts branch-linked advisors only for known branch rows", async () => {
@@ -3682,7 +3840,7 @@ describe("Harper resource endpoints", () => {
         branchExplorer: `/branches?firm=${SHORTLIST_MORGAN_FIRM_ID}`,
         publicBranchesResource: `/PublicBranches?firm=${SHORTLIST_MORGAN_FIRM_ID}`,
         dataCoverage: "/coverage",
-        dataCoverageResource: "/DataCoverage",
+        dataCoverageResource: DATA_COVERAGE_RESOURCE,
       },
     });
     expect(ubs.branchCoverage).toMatchObject({
@@ -3711,7 +3869,7 @@ describe("Harper resource endpoints", () => {
         branchExplorer: null,
         publicBranchesResource: null,
         dataCoverage: "/coverage",
-        dataCoverageResource: "/DataCoverage",
+        dataCoverageResource: DATA_COVERAGE_RESOURCE,
       },
     });
     expect(JSON.stringify(market.watchlist)).not.toMatch(

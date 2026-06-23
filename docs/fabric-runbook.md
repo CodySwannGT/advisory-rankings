@@ -765,6 +765,7 @@ Everything else still requires auth.
 | `GET /Search?q=…` | ✅ 200 | Backs the navbar header search. Same `allowRead() { return true; }` model as the rest of the public surface. |
 | `GET /DataCoverage` | ✅ 200 | Public dashboard payload for `/coverage`: entity counts, public resource probes, rankings/recruiting gaps, research freshness, source-table context, and limitations. It reports aggregate counts and public-resource provenance only; it does not expose private user rows or secrets. |
 | `GET /AdvisorResearchQueue?limit=…` | ✅ 200 | Public-safe research-work queue rows plus priority groups: advisor identity, firm context, source/check status, missing public fields, profile URLs, returned-slice counts, and group filter mappings. No private user tables are loaded. |
+| `GET /InvestorProofPacket` | ✅ 200 | Public-safe investor proof packet data composed from `/DataCoverage`, `/AdvisorResearchQueue`, `/Feed`, `/PublicFirms`, `/RankingsExplorer`, and `/RecruitingMarket`: coverage metrics, freshness pressure, representative replay links, source ids, and explicit unavailable states. No private watchlist, rating, correction, or analyst rows are loaded. |
 | `GET /RegulatoryDiscrepancyQueue` | ✅ 200 envelope, no rows | Authenticated analyst sessions receive queue rows; anonymous visitors receive `{authenticated:false, items:[]}` so source-conflict detail is not exposed. |
 | `POST /mcp` | ✅ 200 | Streamable HTTP MCP transport implemented as lowercase `mcp` because Harper maps resource export names directly to route names. It accepts unauthenticated JSON-RPC POST for curated read-only tools and resources only. |
 | `GET /<TableName>/` (auto-export, e.g. `/Firm/`) | ❌ 401 | Default Harper RBAC; reads of the raw tables require an authenticated user. |
@@ -1561,6 +1562,7 @@ defined in `src/harper/resources.ts`:
 | `GET /PublicBranches` | `PublicBranches` | Branch rows joined to firm names and linked `EmploymentHistory` rows for source metadata and distinct current advisor counts. |
 | `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, recruiting-deal terms, state and city activity, source URLs, and Recruiting Market Map rollups. |
 | `GET /DataCoverage` | `DataCoverage` | Public entity counts, route/resource probes, rankings and recruiting coverage gaps, research freshness, source-table context, and limitations for `/coverage`. |
+| `GET /InvestorProofPacket` | `InvestorProofPacket` | Investor-facing packet data composed from `DataCoverage` and `AdvisorResearchQueue`, plus representative public links for feed, firm, rankings, and recruiting proof. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
 | `GET /RegulatoryDiscrepancyQueue` | `RegulatoryDiscrepancyQueue` | Open discrepancy rows joined to advisor, current firm, disclosure, source value, regulator, docket, and review-action context for authenticated analyst review. |
 | `POST /mcp` | `mcp` | Streamable HTTP JSON-RPC transport for curated read-only AdvisorBook tools and resources. |
