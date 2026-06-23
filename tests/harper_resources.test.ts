@@ -5682,6 +5682,12 @@ describe("Harper directory and search resources", () => {
     const result = await new (resources as any).PublicBranches().get(
       routeTarget("", { limit: "10" })
     );
+    const zeroAdvisor = await new (resources as any).PublicBranches().get(
+      routeTarget("", { gapGroup: "zero-advisor", limit: "10" })
+    );
+    const missingSource = await new (resources as any).PublicBranches().get(
+      routeTarget("", { gapGroup: MISSING_SOURCE_REASON, limit: "10" })
+    );
 
     const gapGroupByBranchId = new Map(
       result.items.map((row: any) => [row.id, row.gapGroup])
@@ -5710,6 +5716,14 @@ describe("Harper directory and search resources", () => {
         }),
       ])
     );
+    expect(zeroAdvisor).toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: BRANCH_GAP_ZERO_ADVISOR_ID })],
+    });
+    expect(missingSource).toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: BRANCH_GAP_MISSING_SOURCE_ID })],
+    });
   });
 
   it("reports branch gap group counts through DataCoverage", async () => {

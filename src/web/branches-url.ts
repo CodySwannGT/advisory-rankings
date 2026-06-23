@@ -3,6 +3,7 @@ const DEFAULT_LIMIT = 25;
 export const BRANCH_FILTER_KEYS = [
   "q",
   "firm",
+  "gapGroup",
   "state",
   "city",
   "sourceType",
@@ -61,6 +62,7 @@ export const branchFilterLabel = (key: BranchFilterKey): string => {
   const labels: Readonly<Record<BranchFilterKey, string>> = {
     q: "Search",
     firm: "Firm",
+    gapGroup: "Coverage state",
     state: "State",
     city: "City or market",
     sourceType: "Source type",

@@ -20,6 +20,7 @@ const BRANCH_EMPTY_SELECTOR = '[data-branch-id="branch-empty"]';
 const BRANCH_MARKET_SELECTOR = '[data-branch-id="branch-market"]';
 const BRANCH_NY_SELECTOR = '[data-branch-id="branch-ny"]';
 const FIRM_WELLS_ID = "firm-wells";
+const ZERO_ADVISOR_GAP_GROUP = "zero-advisor";
 const WELLS_FARGO_ADVISORS = "Wells Fargo Advisors";
 
 describe("branch explorer route (#1224)", () => {
@@ -67,6 +68,7 @@ describe("branch explorer route (#1224)", () => {
     expect(await inputValue(page, "State")).toBe("NY");
     expect(await inputValue(page, "Source type")).toBe("brokercheck");
     expect(await inputValue(page, "Minimum advisors")).toBe("2");
+    expect(await selectValue(page, "Coverage state")).toBe("");
     expect(await selectValue(page, "Level")).toBe("branch");
     const branchRow = page.locator(BRANCH_NY_SELECTOR);
     expect(
@@ -86,6 +88,28 @@ describe("branch explorer route (#1224)", () => {
     expect(new URL(page.url()).searchParams.get("city")).toBe("No match");
 
     await page.getByRole("button", { name: "Clear" }).click();
+    await expectUrlPath(page, "/branches");
+    await page.locator(BRANCH_NY_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    await page
+      .getByLabel("Coverage state")
+      .selectOption(ZERO_ADVISOR_GAP_GROUP);
+    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.locator(BRANCH_EMPTY_SELECTOR).waitFor({
+      timeout: QUICK_TIMEOUT,
+    });
+    expect(await page.locator(BRANCH_NY_SELECTOR).count()).toBe(0);
+    expect(new URL(page.url()).searchParams.get("gapGroup")).toBe(
+      ZERO_ADVISOR_GAP_GROUP
+    );
+    await page
+      .locator(BRANCH_EMPTY_SELECTOR)
+      .getByText("Zero linked advisors")
+      .waitFor({ timeout: QUICK_TIMEOUT });
+
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expectUrlPath(page, "/branches");
     await page.getByRole("button", { name: "Load more" }).click();
     await page.locator(BRANCH_EMPTY_SELECTOR).waitFor({
       timeout: QUICK_TIMEOUT,
@@ -149,6 +173,7 @@ function branchPage(
   const state = lowerParam(params, "state");
   const city = lowerParam(params, "city");
   const sourceType = lowerParam(params, "sourceType");
+  const gapGroup = lowerParam(params, "gapGroup");
   const level = lowerParam(params, "level");
   const minAdvisorCount = Number(params.get("minAdvisorCount") || "0");
   const items = branchRows().filter(row =>
@@ -183,6 +208,7 @@ function branchPage(
         row.sourceMetadata.sourceTypes.some(
           source => source.toLowerCase() === sourceType
         ),
+      !gapGroup || row.gapGroup === gapGroup,
       !level || row.level === level,
       !minAdvisorCount || row.currentAdvisorCount >= minAdvisorCount,
     ].every(Boolean)
@@ -222,6 +248,7 @@ function hasActiveFilters(params: URLSearchParams): boolean {
     "firm",
     "state",
     "city",
+    "gapGroup",
     "sourceType",
     "level",
     "minAdvisorCount",
@@ -250,6 +277,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
       firmName: WELLS_FARGO_ADVISORS,
       currentAdvisorCount: 12,
       coverageStatus: "loaded",
+      gapGroup: "loaded",
       sourceMetadata: {
         sourceTypes: ["brokercheck", "wells_fargo_locator"],
         sourceRefs: ["branch:ny"],
@@ -271,6 +299,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
       firmName: WELLS_FARGO_ADVISORS,
       currentAdvisorCount: 0,
       coverageStatus: "partial",
+      gapGroup: ZERO_ADVISOR_GAP_GROUP,
       sourceMetadata: {
         sourceTypes: ["wells_fargo_locator"],
         sourceRefs: ["branch:brooklyn"],
@@ -292,6 +321,7 @@ function branchRows(): readonly BranchDirectoryRow[] {
       firmName: WELLS_FARGO_ADVISORS,
       currentAdvisorCount: 0,
       coverageStatus: "partial",
+      gapGroup: ZERO_ADVISOR_GAP_GROUP,
       sourceMetadata: {
         sourceTypes: ["brokercheck", "edward_jones_advisor_results_api"],
         sourceRefs: ["market:long-island"],
@@ -325,6 +355,17 @@ async function selectValue(page: Page, label: string): Promise<string> {
 }
 
 /**
+ * Waits until the page path matches the expected app route.
+ * @param page - Browser page under test.
+ * @param path - Expected URL path.
+ */
+async function expectUrlPath(page: Page, path: string): Promise<void> {
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: QUICK_TIMEOUT })
+    .toBe(path);
+}
+
+/**
  * Asserts rendered branch row IDs are unique after pagination.
  * @param page - Browser page under test.
  */
@@ -343,7 +384,8 @@ async function expectUniqueBranchRows(page: Page): Promise<void> {
  */
 async function expectRawPipelineLabelsHidden(page: Page): Promise<void> {
   const rawPipelineLabels = [
-    "PARTIAL BRANCH COVERAGE",
+    "ZERO-ADVISOR",
+    "MISSING-SOURCE",
     "EDWARD JONES ADVISOR RESULTS API",
     "WELLS_FARGO_LOCATOR",
   ];
