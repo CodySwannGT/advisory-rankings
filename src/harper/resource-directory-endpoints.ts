@@ -2,6 +2,7 @@ import type {
   BranchRow,
   EmploymentHistoryRow,
   FirmAliasRow,
+  FirmMergeAuditRow,
   FirmRow,
   TeamRow,
 } from "../types/harper-schema.js";
@@ -188,15 +189,17 @@ export class PublicBranches extends Resource {
    * @returns Branch page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<BranchDirectoryRow>> {
-    const [branches, firms] = await Promise.all([
+    const [branches, firms, firmMergeAudits] = await Promise.all([
       allRows<BranchRow>(tables.Branch),
       allRows<FirmRow>(tables.Firm),
+      optionalAll<FirmMergeAuditRow>(tables.FirmMergeAudit),
     ]);
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
     const employmentsByBranch = groupEmploymentsByBranch(
       await employmentRowsForBranches(
         { EmploymentHistory: tables.EmploymentHistory },
-        branches
+        branches,
+        firmMergeAudits
       )
     );
     const filters = parseBranchDirectoryFilters(target);
