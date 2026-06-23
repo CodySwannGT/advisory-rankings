@@ -33,6 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
   "missing-total-pct-t12": "Total T-12 unavailable",
   "missing-upfront-pct-t12": "Upfront T-12 unavailable",
   "source-backed": "Source confirmed",
+  "unresolved-firm": "Choose a listed firm",
 };
 
 /**
@@ -117,7 +118,7 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
     el(
       "div",
       { class: "watchlist-item-head" },
-      firmCell(item.firm),
+      item.firm ? firmCell(item.firm) : unresolvedFirmCell(),
       item.query ? el("span", { class: "watchlist-query" }, item.query) : null
     ),
     hasMoves
@@ -128,7 +129,7 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
           metricBlock("Outbound", summaryValue(item.outbound)),
           metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
         )
-      : watchlistNoMatch(),
+      : watchlistNoMatch(Boolean(item.firm)),
     coverageBlock(item.sourceCoverage),
     statuses.length
       ? el(
@@ -142,13 +143,29 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
 
 /**
  * Renders the per-item no-match empty state for a watched firm with no moves.
+ * @param resolved - Whether the query resolved to a known firm.
  * @returns No-match copy node.
  */
-function watchlistNoMatch(): HTMLElement {
+function watchlistNoMatch(resolved: boolean): HTMLElement {
   return el(
     "p",
     { class: "watchlist-empty watchlist-note" },
-    "No matching moves for this firm under the current filters. Adjust or remove filters above to broaden results."
+    resolved
+      ? "No matching moves for this firm under the current filters. Adjust or remove filters above to broaden results."
+      : "Choose one of the suggested firm names above, enter the exact firm name, or remove this firm filter."
+  );
+}
+
+/**
+ * Renders guidance for a firm query that did not resolve to one known firm.
+ * @returns Unresolved firm guidance.
+ */
+function unresolvedFirmCell(): HTMLElement {
+  return el(
+    "div",
+    { class: STACKED_CELL_CLASS },
+    el("span", {}, "Choose a firm"),
+    el("span", {}, "Use an exact suggested name")
   );
 }
 

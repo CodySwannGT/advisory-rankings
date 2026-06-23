@@ -515,7 +515,8 @@ function emptyRecruitingChecks(empty: EmptyRecruitingState): readonly Check[] {
 function watchlistRecruitingChecks(
   watchlist: WatchlistRecruitingState
 ): readonly Check[] {
-  const { restored, noMatch, updatedFirmValues, updatedUrl } = watchlist;
+  const { restored, noMatch, partialFirm, updatedFirmValues, updatedUrl } =
+    watchlist;
   return [
     check(
       restored.hasWatchlist && restored.panelCount >= 2,
@@ -549,6 +550,14 @@ function watchlistRecruitingChecks(
         noMatch.firmValue === WATCHLIST_FIRM_ONE,
       "recruiting: no-match watchlist shows empty copy with editable firm",
       `watchlist ${noMatch.hasWatchlist}, empty ${noMatch.hasEmptyCopy}, firm ${noMatch.firmValue}`
+    ),
+    check(
+      partialFirm.hasVisibleRows &&
+        partialFirm.hasSuggestedWellsFirm &&
+        partialFirm.hasChooseFirmCopy &&
+        !partialFirm.hasUnresolvedFirmCopy,
+      "recruiting: partial firm query guides users to suggestions",
+      `rows ${partialFirm.hasVisibleRows}, wells ${partialFirm.hasSuggestedWellsFirm}, copy ${partialFirm.hasChooseFirmCopy}, unresolved ${partialFirm.hasUnresolvedFirmCopy}`
     ),
     check(
       updatedUrl.searchParams.get("year") === "2025" &&

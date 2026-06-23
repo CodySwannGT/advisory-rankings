@@ -219,7 +219,7 @@ function watchlistFirmControls(queries: readonly string[]): HTMLElement {
         title: "Add firm",
         type: "button",
       },
-      "+"
+      "Add firm"
     )
   );
 }
@@ -234,11 +234,11 @@ function firmInputRow(value: string, index: number): HTMLElement {
   return elC(
     "div",
     { class: "watchlist-firm-row" },
-    labelInput("Firm", "firm", value, {
+    labelInput("Watched firm", "firm", value, {
       "aria-label": `Firm ${index + 1}`,
       autocomplete: "organization",
       list: FIRM_SUGGESTIONS_ID,
-      placeholder: "Search firm",
+      placeholder: "Type a firm name, then choose a suggestion",
     }),
     elC(
       "button",
@@ -248,7 +248,7 @@ function firmInputRow(value: string, index: number): HTMLElement {
         title: "Remove firm",
         type: "button",
       },
-      "x"
+      "Remove"
     )
   );
 }
