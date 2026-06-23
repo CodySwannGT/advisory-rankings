@@ -454,9 +454,8 @@ export async function startStaticServer(): Promise<Server> {
  */
 function resolveStaticPath(urlPath: string): string {
   if (urlPath === "/login") return LOGIN_SHELL;
-  if (/^\/advisors\/[^/]+$/u.test(urlPath)) {
-    return resolve(WEB_ROOT, "advisor.html");
-  }
+  const shell = cleanRouteShell(urlPath);
+  if (shell) return resolve(WEB_ROOT, shell);
   if (urlPath === "/recruiting/shortlist") {
     return resolve(WEB_ROOT, "recruiting-shortlist.html");
   }
@@ -473,6 +472,18 @@ function resolveStaticPath(urlPath: string): string {
     return join(WEB_ROOT, "404.html");
   }
   return candidate;
+}
+
+/**
+ * Maps clean public detail routes to their generated app shell.
+ * @param urlPath - Request URL path.
+ * @returns Matching shell filename, or null when the path is not a clean route.
+ */
+function cleanRouteShell(urlPath: string): string | null {
+  if (/^\/advisors\/[^/]+$/u.test(urlPath)) return "advisor.html";
+  if (/^\/articles\/[^/]+$/u.test(urlPath)) return "article.html";
+  if (/^\/firms\/[^/]+$/u.test(urlPath)) return "firm.html";
+  return null;
 }
 
 /**
