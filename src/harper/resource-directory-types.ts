@@ -6,6 +6,7 @@ import type {
   TeamRow,
 } from "../types/harper-schema.js";
 import type { AdvisorReadiness } from "./resource-advisor-readiness.js";
+import type { BranchGapGroup } from "./resource-branch-gap-groups.js";
 
 /** Entity kinds accepted by the global search endpoint. */
 export type SearchKind = "all" | "firm" | "advisor" | "team";
@@ -84,6 +85,7 @@ export interface BranchDirectoryRow extends Pick<
   readonly firmName: string | null;
   readonly currentAdvisorCount: number;
   readonly coverageStatus: "loaded" | "partial" | "unavailable";
+  readonly gapGroup: BranchGapGroup;
   readonly sourceMetadata: BranchSourceSummary;
 }
 

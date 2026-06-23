@@ -105,11 +105,13 @@ Once the server is up:
     `serviceModel` (exact `Team.service_model` value).
   - `/PublicBranches?cursor=…&limit=50` — branch directory page. Returns
     `{ items, nextCursor, total }` with firm name, location, source metadata,
-    coverage status, and current advisor count. Supported filters are `q`
-    (branch name/building/address/location substring), `firm` (firm id or
-    name substring), `state` (exact state), `city`/`market` (location
-    substring), `sourceType` (exact linked employment source type), `level`
-    (exact `Branch.level`), and `minAdvisorCount` (non-negative integer).
+    coverage status, gap group, and current advisor count. Gap groups are
+    `loaded`, `partial`, `unavailable`, `zero-advisor`, and `missing-source`.
+    Supported filters are `q` (branch name/building/address/location
+    substring), `firm` (firm id or name substring), `state` (exact state),
+    `city`/`market` (location substring), `sourceType` (exact linked employment
+    source type), `level` (exact `Branch.level`), and `minAdvisorCount`
+    (non-negative integer).
   - `/FirmAdvisors/<firmId>?status=current|past&cursor=…&limit=50` —
     advisor lists per firm. Returns `{ items, nextCursor }`. Status
     defaults to `current`.

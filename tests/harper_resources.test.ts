@@ -55,6 +55,11 @@ const ADVISORS_TO_WATCH_LABEL = "Advisors to Watch";
 const BRANCH_ATLANTA_ID = "branch-atlanta";
 const BRANCH_AUSTIN_ID = "branch-austin";
 const BRANCH_ORPHAN_ID = "branch-orphan";
+const BRANCH_GAP_LOADED_ID = "branch-loaded";
+const BRANCH_GAP_PARTIAL_ID = "branch-partial";
+const BRANCH_GAP_UNAVAILABLE_ID = "branch-unavailable";
+const BRANCH_GAP_ZERO_ADVISOR_ID = "branch-zero-advisor";
+const BRANCH_GAP_MISSING_SOURCE_ID = "branch-missing-source";
 const BRANCH_ATLANTA_CURSOR =
   "ZXhhbXBsZSB3ZWFsdGggbWFuYWdlbWVudABnYQBhdGxhbnRhAGF0bGFudGEgbWFya2V0AGJyYW5jaC1hdGxhbnRh";
 const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
@@ -5313,43 +5318,163 @@ describe("Harper directory and search resources", () => {
     }
   });
 
-  it("labels public branch partial and unavailable coverage states", async () => {
+  it("groups public branch coverage gaps without flattening unknown states", async () => {
     setRows("Branch", [
       {
-        id: "branch-empty",
+        id: BRANCH_GAP_LOADED_ID,
         firmId: "firm-a",
-        name: "Empty Branch",
+        name: "Loaded Branch",
+        level: "branch",
+        city: "Austin",
+        state: "TX",
+      },
+      {
+        id: BRANCH_GAP_MISSING_SOURCE_ID,
+        firmId: "firm-a",
+        name: "Missing Source Branch",
+        level: "branch",
+        city: "Boston",
+        state: "MA",
+      },
+      {
+        id: BRANCH_GAP_ZERO_ADVISOR_ID,
+        firmId: "firm-a",
+        name: "Zero Advisor Branch",
+        level: "branch",
+        city: "Chicago",
+        state: "IL",
+      },
+      {
+        id: BRANCH_GAP_PARTIAL_ID,
+        firmId: "firm-a",
+        name: "Partial Branch",
         level: "branch",
         city: "Atlanta",
         state: "GA",
       },
       {
-        id: "branch-unavailable",
+        id: BRANCH_GAP_UNAVAILABLE_ID,
         firmId: MISSING_FIRM_REASON,
         level: "branch",
         city: "Charlotte",
         state: "NC",
       },
     ]);
-    setRows("EmploymentHistory", []);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-loaded",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_LOADED_ID,
+        sourceType: "brokercheck",
+      },
+      {
+        id: "employment-missing-source",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_MISSING_SOURCE_ID,
+      },
+      {
+        id: "employment-zero-advisor-former",
+        advisorId: "advisor-c",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_ZERO_ADVISOR_ID,
+        endDate: DATE_2024_01_01,
+        sourceType: "firm_locator",
+      },
+    ]);
 
     const result = await new (resources as any).PublicBranches().get(
       routeTarget("", { limit: "10" })
     );
 
-    expect(result.items).toEqual([
-      expect.objectContaining({
-        id: "branch-unavailable",
-        coverageStatus: "unavailable",
-        displayName: "Charlotte, NC",
-        firmName: null,
-      }),
-      expect.objectContaining({
-        id: "branch-empty",
-        coverageStatus: "partial",
-        currentAdvisorCount: 0,
-      }),
+    const gapGroupByBranchId = new Map(
+      result.items.map((row: any) => [row.id, row.gapGroup])
+    );
+    expect(gapGroupByBranchId).toEqual(
+      new Map([
+        [BRANCH_GAP_PARTIAL_ID, "partial"],
+        [BRANCH_GAP_LOADED_ID, "loaded"],
+        [BRANCH_GAP_MISSING_SOURCE_ID, "missing-source"],
+        [BRANCH_GAP_UNAVAILABLE_ID, "unavailable"],
+        [BRANCH_GAP_ZERO_ADVISOR_ID, "zero-advisor"],
+      ])
+    );
+    expect(result.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: BRANCH_GAP_UNAVAILABLE_ID,
+          coverageStatus: "unavailable",
+          displayName: "Charlotte, NC",
+          firmName: null,
+        }),
+        expect.objectContaining({
+          id: BRANCH_GAP_PARTIAL_ID,
+          coverageStatus: "partial",
+          currentAdvisorCount: 0,
+        }),
+      ])
+    );
+  });
+
+  it("reports branch gap group counts through DataCoverage", async () => {
+    setRows("Branch", [
+      { id: BRANCH_GAP_LOADED_ID, firmId: "firm-a", level: "branch" },
+      { id: BRANCH_GAP_PARTIAL_ID, firmId: "firm-a", level: "branch" },
+      {
+        id: BRANCH_GAP_UNAVAILABLE_ID,
+        firmId: MISSING_FIRM_REASON,
+        level: "branch",
+      },
+      { id: BRANCH_GAP_ZERO_ADVISOR_ID, firmId: "firm-a", level: "branch" },
+      { id: BRANCH_GAP_MISSING_SOURCE_ID, firmId: "firm-a", level: "branch" },
     ]);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-loaded",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_LOADED_ID,
+        sourceType: "brokercheck",
+      },
+      {
+        id: "employment-zero-advisor",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_ZERO_ADVISOR_ID,
+        endDate: DATE_2024_01_01,
+        sourceType: "firm_locator",
+      },
+      {
+        id: "employment-missing-source",
+        advisorId: "advisor-c",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_MISSING_SOURCE_ID,
+      },
+    ]);
+
+    const payload = await new (resources as any).DataCoverage().get();
+
+    expect(metricById(payload, "branch-gap-loaded")).toMatchObject({
+      value: 1,
+      limitation: null,
+    });
+    expect(metricById(payload, "branch-gap-partial")).toMatchObject({
+      value: 1,
+      limitation: expect.stringContaining("source or advisor linkage"),
+    });
+    expect(metricById(payload, "branch-gap-unavailable")).toMatchObject({
+      value: 1,
+      limitation: expect.stringContaining("public firm"),
+    });
+    expect(metricById(payload, "branch-gap-zero-advisor")).toMatchObject({
+      value: 1,
+      limitation: expect.stringContaining("no current linked advisors"),
+    });
+    expect(metricById(payload, "branch-gap-missing-source")).toMatchObject({
+      value: 1,
+      limitation: expect.stringContaining("missing public source labels"),
+    });
   });
 
   it("filters team directories with pagination and profile metadata", async () => {

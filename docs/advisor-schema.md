@@ -370,13 +370,16 @@ substring; `firm` matches firm id or name; `state` exactly matches
 `sourceType` exactly matches linked employment source type; `level` exactly
 matches `Branch.level`; and `minAdvisorCount` filters on distinct current
 advisor count. The payload exposes aggregate source metadata and coverage
-status, not employment-row or advisor identifiers.
+status/gap group, not employment-row or advisor identifiers. `gapGroup`
+distinguishes loaded, partial, unavailable, zero-advisor, and missing-source
+rows so branch coverage gaps stay explicit.
 
 Firm profiles link their branch card into `/branches?firm=<firm_id>` so a
 visitor can inspect the same branch rows with URL-backed filters preserved.
 The public `DataCoverage` resource reports branch row counts and
-current-advisor linkage through `/PublicBranches`; missing or unlinked rows are
-described as unavailable or partial coverage, never as proof that a firm has no
+current-advisor linkage through `/PublicBranches`, plus matching branch gap
+group counts. Missing or unlinked rows are described as unavailable, partial,
+zero-advisor, or missing-source coverage, never as proof that a firm has no
 offices.
 
 ### 4.7 `EmploymentHistory`
