@@ -50,6 +50,7 @@ import {
 import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
 import { branchGapGroup } from "./resource-branch-gap-groups.js";
+import { branchSourceSummary } from "./resource-branch-source-labels.js";
 
 export type {
   SearchCounts,
@@ -316,20 +317,6 @@ function currentBranchAdvisorCount(
 }
 
 /**
- * Summarizes employment source fields without exposing employment row ids.
- * @param employments - Employment rows already scoped to one branch.
- * @returns Distinct source types and references.
- */
-function branchSourceSummary(
-  employments: ReadonlyArray<EmploymentHistoryRow>
-): BranchDirectoryRow["sourceMetadata"] {
-  return {
-    sourceTypes: distinctStrings(employments.map(row => row.sourceType)),
-    sourceRefs: distinctStrings(employments.map(row => row.sourceRef)),
-  };
-}
-
-/**
  * Builds the public branch explorer payload row.
  * @param branch - Source branch row.
  * @param firm - Resolved firm context, when present.
@@ -390,28 +377,6 @@ function branchCoverageStatus(
 ): BranchDirectoryRow["coverageStatus"] {
   if (!firm) return "unavailable";
   return currentAdvisorCount > 0 ? "loaded" : "partial";
-}
-
-/**
- * Returns sorted unique non-empty string values.
- * @param values - Candidate strings.
- * @returns Stable unique values.
- */
-function distinctStrings(
-  values: ReadonlyArray<string | null | undefined>
-): ReadonlyArray<string> {
-  return [...new Set(values.filter(isNonEmptyString))].sort((a, b) =>
-    a.localeCompare(b)
-  );
-}
-
-/**
- * Narrows non-empty strings.
- * @param value - Candidate value.
- * @returns True when value is a non-empty string.
- */
-function isNonEmptyString(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.trim().length > 0;
 }
 
 /** Global navbar search resource. */

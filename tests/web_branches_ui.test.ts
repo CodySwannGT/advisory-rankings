@@ -20,6 +20,7 @@ const BRANCH_EMPTY_SELECTOR = '[data-branch-id="branch-empty"]';
 const BRANCH_MARKET_SELECTOR = '[data-branch-id="branch-market"]';
 const BRANCH_NY_SELECTOR = '[data-branch-id="branch-ny"]';
 const FIRM_WELLS_ID = "firm-wells";
+const WELLS_FARGO_BRANCH_SOURCE_LABEL = "Wells Fargo public branch locator";
 const ZERO_ADVISOR_GAP_GROUP = "zero-advisor";
 const WELLS_FARGO_ADVISORS = "Wells Fargo Advisors";
 
@@ -280,7 +281,11 @@ function branchRows(): readonly BranchDirectoryRow[] {
       gapGroup: "loaded",
       sourceMetadata: {
         sourceTypes: ["brokercheck", "wells_fargo_locator"],
-        sourceRefs: ["branch:ny"],
+        sourceLabels: [
+          "FINRA BrokerCheck registration data",
+          WELLS_FARGO_BRANCH_SOURCE_LABEL,
+        ],
+        sourceRefs: [],
       },
     },
     {
@@ -302,7 +307,8 @@ function branchRows(): readonly BranchDirectoryRow[] {
       gapGroup: ZERO_ADVISOR_GAP_GROUP,
       sourceMetadata: {
         sourceTypes: ["wells_fargo_locator"],
-        sourceRefs: ["branch:brooklyn"],
+        sourceLabels: [WELLS_FARGO_BRANCH_SOURCE_LABEL],
+        sourceRefs: [],
       },
     },
     {
@@ -324,7 +330,11 @@ function branchRows(): readonly BranchDirectoryRow[] {
       gapGroup: ZERO_ADVISOR_GAP_GROUP,
       sourceMetadata: {
         sourceTypes: ["brokercheck", "edward_jones_advisor_results_api"],
-        sourceRefs: ["market:long-island"],
+        sourceLabels: [
+          "FINRA BrokerCheck registration data",
+          "Edward Jones public advisor search",
+        ],
+        sourceRefs: [],
       },
     },
   ];
@@ -388,6 +398,9 @@ async function expectRawPipelineLabelsHidden(page: Page): Promise<void> {
     "MISSING-SOURCE",
     "EDWARD JONES ADVISOR RESULTS API",
     "WELLS_FARGO_LOCATOR",
+    "branch:ny",
+    "market:long-island",
+    "AnalystWatchlist",
   ];
   const bodyText = (await page.locator("body").innerText()).toLowerCase();
   for (const label of rawPipelineLabels) {

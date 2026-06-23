@@ -5446,7 +5446,7 @@ describe("Harper directory and search resources", () => {
         firmId: "firm-a",
         branchId: BRANCH_ATLANTA_ID,
         sourceType: "firm_locator",
-        sourceRef: "firm:atlanta",
+        sourceRef: "AnalystWatchlist:internal-branch-review",
       },
       {
         id: "employment-atlanta-duplicate-advisor",
@@ -5524,7 +5524,11 @@ describe("Harper directory and search resources", () => {
           coverageStatus: "loaded",
           sourceMetadata: {
             sourceTypes: ["brokercheck", "firm_locator"],
-            sourceRefs: ["crd:123", "firm:atlanta"],
+            sourceLabels: [
+              "FINRA BrokerCheck registration data",
+              "Firm public branch locator",
+            ],
+            sourceRefs: [],
           },
         },
       ],
@@ -5532,6 +5536,7 @@ describe("Harper directory and search resources", () => {
     expect(first.items[0]).not.toHaveProperty("createdAt");
     expect(first.items[0]).not.toHaveProperty("advisorId");
     expect(JSON.stringify(first.items[0])).not.toContain("employment-atlanta");
+    expect(JSON.stringify(first.items[0])).not.toContain("AnalystWatchlist");
     expect(byFirmAndMarket).toMatchObject({
       total: 1,
       items: [expect.objectContaining({ id: BRANCH_ATLANTA_ID })],
@@ -5676,6 +5681,7 @@ describe("Harper directory and search resources", () => {
         branchId: BRANCH_GAP_ZERO_ADVISOR_ID,
         endDate: DATE_2024_01_01,
         sourceType: "firm_locator",
+        sourceRef: "private-analyst-note:do-not-render",
       },
     ]);
 
@@ -5710,12 +5716,25 @@ describe("Harper directory and search resources", () => {
           firmName: null,
         }),
         expect.objectContaining({
+          id: BRANCH_GAP_ZERO_ADVISOR_ID,
+          currentAdvisorCount: 0,
+          sourceMetadata: expect.objectContaining({
+            sourceLabels: ["Firm public branch locator"],
+          }),
+        }),
+        expect.objectContaining({
           id: BRANCH_GAP_PARTIAL_ID,
           coverageStatus: "partial",
           currentAdvisorCount: 0,
+          sourceMetadata: expect.objectContaining({
+            sourceLabels: [],
+            sourceTypes: [],
+          }),
         }),
       ])
     );
+    expect(JSON.stringify(result.items)).not.toContain("private-analyst-note");
+    expect(JSON.stringify(result.items)).not.toContain("watchlist");
     expect(zeroAdvisor).toMatchObject({
       total: 1,
       items: [expect.objectContaining({ id: BRANCH_GAP_ZERO_ADVISOR_ID })],

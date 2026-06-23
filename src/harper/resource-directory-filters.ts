@@ -245,7 +245,7 @@ export function branchMatchesFilters(
       branchGapGroup({
         firm,
         currentAdvisorCount,
-        sourceMetadata: { sourceTypes, sourceRefs: [] },
+        sourceMetadata: { sourceTypes, sourceLabels: [], sourceRefs: [] },
       })
     ) &&
     exactMatches(filters.state, branch.state) &&

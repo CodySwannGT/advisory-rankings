@@ -1,4 +1,3 @@
-import { humanize } from "./app.js";
 import { el } from "./design-system/index.js";
 import { entityPath } from "./urls.js";
 import {
@@ -192,25 +191,11 @@ export const branchCoverageContext = (row: BranchDirectoryRow): string => {
 };
 
 export const branchSourceContext = (row: BranchDirectoryRow): string => {
-  const sources = row.sourceMetadata.sourceTypes.map(sourceContextLabel);
+  const sources = row.sourceMetadata.sourceLabels;
   if (!sources.length) {
     return "Source context: public source details are not available for this row.";
   }
   return `Source context: ${sources.join("; ")}.`;
-};
-
-const sourceContextLabel = (source: string): string => {
-  const known = SOURCE_CONTEXT[source];
-  if (known) return known;
-  const label = humanize(source) ?? source;
-  return `${label} public source`;
-};
-
-const SOURCE_CONTEXT: Readonly<Record<string, string>> = {
-  brokercheck: "FINRA BrokerCheck registration data",
-  edward_jones_advisor_results_api: "Edward Jones public advisor search",
-  morgan_stanley_text: "Morgan Stanley public branch text",
-  wells_fargo_locator: "Wells Fargo public branch locator",
 };
 
 export const coverageTagKind = (

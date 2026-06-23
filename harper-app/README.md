@@ -108,8 +108,9 @@ Once the server is up:
     substring), `firm` (current firm id or name substring), and
     `serviceModel` (exact `Team.service_model` value).
   - `/PublicBranches?cursor=…&limit=50` — branch directory page. Returns
-    `{ items, nextCursor, total }` with firm name, location, source metadata,
-    coverage status, gap group, and current advisor count. Gap groups are
+    `{ items, nextCursor, total }` with firm name, location, public source
+    labels, coverage status, gap group, and current advisor count. Raw source
+    reference strings remain withheld from anonymous branch rows. Gap groups are
     `loaded`, `partial`, `unavailable`, `zero-advisor`, and `missing-source`.
     Supported filters are `q` (branch name/building/address/location
     substring), `firm` (firm id or name substring), `state` (exact state),
