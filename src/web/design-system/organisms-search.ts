@@ -74,11 +74,11 @@ export function GlobalSearch({
       handleKindChange(context, button.dataset.kind || "all")
     );
   });
-  document.addEventListener("pointerdown", event => {
-    const target = event.target;
-    if (target instanceof Node && !view.wrap.contains(target))
-      collapseDropdown(context);
-  });
+  document.addEventListener(
+    "pointerdown",
+    event => handleDocumentPointerDown(event, context),
+    { capture: true }
+  );
 
   return view.wrap;
 }
@@ -139,6 +139,82 @@ function createSearchView(): SearchView {
  */
 function collapseDropdown(context: SearchContext): void {
   hideDropdown(context.view, idx => context.state.set("activeIndex", idx));
+}
+
+/**
+ * Collapses search for outside page interaction, including result rows that
+ * are visually masking a form control below the dropdown.
+ * @param event - Pointer event from the document capture phase.
+ * @param context - Shared search view and state.
+ */
+function handleDocumentPointerDown(
+  event: PointerEvent,
+  context: SearchContext
+): void {
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (!context.view.wrap.contains(target)) {
+    collapseDropdown(context);
+    return;
+  }
+  if (!(target instanceof HTMLElement) || !target.closest(".gs-item")) return;
+  const underlying = underlyingElementAtPoint(context, event);
+  const control = pageControlFor(underlying, context.view.wrap);
+  if (!control) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  collapseDropdown(context);
+  control.focus();
+  control.click();
+}
+
+/**
+ * Hit-tests the page with the dropdown temporarily hidden.
+ * @param context - Shared search view and state.
+ * @param event - Pointer event carrying viewport coordinates.
+ * @returns The element under the pointer without the dropdown surface.
+ */
+function underlyingElementAtPoint(
+  context: SearchContext,
+  event: PointerEvent
+): HTMLElement | null {
+  const element = hitTestWithoutDropdown(context.view.dropdown, event);
+  return element instanceof HTMLElement ? element : null;
+}
+
+/**
+ * Hides the dropdown only for the duration of the viewport hit test.
+ * @param dropdown - Search results surface to temporarily remove.
+ * @param event - Pointer event carrying viewport coordinates.
+ * @returns The element below the dropdown at the pointer coordinates.
+ */
+function hitTestWithoutDropdown(
+  dropdown: HTMLElement,
+  event: PointerEvent
+): Element | null {
+  const wasHidden = dropdown.hasAttribute(HIDDEN_ATTR);
+  dropdown.setAttribute(HIDDEN_ATTR, "");
+  try {
+    return document.elementFromPoint(event.clientX, event.clientY);
+  } finally {
+    if (!wasHidden) dropdown.removeAttribute(HIDDEN_ATTR);
+  }
+}
+
+/**
+ * Finds the underlying page control that should receive an outside click.
+ * @param element - Element found below the search dropdown.
+ * @param searchWrap - Search root to exclude internal controls.
+ * @returns Reachable non-search control, if one is under the pointer.
+ */
+function pageControlFor(
+  element: HTMLElement | null,
+  searchWrap: HTMLElement
+): HTMLElement | null {
+  const control = element?.closest("button,input,select,textarea");
+  return control instanceof HTMLElement && !searchWrap.contains(control)
+    ? control
+    : null;
 }
 
 /**
