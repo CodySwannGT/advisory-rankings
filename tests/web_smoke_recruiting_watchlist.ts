@@ -26,6 +26,7 @@ const WATCHLIST_MOBILE_VIEWPORTS = [
 const WATCHLIST_PAGE_OVERFLOW_BUDGET_PX = 0;
 const WATCHLIST_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&firm=${encodeURIComponent(WATCHLIST_FIRM_TWO)}&state=NY`;
 const WATCHLIST_NO_MATCH_URL = `${BASE}/recruiting?firm=${encodeURIComponent(WATCHLIST_FIRM_ONE)}&state=ZZ`;
+const WATCHLIST_PARTIAL_FIRM_URL = `${BASE}/recruiting?firm=Wells&state=&year=&direction=net`;
 
 export { WATCHLIST_FIRM_ONE, WATCHLIST_FIRM_TWO };
 
@@ -46,6 +47,12 @@ export interface WatchlistRecruitingState {
     readonly firmValue: string | undefined;
     readonly hasEmptyCopy: boolean;
     readonly hasWatchlist: boolean;
+  };
+  readonly partialFirm: {
+    readonly hasChooseFirmCopy: boolean;
+    readonly hasSuggestedWellsFirm: boolean;
+    readonly hasUnresolvedFirmCopy: boolean;
+    readonly hasVisibleRows: boolean;
   };
   readonly updatedFirmValues: readonly string[];
   readonly updatedUrl: URL;
@@ -88,7 +95,8 @@ export async function readWatchlistRecruiting(
   const updatedFirmValues = updatedUrl.searchParams.getAll("firm");
   await shot(page, "11-recruiting-watchlist");
   const noMatch = await readNoMatchWatchlist(page);
-  return { restored, noMatch, updatedFirmValues, updatedUrl };
+  const partialFirm = await readPartialFirmWatchlist(page);
+  return { restored, noMatch, partialFirm, updatedFirmValues, updatedUrl };
 }
 
 /**
@@ -113,6 +121,38 @@ async function readNoMatchWatchlist(
   }));
   await shot(page, "11-recruiting-watchlist-no-match");
   return noMatch;
+}
+
+/**
+ * Reads the partial firm-query state from the exploratory QA regression path.
+ * @param page - Browser page shared by smoke scenarios.
+ * @returns Partial firm observations.
+ */
+async function readPartialFirmWatchlist(
+  page: Page
+): Promise<WatchlistRecruitingState["partialFirm"]> {
+  await smokeGoto(page, WATCHLIST_PARTIAL_FIRM_URL);
+  await smokeWaitForSelector(page, WATCHLIST_CARD_SELECTOR, QUICK_UI_TIMEOUT);
+  const partialFirm = await page.evaluate(() => {
+    const body = document.body.innerText;
+    const options = [
+      ...document.querySelectorAll<HTMLOptionElement>(
+        "#recruiting-firm-suggestions option"
+      ),
+    ].map(option => option.value);
+    return {
+      hasChooseFirmCopy:
+        body.includes("Choose a firm") && body.includes("exact suggested name"),
+      hasSuggestedWellsFirm: options.some(option =>
+        /wells fargo/i.test(option)
+      ),
+      hasUnresolvedFirmCopy: body.includes("Unresolved firm"),
+      hasVisibleRows:
+        document.querySelectorAll(".firm-momentum-table tbody tr").length > 0,
+    };
+  });
+  await shot(page, "11-recruiting-watchlist-partial-firm");
+  return partialFirm;
 }
 
 /** Viewport used by watchlist card mobile smoke checks. */
