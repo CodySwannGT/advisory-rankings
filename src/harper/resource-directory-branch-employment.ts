@@ -11,6 +11,11 @@ interface HarperTables {
   readonly EmploymentHistory: unknown;
 }
 
+/** Immutable branch-employment grouping entries before Map materialization. */
+type BranchEmploymentEntries = ReadonlyArray<
+  readonly [string, ReadonlyArray<EmploymentHistoryRow>]
+>;
+
 /**
  * Loads employment rows through the allowed firmId index for firms represented
  * in the branch directory slice.
@@ -58,17 +63,18 @@ export async function employmentRowsForBranchFirms(
 export function groupEmploymentsByBranch(
   employments: ReadonlyArray<EmploymentHistoryRow>
 ): ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>> {
-  const branchIds = [
-    ...new Set(
-      employments
-        .map(employment => employment.branchId)
-        .filter((branchId): branchId is string => Boolean(branchId))
-    ),
-  ];
   return new Map(
-    branchIds.map(branchId => [
-      branchId,
-      employments.filter(employment => employment.branchId === branchId),
-    ])
+    employments.reduce<BranchEmploymentEntries>((entries, employment) => {
+      if (!employment.branchId) return entries;
+      const existing = entries.find(
+        ([branchId]) => branchId === employment.branchId
+      );
+      if (!existing) return [...entries, [employment.branchId, [employment]]];
+      return entries.map(([branchId, rows]) =>
+        branchId === employment.branchId
+          ? [branchId, [...rows, employment]]
+          : [branchId, rows]
+      );
+    }, [])
   );
 }

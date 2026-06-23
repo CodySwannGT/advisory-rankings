@@ -223,15 +223,17 @@ describe("branch explorer route (#1224)", () => {
           },
           branchGapCounts: branchGapCounts(snapshots.coverage),
           publicBranches: Object.fromEntries(
-            Object.entries(snapshots.branchesByGap).map(([gapGroup, page]) => [
-              gapGroup,
-              {
-                total: page.total,
-                returned: page.items.length,
-                sampleIds: page.items.map(row => row.id),
-                sampleFirmNames: page.items.map(row => row.firmName),
-              },
-            ])
+            Object.entries(snapshots.branchesByGap).map(
+              ([gapGroup, gapPage]) => [
+                gapGroup,
+                {
+                  total: gapPage.total,
+                  returned: gapPage.items.length,
+                  sampleIds: gapPage.items.map(row => row.id),
+                  sampleFirmNames: gapPage.items.map(row => row.firmName),
+                },
+              ]
+            )
           ),
           desktop: desktopFacts,
           mobile: mobileFacts,
@@ -461,12 +463,12 @@ function branchRows(): readonly BranchDirectoryRow[] {
       postalCode: "11104",
       displayName: "Queens Branch",
       firmName: WELLS_FARGO_ADVISORS,
-      currentAdvisorCount: 3,
+      currentAdvisorCount: 0,
       coverageStatus: "partial",
       gapGroup: PARTIAL_GAP_GROUP,
       sourceMetadata: {
-        sourceTypes: ["wells_fargo_locator"],
-        sourceLabels: [WELLS_FARGO_BRANCH_SOURCE_LABEL],
+        sourceTypes: [],
+        sourceLabels: [],
         sourceRefs: [],
       },
     },
