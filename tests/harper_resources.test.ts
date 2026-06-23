@@ -273,6 +273,7 @@ const table = (name: string) => ({
   FieldAssertion: table("FieldAssertion"),
   Firm: table("Firm"),
   FirmAlias: table("FirmAlias"),
+  FirmMergeAudit: table("FirmMergeAudit"),
   License: table("License"),
   OutsideBusinessActivity: table("OutsideBusinessActivity"),
   Ranking: table("Ranking"),
@@ -5565,7 +5566,8 @@ describe("Harper directory and search resources", () => {
     });
   });
 
-  it("loads public branch employment by branch id for source-backed filters", async () => {
+  it("loads public branch employment by firm and merged firm ids for source-backed filters", async () => {
+    const oldFirmId = "old-firm-a";
     const branchRows = Array.from({ length: 30 }, (_unused, index) => ({
       id: `branch-batch-${String(index).padStart(2, "0")}`,
       firmId: "firm-a",
@@ -5577,23 +5579,29 @@ describe("Harper directory and search resources", () => {
     const employmentRows = branchRows.map((branch, index) => ({
       id: `employment-batch-${String(index).padStart(2, "0")}`,
       advisorId: `advisor-batch-${String(index).padStart(2, "0")}`,
-      firmId: "firm-a",
+      firmId: index === 0 ? oldFirmId : "firm-a",
       branchId: branch.id,
       sourceType: "brokercheck",
     }));
     setRows("Branch", branchRows);
     setRows("EmploymentHistory", employmentRows);
+    setRows("FirmMergeAudit", [
+      {
+        id: "merge-old-firm-a",
+        oldFirmId,
+        canonicalFirmId: "firm-a",
+      },
+    ]);
     const original = (globalThis as any).tables.EmploymentHistory;
     let searchCount = 0;
     (globalThis as any).tables.EmploymentHistory = {
       search: (query: any) => {
         searchCount += 1;
-        expect(query?.conditions ?? []).toEqual([
-          { attribute: "branchId", value: branchRows[searchCount - 1]?.id },
-        ]);
+        const firmId = query?.conditions?.[0]?.value;
+        expect(["firm-a", oldFirmId]).toContain(firmId);
         return (async function* () {
           for (const row of employmentRows)
-            if (row.branchId === branchRows[searchCount - 1]?.id) yield row;
+            if (row.firmId === firmId) yield row;
         })();
       },
     };
@@ -5609,7 +5617,7 @@ describe("Harper directory and search resources", () => {
 
       expect(result.total).toBe(30);
       expect(result.items).toHaveLength(30);
-      expect(searchCount).toBe(30);
+      expect(searchCount).toBe(2);
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }
