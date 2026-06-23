@@ -28,6 +28,9 @@ const browserDescribe =
 const DEV_BASE = "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const RANKING_LIMITATION =
   "Some ranking entries still need resolution or source fields.";
+const FRESHNESS_LIMITATION =
+  "Research freshness proof has no check rows loaded.";
+const FEED_LIMITATION = "No public feed article is available.";
 const RESOURCE_ADVISOR_RESEARCH_QUEUE = "/AdvisorResearchQueue";
 const RESOURCE_DATA_COVERAGE = "/DataCoverage";
 const RESOURCE_FEED = "/Feed";
@@ -92,6 +95,20 @@ browserDescribe("investor proof packet route (#1369)", () => {
       expect(
         await page.locator('[data-investor-proof-metric="firms"]').textContent()
       ).toContain("2,701");
+      expect(
+        await page
+          .locator('[data-investor-proof-metric="ranking-entries"]')
+          .textContent()
+      ).toContain("Unavailable");
+      await page.getByText(RANKING_LIMITATION).first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText(FRESHNESS_LIMITATION).first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText(FEED_LIMITATION).first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
       expect(
         await page
           .locator('[data-investor-proof-link="representative-feed"]')
@@ -366,10 +383,18 @@ function expectMetricParity(
   const coverageMetrics = new Map(
     coverage.sections
       .flatMap(section => section.metrics)
-      .map(metric => [metric.id, metric.value])
+      .map(metric => [metric.id, metric])
   );
   for (const metric of packet.coverage.keyMetrics) {
-    expect(coverageMetrics.get(metric.id)).toEqual(metric.value);
+    const coverageMetric = coverageMetrics.get(metric.id);
+    expect(coverageMetric).toBeTruthy();
+    expect(
+      metric.value === null &&
+        coverageMetric?.value === 0 &&
+        coverageMetric.limitation
+        ? null
+        : coverageMetric?.value
+    ).toEqual(metric.value);
     expect(facts.metricTextById[metric.id]).toContain(
       displayMetricValue(metric.value)
     );
@@ -441,16 +466,21 @@ function publicItemCount(payload: unknown): number {
 function packetPayload(): InvestorProofPacketResponse {
   return {
     generatedAt: "2026-06-23T12:30:00.000Z",
-    unavailable: [
-      RANKING_LIMITATION,
-      "No source-rights conclusions are available.",
-    ],
+    unavailable: [RANKING_LIMITATION, FEED_LIMITATION],
     coverage: {
       sections: [],
       keyMetrics: [
         metric("advisors", "Advisors", 16265, "Advisor", "/PublicAdvisors"),
         metric("firms", "Firms", 2701, SOURCE_FIRM, RESOURCE_PUBLIC_FIRMS),
         metric("articles", "Articles", 557, "Article", RESOURCE_FEED),
+        metric(
+          "ranking-entries",
+          "Ranking entries",
+          null,
+          "RankingEntry",
+          "/RankingsExplorer",
+          RANKING_LIMITATION
+        ),
       ],
       limitations: [RANKING_LIMITATION],
     },
@@ -496,7 +526,7 @@ function packetPayload(): InvestorProofPacketResponse {
           },
         },
       ],
-      limitation: null,
+      limitation: FRESHNESS_LIMITATION,
     },
     proofLinks: [
       link(
@@ -516,7 +546,8 @@ function packetPayload(): InvestorProofPacketResponse {
         "Advisor move",
         "/articles/advisor-move-article-1",
         RESOURCE_FEED,
-        ["article-1"]
+        ["article-1"],
+        FEED_LIMITATION
       ),
       link(
         "representative-firm",
@@ -550,16 +581,18 @@ function packetPayload(): InvestorProofPacketResponse {
  * @param value - Metric value.
  * @param source - Source table.
  * @param publicResource - Public resource path.
+ * @param limitation - Optional limitation copy.
  * @returns DataCoverage metric.
  */
 function metric(
   id: string,
   label: string,
-  value: number,
+  value: DataCoverageMetric["value"],
   source: string,
-  publicResource: string
+  publicResource: string,
+  limitation: string | null = null
 ): DataCoverageMetric {
-  return { id, label, value, source, publicResource, limitation: null };
+  return { id, label, value, source, publicResource, limitation };
 }
 
 /**
@@ -569,6 +602,7 @@ function metric(
  * @param url - Public route URL.
  * @param publicResource - Public resource path.
  * @param sourceIds - Source ids.
+ * @param limitation - Optional limitation copy.
  * @returns Proof link fixture.
  */
 function link(
@@ -576,7 +610,8 @@ function link(
   label: string,
   url: string,
   publicResource: string,
-  sourceIds: readonly string[] = []
+  sourceIds: readonly string[] = [],
+  limitation: string | null = null
 ) {
   return {
     id,
@@ -585,6 +620,6 @@ function link(
     publicResource,
     sourceTable: publicResource.replace("/", ""),
     sourceIds,
-    limitation: null,
+    limitation,
   };
 }

@@ -121,7 +121,13 @@ const EXAMPLE_WEALTH_QUERY = "example wealth";
 const OFFSET_ONE_CURSOR = "MQ";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
+const DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE =
+  "Field assertions are summarized only as aggregate counts.";
+const DATA_COVERAGE_NO_PUBLIC_ARTICLES = "No public article rows are loaded.";
+const DATA_COVERAGE_NO_PUBLIC_RECRUITING_MOVES =
+  "No public recruiting moves are loaded.";
 const CLIENT_EMAIL = "client@example.test";
+const PRIVATE_USER_ID = "private-user";
 const EVENT_BACKED_MODE = "event-backed";
 const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 const LOADED_STATUS = "loaded";
@@ -2182,7 +2188,7 @@ describe("Harper feed and profile builders", () => {
       value: 3,
       source: "FieldAssertion",
       publicResource: null,
-      limitation: "Field assertions are summarized only as aggregate counts.",
+      limitation: DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE,
     });
     expect(payload.limitations).toEqual(
       expect.arrayContaining([
@@ -2217,7 +2223,7 @@ describe("Harper feed and profile builders", () => {
     });
     expect(metricById(payload, "moves")).toMatchObject({
       value: 0,
-      limitation: "No public recruiting moves are loaded.",
+      limitation: DATA_COVERAGE_NO_PUBLIC_RECRUITING_MOVES,
     });
     expect(metricById(payload, "branches")).toMatchObject({
       value: 0,
@@ -2323,6 +2329,69 @@ describe("Harper feed and profile builders", () => {
     );
   });
 
+  it("keeps investor proof packet boundaries public-safe", async () => {
+    setRows("UserRating", [
+      {
+        id: "rating-private-packet",
+        userId: PRIVATE_USER_ID,
+        advisorId: "advisor-a",
+        ratingInt: 1,
+        reviewText: "private analyst rating says customer pipeline is weak",
+      },
+    ]);
+    setRows("UserWatchlist", [
+      {
+        id: "watchlist-private-packet",
+        userId: PRIVATE_USER_ID,
+        name: "private source-rights shortlist",
+      },
+    ]);
+    setRows("UserWatchlistEntry", [
+      {
+        id: "watchlist-entry-private-packet",
+        listId: "watchlist-private-packet",
+        advisorId: "advisor-a",
+        note: "private traction and monetization claim",
+      },
+    ]);
+    setRows(REGULATORY_DISCREPANCY_TABLE, [
+      {
+        id: "reg-private-packet",
+        advisorId: "advisor-a",
+        fieldName: "annualRevenue",
+        advisorHubValue: "invented revenue",
+        brokerCheckValue: "credential mismatch",
+        status: "pending",
+        reviewerNote: "analyst note for private review only",
+      },
+    ]);
+    setRows(ADVISOR_CORRECTION_REQUEST_TABLE, [
+      {
+        id: "correction-private-packet",
+        advisorId: "advisor-a",
+        submitterEmail: CLIENT_EMAIL,
+        fieldName: "bioText",
+        proposedValue: "private customer pipeline update",
+        submitterNote: "do not expose source-rights conclusion",
+        status: "pending",
+        reviewerNote: "private analyst note",
+      },
+    ]);
+
+    const payload = await new (resources as any).InvestorProofPacket().get();
+    const serialized = JSON.stringify(payload);
+
+    expect(serialized).not.toMatch(
+      /watchlist|rating|analyst note|credential mismatch|private traction|invented revenue|customer pipeline|source-rights|monetization/i
+    );
+    expect(payload.coverage.limitations).toEqual(
+      expect.arrayContaining([DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE])
+    );
+    expect(payload.unavailable).toEqual(
+      expect.arrayContaining([DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE])
+    );
+  });
+
   it("keeps investor proof packet missing proof explicit instead of zero-filled", async () => {
     setRows("Article", []);
     setRows("Firm", []);
@@ -2335,9 +2404,9 @@ describe("Harper feed and profile builders", () => {
 
     expect(payload.coverage.limitations).toEqual(
       expect.arrayContaining([
-        "No public article rows are loaded.",
+        DATA_COVERAGE_NO_PUBLIC_ARTICLES,
         DATA_COVERAGE_RANKINGS_EMPTY,
-        "No public recruiting moves are loaded.",
+        DATA_COVERAGE_NO_PUBLIC_RECRUITING_MOVES,
         RESEARCH_FRESHNESS_UNAVAILABLE,
       ])
     );
@@ -2346,6 +2415,25 @@ describe("Harper feed and profile builders", () => {
       limitation: null,
     });
     expect(payload.freshness.representativeAdvisors).toHaveLength(2);
+    expect(payload.coverage.keyMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "articles",
+          value: null,
+          limitation: DATA_COVERAGE_NO_PUBLIC_ARTICLES,
+        }),
+        expect.objectContaining({
+          id: RANKING_ENTRIES_METRIC,
+          value: null,
+          limitation: DATA_COVERAGE_RANKINGS_EMPTY,
+        }),
+        expect.objectContaining({
+          id: "moves",
+          value: null,
+          limitation: DATA_COVERAGE_NO_PUBLIC_RECRUITING_MOVES,
+        }),
+      ])
+    );
     expect(proofLinkById(payload, RESEARCH_FRESHNESS_SECTION)).toMatchObject({
       sourceIds: [],
       limitation: "Research freshness proof has no check rows loaded.",
@@ -2370,7 +2458,7 @@ describe("Harper feed and profile builders", () => {
     });
     expect(payload.unavailable).toEqual(
       expect.arrayContaining([
-        "No public article rows are loaded.",
+        DATA_COVERAGE_NO_PUBLIC_ARTICLES,
         "Research freshness is unavailable.",
         "Research freshness proof has no check rows loaded.",
         "No public feed article is available.",
@@ -4706,7 +4794,7 @@ describe("Harper directory and search resources", () => {
     setRows("UserRating", [
       {
         id: "rating-private-readiness",
-        userId: "private-user",
+        userId: PRIVATE_USER_ID,
         advisorId: ADVISOR_SUBSTANCE_GAP_ID,
         ratingInt: 1,
         reviewText: "private watchlist rating note",
@@ -4715,7 +4803,7 @@ describe("Harper directory and search resources", () => {
     setRows("UserWatchlist", [
       {
         id: "watchlist-private-readiness",
-        userId: "private-user",
+        userId: PRIVATE_USER_ID,
         name: "Analyst private shortlist",
       },
     ]);
