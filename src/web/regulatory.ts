@@ -24,11 +24,11 @@ import {
   DisclosureEventCard,
   clear,
   el,
-  Tag,
 } from "./design-system/index.js";
 import { EntityRowC } from "./design-system-adapters.js";
 import {
   digestContext,
+  digestLabels,
   digestLimitations,
   digestSourceLabel,
   disclosureEvents,
@@ -120,7 +120,7 @@ function regulatoryDigestRow(
   index: number
 ): HTMLElement {
   const disclosure = item.disclosure;
-  const eventType = humanize(disclosure.disclosureType) || "Disclosure";
+  const labels = digestLabels(item);
   return el(
     "article",
     { class: "regulatory-digest-row" },
@@ -131,12 +131,12 @@ function regulatoryDigestRow(
       el(
         "div",
         { class: "regulatory-digest-title" },
-        Tag({ kind: "danger", children: eventType }),
-        disclosure.regulator
-          ? Tag({ kind: "default", children: humanize(disclosure.regulator) })
+        digestLabel(labels.eventType, "event"),
+        labels.sourceOrVenue
+          ? digestLabel(labels.sourceOrVenue, "source")
           : null,
-        disclosure.status
-          ? Tag({ kind: "warn", children: humanize(disclosure.status) })
+        labels.disposition
+          ? digestLabel(labels.disposition, "disposition")
           : null,
         el("strong", {}, digestContext(item))
       ),
@@ -151,6 +151,23 @@ function regulatoryDigestRow(
       digestLimitationsList(item),
       regulatoryDigestLinks(item)
     )
+  );
+}
+
+/**
+ * Renders a compact sentence-case digest label without shared tag uppercasing.
+ * @param label - Human-facing label text.
+ * @param tone - Visual tone for the label.
+ * @returns Digest label element.
+ */
+function digestLabel(
+  label: string,
+  tone: "disposition" | "event" | "source"
+): HTMLElement {
+  return el(
+    "span",
+    { class: `regulatory-digest-label regulatory-digest-label--${tone}` },
+    label
   );
 }
 
