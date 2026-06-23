@@ -14,6 +14,7 @@ const EXPECTED_BROWSE_LABELS = [
   "Firms",
   "Branches",
   "Coverage",
+  "Investor proof",
   "Recruiting",
   "Rankings",
   "Advisors",

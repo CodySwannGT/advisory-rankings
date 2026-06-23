@@ -66,6 +66,7 @@ const ROOT_ATTEMPTS = 3;
 const EXPECTED_DRAWER_LABELS = [
   "Home",
   "Firms",
+  "Proof",
   "Recruiting",
   "Rankings",
   "Advisors",
