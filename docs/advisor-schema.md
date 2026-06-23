@@ -780,6 +780,15 @@ and `limit` while choosing a deterministic `missingField` or `status` for the
 group; the web workbench writes those filters back to the route URL before
 reloading `/AdvisorResearchQueue`.
 
+`GET /InvestorProofPacket` composes a public-safe investor packet payload from
+existing public resources instead of new private tables. The response carries
+`/DataCoverage` sections/key metrics/limitations, `/AdvisorResearchQueue`
+freshness pressure and representative due advisors, replay links for coverage,
+research freshness, feed, firm, rankings, and recruiting proof, source ids, and
+packet-level unavailable states. Missing counts remain unknown/unavailable
+limitations rather than zero-filled proof, and the resource does not read or
+return private user rating/watchlist, correction, or analyst workflow rows.
+
 ### 4.22 `Award` (catch-all for non-AdvisorHub recognition)
 
 | Field | Type |

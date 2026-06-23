@@ -76,44 +76,55 @@ export class AdvisorResearchQueue extends Resource {
    */
   async get(target?: RouteTarget): Promise<AdvisorResearchQueueResponse> {
     const db = await loadAll();
-    const filters = parseFilters(target);
-    const due = selectDueAdvisors(
-      db.advisors.map(toResearchAdvisor),
-      db.researchChecks.map(toResearchCheck),
-      {
-        max: Math.max(filters.limit, db.advisors.length),
-        staleDays: filters.staleDays,
-        sourceType: filters.sourceType,
-      }
-    );
-    const filtered = due
-      .filter(row => matchesStatus(row.lastCheck, filters.status))
-      .filter(row =>
-        matchesMissingField(row.missingFields, filters.missingField)
-      )
-      .slice(0, filters.limit);
-    const items = filtered.map(row =>
-      queueItem(
-        row.advisor,
-        row.lastCheck,
-        row.missingFields,
-        filters.sourceType,
-        db
-      )
-    );
-    return {
-      generatedAt: new Date().toISOString(),
-      filters,
-      summary: {
-        totalDue: due.length,
-        returned: items.length,
-        statusCounts: countStatuses(items),
-        missingFieldCounts: countMissingFields(items),
-        priorityGroups: priorityGroups(items, filters),
-      },
-      items,
-    };
+    return advisorResearchQueueResponse(db, target);
   }
+}
+
+/**
+ * Builds the public-safe advisor research queue response from preloaded rows.
+ * @param db - Shared Harper resource index.
+ * @param target - Optional request target carrying query filters.
+ * @returns Due research queue payload.
+ */
+export function advisorResearchQueueResponse(
+  db: Awaited<ReturnType<typeof loadAll>>,
+  target?: RouteTarget
+): AdvisorResearchQueueResponse {
+  const filters = parseFilters(target);
+  const due = selectDueAdvisors(
+    db.advisors.map(toResearchAdvisor),
+    db.researchChecks.map(toResearchCheck),
+    {
+      max: Math.max(filters.limit, db.advisors.length),
+      staleDays: filters.staleDays,
+      sourceType: filters.sourceType,
+    }
+  );
+  const filtered = due
+    .filter(row => matchesStatus(row.lastCheck, filters.status))
+    .filter(row => matchesMissingField(row.missingFields, filters.missingField))
+    .slice(0, filters.limit);
+  const items = filtered.map(row =>
+    queueItem(
+      row.advisor,
+      row.lastCheck,
+      row.missingFields,
+      filters.sourceType,
+      db
+    )
+  );
+  return {
+    generatedAt: new Date().toISOString(),
+    filters,
+    summary: {
+      totalDue: due.length,
+      returned: items.length,
+      statusCounts: countStatuses(items),
+      missingFieldCounts: countMissingFields(items),
+      priorityGroups: priorityGroups(items, filters),
+    },
+    items,
+  };
 }
 
 /** Parsed URL filters for the queue resource. */
