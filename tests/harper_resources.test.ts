@@ -5565,7 +5565,7 @@ describe("Harper directory and search resources", () => {
     });
   });
 
-  it("loads public branch employment by firm for source-backed filters", async () => {
+  it("loads public branch employment by branch id for source-backed filters", async () => {
     const branchRows = Array.from({ length: 30 }, (_unused, index) => ({
       id: `branch-batch-${String(index).padStart(2, "0")}`,
       firmId: "firm-a",
@@ -5589,11 +5589,11 @@ describe("Harper directory and search resources", () => {
       search: (query: any) => {
         searchCount += 1;
         expect(query?.conditions ?? []).toEqual([
-          { attribute: "firmId", value: "firm-a" },
+          { attribute: "branchId", value: branchRows[searchCount - 1]?.id },
         ]);
         return (async function* () {
           for (const row of employmentRows)
-            if (row.firmId === "firm-a") yield row;
+            if (row.branchId === branchRows[searchCount - 1]?.id) yield row;
         })();
       },
     };
@@ -5609,7 +5609,7 @@ describe("Harper directory and search resources", () => {
 
       expect(result.total).toBe(30);
       expect(result.items).toHaveLength(30);
-      expect(searchCount).toBe(1);
+      expect(searchCount).toBe(30);
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }

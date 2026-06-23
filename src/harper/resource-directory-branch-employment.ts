@@ -17,21 +17,21 @@ type BranchEmploymentEntries = ReadonlyArray<
 >;
 
 /**
- * Loads employment rows through the allowed firmId index for firms represented
- * in the branch directory slice.
+ * Loads employment rows through the indexed branchId column for represented
+ * public branches.
  * @param tables - Harper table registry.
- * @param branches - Branch rows whose firms need employment context.
- * @returns Employment rows for the branch firms.
+ * @param branches - Branch rows whose branch ids need employment context.
+ * @returns Employment rows for the branches.
  */
-export async function employmentRowsForBranchFirms(
+export async function employmentRowsForBranches(
   tables: HarperTables,
   branches: ReadonlyArray<BranchRow>
 ): Promise<ReadonlyArray<EmploymentHistoryRow>> {
-  const firmIds = [...new Set(branches.map(branch => branch.firmId))];
+  const branchIds = [...new Set(branches.map(branch => branch.id))];
   const batches = Array.from(
-    { length: Math.ceil(firmIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
+    { length: Math.ceil(branchIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
     (_unused, batchIndex) =>
-      firmIds.slice(
+      branchIds.slice(
         batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH,
         batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH +
           BRANCH_EMPLOYMENT_LOOKUP_BATCH
@@ -42,11 +42,11 @@ export async function employmentRowsForBranchFirms(
   >(async (accumulated, batch) => {
     const collected = await accumulated;
     const next = await Promise.all(
-      batch.map(firmId =>
+      batch.map(branchId =>
         rowsByAttribute<EmploymentHistoryRow>(
           tables.EmploymentHistory,
-          "firmId",
-          firmId
+          "branchId",
+          branchId
         )
       )
     );

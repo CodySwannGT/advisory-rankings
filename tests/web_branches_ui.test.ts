@@ -238,6 +238,7 @@ describe("branch explorer route (#1224)", () => {
           desktop: desktopFacts,
           mobile: mobileFacts,
         };
+        expectDeployedBranchGapAlignment(evidence);
         await writeFile(
           join(SHOTS, "issue-1361-branch-gap-deployed-proof.json"),
           `${JSON.stringify(evidence, null, 2)}\n`
@@ -526,6 +527,15 @@ async function deployedSnapshots(): Promise<DeployedSnapshots> {
       "missing-source": missingSource,
     },
   };
+}
+
+function expectDeployedBranchGapAlignment(
+  evidence: DeployedBranchEvidence
+): void {
+  const loadedCount = evidence.branchGapCounts["branch-gap-loaded"] ?? 0;
+  if (loadedCount === 0) return;
+  expect(evidence.publicBranches.loaded.total).toBeGreaterThan(0);
+  expect(evidence.publicBranches.loaded.returned).toBeGreaterThan(0);
 }
 
 async function fetchJson<T>(path: string): Promise<T> {

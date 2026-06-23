@@ -48,7 +48,7 @@ import { runGlobalSearch } from "./resource-directory-search-runner.js";
 import { branchGapGroup } from "./resource-branch-gap-groups.js";
 import { branchSourceSummary } from "./resource-branch-source-labels.js";
 import {
-  employmentRowsForBranchFirms,
+  employmentRowsForBranches,
   groupEmploymentsByBranch,
 } from "./resource-directory-branch-employment.js";
 
@@ -194,7 +194,7 @@ export class PublicBranches extends Resource {
     ]);
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
     const employmentsByBranch = groupEmploymentsByBranch(
-      await employmentRowsForBranchFirms(
+      await employmentRowsForBranches(
         { EmploymentHistory: tables.EmploymentHistory },
         branches
       )
