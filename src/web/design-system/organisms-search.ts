@@ -159,12 +159,13 @@ function handleDocumentPointerDown(
   }
   if (!(target instanceof HTMLElement) || !target.closest(".gs-item")) return;
   const underlying = underlyingElementAtPoint(context, event);
-  if (!isPageControl(underlying, context.view.wrap)) return;
+  const control = pageControlFor(underlying, context.view.wrap);
+  if (!control) return;
   event.preventDefault();
   event.stopImmediatePropagation();
   collapseDropdown(context);
-  underlying.focus();
-  underlying.click();
+  control.focus();
+  control.click();
 }
 
 /**
@@ -201,17 +202,19 @@ function hitTestWithoutDropdown(
 }
 
 /**
- * Detects underlying page controls that should receive an outside click.
+ * Finds the underlying page control that should receive an outside click.
  * @param element - Element found below the search dropdown.
  * @param searchWrap - Search root to exclude internal controls.
- * @returns True when the element is a reachable non-search control.
+ * @returns Reachable non-search control, if one is under the pointer.
  */
-function isPageControl(
+function pageControlFor(
   element: HTMLElement | null,
   searchWrap: HTMLElement
-): element is HTMLElement {
+): HTMLElement | null {
   const control = element?.closest("button,input,select,textarea");
-  return control instanceof HTMLElement && !searchWrap.contains(control);
+  return control instanceof HTMLElement && !searchWrap.contains(control)
+    ? control
+    : null;
 }
 
 /**
