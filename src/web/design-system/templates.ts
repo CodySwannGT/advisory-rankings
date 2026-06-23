@@ -154,6 +154,7 @@ export function primaryBrowseItems(
     browseItem("Firms", "building", "/firms"),
     browseItem("Branches", "branches", "/branches"),
     browseItem("Coverage", "coverage", "/coverage"),
+    browseItem("Investor proof", "coverage", "/investor-proof"),
     browseItem("Recruiting", "recruiting", "/recruiting"),
     browseItem("Rankings", "rankings", "/rankings"),
     browseItem("Advisors", "advisor", "/advisors"),

@@ -22,6 +22,7 @@ const WEB_ENTRYPOINTS = [
   "discrepancy-queue.js",
   "firm.js",
   "index.js",
+  "investor-proof-packet.js",
   "login.js",
   "not-found.js",
   "rankings.js",

@@ -43,6 +43,7 @@ describe("public navigation", () => {
         "Firms",
         "Branches",
         "Coverage",
+        "Investor proof",
         "Recruiting",
         "Rankings",
         "Advisors",
