@@ -369,10 +369,12 @@ substring; `firm` matches firm id or name; `state` exactly matches
 `Branch.state`; `city` and `market` match city/name/building/address;
 `sourceType` exactly matches linked employment source type; `level` exactly
 matches `Branch.level`; and `minAdvisorCount` filters on distinct current
-advisor count. The payload exposes aggregate source metadata and coverage
-status/gap group, not employment-row or advisor identifiers. `gapGroup`
-distinguishes loaded, partial, unavailable, zero-advisor, and missing-source
-rows so branch coverage gaps stay explicit.
+advisor count. The payload exposes aggregate source type keys for filtering,
+human-facing source labels for display, and coverage status/gap group, not
+employment-row ids, advisor identifiers, analyst notes, watchlists, ratings,
+reviewer data, or raw source reference strings. `gapGroup` distinguishes
+loaded, partial, unavailable, zero-advisor, and missing-source rows so branch
+coverage gaps stay explicit.
 
 Firm profiles link their branch card into `/branches?firm=<firm_id>` so a
 visitor can inspect the same branch rows with URL-backed filters preserved.

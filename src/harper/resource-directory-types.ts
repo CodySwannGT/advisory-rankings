@@ -64,6 +64,7 @@ export interface TeamDirectoryRow extends TeamRow {
 /** Source summary safe to expose on public branch rows. */
 export interface BranchSourceSummary {
   readonly sourceTypes: ReadonlyArray<string>;
+  readonly sourceLabels: ReadonlyArray<string>;
   readonly sourceRefs: ReadonlyArray<string>;
 }
 

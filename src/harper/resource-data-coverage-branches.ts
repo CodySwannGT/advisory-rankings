@@ -88,6 +88,7 @@ function branchGapCounts(
           sourceTypes: distinctStrings(
             linkedEmployments.map(row => row.sourceType)
           ),
+          sourceLabels: [],
           sourceRefs: distinctStrings(
             linkedEmployments.map(row => row.sourceRef)
           ),
