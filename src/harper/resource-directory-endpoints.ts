@@ -49,6 +49,7 @@ import {
 } from "./resource-directory-sorting.js";
 import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
+import { branchGapGroup } from "./resource-branch-gap-groups.js";
 
 export type {
   SearchCounts,
@@ -358,6 +359,7 @@ function branchDirectoryRow(
     firmName: firm?.name ?? null,
     currentAdvisorCount,
     coverageStatus: branchCoverageStatus(firm, currentAdvisorCount),
+    gapGroup: branchGapGroup({ firm, currentAdvisorCount, sourceMetadata }),
     sourceMetadata,
   };
 }
