@@ -28,6 +28,9 @@ const PRIVATE_COPY_MARKERS = [
 ];
 const PRIVATE_RESOURCE_RE =
   /\/(RegulatoryDiscrepancyQueue|UserRating|UserWatchlists|AdvisorCorrectionRequest)\b/u;
+const RAW_CIVIL_JUDICIAL = "CIVIL JUDICIAL";
+const RAW_COURT = "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK";
+const RAW_AWARDED = "AWARDED FOR CLAIMANT";
 
 browserDescribe("regulatory digest UI", () => {
   let browser: Browser;
@@ -91,14 +94,10 @@ browserDescribe("regulatory digest UI", () => {
       "Awarded for claimant"
     );
     expect(await digestRows.first().innerText()).not.toContain(
-      "CIVIL JUDICIAL"
+      RAW_CIVIL_JUDICIAL
     );
-    expect(await digestRows.first().innerText()).not.toContain(
-      "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK"
-    );
-    expect(await digestRows.first().innerText()).not.toContain(
-      "AWARDED FOR CLAIMANT"
-    );
+    expect(await digestRows.first().innerText()).not.toContain(RAW_COURT);
+    expect(await digestRows.first().innerText()).not.toContain(RAW_AWARDED);
     expect(await digestRows.nth(1).innerText()).toContain(
       "missing details are a source limitation, not clean evidence"
     );
@@ -124,6 +123,9 @@ browserDescribe("regulatory digest UI", () => {
         .getAttribute("href")
     ).toContain("firm-example");
     const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toContain(RAW_CIVIL_JUDICIAL);
+    expect(bodyText).not.toContain(RAW_COURT);
+    expect(bodyText).not.toContain(RAW_AWARDED);
     for (const marker of PRIVATE_COPY_MARKERS) {
       expect(bodyText).not.toContain(marker);
     }
@@ -232,15 +234,11 @@ function feedItem(
         id: `disc-${articleId}`,
         advisor: { id: advisorId, name: advisorName },
         disclosureType:
-          articleId === SEVERITY_ARTICLE_ID ? "CIVIL JUDICIAL" : "regulatory",
+          articleId === SEVERITY_ARTICLE_ID ? RAW_CIVIL_JUDICIAL : "regulatory",
         regulator: articleId === SEVERITY_ARTICLE_ID ? undefined : "FINRA",
         regulatorState: undefined,
-        forum:
-          articleId === SEVERITY_ARTICLE_ID
-            ? "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK"
-            : undefined,
-        status:
-          articleId === SEVERITY_ARTICLE_ID ? "AWARDED FOR CLAIMANT" : status,
+        forum: articleId === SEVERITY_ARTICLE_ID ? RAW_COURT : undefined,
+        status: articleId === SEVERITY_ARTICLE_ID ? RAW_AWARDED : status,
         admitDeny: undefined,
         dateInitiated: undefined,
         dateResolved,
