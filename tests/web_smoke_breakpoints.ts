@@ -25,6 +25,7 @@ const SEARCH_KIND_BUTTON_SELECTOR = ".gs-kind-controls .gs-kind-toggle";
 const TABLET_ROUTE_PATHS = [
   "/",
   "/firms",
+  "/investor-proof",
   "/recruiting",
   "/rankings",
   "/advisors",

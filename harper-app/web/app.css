@@ -3399,6 +3399,116 @@ body.drawer-open .nav .nav-scrim {
   line-height: 1.45;
 }
 
+.investor-proof-header .card-body,
+.investor-proof-coverage .card-body,
+.investor-proof-freshness .card-body,
+.investor-proof-links .card-body {
+  display: grid;
+  gap: var(--ab-space-4);
+}
+
+.investor-proof-lede {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.investor-proof-stat-grid,
+.investor-proof-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--ab-space-3);
+}
+
+.investor-proof-stat,
+.investor-proof-metric {
+  display: grid;
+  align-content: start;
+  gap: var(--ab-space-1);
+  min-width: 0;
+  padding: var(--ab-space-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.investor-proof-metric--limited,
+.investor-proof-link-row--limited {
+  border-color: rgba(180, 83, 9, 0.35);
+}
+
+.investor-proof-stat-label,
+.investor-proof-metric-label,
+.investor-proof-metric-source,
+.investor-proof-link-row span {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.investor-proof-provenance-value {
+  overflow-wrap: anywhere;
+}
+
+.investor-proof-stat strong,
+.investor-proof-metric-value,
+.investor-proof-link-row strong {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.investor-proof-metric-value {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.investor-proof-limitation {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.investor-proof-tag-list,
+.investor-proof-link-list {
+  display: grid;
+  gap: var(--ab-space-2);
+}
+
+.investor-proof-tag-list {
+  grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
+}
+
+.investor-proof-link-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--ab-space-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.investor-proof-link-row:hover,
+.investor-proof-link-row:focus-visible {
+  border-color: var(--accent);
+}
+
+.investor-proof-limitation-list {
+  display: grid;
+  gap: var(--ab-space-2);
+  margin: 0;
+  padding-left: 18px;
+}
+
+.investor-proof-limitation-list li {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 @media (max-width: 700px) {
   .comparison-hero-actions {
     align-items: stretch;
@@ -3589,6 +3699,13 @@ body.drawer-open .nav .nav-scrim {
 
   .report-packet-source-row li {
     color: #222;
+  }
+
+  .investor-proof-link-row,
+  .investor-proof-metric,
+  .investor-proof-stat {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 

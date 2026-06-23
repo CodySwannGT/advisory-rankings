@@ -25,6 +25,7 @@ fastifyRoutes:
     - 'teams/index.js'
     - 'articles/index.js'
     - 'data-coverage/index.js'
+    - 'investor-proof/index.js'
     - 'recruiting/index.js'
     - 'recruiting-shortlist/index.js'
     - 'research-freshness/index.js'
