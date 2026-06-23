@@ -127,10 +127,23 @@ export function digestLabels(
 ): RegulatoryDigestLabels {
   const disclosure = item.disclosure;
   return {
-    eventType: humanFacingLabel(disclosure.disclosureType) ?? "Disclosure",
+    eventType: regulatoryFieldLabel(disclosure.disclosureType) ?? "Disclosure",
     sourceOrVenue: sourceOrVenueLabel(disclosure),
-    disposition: humanFacingLabel(disclosure.status ?? disclosure.admitDeny),
+    disposition:
+      regulatoryFieldLabel(disclosure.status ?? disclosure.admitDeny) ?? null,
   };
+}
+
+/**
+ * Converts extracted regulatory values into sentence-case product labels.
+ * @param value - Raw regulatory field value.
+ * @returns Human-facing label, or null when unavailable.
+ */
+export function regulatoryFieldLabel(
+  value: unknown
+): string | null | undefined {
+  if (value == null) return value as null | undefined;
+  return humanFacingLabel(value);
 }
 
 /**
@@ -337,9 +350,10 @@ function hasBrokerCheckCue(disclosure: DisclosureEventCard): boolean {
  * @returns Source or venue label, optionally with state.
  */
 function sourceOrVenueLabel(disclosure: DisclosureEventCard): string | null {
-  const primary = humanFacingLabel(disclosure.forum ?? disclosure.regulator);
+  const primary =
+    regulatoryFieldLabel(disclosure.forum ?? disclosure.regulator) ?? null;
   if (!primary) return null;
-  const state = humanFacingLabel(disclosure.regulatorState);
+  const state = regulatoryFieldLabel(disclosure.regulatorState) ?? null;
   return state ? `${primary} / ${state}` : primary;
 }
 

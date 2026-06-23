@@ -947,6 +947,11 @@ body.drawer-open .nav .nav-scrim {
   color: var(--text);
 }
 
+.regulatory-compliance-card .tag {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .regulatory-digest-limitations {
   display: grid;
   gap: 4px;

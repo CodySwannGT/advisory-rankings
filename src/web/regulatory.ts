@@ -33,6 +33,7 @@ import {
   digestSourceLabel,
   disclosureEvents,
   regulatoryDigestItems,
+  regulatoryFieldLabel,
   type RegulatoryDigestItem,
 } from "./regulatory-digest.js";
 import { articlePath } from "./urls.js";
@@ -48,6 +49,7 @@ interface FeedPayload {
  * boundary; this is the single permitted adapter cast for this page.
  */
 const api = rawApi as unknown as (path: string) => Promise<FeedPayload>;
+const regulatoryFmts = { ...fmts, humanize: regulatoryFieldLabel };
 
 /**
  * Loads and renders compliance disclosures from the feed resource.
@@ -221,8 +223,11 @@ function complianceEventsCard(
 ): HTMLElement {
   return SectionCard({
     title: `Compliance events (${disclosures.length.toLocaleString()})`,
+    attrs: { class: "regulatory-compliance-card" },
     body: disclosures.length
-      ? disclosures.map(disclosure => DisclosureEventCard(disclosure, fmts))
+      ? disclosures.map(disclosure =>
+          DisclosureEventCard(disclosure, regulatoryFmts)
+        )
       : "No compliance events on file.",
   });
 }
