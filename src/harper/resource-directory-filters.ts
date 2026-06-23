@@ -8,6 +8,7 @@ import type {
 import type { RouteTarget } from "../types/harper-resource.js";
 import { advisorDisplayName } from "./resource-routing.js";
 import { advisorReadiness } from "./resource-advisor-readiness.js";
+import { branchGapGroup } from "./resource-branch-gap-groups.js";
 import type {
   AdvisorDirectoryFilters,
   BranchDirectoryFilters,
@@ -95,6 +96,7 @@ export function parseBranchDirectoryFilters(
   return {
     q: normalizedParam(target, "q"),
     firm: normalizedParam(target, "firm"),
+    gapGroup: normalizedParam(target, "gapGroup"),
     state: normalizedParam(target, "state"),
     city: normalizedParam(target, "city") || normalizedParam(target, "market"),
     sourceType: normalizedParam(target, "sourceType"),
@@ -238,6 +240,14 @@ export function branchMatchesFilters(
       firm?.name,
     ]) &&
     textMatches(filters.firm, [branch.firmId, firm?.id, firm?.name]) &&
+    exactMatches(
+      filters.gapGroup,
+      branchGapGroup({
+        firm,
+        currentAdvisorCount,
+        sourceMetadata: { sourceTypes, sourceRefs: [] },
+      })
+    ) &&
     exactMatches(filters.state, branch.state) &&
     textMatches(filters.city, [
       branch.city,

@@ -32,7 +32,9 @@ export const field = (
 export const selectField = (
   label: string,
   name: BranchFilterKey,
-  value: string
+  value: string,
+  options: ReadonlyArray<Readonly<Record<"value" | "label", string>>>,
+  emptyLabel: string
 ): HTMLElement => {
   return el(
     "label",
@@ -41,11 +43,12 @@ export const selectField = (
     el(
       "select",
       { name },
-      ...["", "market", "complex", "branch"].map(option =>
+      el("option", { value: "", selected: value === "" }, emptyLabel),
+      ...options.map(option =>
         el(
           "option",
-          { value: option, selected: option === value },
-          option ? (humanize(option) ?? option) : "Any level"
+          { value: option.value, selected: option.value === value },
+          option.label
         )
       )
     )
@@ -142,6 +145,17 @@ export const coverageLabel = (row: BranchDirectoryRow): string => {
   if (row.coverageStatus === "loaded") return "Advisor links available";
   if (row.coverageStatus === "partial") return "Advisor links incomplete";
   return "Branch context unavailable";
+};
+
+export const gapGroupLabel = (row: BranchDirectoryRow): string => {
+  const labels: Readonly<Record<BranchDirectoryRow["gapGroup"], string>> = {
+    loaded: "Loaded branch coverage",
+    partial: "Partial branch coverage",
+    unavailable: "Unavailable branch context",
+    "zero-advisor": "Zero linked advisors",
+    "missing-source": "Missing public source",
+  };
+  return labels[row.gapGroup];
 };
 
 export const branchLevelLabel = (row: BranchDirectoryRow): string => {

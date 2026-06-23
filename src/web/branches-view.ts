@@ -26,6 +26,7 @@ import {
   emptyStateCopy,
   field,
   firmHref,
+  gapGroupLabel,
   legendRow,
   locationLabel,
   metric,
@@ -36,6 +37,20 @@ import {
 } from "./branches-view-helpers.js";
 import type { BranchExplorerState } from "./branches.js";
 import type { BranchDirectoryRow } from "../harper/resource-directory-types.js";
+
+const GAP_GROUP_OPTIONS = [
+  { value: "loaded", label: "Loaded branch coverage" },
+  { value: "partial", label: "Partial branch coverage" },
+  { value: "unavailable", label: "Unavailable branch context" },
+  { value: "zero-advisor", label: "Zero linked advisors" },
+  { value: "missing-source", label: "Missing public source" },
+] as const;
+
+const LEVEL_OPTIONS = [
+  { value: "market", label: "Market" },
+  { value: "complex", label: "Complex" },
+  { value: "branch", label: "Branch" },
+] as const;
 
 /**
  *
@@ -88,6 +103,10 @@ const filterCard = (
   filters: BranchFilters,
   reload: () => void
 ): HTMLElement => {
+  const clearFilters = (): void => {
+    writeBranchFilters(emptyBranchFilters());
+    reload();
+  };
   const form = el(
     "form",
     {
@@ -102,10 +121,17 @@ const filterCard = (
     },
     field("Search", "q", filters.q, "Branch, market, address, or firm"),
     field("Firm", "firm", filters.firm, "Firm name or id"),
+    selectField(
+      "Coverage state",
+      "gapGroup",
+      filters.gapGroup,
+      GAP_GROUP_OPTIONS,
+      "Any coverage state"
+    ),
     field("State", "state", filters.state, "NY"),
     field("City or market", "city", filters.city, "New York"),
     field("Source type", "sourceType", filters.sourceType, "brokercheck"),
-    selectField("Level", "level", filters.level),
+    selectField("Level", "level", filters.level, LEVEL_OPTIONS, "Any level"),
     field("Minimum advisors", "minAdvisorCount", filters.minAdvisorCount, "1"),
     el(
       "div",
@@ -114,10 +140,7 @@ const filterCard = (
       Button({
         variant: "ghost",
         children: "Clear",
-        onClick: () => {
-          writeBranchFilters(emptyBranchFilters());
-          reload();
-        },
+        onClick: clearFilters,
       })
     )
   );
@@ -164,6 +187,7 @@ const branchRow = (row: BranchDirectoryRow): HTMLElement => {
     rowMain(row),
     rowField("Firm", row.firmName ?? "Unavailable"),
     rowField("Location", locationLabel(row)),
+    rowField("Coverage state", gapGroupLabel(row)),
     rowField("Current advisors", advisorCountLabel(row)),
     rowActions(row)
   );

@@ -48,6 +48,7 @@ export interface TeamDirectoryFilters {
 export interface BranchDirectoryFilters {
   readonly q: string;
   readonly firm: string;
+  readonly gapGroup: string;
   readonly state: string;
   readonly city: string;
   readonly sourceType: string;
