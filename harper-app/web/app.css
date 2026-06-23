@@ -3705,7 +3705,6 @@ body.drawer-open .nav .nav-scrim {
   .investor-proof-metric,
   .investor-proof-stat {
     break-inside: avoid;
-    page-break-inside: avoid;
   }
 }
 

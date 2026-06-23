@@ -49,64 +49,67 @@ browserDescribe("investor proof packet route (#1369)", () => {
 
   it("renders public packet proof without private resource probes", async () => {
     const page = await browser.newPage();
-    const privateRequests: string[] = [];
-    await routeAuth(page, false);
-    await page.route("**/InvestorProofPacket", async route => {
-      await route.fulfill({ json: packetPayload() });
-    });
-    for (const routePath of [
-      "**/UserWatchlists**",
-      "**/UserRating**",
-      "**/AdvisorCorrectionRequest**",
-      "**/User/**",
-    ]) {
-      await page.route(routePath, async route => {
-        privateRequests.push(route.request().url());
-        await route.abort("blockedbyclient");
+    try {
+      const privateRequests: string[] = [];
+      await routeAuth(page, false);
+      await page.route("**/InvestorProofPacket", async route => {
+        await route.fulfill({ json: packetPayload() });
       });
+      for (const routePath of [
+        "**/UserWatchlists**",
+        "**/UserRating**",
+        "**/AdvisorCorrectionRequest**",
+        "**/User/**",
+      ]) {
+        await page.route(routePath, async route => {
+          privateRequests.push(route.request().url());
+          await route.abort("blockedbyclient");
+        });
+      }
+
+      await page.goto(`${baseUrl}/investor-proof`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", { name: "Investor proof packet", exact: true })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page.getByText("Public investor proof").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(
+        await page
+          .locator('[data-investor-proof-metric="advisors"]')
+          .textContent()
+      ).toContain("16,265");
+      expect(
+        await page.locator('[data-investor-proof-metric="firms"]').textContent()
+      ).toContain("2,701");
+      expect(
+        await page
+          .locator('[data-investor-proof-link="representative-feed"]')
+          .getAttribute("href")
+      ).toBe("/articles/advisor-move-article-1");
+      expect(
+        await page
+          .locator('[data-investor-proof-link="representative-firm"]')
+          .getAttribute("href")
+      ).toBe("/firms/example-wealth-firm-1");
+      await page.getByText("Due profiles").waitFor({ timeout: QUICK_TIMEOUT });
+      await page.getByText("16,168").waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .getByText("No private watchlists, ratings, analyst notes")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(privateRequests).toEqual([]);
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page
+        .locator('[data-investor-proof-link="coverage-dashboard"]')
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await captureViewports(page, "issue-1369-investor-proof-packet");
+    } finally {
+      await page.close();
     }
-
-    await page.goto(`${baseUrl}/investor-proof`, {
-      waitUntil: "domcontentloaded",
-    });
-
-    await page
-      .getByRole("heading", { name: "Investor proof packet", exact: true })
-      .waitFor({ timeout: QUICK_TIMEOUT });
-    await page.getByText("Public investor proof").waitFor({
-      timeout: QUICK_TIMEOUT,
-    });
-    expect(
-      await page
-        .locator('[data-investor-proof-metric="advisors"]')
-        .textContent()
-    ).toContain("16,265");
-    expect(
-      await page.locator('[data-investor-proof-metric="firms"]').textContent()
-    ).toContain("2,701");
-    expect(
-      await page
-        .locator('[data-investor-proof-link="representative-feed"]')
-        .getAttribute("href")
-    ).toBe("/articles/advisor-move-article-1");
-    expect(
-      await page
-        .locator('[data-investor-proof-link="representative-firm"]')
-        .getAttribute("href")
-    ).toBe("/firms/example-wealth-firm-1");
-    await page.getByText("Due profiles").waitFor({ timeout: QUICK_TIMEOUT });
-    await page.getByText("16,168").waitFor({ timeout: QUICK_TIMEOUT });
-    await page
-      .getByText("No private watchlists, ratings, analyst notes")
-      .waitFor({ timeout: QUICK_TIMEOUT });
-    expect(privateRequests).toEqual([]);
-
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page
-      .locator('[data-investor-proof-link="coverage-dashboard"]')
-      .waitFor({ timeout: QUICK_TIMEOUT });
-    await captureViewports(page, "issue-1369-investor-proof-packet");
-    await page.close();
   });
 });
 
