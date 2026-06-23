@@ -6,6 +6,7 @@ import type {
 } from "../src/harper/resource-feed-types.js";
 import {
   digestContext,
+  digestLabels,
   digestLimitations,
   digestSourceLabel,
   regulatoryDigestItems,
@@ -125,6 +126,23 @@ describe("regulatory digest ranking", () => {
     ]);
 
     expect(rows.map(row => digestLimitations(row))).toEqual([[], [], [], []]);
+  });
+
+  it("translates extracted event, venue, and disposition tags", () => {
+    const [row] = regulatoryDigestItems([
+      feedItem("raw-tags", {
+        disclosureType: "CIVIL JUDICIAL",
+        forum: "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK",
+        status: "AWARDED FOR CLAIMANT",
+      }),
+    ]);
+
+    expect(digestLabels(row)).toEqual({
+      eventType: "Civil judicial",
+      sourceOrVenue:
+        "U.S. District Court for the Southern District of New York",
+      disposition: "Awarded for claimant",
+    });
   });
 });
 

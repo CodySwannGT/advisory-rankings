@@ -15,6 +15,45 @@ export interface RegulatoryDigestItem {
   readonly sourceIndicator: string;
 }
 
+/** Human-facing labels shown above one public digest row. */
+export interface RegulatoryDigestLabels {
+  readonly eventType: string;
+  readonly sourceOrVenue: string | null;
+  readonly disposition: string | null;
+}
+
+const ACRONYM_LABELS = new Map([
+  ["crd", "CRD"],
+  ["finra", "FINRA"],
+  ["nasd", "NASD"],
+  ["nyse", "NYSE"],
+  ["sec", "SEC"],
+  ["u.s.", "U.S."],
+  ["us", "U.S."],
+]);
+
+const LOWERCASE_LABEL_WORDS = new Set([
+  "and",
+  "as",
+  "at",
+  "by",
+  "claimant",
+  "for",
+  "in",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
+
+const SPECIFIC_LABELS = new Map([
+  ["civil judicial", "Civil judicial"],
+  ["customer dispute", "Customer dispute"],
+  ["regulatory", "Regulatory"],
+]);
+
 /**
  * Builds digest rows from public feed disclosure cards, sorted by observable
  * event recency first and severity signals second.
@@ -76,6 +115,22 @@ export function digestSourceLabel(item: RegulatoryDigestItem): string {
   return item.eventDate
     ? `Event date ${item.eventDate}; ${item.sourceIndicator}`
     : item.sourceIndicator;
+}
+
+/**
+ * Translates extracted digest categories into readable display labels.
+ * @param item - Ranked digest item.
+ * @returns Event/source/disposition labels for the row.
+ */
+export function digestLabels(
+  item: RegulatoryDigestItem
+): RegulatoryDigestLabels {
+  const disclosure = item.disclosure;
+  return {
+    eventType: humanFacingLabel(disclosure.disclosureType) ?? "Disclosure",
+    sourceOrVenue: sourceOrVenueLabel(disclosure),
+    disposition: humanFacingLabel(disclosure.status ?? disclosure.admitDeny),
+  };
 }
 
 /**
@@ -274,6 +329,56 @@ function hasBrokerCheckCue(disclosure: DisclosureEventCard): boolean {
     .some(value =>
       String(value).toLowerCase().replace(/[\s-]/g, "").includes("brokercheck")
     );
+}
+
+/**
+ * Formats the public source or venue signal for a digest row.
+ * @param disclosure - Public disclosure card.
+ * @returns Source or venue label, optionally with state.
+ */
+function sourceOrVenueLabel(disclosure: DisclosureEventCard): string | null {
+  const primary = humanFacingLabel(disclosure.forum ?? disclosure.regulator);
+  if (!primary) return null;
+  const state = humanFacingLabel(disclosure.regulatorState);
+  return state ? `${primary} / ${state}` : primary;
+}
+
+/**
+ * Converts extracted enum-like values into sentence-case product labels.
+ * @param value - Raw extracted field value.
+ * @returns Human-facing label, or null when unavailable.
+ */
+function humanFacingLabel(value: unknown): string | null {
+  if (value == null) return null;
+  const normalized = String(value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return null;
+  const lower = normalized.toLowerCase();
+  return SPECIFIC_LABELS.get(lower) ?? titleCaseWords(lower.split(" "));
+}
+
+/**
+ * Formats a normalized word list while preserving known acronyms.
+ * @param words - Lowercase words from a raw label.
+ * @returns Readable label.
+ */
+function titleCaseWords(words: readonly string[]): string {
+  return words.map((word, index) => titleCaseWord(word, index)).join(" ");
+}
+
+/**
+ * Formats one word within a product label.
+ * @param word - Lowercase word.
+ * @param index - Word position.
+ * @returns Display word.
+ */
+function titleCaseWord(word: string, index: number): string {
+  const acronym = ACRONYM_LABELS.get(word);
+  if (acronym) return acronym;
+  if (index > 0 && LOWERCASE_LABEL_WORDS.has(word)) return word;
+  return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
 /**

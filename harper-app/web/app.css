@@ -915,6 +915,27 @@ body.drawer-open .nav .nav-scrim {
   overflow-wrap: anywhere;
 }
 
+.regulatory-digest-label {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.regulatory-digest-label--event {
+  background: #fbe6e6;
+  color: var(--accent-red);
+}
+
+.regulatory-digest-label--disposition {
+  background: #fff3df;
+  color: var(--accent-amber);
+}
+
 .regulatory-digest-meta,
 .regulatory-digest-summary {
   margin: 0;

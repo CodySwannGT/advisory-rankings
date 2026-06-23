@@ -83,6 +83,22 @@ browserDescribe("regulatory digest UI", () => {
     expect(await digestRows.first().innerText()).toContain(
       "source published 2026-05-02"
     );
+    expect(await digestRows.first().innerText()).toContain("Civil judicial");
+    expect(await digestRows.first().innerText()).toContain(
+      "U.S. District Court for the Southern District of New York"
+    );
+    expect(await digestRows.first().innerText()).toContain(
+      "Awarded for claimant"
+    );
+    expect(await digestRows.first().innerText()).not.toContain(
+      "CIVIL JUDICIAL"
+    );
+    expect(await digestRows.first().innerText()).not.toContain(
+      "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK"
+    );
+    expect(await digestRows.first().innerText()).not.toContain(
+      "AWARDED FOR CLAIMANT"
+    );
     expect(await digestRows.nth(1).innerText()).toContain(
       "missing details are a source limitation, not clean evidence"
     );
@@ -215,11 +231,16 @@ function feedItem(
         disclosureId: `disc-${articleId}`,
         id: `disc-${articleId}`,
         advisor: { id: advisorId, name: advisorName },
-        disclosureType: "regulatory",
-        regulator: "FINRA",
+        disclosureType:
+          articleId === SEVERITY_ARTICLE_ID ? "CIVIL JUDICIAL" : "regulatory",
+        regulator: articleId === SEVERITY_ARTICLE_ID ? undefined : "FINRA",
         regulatorState: undefined,
-        forum: undefined,
-        status,
+        forum:
+          articleId === SEVERITY_ARTICLE_ID
+            ? "U.S. DISTRICT COURT FOR THE SOUTHERN DISTRICT OF NEW YORK"
+            : undefined,
+        status:
+          articleId === SEVERITY_ARTICLE_ID ? "AWARDED FOR CLAIMANT" : status,
         admitDeny: undefined,
         dateInitiated: undefined,
         dateResolved,
