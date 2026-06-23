@@ -112,7 +112,7 @@ export function investorProofPacketResponse(
     unavailable,
     coverage: {
       sections: coverage.sections,
-      keyMetrics: keyMetrics(coverage.sections),
+      keyMetrics: keyMetrics(coverage.sections).map(packetMetric),
       limitations: coverage.limitations,
     },
     freshness: {
@@ -160,6 +160,18 @@ function keyMetrics(
   return sections
     .flatMap(section => section.metrics)
     .filter(metric => wanted.has(metric.id));
+}
+
+/**
+ * Keeps packet headline metrics from turning unavailable proof into zero.
+ * @param metric - DataCoverage metric selected for packet display.
+ * @returns Packet-safe metric value.
+ */
+function packetMetric(metric: DataCoverageMetric): DataCoverageMetric {
+  if (metric.value === 0 && metric.limitation) {
+    return { ...metric, value: null };
+  }
+  return metric;
 }
 
 /**
