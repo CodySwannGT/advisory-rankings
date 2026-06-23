@@ -34,11 +34,7 @@ import {
   branchMatchesFilters,
   queryValue,
 } from "./resource-directory-filters.js";
-import {
-  allRows,
-  optionalAll,
-  rowsByAttribute,
-} from "./resource-directory-tables.js";
+import { allRows, optionalAll } from "./resource-directory-tables.js";
 import {
   compareFirmDirectoryRows,
   compareTeamDirectoryRows,
@@ -51,14 +47,15 @@ import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js"
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
 import { branchGapGroup } from "./resource-branch-gap-groups.js";
 import { branchSourceSummary } from "./resource-branch-source-labels.js";
+import {
+  employmentRowsForBranchFirms,
+  groupEmploymentsByBranch,
+} from "./resource-directory-branch-employment.js";
 
 export type {
   SearchCounts,
   SearchResponse,
 } from "./resource-directory-types.js";
-
-/** Max branch employment lookups issued concurrently in one batch. */
-const BRANCH_LOOKUP_BATCH = 25;
 
 /**
  * Public firm directory resource.
@@ -196,8 +193,19 @@ export class PublicBranches extends Resource {
       allRows<FirmRow>(tables.Firm),
     ]);
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
+    const employmentsByBranch = groupEmploymentsByBranch(
+      await employmentRowsForBranchFirms(
+        { EmploymentHistory: tables.EmploymentHistory },
+        branches
+      )
+    );
     const filters = parseBranchDirectoryFilters(target);
-    const rows = await matchingBranchDirectoryRows(branches, byFirm, filters);
+    const rows = matchingBranchDirectoryRows(
+      branches,
+      byFirm,
+      employmentsByBranch,
+      filters
+    );
     const sorted = [...rows].sort(compareBranchDirectoryRows);
     const { cursor, limit } = parsePagination(target);
     const { items, nextCursor } = paginate(
@@ -210,55 +218,43 @@ export class PublicBranches extends Resource {
 }
 
 /**
- * Enriches branch rows through indexed employment lookups without issuing an
- * unbounded concurrent burst for broad directory requests.
+ * Enriches branch rows from firm-indexed employment rows so source metadata
+ * stays consistent with the aggregate coverage resources.
  * @param branches - Branch rows to evaluate in source order.
  * @param byFirm - Firm lookup keyed by id.
+ * @param employmentsByBranch - Employment rows keyed by branch id.
  * @param filters - Normalized public branch filters.
  * @returns Matching public branch rows in source order.
  */
-async function matchingBranchDirectoryRows(
+function matchingBranchDirectoryRows(
   branches: ReadonlyArray<BranchRow>,
   byFirm: ReadonlyMap<string, FirmRow>,
+  employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
   filters: ReturnType<typeof parseBranchDirectoryFilters>
-): Promise<ReadonlyArray<BranchDirectoryRow>> {
-  try {
-    const batches = branchBatches(branches);
-    const rows = await batches.reduce<
-      Promise<ReadonlyArray<BranchDirectoryRow | null>>
-    >(async (accumulated, batch) => {
-      const matched = await accumulated;
-      const next = await Promise.all(
-        batch.map(branch => branchDirectoryMatch(branch, byFirm, filters))
-      );
-      return [...matched, ...next];
-    }, Promise.resolve([]));
-    return rows.filter(isBranchDirectoryRow);
-  } catch (error) {
-    throw new Error("Failed to resolve public branch directory rows", {
-      cause: error instanceof Error ? error : new Error(String(error)),
-    });
-  }
+): ReadonlyArray<BranchDirectoryRow> {
+  return branches
+    .map(branch =>
+      branchDirectoryMatch(branch, byFirm, employmentsByBranch, filters)
+    )
+    .filter(isBranchDirectoryRow);
 }
 
 /**
  * Builds an enriched branch row when it matches public filters.
  * @param branch - Source branch row.
  * @param byFirm - Firm lookup keyed by id.
+ * @param employmentsByBranch - Employment rows keyed by branch id.
  * @param filters - Normalized public branch filters.
  * @returns Branch directory row, or null when filtered out.
  */
-async function branchDirectoryMatch(
+function branchDirectoryMatch(
   branch: BranchRow,
   byFirm: ReadonlyMap<string, FirmRow>,
+  employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
   filters: ReturnType<typeof parseBranchDirectoryFilters>
-): Promise<BranchDirectoryRow | null> {
+): BranchDirectoryRow | null {
   const firm = byFirm.get(branch.firmId) ?? null;
-  const linkedEmployments = await rowsByAttribute<EmploymentHistoryRow>(
-    tables.EmploymentHistory,
-    "branchId",
-    branch.id
-  );
+  const linkedEmployments = employmentsByBranch.get(branch.id) ?? [];
   const currentAdvisorCount = currentBranchAdvisorCount(linkedEmployments);
   const sourceMetadata = branchSourceSummary(linkedEmployments);
   return branchMatchesFilters(
@@ -281,24 +277,6 @@ function isBranchDirectoryRow(
   row: BranchDirectoryRow | null
 ): row is BranchDirectoryRow {
   return row !== null;
-}
-
-/**
- * Splits branch rows into fixed-size batches for bounded indexed lookups.
- * @param branches - Branch rows to batch.
- * @returns Batches of at most `BRANCH_LOOKUP_BATCH` rows each.
- */
-function branchBatches(
-  branches: ReadonlyArray<BranchRow>
-): ReadonlyArray<ReadonlyArray<BranchRow>> {
-  return Array.from(
-    { length: Math.ceil(branches.length / BRANCH_LOOKUP_BATCH) },
-    (_unused, batchIndex) =>
-      branches.slice(
-        batchIndex * BRANCH_LOOKUP_BATCH,
-        batchIndex * BRANCH_LOOKUP_BATCH + BRANCH_LOOKUP_BATCH
-      )
-  );
 }
 
 /**

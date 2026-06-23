@@ -5565,7 +5565,7 @@ describe("Harper directory and search resources", () => {
     });
   });
 
-  it("bounds public branch employment lookup concurrency", async () => {
+  it("loads public branch employment by firm for source-backed filters", async () => {
     const branchRows = Array.from({ length: 30 }, (_unused, index) => ({
       id: `branch-batch-${String(index).padStart(2, "0")}`,
       firmId: "firm-a",
@@ -5584,35 +5584,32 @@ describe("Harper directory and search resources", () => {
     setRows("Branch", branchRows);
     setRows("EmploymentHistory", employmentRows);
     const original = (globalThis as any).tables.EmploymentHistory;
-    let activeLookups = 0;
-    let maxActiveLookups = 0;
+    let searchCount = 0;
     (globalThis as any).tables.EmploymentHistory = {
       search: (query: any) => {
-        const branchId = query?.conditions?.find(
-          (condition: any) => condition.attribute === "branchId"
-        )?.value;
+        searchCount += 1;
+        expect(query?.conditions ?? []).toEqual([
+          { attribute: "firmId", value: "firm-a" },
+        ]);
         return (async function* () {
-          activeLookups += 1;
-          maxActiveLookups = Math.max(maxActiveLookups, activeLookups);
-          try {
-            await new Promise(resolve => setTimeout(resolve, 1));
-            for (const row of employmentRows)
-              if (row.branchId === branchId) yield row;
-          } finally {
-            activeLookups -= 1;
-          }
+          for (const row of employmentRows)
+            if (row.firmId === "firm-a") yield row;
         })();
       },
     };
 
     try {
       const result = await new (resources as any).PublicBranches().get(
-        routeTarget("", { limit: "50" })
+        routeTarget("", {
+          gapGroup: "loaded",
+          limit: "50",
+          sourceType: "brokercheck",
+        })
       );
 
       expect(result.total).toBe(30);
-      expect(maxActiveLookups).toBeLessThanOrEqual(25);
-      expect(maxActiveLookups).toBeGreaterThan(1);
+      expect(result.items).toHaveLength(30);
+      expect(searchCount).toBe(1);
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }
