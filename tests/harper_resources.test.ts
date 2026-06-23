@@ -73,6 +73,10 @@ const RECRUITING_MARKET_RESOURCE = "/RecruitingMarket";
 const ADVISOR_RESEARCH_QUEUE_RESOURCE = "/AdvisorResearchQueue";
 const DATA_COVERAGE_RESOURCE = "/DataCoverage";
 const RESEARCH_FRESHNESS_SECTION = "research-freshness";
+const REPRESENTATIVE_FEED_LINK = "representative-feed";
+const REPRESENTATIVE_FIRM_LINK = "representative-firm";
+const REPRESENTATIVE_RANKING_LINK = "representative-ranking";
+const REPRESENTATIVE_RECRUITING_LINK = "representative-recruiting";
 const RANKING_ENTRIES_METRIC = "ranking-entries";
 const LATEST_RESEARCH_CHECK_METRIC = "latest-research-check";
 const FIELD_ASSERTIONS_METRIC = "field-assertions";
@@ -2278,25 +2282,27 @@ describe("Harper feed and profile builders", () => {
       sourceTable: "AdvisorResearchCheck",
       limitation: null,
     });
-    expect(proofLinkById(payload, "representative-feed")).toMatchObject({
+    expect(proofLinkById(payload, REPRESENTATIVE_FEED_LINK)).toMatchObject({
       url: `/articles/${STONE_JOINS_EXAMPLE_SLUG}-article-a`,
       publicResource: FEED_RESOURCE,
       sourceIds: ["article-a"],
       limitation: null,
     });
-    expect(proofLinkById(payload, "representative-firm")).toMatchObject({
-      url: "/firm.html?id=firm-a",
+    expect(proofLinkById(payload, REPRESENTATIVE_FIRM_LINK)).toMatchObject({
+      url: "/firm.html?id=firm-b",
       publicResource: PUBLIC_FIRMS_RESOURCE,
-      sourceIds: ["firm-a"],
+      sourceIds: ["firm-b"],
       limitation: null,
     });
-    expect(proofLinkById(payload, "representative-ranking")).toMatchObject({
+    expect(proofLinkById(payload, REPRESENTATIVE_RANKING_LINK)).toMatchObject({
       publicResource: RANKINGS_EXPLORER_RESOURCE,
       sourceTable: "RankingEntry",
       sourceIds: [RANKING_ENTRY_A_ID],
       limitation: null,
     });
-    expect(proofLinkById(payload, "representative-recruiting")).toMatchObject({
+    expect(
+      proofLinkById(payload, REPRESENTATIVE_RECRUITING_LINK)
+    ).toMatchObject({
       publicResource: RECRUITING_MARKET_RESOURCE,
       sourceTable: "TransitionEvent",
       sourceIds: [TRANSITION_A_ID],
@@ -2344,19 +2350,21 @@ describe("Harper feed and profile builders", () => {
       sourceIds: [],
       limitation: "Research freshness proof has no check rows loaded.",
     });
-    expect(proofLinkById(payload, "representative-feed")).toMatchObject({
+    expect(proofLinkById(payload, REPRESENTATIVE_FEED_LINK)).toMatchObject({
       sourceIds: [],
       limitation: "No public feed article is available.",
     });
-    expect(proofLinkById(payload, "representative-firm")).toMatchObject({
+    expect(proofLinkById(payload, REPRESENTATIVE_FIRM_LINK)).toMatchObject({
       sourceIds: [],
       limitation: "No public firm row is available.",
     });
-    expect(proofLinkById(payload, "representative-ranking")).toMatchObject({
+    expect(proofLinkById(payload, REPRESENTATIVE_RANKING_LINK)).toMatchObject({
       sourceIds: [],
       limitation: "No public ranking entry is available.",
     });
-    expect(proofLinkById(payload, "representative-recruiting")).toMatchObject({
+    expect(
+      proofLinkById(payload, REPRESENTATIVE_RECRUITING_LINK)
+    ).toMatchObject({
       sourceIds: [],
       limitation: "No public recruiting move is available.",
     });
@@ -2369,6 +2377,47 @@ describe("Harper feed and profile builders", () => {
         "No public firm row is available.",
       ])
     );
+  });
+
+  it("selects investor proof representatives from public resource projections", async () => {
+    setRows("Article", [
+      { id: "article-private", publishedDate: "2026-01-01" },
+      ...(tableRows.get("Article") ?? []),
+    ]);
+    setRows("Firm", [{ id: "firm-private" }, ...(tableRows.get("Firm") ?? [])]);
+    setRows("RankingEntry", [
+      { rankingId: "ranking-private", rawDisplayName: "Missing source id" },
+      ...(tableRows.get("RankingEntry") ?? []),
+    ]);
+    setRows("TransitionEvent", [
+      {
+        fromFirmId: "firm-missing",
+        toFirmId: "firm-a",
+        moveDate: DATE_2024_01_01,
+      },
+      ...(tableRows.get("TransitionEvent") ?? []),
+    ]);
+
+    const payload = await new (resources as any).InvestorProofPacket().get();
+
+    expect(proofLinkById(payload, REPRESENTATIVE_FEED_LINK)).toMatchObject({
+      sourceIds: ["article-a"],
+      limitation: null,
+    });
+    expect(proofLinkById(payload, REPRESENTATIVE_FIRM_LINK)).toMatchObject({
+      sourceIds: ["firm-b"],
+      limitation: null,
+    });
+    expect(proofLinkById(payload, REPRESENTATIVE_RANKING_LINK)).toMatchObject({
+      sourceIds: [RANKING_ENTRY_A_ID],
+      limitation: null,
+    });
+    expect(
+      proofLinkById(payload, REPRESENTATIVE_RECRUITING_LINK)
+    ).toMatchObject({
+      sourceIds: [TRANSITION_A_ID],
+      limitation: null,
+    });
   });
 
   it("counts branch-linked advisors only for known branch rows", async () => {

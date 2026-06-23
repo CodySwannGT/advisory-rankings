@@ -17,6 +17,11 @@ import {
 } from "./resource-advisor-research-queue.js";
 import type { AdvisorResearchQueueItem } from "./resource-advisor-research-items.js";
 import type { AdvisorResearchQueuePriorityGroup } from "./resource-advisor-research-priority-groups.js";
+import { feedItem } from "./resource-feed.js";
+import { canonicalizeForFirmsDirectory } from "./resource-firm-canonicalization.js";
+import { compareFirmDirectoryRows } from "./resource-directory-sorting.js";
+import { rankingEntries } from "./resource-rankings-explorer-entries.js";
+import { recruitingMoves } from "./resource-recruiting-market-helpers.js";
 
 /** One public route or resource that can replay a packet claim. */
 export interface InvestorProofLink {
@@ -64,6 +69,8 @@ const FEED_RESOURCE = "/Feed";
 const PUBLIC_FIRMS_RESOURCE = "/PublicFirms";
 const RANKINGS_EXPLORER_RESOURCE = "/RankingsExplorer";
 const RECRUITING_MARKET_RESOURCE = "/RecruitingMarket";
+const NO_DUE_RESEARCH_LIMITATION =
+  "No due public advisor research rows are available for this packet.";
 
 /** Read-only public investor coverage proof packet data resource. */
 export class InvestorProofPacket extends Resource {
@@ -115,9 +122,7 @@ export function investorProofPacketResponse(
       priorityGroups: freshness.summary.priorityGroups,
       representativeAdvisors: freshness.items.slice(0, 3),
       limitation:
-        freshness.summary.returned === 0
-          ? "No due public advisor research rows are available for this packet."
-          : null,
+        freshness.summary.returned === 0 ? NO_DUE_RESEARCH_LIMITATION : null,
     },
     proofLinks,
     provenance: {
@@ -168,10 +173,10 @@ function representativeProofLinks(
   return [
     coverageLink(),
     researchLink(db.researchChecks.length),
-    feedLink(firstArticle(db.articles)),
-    firmLink(firstFirm(db.firms)),
-    rankingLink(firstRankingEntry(db.rankingEntries)),
-    recruitingLink(firstTransition(db.transitions)),
+    feedLink(firstPublicFeedArticle(db)),
+    firmLink(firstPublicFirm(db)),
+    rankingLink(firstPublicRankingEntry(db)),
+    recruitingLink(firstPublicTransition(db)),
   ];
 }
 
@@ -282,43 +287,60 @@ function recruitingLink(
 }
 
 /**
- * Finds the first article with stable public routing fields.
- * @param articles - Loaded article rows.
+ * Finds the first article the public feed builder can shape for routing.
+ * @param db - Shared Harper resource index.
  * @returns First article row or null.
  */
-function firstArticle(articles: ReadonlyArray<ArticleRow>): ArticleRow | null {
-  return articles.find(article => article.id && article.headline) ?? null;
+function firstPublicFeedArticle(db: ResourceIndex): ArticleRow | null {
+  return (
+    db.articles.find(article => {
+      if (!article.id || !article.headline) return false;
+      return feedItem(article, db).article.id === article.id;
+    }) ?? null
+  );
 }
 
 /**
- * Finds the first firm with stable public routing fields.
- * @param firms - Loaded firm rows.
+ * Finds the first firm after applying public directory canonicalization.
+ * @param db - Shared Harper resource index.
  * @returns First firm row or null.
  */
-function firstFirm(firms: ReadonlyArray<FirmRow>): FirmRow | null {
-  return firms.find(firm => firm.id && firm.name) ?? null;
+function firstPublicFirm(db: ResourceIndex): FirmRow | null {
+  const { firms } = canonicalizeForFirmsDirectory({
+    firms: db.firms,
+    firmAliases: db.firmAliases,
+  });
+  return (
+    [...firms]
+      .sort(compareFirmDirectoryRows)
+      .find(firm => firm.id && firm.name) ?? null
+  );
 }
 
 /**
- * Finds a representative ranking entry.
- * @param entries - Loaded ranking entries.
+ * Finds a representative ranking entry from public explorer entries.
+ * @param db - Shared Harper resource index.
  * @returns First ranking entry row or null.
  */
-function firstRankingEntry(
-  entries: ReadonlyArray<RankingEntryRow>
-): RankingEntryRow | null {
-  return entries.find(entry => entry.id) ?? null;
+function firstPublicRankingEntry(db: ResourceIndex): RankingEntryRow | null {
+  const entry = rankingEntries(db).find(candidate =>
+    candidate.provenance.sourceIds.some(isNonEmptyString)
+  );
+  const id = entry?.provenance.sourceIds.find(isNonEmptyString);
+  return id ? (db.rankingEntries.find(row => row.id === id) ?? null) : null;
 }
 
 /**
- * Finds a representative transition event.
- * @param transitions - Loaded transition events.
+ * Finds a representative transition event from public recruiting moves.
+ * @param db - Shared Harper resource index.
  * @returns First transition row or null.
  */
-function firstTransition(
-  transitions: ReadonlyArray<TransitionEventRow>
-): TransitionEventRow | null {
-  return transitions.find(transition => transition.id) ?? null;
+function firstPublicTransition(db: ResourceIndex): TransitionEventRow | null {
+  const move = recruitingMoves(db).find(candidate =>
+    candidate.provenance.sourceIds.some(isNonEmptyString)
+  );
+  const id = move?.provenance.sourceIds.find(isNonEmptyString);
+  return id ? (db.byTransition.get(id) ?? null) : null;
 }
 
 /**
@@ -346,9 +368,7 @@ function unavailableStates(
 ): ReadonlyArray<string> {
   const states = [
     ...coverageLimitations,
-    freshness.summary.returned === 0
-      ? "No due public advisor research rows are available for this packet."
-      : null,
+    freshness.summary.returned === 0 ? NO_DUE_RESEARCH_LIMITATION : null,
     ...links.map(link => link.limitation),
   ].filter(isNonEmptyString);
   return [...new Set(states)];
