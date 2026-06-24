@@ -618,7 +618,7 @@ function metric(
   label: string,
   value: DataCoverageMetric["value"],
   source: string,
-  publicResource: string,
+  publicResource: DataCoverageMetric["publicResource"],
   limitation: string | null = null
 ): DataCoverageMetric {
   return { id, label, value, source, publicResource, limitation };

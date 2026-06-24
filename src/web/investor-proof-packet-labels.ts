@@ -78,7 +78,7 @@ export function sourceTableLabel(source: string | null): string {
     case "ArticleTransitionEventMention":
       return "article recruiting references";
     default:
-      return routeLabel(source);
+      return routeLabel(table);
   }
 }
 
