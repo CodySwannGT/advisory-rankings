@@ -100,6 +100,13 @@ browserDescribe("investor proof packet route (#1369)", () => {
           .locator('[data-investor-proof-metric="ranking-entries"]')
           .textContent()
       ).toContain("Unavailable");
+      await page
+        .locator('[data-investor-proof-metric="field-assertions"]')
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      const visiblePacketText = await page.locator("body").textContent();
+      expect(visiblePacketText).not.toMatch(
+        /FieldAssertion|AdvisorResearchCheck|advisor research check\.checked|Stable public route|: null/u
+      );
       await page.getByText(RANKING_LIMITATION).first().waitFor({
         timeout: QUICK_TIMEOUT,
       });
@@ -157,6 +164,9 @@ browserDescribe("investor proof packet route (#1369)", () => {
         .waitFor({ timeout: QUICK_TIMEOUT });
       const desktopFacts = await packetFacts(page);
       expectMetricParity(snapshots.packet, snapshots.coverage, desktopFacts);
+      expect(desktopFacts.visibleText).not.toMatch(
+        /FieldAssertion|AdvisorResearchCheck|advisor research check\.checked|Stable public route|: null/u
+      );
       expect(desktopFacts.privateHrefCount).toBe(0);
       expect(desktopFacts.unsupportedPositiveClaimCount).toBe(0);
       expect(desktopFacts.overflow).toBe(false);
@@ -184,6 +194,9 @@ browserDescribe("investor proof packet route (#1369)", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       const mobileFacts = await packetFacts(page);
       expectMetricParity(snapshots.packet, snapshots.coverage, mobileFacts);
+      expect(mobileFacts.visibleText).not.toMatch(
+        /FieldAssertion|AdvisorResearchCheck|advisor research check\.checked|Stable public route|: null/u
+      );
       expect(mobileFacts.privateHrefCount).toBe(0);
       expect(mobileFacts.unsupportedPositiveClaimCount).toBe(0);
       expect(mobileFacts.overflow).toBe(false);
@@ -241,6 +254,7 @@ interface PacketFacts {
   readonly privateHrefCount: number;
   readonly researchProfileHref: string;
   readonly unsupportedPositiveClaimCount: number;
+  readonly visibleText: string;
 }
 
 async function deployedSnapshots(): Promise<DeployedSnapshots> {
@@ -371,6 +385,7 @@ async function packetFacts(page: Page): Promise<PacketFacts> {
       unsupportedPositiveClaimCount: unsupportedClaims.filter(claim =>
         body.includes(claim)
       ).length,
+      visibleText: body,
     };
   });
 }
@@ -485,6 +500,13 @@ function packetPayload(): InvestorProofPacketResponse {
           "/RankingsExplorer",
           RANKING_LIMITATION
         ),
+        metric(
+          "field-assertions",
+          "Source-backed facts",
+          null,
+          "FieldAssertion",
+          null
+        ),
       ],
       limitations: [RANKING_LIMITATION],
     },
@@ -543,7 +565,10 @@ function packetPayload(): InvestorProofPacketResponse {
         "research-freshness",
         "Research freshness workbench",
         "/research/freshness",
-        RESOURCE_ADVISOR_RESEARCH_QUEUE
+        RESOURCE_ADVISOR_RESEARCH_QUEUE,
+        [],
+        null,
+        SOURCE_ADVISOR_RESEARCH_CHECK
       ),
       link(
         "representative-feed",
@@ -593,7 +618,7 @@ function metric(
   label: string,
   value: DataCoverageMetric["value"],
   source: string,
-  publicResource: string,
+  publicResource: DataCoverageMetric["publicResource"],
   limitation: string | null = null
 ): DataCoverageMetric {
   return { id, label, value, source, publicResource, limitation };
@@ -607,6 +632,7 @@ function metric(
  * @param publicResource - Public resource path.
  * @param sourceIds - Source ids.
  * @param limitation - Optional limitation copy.
+ * @param sourceTable - Optional source table override.
  * @returns Proof link fixture.
  */
 function link(
@@ -615,14 +641,15 @@ function link(
   url: string,
   publicResource: string,
   sourceIds: readonly string[] = [],
-  limitation: string | null = null
+  limitation: string | null = null,
+  sourceTable = publicResource.replace("/", "")
 ) {
   return {
     id,
     label,
     url,
     publicResource,
-    sourceTable: publicResource.replace("/", ""),
+    sourceTable,
     sourceIds,
     limitation,
   };
