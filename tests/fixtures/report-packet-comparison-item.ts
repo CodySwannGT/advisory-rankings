@@ -40,11 +40,13 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
   if (index !== 0) {
     return emptyComparisonDetails();
   }
+
+  const firmName = `Firm ${index + 1}`;
   return {
     brokerCheck: { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT },
     career: [
       {
-        firm: { name: `Firm ${index + 1}` },
+        firm: { name: firmName },
         roleTitle: "Managing director",
       },
     ],
@@ -79,20 +81,24 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
       {
         articleId: "article-1",
         fieldName: "firm",
-        assertedValue: `Firm ${index + 1}`,
+        assertedValue: firmName,
         quotePhrase: "Firm 1",
         confidence: "high",
       },
     ],
-    researchSources: [
-      {
-        sourceType: "brokercheck",
-        status: "checked",
-        checkedAt: BROKERCHECK_FETCHED_AT,
-        sourcesChecked: ["FINRA BrokerCheck"],
-      },
-    ],
+    researchSources: brokerCheckResearchSources(),
   };
+}
+
+function brokerCheckResearchSources(): readonly Record<string, unknown>[] {
+  return [
+    {
+      sourceType: "brokercheck",
+      status: "checked",
+      checkedAt: BROKERCHECK_FETCHED_AT,
+      sourcesChecked: ["FINRA BrokerCheck"],
+    },
+  ];
 }
 
 function emptyComparisonDetails(): Record<string, unknown> {

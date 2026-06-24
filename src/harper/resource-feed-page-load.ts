@@ -61,6 +61,27 @@ const rowsByIndexed = async <T>(
   return fetched.flat();
 };
 
+/**
+ * Loads firms that are referenced by hydrated advisor/team rows but were not
+ * directly mentioned by the article join rows.
+ * @param earlyFirms - Firms already loaded from explicit mentions/events.
+ * @param employments - Employment rows for mentioned advisors.
+ * @param teams - Team rows mentioned by articles or events.
+ * @returns Additional firm rows needed for chip subtitles.
+ */
+async function loadExtraFirms(
+  earlyFirms: readonly FirmRow[],
+  employments: readonly EmploymentHistoryRow[],
+  teams: readonly TeamRow[]
+): Promise<readonly FirmRow[]> {
+  const earlyFirmIdSet = new Set(earlyFirms.map(firm => firm.id));
+  const extraFirmIds = distinct([
+    ...employments.map(e => e.firmId),
+    ...teams.map(t => t.currentFirmId),
+  ]).filter(id => !earlyFirmIdSet.has(id));
+  return await rowsByIds<FirmRow>(tables.Firm, extraFirmIds);
+}
+
 /** Shared shape of the five article→mention join rows: each carries an `articleId`. */
 interface ArticleMentionRow {
   readonly articleId?: string;
@@ -232,16 +253,7 @@ const loadMentionedEntities = async (
         disclosureIds
       ),
     ]);
-  // Employments and team-currentFirmIds may reference firms the
-  // mention pass missed (an advisor moved to a firm not separately
-  // mentioned in the article). Fetch those extra firms by id so the
-  // chip's firm subtitle resolves.
-  const earlyFirmIdSet = new Set(earlyFirms.map(firm => firm.id));
-  const extraFirmIds = distinct([
-    ...employments.map(e => e.firmId),
-    ...teams.map(t => t.currentFirmId),
-  ]).filter(id => !earlyFirmIdSet.has(id));
-  const extraFirms = await rowsByIds<FirmRow>(tables.Firm, extraFirmIds);
+  const extraFirms = await loadExtraFirms(earlyFirms, employments, teams);
   return {
     advisors,
     firms: [...earlyFirms, ...extraFirms],

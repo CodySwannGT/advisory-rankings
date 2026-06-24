@@ -158,7 +158,6 @@ function render(
   const latest: MetricSnapshotView | undefined =
     metricSnapshots[metricSnapshots.length - 1];
   const currentFirm: CurrentFirmChip | null = asCurrentFirm(d.currentFirm);
-
   canonicalizeEntityRoute("team", t);
   appendSections(center, [
     teamProfileHead(t, d, currentFirm, latest),
@@ -181,8 +180,24 @@ function render(
     PartialFailureCard("Coverage", d.articles),
     mobileTeamDetailsCard(t, currentFirm),
   ]);
+  appendTeamSidebar(right, t, currentFirm, latest);
+}
+
+/**
+ * Appends the team profile right-sidebar sections.
+ * @param right - Right sidebar column.
+ * @param team - Team profile record.
+ * @param currentFirm - Current firm record when present.
+ * @param latest - Latest metric snapshot when present.
+ */
+function appendTeamSidebar(
+  right: HTMLElement,
+  team: TeamProfileResponse["team"],
+  currentFirm: CurrentFirmChip | null,
+  latest: MetricSnapshotView | undefined
+): void {
   appendSections(right, [
-    teamDetailsCard(t, currentFirm),
+    teamDetailsCard(team, currentFirm),
     latestMetricsCard(latest),
   ]);
 }
