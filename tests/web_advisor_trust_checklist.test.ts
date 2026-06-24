@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
-import { chromium, type Browser, type Page } from "playwright";
+import { join } from "node:path";
+import { chromium, type Browser, type Page, type Route } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -8,15 +10,19 @@ import {
   type AdvisorTrustChecklistRow,
 } from "../src/web/advisor-trust-checklist.js";
 import type { AdvisorProfilePayload } from "../src/types/advisor-profile.js";
+import type { AdvisorResearchQueueResponse } from "../src/harper/resource-advisor-research-queue.js";
 import {
   ADVISOR_ID,
   baseUrlOf,
+  captureViewports,
   QUICK_TIMEOUT,
   routeAdvisor,
   routeAuth,
+  SHOTS,
   startStaticServer,
 } from "./fixtures/watchlist-ui-harness.js";
 
+const DEV_BASE = "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const UNSUPPORTED_POSITIVE_CLAIMS =
   /clean|safe|verified|risk-free|zero-risk|suitability|misconduct-free/i;
 const DISCLOSURE_ROW_ID = "disclosures-regulatory-signals";
@@ -157,6 +163,7 @@ browserDescribe("advisor trust checklist profile UI", () => {
   beforeAll(async () => {
     server = await startStaticServer();
     baseUrl = baseUrlOf(server);
+    await mkdir(SHOTS, { recursive: true });
     browser = await chromium.launch({ headless: true });
   });
 
@@ -206,6 +213,76 @@ browserDescribe("advisor trust checklist profile UI", () => {
       }
     }
   );
+
+  it("replays deployed public advisor payloads against checklist copy and anchors", async () => {
+    const snapshots = await deployedSnapshots();
+    const advisorId = deployedProfileId(snapshots.publicAdvisors);
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    });
+    try {
+      await routeAuth(page, false);
+      await routeDeployedAdvisorResources(page, snapshots, advisorId);
+
+      await page.goto(`${baseUrl}/advisor.html?id=${advisorId}`, {
+        waitUntil: "networkidle",
+      });
+      await page
+        .getByRole("heading", { name: "Advisor trust checklist" })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      const desktop = await checklistEvidence(page);
+      expect(desktop).toMatchObject({
+        rowCount: 7,
+        hasOverflow: false,
+        supportLinkCount: EXPECTED_SUPPORT_LINK_COUNT,
+        linkTargetsExist: true,
+      });
+      expect(rowEvidenceById(desktop, "finra-crd")).toMatchObject({
+        state: "Unavailable public data",
+      });
+      expect(rowEvidenceById(desktop, "finra-crd").summary).toContain(
+        "source-data limitation"
+      );
+      expect(rowEvidenceById(desktop, "evidence-freshness")).toMatchObject({
+        state: expectedFreshnessState(snapshots.advisorProfile),
+      });
+      expect(checklistCopy(desktop)).not.toMatch(UNSUPPORTED_POSITIVE_CLAIMS);
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      const mobile = await checklistEvidence(page);
+      expect(mobile).toMatchObject({
+        rowCount: 7,
+        hasOverflow: false,
+        supportLinkCount: EXPECTED_SUPPORT_LINK_COUNT,
+        linkTargetsExist: true,
+      });
+      expect(checklistCopy(mobile)).not.toMatch(UNSUPPORTED_POSITIVE_CLAIMS);
+
+      const evidence = {
+        proxyBase: DEV_BASE,
+        advisorId,
+        publicAdvisors: publicAdvisorsExcerpt(snapshots.publicAdvisors),
+        advisorProfile: advisorProfileExcerpt(snapshots.advisorProfile),
+        advisorResearchQueue: advisorResearchQueueExcerpt(
+          snapshots.advisorResearchQueue
+        ),
+        desktop,
+        mobile,
+      };
+      await writeFile(
+        join(SHOTS, "issue-1403-advisor-trust-checklist-proof.json"),
+        `${JSON.stringify(evidence, null, 2)}\n`
+      );
+      await captureViewports(page, "issue-1403-advisor-trust-checklist");
+      console.log(
+        "[EVIDENCE: advisor-trust-checklist-deployed]",
+        JSON.stringify(evidence)
+      );
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 /**
@@ -217,8 +294,10 @@ async function checklistEvidence(page: Page): Promise<{
   readonly hasOverflow: boolean;
   readonly labels: readonly string[];
   readonly linkTargetsExist: boolean;
+  readonly rows: readonly RowEvidence[];
   readonly rowCount: number;
   readonly supportLinkCount: number;
+  readonly visibleText: string;
 }> {
   return await page.evaluate(() => {
     const rows = [
@@ -241,10 +320,197 @@ async function checklistEvidence(page: Page): Promise<{
       linkTargetsExist: links.every(link =>
         Boolean(document.querySelector(link.getAttribute("href") ?? ""))
       ),
+      rows: rows.map(row => ({
+        id: row.dataset.trustRow ?? "",
+        label:
+          row.querySelector<HTMLElement>(".advisor-trust-row-label")
+            ?.textContent ?? "",
+        state:
+          row.querySelector<HTMLElement>(".advisor-trust-row-state")
+            ?.textContent ?? "",
+        summary:
+          row.querySelector<HTMLElement>(".advisor-trust-row-summary")
+            ?.textContent ?? "",
+        supportHref:
+          row
+            .querySelector<HTMLAnchorElement>(".advisor-trust-row-support")
+            ?.getAttribute("href") ?? null,
+      })),
       rowCount: rows.length,
       supportLinkCount: links.length,
+      visibleText: document.body.textContent ?? "",
     };
   });
+}
+
+interface RowEvidence {
+  readonly id: string;
+  readonly label: string;
+  readonly state: string;
+  readonly summary: string;
+  readonly supportHref: string | null;
+}
+
+interface PublicAdvisorRow {
+  readonly id: string;
+  readonly legalName?: string | null;
+  readonly preferredName?: string | null;
+  readonly finraCrd?: string | null;
+  readonly readiness?: {
+    readonly crd?: string;
+    readonly freshness?: string;
+    readonly limitations?: readonly string[];
+  };
+}
+
+interface PublicAdvisorsResponse {
+  readonly items: readonly PublicAdvisorRow[];
+  readonly total?: number;
+}
+
+interface DeployedSnapshots {
+  readonly publicAdvisors: PublicAdvisorsResponse;
+  readonly advisorProfile: AdvisorProfilePayload;
+  readonly advisorResearchQueue: AdvisorResearchQueueResponse;
+}
+
+async function deployedSnapshots(): Promise<DeployedSnapshots> {
+  const publicAdvisors = await fetchJson<PublicAdvisorsResponse>(
+    "/PublicAdvisors?limit=10"
+  );
+  const advisorId = deployedProfileId(publicAdvisors);
+  const [advisorProfile, advisorResearchQueue] = await Promise.all([
+    fetchJson<AdvisorProfilePayload>(
+      `/AdvisorProfile/${encodeURIComponent(advisorId)}`
+    ),
+    fetchJson<AdvisorResearchQueueResponse>("/AdvisorResearchQueue?limit=5"),
+  ]);
+  return { publicAdvisors, advisorProfile, advisorResearchQueue };
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${DEV_BASE}${path}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+  return (await response.json()) as T;
+}
+
+async function routeDeployedAdvisorResources(
+  page: Page,
+  snapshots: DeployedSnapshots,
+  advisorId: string
+): Promise<void> {
+  await page.route("**/*", async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === `/AdvisorProfile/${advisorId}`) {
+      await route.fulfill({ json: snapshots.advisorProfile });
+      return;
+    }
+    if (
+      url.pathname === "/PublicAdvisors" ||
+      url.pathname === "/AdvisorResearchQueue"
+    ) {
+      await proxy(route);
+      return;
+    }
+    await route.fallback();
+  });
+}
+
+async function proxy(route: Route): Promise<void> {
+  const url = new URL(route.request().url());
+  await route.fulfill({
+    response: await route.fetch({
+      url: `${DEV_BASE}${url.pathname}${url.search}`,
+      timeout: 60_000,
+    }),
+  });
+}
+
+function deployedProfileId(publicAdvisors: PublicAdvisorsResponse): string {
+  const advisor = publicAdvisors.items.find(
+    item =>
+      item.finraCrd === null ||
+      item.readiness?.crd === "absent" ||
+      item.readiness?.freshness === "unknown"
+  );
+  if (!advisor) {
+    throw new Error("No deployed advisor with missing CRD or freshness data");
+  }
+  return advisor.id;
+}
+
+function rowEvidenceById(
+  evidence: Awaited<ReturnType<typeof checklistEvidence>>,
+  id: string
+): RowEvidence {
+  const row = evidence.rows.find(candidate => candidate.id === id);
+  if (!row) throw new Error(`Missing rendered row ${id}`);
+  return row;
+}
+
+function checklistCopy(
+  evidence: Awaited<ReturnType<typeof checklistEvidence>>
+): string {
+  return evidence.rows
+    .flatMap(row => [row.label, row.state, row.summary])
+    .join(" ");
+}
+
+function publicAdvisorsExcerpt(
+  publicAdvisors: PublicAdvisorsResponse
+): Readonly<Record<string, unknown>> {
+  return {
+    total: publicAdvisors.total,
+    items: publicAdvisors.items.slice(0, 3).map(item => ({
+      id: item.id,
+      legalName: item.legalName,
+      preferredName: item.preferredName,
+      finraCrd: item.finraCrd,
+      readiness: item.readiness,
+    })),
+  };
+}
+
+function advisorProfileExcerpt(
+  profile: AdvisorProfilePayload
+): Readonly<Record<string, unknown>> {
+  return {
+    id: profile.advisor.id,
+    displayName: profile.displayName,
+    finraCrd: profile.advisor.finraCrd,
+    evidenceFreshness: profile.evidenceFreshness,
+    disclosureCount: profile.disclosures.length,
+    articleCount: profile.articles.length,
+    reviewedNoteCount:
+      (profile.reviewedCorrectionRequests?.length ?? 0) +
+      (profile.reviewedRegulatoryDiscrepancies?.length ?? 0),
+  };
+}
+
+function expectedFreshnessState(profile: AdvisorProfilePayload): string {
+  return profile.evidenceFreshness.hasData &&
+    profile.evidenceFreshness.lastCheckedAt
+    ? "Source-backed"
+    : "No public row loaded";
+}
+
+function advisorResearchQueueExcerpt(
+  queue: AdvisorResearchQueueResponse
+): Readonly<Record<string, unknown>> {
+  return {
+    generatedAt: queue.generatedAt,
+    summary: queue.summary,
+    firstItems: queue.items.slice(0, 3).map(item => ({
+      advisorId: item.advisorId,
+      advisorName: item.advisorName,
+      finraCrd: item.finraCrd,
+      profileUrl: item.profileUrl,
+      status: item.status,
+      missingFields: item.missingFields,
+    })),
+  };
 }
 
 function rowStates(
