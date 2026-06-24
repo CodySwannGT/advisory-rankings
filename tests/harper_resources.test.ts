@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokensForAdvisor } from "../src/lib/advisor-tokens.js";
 import { advisorSearchIndexId } from "../src/lib/advisor-search-index.js";
+import { groupEmploymentsByBranch } from "../src/harper/resource-directory-branch-employment.js";
 
 /**
  * Harper resource tests use a small in-memory table snapshot so profile,
@@ -5566,8 +5567,7 @@ describe("Harper directory and search resources", () => {
     });
   });
 
-  it("loads public branch employment by firm and merged firm ids for source-backed filters", async () => {
-    const oldFirmId = "old-firm-a";
+  it("loads public branch employment by branch id for source-backed filters", async () => {
     const branchRows = Array.from({ length: 30 }, (_unused, index) => ({
       id: `branch-batch-${String(index).padStart(2, "0")}`,
       firmId: "firm-a",
@@ -5579,29 +5579,23 @@ describe("Harper directory and search resources", () => {
     const employmentRows = branchRows.map((branch, index) => ({
       id: `employment-batch-${String(index).padStart(2, "0")}`,
       advisorId: `advisor-batch-${String(index).padStart(2, "0")}`,
-      firmId: index === 0 ? oldFirmId : "firm-a",
+      firmId: index === 0 ? "firm-mismatch" : "firm-a",
       branchId: branch.id,
       sourceType: "brokercheck",
     }));
     setRows("Branch", branchRows);
     setRows("EmploymentHistory", employmentRows);
-    setRows("FirmMergeAudit", [
-      {
-        id: "merge-old-firm-a",
-        oldFirmId,
-        canonicalFirmId: "firm-a",
-      },
-    ]);
     const original = (globalThis as any).tables.EmploymentHistory;
     let searchCount = 0;
     (globalThis as any).tables.EmploymentHistory = {
       search: (query: any) => {
         searchCount += 1;
-        const firmId = query?.conditions?.[0]?.value;
-        expect(["firm-a", oldFirmId]).toContain(firmId);
+        expect(query?.conditions?.[0]?.attribute).toBe("branchId");
+        const branchId = query?.conditions?.[0]?.value;
+        expect(branchRows.map(branch => branch.id)).toContain(branchId);
         return (async function* () {
           for (const row of employmentRows)
-            if (row.firmId === firmId) yield row;
+            if (row.branchId === branchId) yield row;
         })();
       },
     };
@@ -5617,10 +5611,42 @@ describe("Harper directory and search resources", () => {
 
       expect(result.total).toBe(30);
       expect(result.items).toHaveLength(30);
-      expect(searchCount).toBe(2);
+      expect(searchCount).toBe(30);
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }
+  });
+
+  it("groups branch employment rows and ignores unlinked history", () => {
+    const grouped = groupEmploymentsByBranch([
+      {
+        id: "employment-unlinked",
+        advisorId: "advisor-unlinked",
+        firmId: "firm-a",
+      },
+      {
+        id: "employment-branch-a",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_ATLANTA_ID,
+      },
+      {
+        id: "employment-branch-b",
+        advisorId: "advisor-b",
+        firmId: "firm-a",
+        branchId: BRANCH_AUSTIN_ID,
+      },
+      {
+        id: "employment-branch-a-second",
+        advisorId: "advisor-c",
+        firmId: "firm-b",
+        branchId: BRANCH_ATLANTA_ID,
+      },
+    ]);
+
+    expect([...grouped.keys()]).toEqual([BRANCH_ATLANTA_ID, BRANCH_AUSTIN_ID]);
+    expect(grouped.get(BRANCH_ATLANTA_ID)).toHaveLength(2);
+    expect(grouped.get(BRANCH_AUSTIN_ID)).toHaveLength(1);
   });
 
   it("groups public branch coverage gaps without flattening unknown states", async () => {
