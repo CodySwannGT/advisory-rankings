@@ -1,7 +1,6 @@
 import type {
   BranchRow,
   EmploymentHistoryRow,
-  FirmMergeAuditRow,
 } from "../types/harper-schema.js";
 import { rowsByAttribute } from "./resource-directory-tables.js";
 
@@ -18,24 +17,23 @@ type BranchEmploymentEntries = ReadonlyArray<
 >;
 
 /**
- * Loads employment rows through the allowed firmId index for public branch
- * firms, including pre-merge firm ids that still own branch-linked rows.
+ * Loads employment rows through the branchId index for public branch rows.
+ * This keeps `/PublicBranches` aligned with `/DataCoverage`, which classifies
+ * branch gaps from `EmploymentHistory.branchId`, without scanning the full
+ * employment table.
  * @param tables - Harper table registry.
  * @param branches - Branch rows whose branch ids need employment context.
- * @param firmMergeAudits - Firm merge rows used to expand canonical firm ids.
  * @returns Employment rows for the branches.
  */
 export async function employmentRowsForBranches(
   tables: HarperTables,
-  branches: ReadonlyArray<BranchRow>,
-  firmMergeAudits: ReadonlyArray<FirmMergeAuditRow>
+  branches: ReadonlyArray<BranchRow>
 ): Promise<ReadonlyArray<EmploymentHistoryRow>> {
-  const branchIds = new Set(branches.map(branch => branch.id));
-  const firmIds = firmIdsForBranches(branches, firmMergeAudits);
+  const branchIds = branches.map(branch => branch.id);
   const batches = Array.from(
-    { length: Math.ceil(firmIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
+    { length: Math.ceil(branchIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
     (_unused, batchIndex) =>
-      firmIds.slice(
+      branchIds.slice(
         batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH,
         batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH +
           BRANCH_EMPLOYMENT_LOOKUP_BATCH
@@ -46,39 +44,17 @@ export async function employmentRowsForBranches(
   >(async (accumulated, batch) => {
     const collected = await accumulated;
     const next = await Promise.all(
-      batch.map(firmId =>
+      batch.map(branchId =>
         rowsByAttribute<EmploymentHistoryRow>(
           tables.EmploymentHistory,
-          "firmId",
-          firmId
+          "branchId",
+          branchId
         )
       )
     );
     return [...collected, ...next];
   }, Promise.resolve([]));
-  return rows.flat().filter(row => row.branchId && branchIds.has(row.branchId));
-}
-
-/**
- * Expands branch firm ids with pre-merge ids that still appear on employment
- * rows.
- * @param branches - Branches being rendered.
- * @param firmMergeAudits - Merge audit rows linking old ids to canonical ids.
- * @returns Firm ids safe to query through the indexed firmId column.
- */
-function firmIdsForBranches(
-  branches: ReadonlyArray<BranchRow>,
-  firmMergeAudits: ReadonlyArray<FirmMergeAuditRow>
-): ReadonlyArray<string> {
-  const canonicalFirmIds = new Set(branches.map(branch => branch.firmId));
-  return [
-    ...new Set([
-      ...canonicalFirmIds,
-      ...firmMergeAudits
-        .filter(audit => canonicalFirmIds.has(audit.canonicalFirmId))
-        .map(audit => audit.oldFirmId),
-    ]),
-  ];
+  return rows.flat();
 }
 
 /**
