@@ -6,7 +6,9 @@ import {
 } from "../src/web/advisor-trust-checklist.js";
 import type { AdvisorProfilePayload } from "../src/types/advisor-profile.js";
 
-const UNSUPPORTED_POSITIVE_CLAIMS = /clean|safe|verified|risk-free|zero-risk/i;
+const UNSUPPORTED_POSITIVE_CLAIMS =
+  /clean|safe|verified|risk-free|zero-risk|suitability|misconduct-free/i;
+const DISCLOSURE_ROW_ID = "disclosures-regulatory-signals";
 
 describe("advisor trust checklist mapping", () => {
   it("marks available public profile signals as present or review-needed", () => {
@@ -20,14 +22,17 @@ describe("advisor trust checklist mapping", () => {
     expect(rowStates(rows)).toEqual({
       "article-context": "present",
       "contact-profile-readiness": "present",
-      "disclosures-regulatory-signals": "needs-review",
+      [DISCLOSURE_ROW_ID]: "needs-review",
       "evidence-freshness": "present",
       "finra-crd": "present",
       "firm-team-context": "present",
       "reviewed-notes": "needs-review",
     });
-    expect(rowById(rows, "disclosures-regulatory-signals").summary).toContain(
-      "public disclosure row loaded for review"
+    expect(rowById(rows, DISCLOSURE_ROW_ID).summary).toContain(
+      "public disclosure row loaded for reader review"
+    );
+    expect(rowById(rows, DISCLOSURE_ROW_ID).stateLabel).toBe(
+      "Review source details"
     );
   });
 
@@ -52,7 +57,7 @@ describe("advisor trust checklist mapping", () => {
     expect(rowStates(rows)).toEqual({
       "article-context": "not-found",
       "contact-profile-readiness": "missing",
-      "disclosures-regulatory-signals": "not-found",
+      [DISCLOSURE_ROW_ID]: "not-found",
       "evidence-freshness": "not-found",
       "finra-crd": "missing",
       "firm-team-context": "not-found",
@@ -70,7 +75,7 @@ describe("advisor trust checklist mapping", () => {
       "contact-profile-readiness",
       "finra-crd",
       "evidence-freshness",
-      "disclosures-regulatory-signals",
+      DISCLOSURE_ROW_ID,
       "firm-team-context",
       "article-context",
       "reviewed-notes",
@@ -84,6 +89,48 @@ describe("advisor trust checklist mapping", () => {
       "#profile-articles",
       "#reviewed-discrepancy-notes",
     ]);
+    expect(rows.map(row => row.supportLabel)).toEqual([
+      "Public readiness",
+      "Profile identity",
+      "Profile provenance",
+      "Disclosures",
+      "Career and teams",
+      "Coverage articles",
+      "Reviewed discrepancy notes",
+    ]);
+  });
+
+  it("keeps reviewed-note and disclosure summaries bounded to public counts", () => {
+    const rows = advisorTrustChecklistRows(
+      profileFixture({
+        disclosures: [{ privateDetail: "do not expose" }],
+        reviewedCorrectionRequests: [
+          {
+            fieldName: "bioText",
+            reviewerNote: "private correction reviewer note",
+          },
+        ],
+        reviewedRegulatoryDiscrepancies: [
+          {
+            fieldName: "crd",
+            reviewerNote: "private regulatory reviewer note",
+          },
+        ],
+      })
+    );
+
+    const boundedSummaries = [
+      rowById(rows, DISCLOSURE_ROW_ID).summary,
+      rowById(rows, "reviewed-notes").summary,
+    ].join(" ");
+
+    expect(boundedSummaries).toContain("1 public disclosure row");
+    expect(boundedSummaries).toContain(
+      "2 reviewed public discrepancy or correction notes"
+    );
+    expect(boundedSummaries).not.toMatch(
+      /private|do not expose|reviewer note/i
+    );
   });
 });
 
