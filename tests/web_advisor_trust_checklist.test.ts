@@ -20,11 +20,10 @@ import {
 const UNSUPPORTED_POSITIVE_CLAIMS =
   /clean|safe|verified|risk-free|zero-risk|suitability|misconduct-free/i;
 const DISCLOSURE_ROW_ID = "disclosures-regulatory-signals";
-const browserDescribe =
-  process.env.RUN_WEB_ADVISOR_TRUST_CHECKLIST_UI === "1" &&
-  existsSync(chromium.executablePath())
-    ? describe.sequential
-    : describe.skip;
+const browserDescribe = existsSync(chromium.executablePath())
+  ? describe.sequential
+  : describe.skip;
+const EXPECTED_SUPPORT_LINK_COUNT = 4;
 
 describe("advisor trust checklist mapping", () => {
   it("marks available public profile signals as present or review-needed", () => {
@@ -151,8 +150,8 @@ describe("advisor trust checklist mapping", () => {
 });
 
 browserDescribe("advisor trust checklist profile UI", () => {
-  let browser: Browser;
-  let server: Server;
+  let browser: Browser | undefined;
+  let server: Server | undefined;
   let baseUrl: string;
 
   beforeAll(async () => {
@@ -163,7 +162,11 @@ browserDescribe("advisor trust checklist profile UI", () => {
 
   afterAll(async () => {
     await browser?.close();
-    await new Promise<void>(resolveClose => server.close(() => resolveClose()));
+    if (server) {
+      await new Promise<void>(resolveClose =>
+        server?.close(() => resolveClose())
+      );
+    }
   });
 
   it.each([
@@ -186,6 +189,7 @@ browserDescribe("advisor trust checklist profile UI", () => {
         expect(await checklistEvidence(page)).toMatchObject({
           rowCount: 7,
           hasOverflow: false,
+          supportLinkCount: EXPECTED_SUPPORT_LINK_COUNT,
           linkTargetsExist: true,
           labels: [
             "Contact and profile readiness",
@@ -214,6 +218,7 @@ async function checklistEvidence(page: Page): Promise<{
   readonly labels: readonly string[];
   readonly linkTargetsExist: boolean;
   readonly rowCount: number;
+  readonly supportLinkCount: number;
 }> {
   return await page.evaluate(() => {
     const rows = [
@@ -237,6 +242,7 @@ async function checklistEvidence(page: Page): Promise<{
         Boolean(document.querySelector(link.getAttribute("href") ?? ""))
       ),
       rowCount: rows.length,
+      supportLinkCount: links.length,
     };
   });
 }
