@@ -96,19 +96,8 @@ function feedFilterChecks(
   emptyVisible: boolean
 ): readonly Check[] {
   return [
-    check(
-      semanticMode.canonicalUrl &&
-        semanticMode.selectedMode === "event" &&
-        semanticMode.summaryMatches &&
-        semanticMode.allHaveCards,
-      "/ feed filters: semantic event-backed URL canonicalizes to matching state",
-      `${semanticMode.url} | ${semanticMode.selectedMode} | ${semanticMode.summary}`
-    ),
-    check(
-      unsupportedMode.normalizedUrl && unsupportedMode.selectedMode === "all",
-      "/ feed filters: unsupported URL mode safely normalizes",
-      `${unsupportedMode.url} | ${unsupportedMode.selectedMode}`
-    ),
+    semanticModeCheck(semanticMode),
+    unsupportedModeCheck(unsupportedMode),
     check(
       eventFilter.url.includes("mode=event"),
       "/ feed filters: event-backed mode persists in URL",
@@ -146,6 +135,25 @@ function feedFilterChecks(
       "/ feed filters: zero-result combinations show explicit empty state"
     ),
   ];
+}
+
+function semanticModeCheck(semanticMode: SemanticModeResult): Check {
+  return check(
+    semanticMode.canonicalUrl &&
+      semanticMode.selectedMode === "event" &&
+      semanticMode.summaryMatches &&
+      semanticMode.allHaveCards,
+    "/ feed filters: semantic event-backed URL canonicalizes to matching state",
+    `${semanticMode.url} | ${semanticMode.selectedMode} | ${semanticMode.summary}`
+  );
+}
+
+function unsupportedModeCheck(unsupportedMode: UnsupportedModeResult): Check {
+  return check(
+    unsupportedMode.normalizedUrl && unsupportedMode.selectedMode === "all",
+    "/ feed filters: unsupported URL mode safely normalizes",
+    `${unsupportedMode.url} | ${unsupportedMode.selectedMode}`
+  );
 }
 
 /**

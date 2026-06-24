@@ -5,11 +5,9 @@ import {
   refreshMe,
   logout,
   search,
-  fmtDate,
   humanize,
   initials,
   getEntityIdParam,
-  articleSource,
   canonicalizeEntityRoute,
 } from "./app.js";
 import {
@@ -18,7 +16,6 @@ import {
   EmptyCard,
   ProfileHead,
   SectionCard,
-  ArticleListBlock,
   clear,
 } from "./design-system/index.js";
 import { privateRatingCard } from "./advisor-rating.js";
@@ -52,6 +49,7 @@ import {
   advisorEvidenceProfileSections,
   mountResponsiveEvidenceSections,
 } from "./advisor-evidence-sections.js";
+import { advisorCoverageSection } from "./advisor-coverage-section.js";
 import { isErrorPayload } from "./advisor-error-payload.js";
 import {
   isAdvisorTeamRow,
@@ -75,8 +73,6 @@ type DesignSystemComponent = (...args: readonly unknown[]) => HTMLElement;
 const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
 const EmptyCardComponent = EmptyCard as unknown as DesignSystemComponent;
 const ProfileHeadComponent = ProfileHead as unknown as DesignSystemComponent;
-const ArticleListBlockComponent =
-  ArticleListBlock as unknown as DesignSystemComponent;
 
 /** Tag descriptor accepted by `ProfileHead.tags`. */
 interface ProfileTag {
@@ -313,8 +309,8 @@ function advisorCenterSections(
 ): readonly (HTMLElement | null)[] {
   const transitions = resourceRows(d.transitions);
   const articles = resourceRows(d.articles);
-  const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [];
-  const reviewedCorrections = d.reviewedCorrectionRequests ?? [];
+  const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [],
+    reviewedCorrections = d.reviewedCorrectionRequests ?? [];
   const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
   return [
     compareAdvisorCard(d.advisor.id),
@@ -358,10 +354,7 @@ function advisorCenterSections(
         })
       : null,
     PartialFailureCard("Transitions involving this advisor", d.transitions),
-    SectionCardComponent({
-      title: `Coverage (${articles.length.toLocaleString()})`,
-      body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
-    }),
+    advisorCoverageSection(articles),
     PartialFailureCard("Coverage", d.articles),
   ];
 }
