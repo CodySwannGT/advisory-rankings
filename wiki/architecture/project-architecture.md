@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-17
+updated: 2026-06-24
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -18,6 +18,7 @@ sources:
   - ../sources/git/2026-06-15-advisory-rankings-git.md
   - ../sources/git/2026-06-16-advisory-rankings-git.md
   - ../sources/git/2026-06-17-advisory-rankings-git.md
+  - ../sources/git/2026-06-24-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -103,3 +104,11 @@ The 2026-06-17 git ingest shows architecture work around team-continuity timelin
 rendering, evidence-boundary preservation, browser/regression coverage, and evidence expectation
 documentation. It also records continued test-threshold maintenance and a Lisa 2.171.3 template
 update with a CI unblock fix. Source: wiki/sources/git/2026-06-17-advisory-rankings-git.md.
+
+The 2026-06-24 git ingest shows architecture work around advisor readiness, article evidence,
+investor proof packets, and branch-gap/coverage exploration. It records new public readiness and
+readiness-finder resources, article evidence limitations/maps, investor proof packet data and route
+surfaces, branch gap grouping/filter/lookup fixes, and continued privacy-boundary handling. It also
+captures UI polish for mobile advisor search, Team directory filters, comparison controls, recruiting
+shortlist briefs, regulatory labels, and global-search dismissal, plus nightly threshold and Lisa
+2.176.0 maintenance. Source: wiki/sources/git/2026-06-24-advisory-rankings-git.md.
