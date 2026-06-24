@@ -36,6 +36,7 @@ export function reviewedDiscrepancyNotesSection(
   );
   if (!notes.length) return null;
   return SectionCardC({
+    attrs: { id: "reviewed-discrepancy-notes" },
     title: `Reviewed discrepancy notes (${notes.length.toLocaleString()})`,
     body: elC(
       "div",

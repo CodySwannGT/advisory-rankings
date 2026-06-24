@@ -438,7 +438,7 @@ The pages have been migrated to the system:
 | Page | Template | Notable organisms used |
 |---|---|---|
 | `index.html` | `mountThreeColumnPage` | `FeedPostCard`, `BrowseCard`, `RollupCard`, `EntityRow`, `SectionCard` |
-| `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `Tag`, `SourceAttribution` (Career + Licenses + reviewed discrepancy notes cite FINRA BrokerCheck; evidence freshness and fact confidence panels collapse into the center column on mobile) |
+| `/advisors/<slug>-<id>` (`advisor.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, advisor trust checklist, `CareerTimeline`, `EntityList`, `DisclosureEventCard`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard`, `Tag`, `SourceAttribution` (Career + Licenses + reviewed discrepancy notes cite FINRA BrokerCheck; evidence freshness and fact confidence panels collapse into the center column on mobile) |
 | `/firms/<slug>-<id>` (`firm.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `EntityList`, `TransitionEventCard`, `DisclosureEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/teams/<slug>-<id>` (`team.html?id=…`) | `mountThreeColumnPage` | `ProfileHead`, `teamContinuityCard`, `EntityList`, `SnapshotTable`, `TransitionEventCard`, `ArticleListBlock`, `DetailsCard` |
 | `/articles/<slug>-<id>` (`article.html?id=…`) | `mountThreeColumnPage` | `PostHeader`, `ChipRow`, `articleEvidenceMap`, `TransitionEventCard`, `DisclosureEventCard`, `ScrollableTable`, `DetailsCard` |

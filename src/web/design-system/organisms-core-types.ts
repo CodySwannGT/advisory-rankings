@@ -127,6 +127,7 @@ export type DetailsCardPair = readonly [OrganismChildren, OrganismChildren];
 
 /** DetailsCard rendering options. */
 export interface DetailsCardOptions {
+  readonly attrs?: DomAttrs;
   readonly title?: OrganismChildren;
   readonly pairs: readonly DetailsCardPair[];
 }

@@ -17,6 +17,7 @@ export function publicReadinessCard(
   const readiness = advisorReadiness(profile.advisor, freshnessState(profile));
   const missingFields = readiness.limitations.join(" ");
   return DetailsCard({
+    attrs: { id: "public-readiness" },
     title: "Public readiness",
     pairs: [
       [

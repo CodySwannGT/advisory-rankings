@@ -1,14 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import type { Server } from "node:http";
+import { chromium, type Browser, type Page } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   advisorTrustChecklistRows,
   type AdvisorTrustChecklistRow,
 } from "../src/web/advisor-trust-checklist.js";
 import type { AdvisorProfilePayload } from "../src/types/advisor-profile.js";
+import {
+  ADVISOR_ID,
+  baseUrlOf,
+  QUICK_TIMEOUT,
+  routeAdvisor,
+  routeAuth,
+  startStaticServer,
+} from "./fixtures/watchlist-ui-harness.js";
 
 const UNSUPPORTED_POSITIVE_CLAIMS =
   /clean|safe|verified|risk-free|zero-risk|suitability|misconduct-free/i;
 const DISCLOSURE_ROW_ID = "disclosures-regulatory-signals";
+const browserDescribe = existsSync(chromium.executablePath())
+  ? describe.sequential
+  : describe.skip;
+const EXPECTED_SUPPORT_LINK_COUNT = 4;
 
 describe("advisor trust checklist mapping", () => {
   it("marks available public profile signals as present or review-needed", () => {
@@ -133,6 +148,104 @@ describe("advisor trust checklist mapping", () => {
     );
   });
 });
+
+browserDescribe("advisor trust checklist profile UI", () => {
+  let browser: Browser | undefined;
+  let server: Server | undefined;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    server = await startStaticServer();
+    baseUrl = baseUrlOf(server);
+    browser = await chromium.launch({ headless: true });
+  });
+
+  afterAll(async () => {
+    await browser?.close();
+    if (server) {
+      await new Promise<void>(resolveClose =>
+        server?.close(() => resolveClose())
+      );
+    }
+  });
+
+  it.each([
+    ["desktop", { width: 1280, height: 900 }],
+    ["mobile", { width: 390, height: 844 }],
+  ])(
+    "renders checklist rows and support targets on %s",
+    async (_name, viewport) => {
+      const page = await browser.newPage({ viewport });
+      try {
+        await routeAuth(page, false);
+        await routeAdvisor(page);
+        await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_ID}`, {
+          waitUntil: "networkidle",
+        });
+        await page
+          .getByRole("heading", { name: "Advisor trust checklist" })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+
+        expect(await checklistEvidence(page)).toMatchObject({
+          rowCount: 7,
+          hasOverflow: false,
+          supportLinkCount: EXPECTED_SUPPORT_LINK_COUNT,
+          linkTargetsExist: true,
+          labels: [
+            "Contact and profile readiness",
+            "FINRA CRD",
+            "Evidence freshness",
+            "Disclosures and regulatory signals",
+            "Firm and team context",
+            "Article context",
+            "Reviewed notes",
+          ],
+        });
+      } finally {
+        await page.close();
+      }
+    }
+  );
+});
+
+/**
+ * Reads rendered checklist and anchor-target evidence from the browser.
+ * @param page - Advisor profile page under test.
+ * @returns Rendered checklist evidence.
+ */
+async function checklistEvidence(page: Page): Promise<{
+  readonly hasOverflow: boolean;
+  readonly labels: readonly string[];
+  readonly linkTargetsExist: boolean;
+  readonly rowCount: number;
+  readonly supportLinkCount: number;
+}> {
+  return await page.evaluate(() => {
+    const rows = [
+      ...document.querySelectorAll<HTMLElement>(".advisor-trust-row"),
+    ];
+    const links = [
+      ...document.querySelectorAll<HTMLAnchorElement>(
+        ".advisor-trust-row-support[href^='#']"
+      ),
+    ];
+    return {
+      hasOverflow:
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth,
+      labels: rows.map(
+        row =>
+          row.querySelector<HTMLElement>(".advisor-trust-row-label")
+            ?.textContent ?? ""
+      ),
+      linkTargetsExist: links.every(link =>
+        Boolean(document.querySelector(link.getAttribute("href") ?? ""))
+      ),
+      rowCount: rows.length,
+      supportLinkCount: links.length,
+    };
+  });
+}
 
 function rowStates(
   rows: readonly AdvisorTrustChecklistRow[]
