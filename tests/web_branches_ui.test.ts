@@ -682,7 +682,13 @@ async function expectUniqueBranchRows(page: Page): Promise<void> {
     .evaluateAll(rows =>
       rows.map(row => row.getAttribute("data-branch-id") ?? "")
     );
-  expect(branchIds).toHaveLength(new Set(branchIds).size);
+  expect(branchIds).toEqual([
+    "branch-ny",
+    "branch-empty",
+    "branch-market",
+    "branch-partial",
+    "branch-missing-source",
+  ]);
 }
 
 /**

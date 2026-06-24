@@ -387,7 +387,11 @@ function expectMetricParity(
   );
   for (const metric of packet.coverage.keyMetrics) {
     const coverageMetric = coverageMetrics.get(metric.id);
-    expect(coverageMetric).toBeTruthy();
+    expect(coverageMetric, `coverage metric ${metric.id}`).toMatchObject({
+      id: metric.id,
+      label: metric.label,
+      source: metric.source,
+    });
     expect(
       metric.value === null &&
         coverageMetric?.value === 0 &&
