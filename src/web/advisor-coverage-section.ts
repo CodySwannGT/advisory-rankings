@@ -19,6 +19,7 @@ export function advisorCoverageSection(
   articles: readonly unknown[]
 ): HTMLElement {
   return SectionCardComponent({
+    attrs: { id: "profile-articles" },
     title: `Coverage (${articles.length.toLocaleString()})`,
     body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
   });

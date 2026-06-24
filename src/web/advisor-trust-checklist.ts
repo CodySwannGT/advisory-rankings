@@ -1,6 +1,17 @@
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
 import type { AdvisorReadiness } from "../harper/resource-advisor-readiness.js";
 import { advisorReadiness } from "../harper/resource-advisor-readiness.js";
+import { el, SectionCard, Tag } from "./design-system/index.js";
+
+/**
+ * Narrow callable type for design-system helpers that still opt out of TS.
+ */
+type DesignSystemComponent = (
+  options: Readonly<Record<string, unknown>>
+) => HTMLElement;
+
+const SectionCardComponent = SectionCard as unknown as DesignSystemComponent;
+const TagComponent = Tag as unknown as DesignSystemComponent;
 
 /** Public-safe checklist state for one advisor trust signal. */
 export type AdvisorTrustChecklistState =
@@ -70,6 +81,73 @@ export function advisorTrustChecklistRows(
     articlesRow(profile),
     reviewedNotesRow(profile),
   ];
+}
+
+/**
+ * Builds the public advisor profile trust checklist.
+ * @param profile - Public advisor profile payload.
+ * @returns Rendered checklist section.
+ */
+export function advisorTrustChecklistCard(
+  profile: AdvisorProfilePayload
+): HTMLElement {
+  return SectionCardComponent({
+    title: "Advisor trust checklist",
+    attrs: { class: "advisor-trust-card", id: "advisor-trust-checklist" },
+    body: el(
+      "div",
+      { class: "advisor-trust-checklist" },
+      advisorTrustChecklistRows(profile).map(advisorTrustChecklistRow)
+    ),
+  });
+}
+
+/**
+ * Builds one rendered trust checklist row.
+ * @param row - Trust checklist row model.
+ * @returns Rendered row.
+ */
+function advisorTrustChecklistRow(row: AdvisorTrustChecklistRow): HTMLElement {
+  return el(
+    "div",
+    {
+      class: `advisor-trust-row advisor-trust-row--${row.state}`,
+      "data-trust-row": row.id,
+    },
+    el(
+      "div",
+      { class: "advisor-trust-row-main" },
+      el("strong", { class: "advisor-trust-row-label" }, row.label),
+      el("p", { class: "advisor-trust-row-summary" }, row.summary),
+      row.state === STATE_NOT_FOUND
+        ? null
+        : el(
+            "a",
+            { class: "advisor-trust-row-support", href: row.supportHref },
+            `View ${row.supportLabel.toLowerCase()}`
+          )
+    ),
+    TagComponent({
+      kind: stateTagKind(row.state),
+      children: row.stateLabel,
+      attrs: { class: "advisor-trust-row-state" },
+    })
+  );
+}
+
+/**
+ * Maps checklist states to design-system tag tones.
+ * @param state - Checklist state.
+ * @returns Tag tone.
+ */
+function stateTagKind(
+  state: AdvisorTrustChecklistState
+): "ok" | "warn" | "default" {
+  return state === "present"
+    ? "ok"
+    : state === STATE_NEEDS_REVIEW
+      ? "warn"
+      : "default";
 }
 
 /**
@@ -214,8 +292,8 @@ function reviewedNotesRow(
   profile: AdvisorProfilePayload
 ): AdvisorTrustChecklistRow {
   const count =
-    profile.reviewedRegulatoryDiscrepancies.length +
-    profile.reviewedCorrectionRequests.length;
+    (profile.reviewedRegulatoryDiscrepancies?.length ?? 0) +
+    (profile.reviewedCorrectionRequests?.length ?? 0);
   return checklistRow({
     id: "reviewed-notes",
     label: "Reviewed notes",

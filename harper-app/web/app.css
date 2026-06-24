@@ -1359,6 +1359,62 @@ body.drawer-open .nav .nav-scrim {
 .advisor-evidence-card--warn {
   border-left: 3px solid var(--accent-amber);
 }
+.advisor-trust-card .card-body {
+  display: grid;
+  gap: 10px;
+}
+.advisor-trust-checklist {
+  display: grid;
+  gap: 10px;
+}
+.advisor-trust-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.advisor-trust-row--present {
+  border-left-color: var(--accent-green);
+}
+.advisor-trust-row--needs-review {
+  border-left-color: var(--accent-amber);
+}
+.advisor-trust-row-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.advisor-trust-row-label,
+.advisor-trust-row-summary,
+.advisor-trust-row-support {
+  overflow-wrap: anywhere;
+}
+.advisor-trust-row-label {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.advisor-trust-row-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.advisor-trust-row-support {
+  justify-self: start;
+  font-size: 13px;
+  font-weight: 700;
+}
+.advisor-trust-row-state {
+  max-width: 11rem;
+  text-align: right;
+  white-space: normal;
+}
 .advisor-confidence-bar {
   display: flex;
   width: 100%;
@@ -1429,6 +1485,14 @@ body.drawer-open .nav .nav-scrim {
 }
 
 @media (max-width: 700px) {
+  .advisor-trust-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .advisor-trust-row-state {
+    max-width: none;
+    justify-self: start;
+    text-align: left;
+  }
   .advisor-evidence-help p,
   .firm-dd-help p {
     position: fixed;

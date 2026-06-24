@@ -360,12 +360,18 @@ export function RollupCard<Row>({
 /**
  * Renders key-value profile details in a rail card.
  * @param root0 - Card rendering options.
+ * @param root0.attrs - Element attributes for the card.
  * @param root0.title - Primary display title.
  * @param root0.pairs - Label/value pairs for the details list.
  * @returns Rendered DOM node.
  */
-export function DetailsCard({ title, pairs }: DetailsCardOptions): HTMLElement {
+export function DetailsCard({
+  attrs,
+  title,
+  pairs,
+}: DetailsCardOptions): HTMLElement {
   return SectionCard({
+    attrs,
     body: [
       Heading({
         level: 3,

@@ -69,6 +69,7 @@ interface CareerSectionPayload {
  */
 export function careerSection(d: CareerSectionPayload): HTMLElement {
   return SectionCardC({
+    attrs: { id: "profile-career" },
     title: `Career (${d.career.length.toLocaleString()} firm${d.career.length === 1 ? "" : "s"})`,
     body: elC(
       "div",
@@ -254,6 +255,7 @@ export function disclosuresSection(
 ): HTMLElement | null {
   if (!disclosures.length) return null;
   return SectionCardC({
+    attrs: { id: "profile-disclosures" },
     title: `Disclosures (${disclosures.length.toLocaleString()})`,
     body: elC(
       "div",
@@ -306,6 +308,7 @@ export function outsideActivitiesSection(
  */
 export function identityCard(advisor: ResolvableAdvisor): HTMLElement {
   return DetailsCardC({
+    attrs: { id: "profile-identity" },
     title: "Identity",
     pairs: [
       ["Legal name", advisor.legalName],

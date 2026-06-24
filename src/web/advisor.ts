@@ -49,6 +49,7 @@ import {
   advisorEvidenceProfileSections,
   mountResponsiveEvidenceSections,
 } from "./advisor-evidence-sections.js";
+import { advisorTrustChecklistCard } from "./advisor-trust-checklist.js";
 import { advisorCoverageSection } from "./advisor-coverage-section.js";
 import { isErrorPayload } from "./advisor-error-payload.js";
 import {
@@ -317,6 +318,7 @@ function advisorCenterSections(
     addToWatchlistCard(d.advisor.id),
     privateRatingCard(d.advisor.id),
     advisorCorrectionCard(d),
+    advisorTrustChecklistCard(d),
     mobileEvidenceRoot,
     careerSection(d),
     teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
