@@ -112,3 +112,9 @@ surfaces, branch gap grouping/filter/lookup fixes, and continued privacy-boundar
 captures UI polish for mobile advisor search, Team directory filters, comparison controls, recruiting
 shortlist briefs, regulatory labels, and global-search dismissal, plus nightly threshold and Lisa
 2.176.0 maintenance. Source: wiki/sources/git/2026-06-24-advisory-rankings-git.md.
+
+The 2026-06-25 git ingest shows architecture work consolidating the advisor trust checklist path:
+checklist mapping, copy metadata preservation, advisor-profile rendering, browser coverage, and
+deployed replay verification landed together. It also records PublicBranches loaded-gap recovery
+with a branchId lookup revert, investor proof provenance copy cleanup, and continued test/complexity
+threshold maintenance. Source: wiki/sources/git/2026-06-25-advisory-rankings-git.md.

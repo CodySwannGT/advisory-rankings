@@ -222,6 +222,10 @@ wiki/sources/git/2026-06-24-advisory-rankings-git.md.
   readiness-finder hardening, investor proof packet data/routes/verification, branch-gap grouping
   and filter work, regulatory label humanization, BrokerCheck roster automation repair, nightly
   coverage and max-lines threshold tightening, and a Lisa 2.176.0 update.
+- The 2026-06-24 wiki ingest PR merged, followed by tighter web packet assertions, the coverage
+  threshold moving to 86, investor proof copy cleanup, PublicBranches loaded-gap repair and lookup
+  revert, advisor trust checklist mapping/copy/rendering/deployed replay work, max-lines threshold
+  maintenance, and release markers through 0.1.521.
 
 ## Use
 
@@ -245,4 +249,5 @@ wiki/sources/git/2026-06-14-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-15-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-16-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-17-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-24-advisory-rankings-git.md.
+wiki/sources/git/2026-06-24-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-25-advisory-rankings-git.md.
