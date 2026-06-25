@@ -68,7 +68,7 @@ export function summarizeRecruitingResourcePayload(
     recentMoves
   );
   const filterSlices = recruitingFilterSlices(recentMoves);
-  const compactSummary = recruitingCompactSummary({
+  const facts = {
     filterSlices,
     firmMomentumCount: firmMomentum.length,
     marketActivityCount: marketActivity.length,
@@ -80,19 +80,31 @@ export function summarizeRecruitingResourcePayload(
     sourceBackedCount,
     sourceStatusTags,
     summary,
-  });
+  };
+  const compactSummary = recruitingCompactSummary(facts);
   return {
     ...compactSummary,
-    validationReport: recruitingValidationReport({
-      moveCount,
-      marketActivityCount: marketActivity.length,
-      sourceBackedCount,
-      missingAumCount,
-      missingDealEconomicsStatusCount,
-      directionSliceCount: arrayValue(filterSlices.directions).length,
-      minimums: RECRUITING_DEPTH_THRESHOLDS,
-    }),
+    validationReport: recruitingResourceValidationReport(facts),
   };
+}
+
+/**
+ * Builds the validation section from captured recruiting summary facts.
+ * @param facts - Captured counts, tags, slices, and samples.
+ * @returns Validation report for recruiting depth thresholds.
+ */
+function recruitingResourceValidationReport(
+  facts: RecruitingCompactSummaryFacts
+): JsonRecord {
+  return recruitingValidationReport({
+    moveCount: facts.moveCount,
+    marketActivityCount: facts.marketActivityCount,
+    sourceBackedCount: facts.sourceBackedCount,
+    missingAumCount: facts.missingAumCount,
+    missingDealEconomicsStatusCount: facts.missingDealEconomicsStatusCount,
+    directionSliceCount: arrayValue(facts.filterSlices.directions).length,
+    minimums: RECRUITING_DEPTH_THRESHOLDS,
+  });
 }
 
 /**

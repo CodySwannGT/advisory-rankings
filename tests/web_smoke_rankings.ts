@@ -41,6 +41,10 @@ const RAW_RANKINGS_LABELS = [
   "matching pipelines",
 ];
 const PLACEHOLDER_NAMES = ["Jordan Example", "Example Independent"];
+const RANKINGS_EVIDENCE_ARGS = {
+  placeholderNames: PLACEHOLDER_NAMES,
+  rawRankingsLabels: RAW_RANKINGS_LABELS,
+};
 const MOBILE_VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 320, height: 740 },
@@ -104,54 +108,48 @@ async function waitForRankingsText(
  * @returns Loaded rankings DOM facts.
  */
 async function readLoadedRankings(page: Page) {
-  const evidence = await page.evaluate(
-    args => {
-      const pageText = document.body.innerText;
-      const hasText = (label: string) =>
-        pageText.toLowerCase().includes(label.toLowerCase());
-      return {
-        browseCardTitles: [
-          ...document.querySelectorAll<HTMLElement>(
-            ".left .card-title, .left .subtitle"
-          ),
-        ].map(title => title.textContent?.trim() ?? ""),
-        browseLinks: [
-          ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
-        ].map(link => link.textContent?.trim() ?? ""),
-        hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
-        hasPurposeLede: document.body.innerText.includes(
-          "Browse public advisor and team ranking appearances"
+  const evidence = await page.evaluate(args => {
+    const pageText = document.body.innerText;
+    const hasText = (label: string) =>
+      pageText.toLowerCase().includes(label.toLowerCase());
+    return {
+      browseCardTitles: [
+        ...document.querySelectorAll<HTMLElement>(
+          ".left .card-title, .left .subtitle"
         ),
-        hasNextGen: document.body.innerText.includes("Next Gen"),
-        hasPublicRankingsOnly: !document.body.innerText.includes(
-          "Ranking data quality"
-        ),
-        hasSummaryMetricLabels:
-          document.body.innerText.includes("Ranked profiles") &&
-          document.body.innerText.includes("Linked profiles") &&
-          document.body.innerText.includes("Profiles to link") &&
-          document.body.innerText.includes("Markets"),
-        hasResolved: hasText("Linked AdvisorBook profile"),
-        hasSourceBacked: hasText("Verified source"),
-        hasTopFirmCountLabels:
-          document.body.innerText.includes("Wells Fargo Advisors") &&
-          /\b\d+ rankings?\b/.test(document.body.innerText) &&
-          document.body.innerText.includes("Matched AdvisorBook firm"),
-        hasScoreSignal:
-          hasText("Missing score") || /\b\d{2,3}\.\d\b/.test(pageText),
-        placeholderNames: args.placeholderNames.filter(name =>
-          document.body.innerText.includes(name)
-        ),
-        rawLabels: args.rawRankingsLabels.filter(label =>
-          document.body.innerText.includes(label)
-        ),
-      };
-    },
-    {
-      placeholderNames: PLACEHOLDER_NAMES,
-      rawRankingsLabels: RAW_RANKINGS_LABELS,
-    }
-  );
+      ].map(title => title.textContent?.trim() ?? ""),
+      browseLinks: [
+        ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
+      ].map(link => link.textContent?.trim() ?? ""),
+      hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
+      hasPurposeLede: document.body.innerText.includes(
+        "Browse public advisor and team ranking appearances"
+      ),
+      hasNextGen: document.body.innerText.includes("Next Gen"),
+      hasPublicRankingsOnly: !document.body.innerText.includes(
+        "Ranking data quality"
+      ),
+      hasSummaryMetricLabels:
+        document.body.innerText.includes("Ranked profiles") &&
+        document.body.innerText.includes("Linked profiles") &&
+        document.body.innerText.includes("Profiles to link") &&
+        document.body.innerText.includes("Markets"),
+      hasResolved: hasText("Linked AdvisorBook profile"),
+      hasSourceBacked: hasText("Verified source"),
+      hasTopFirmCountLabels:
+        document.body.innerText.includes("Wells Fargo Advisors") &&
+        /\b\d+ rankings?\b/.test(document.body.innerText) &&
+        document.body.innerText.includes("Matched AdvisorBook firm"),
+      hasScoreSignal:
+        hasText("Missing score") || /\b\d{2,3}\.\d\b/.test(pageText),
+      placeholderNames: args.placeholderNames.filter(name =>
+        document.body.innerText.includes(name)
+      ),
+      rawLabels: args.rawRankingsLabels.filter(label =>
+        document.body.innerText.includes(label)
+      ),
+    };
+  }, RANKINGS_EVIDENCE_ARGS);
   return {
     ...evidence,
     ...(await readRankingsDateEvidence(page)),
