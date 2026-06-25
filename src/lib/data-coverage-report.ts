@@ -160,11 +160,7 @@ export async function buildDataCoverageReport(
     sparseFirms: sparseFirms.rows,
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
-    freshness: {
-      articles: articles.rows[0]?.latest ?? null,
-      transitions: transitions.rows[0]?.latest ?? null,
-      firmSourceChecks: firmSourceChecks.rows[0]?.latest ?? null,
-    },
+    freshness: freshnessReport(articles, transitions, firmSourceChecks),
     warnings: [
       ...counts.warnings,
       ...sources.warnings,
@@ -180,6 +176,25 @@ export async function buildDataCoverageReport(
       ...transitions.warnings,
       ...firmSourceChecks.warnings,
     ],
+  };
+}
+
+/**
+ * Summarizes latest-date query results for the coverage report.
+ * @param articles Article freshness result.
+ * @param transitions Transition freshness result.
+ * @param firmSourceChecks Firm-source freshness result.
+ * @returns Report freshness fields.
+ */
+function freshnessReport(
+  articles: QueryResult<DateRow>,
+  transitions: QueryResult<DateRow>,
+  firmSourceChecks: QueryResult<DateRow>
+): CoverageReport["freshness"] {
+  return {
+    articles: articles.rows[0]?.latest ?? null,
+    transitions: transitions.rows[0]?.latest ?? null,
+    firmSourceChecks: firmSourceChecks.rows[0]?.latest ?? null,
   };
 }
 
