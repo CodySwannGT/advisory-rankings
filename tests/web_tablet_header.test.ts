@@ -27,7 +27,7 @@ const ROUTES = [
   "/regulatory",
   "/login",
 ] as const;
-const WIDTHS = [768, 900, 1280] as const;
+const WIDTHS = [768, 900, 1280, 1440] as const;
 const SEARCH_KIND_SELECTOR = ".gs-kind-controls .gs-kind-toggle";
 
 interface TabletHeaderMetrics {

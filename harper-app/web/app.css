@@ -515,10 +515,10 @@ body.drawer-open .nav .nav-scrim {
   display: block;
 }
 
-/* Compact breakpoint (≤1300px): the entire .nav-drawer (links + me-spot)
+/* Compact breakpoint (≤1500px): the entire .nav-drawer (links + me-spot)
    collapses into a right-side sliding panel. The navbar keeps the
    hamburger + logo row compact and gives search a readable full row. */
-@media (max-width: 1300px) {
+@media (max-width: 1500px) {
   .nav {
     flex-wrap: wrap;
     gap: 8px;

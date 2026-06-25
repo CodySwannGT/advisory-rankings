@@ -39,7 +39,7 @@ const NAV_LINKS: readonly NavLink[] = [
   { active: "corrections", href: "/corrections", label: "Corrections" },
 ];
 
-const NAV_DRAWER_MEDIA = "(max-width: 1300px)";
+const NAV_DRAWER_MEDIA = "(max-width: 1500px)";
 
 /** Render context for auth controls in the navigation drawer. */
 interface MeRenderContext {
