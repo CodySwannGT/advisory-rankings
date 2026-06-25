@@ -26,6 +26,8 @@ const DEV_BASE = "https://advisory-rankings-de.cody-swann-org.harperfabric.com";
 const UNSUPPORTED_POSITIVE_CLAIMS =
   /clean|safe|verified|risk-free|zero-risk|suitability|misconduct-free/i;
 const DISCLOSURE_ROW_ID = "disclosures-regulatory-signals";
+const NOT_FOUND_STATE_LABEL = "No public row loaded";
+const REVIEWED_NOTES_ROW_ID = "reviewed-notes";
 const browserDescribe = existsSync(chromium.executablePath())
   ? describe.sequential
   : describe.skip;
@@ -99,7 +101,7 @@ describe("advisor trust checklist mapping", () => {
       DISCLOSURE_ROW_ID,
       "firm-team-context",
       "article-context",
-      "reviewed-notes",
+      REVIEWED_NOTES_ROW_ID,
     ]);
     expect(rows.map(row => row.supportHref)).toEqual([
       "#public-readiness",
@@ -142,7 +144,7 @@ describe("advisor trust checklist mapping", () => {
 
     const boundedSummaries = [
       rowById(rows, DISCLOSURE_ROW_ID).summary,
-      rowById(rows, "reviewed-notes").summary,
+      rowById(rows, REVIEWED_NOTES_ROW_ID).summary,
     ].join(" ");
 
     expect(boundedSummaries).toContain("1 public disclosure row");
@@ -151,6 +153,38 @@ describe("advisor trust checklist mapping", () => {
     );
     expect(boundedSummaries).not.toMatch(
       /private|do not expose|reviewer note/i
+    );
+  });
+
+  it("formats multi-row public counts without exposing row payload details", () => {
+    const rows = advisorTrustChecklistRows(
+      profileFixture({
+        articles: Array.from({ length: 1200 }, () => ({
+          title: "Private editorial payload",
+        })),
+        disclosures: Array.from({ length: 1000 }, () => ({
+          privateDetail: "sealed disclosure payload",
+        })),
+        reviewedCorrectionRequests: Array.from({ length: 2 }, () => ({
+          reviewerNote: "private correction note",
+        })),
+        reviewedRegulatoryDiscrepancies: Array.from({ length: 3 }, () => ({
+          reviewerNote: "private regulatory note",
+        })),
+      })
+    );
+
+    expect(rowById(rows, "article-context").summary).toBe(
+      "1,200 public article references loaded."
+    );
+    expect(rowById(rows, DISCLOSURE_ROW_ID).summary).toBe(
+      "1,000 public disclosure rows loaded for reader review."
+    );
+    expect(rowById(rows, REVIEWED_NOTES_ROW_ID).summary).toBe(
+      "5 reviewed public discrepancy or correction notes loaded."
+    );
+    expect(rows.map(row => row.summary).join(" ")).not.toMatch(
+      /private|sealed|reviewer note|editorial payload/i
     );
   });
 });
@@ -208,6 +242,22 @@ browserDescribe("advisor trust checklist profile UI", () => {
             "Reviewed notes",
           ],
         });
+        const evidence = await checklistEvidence(page);
+        expect(
+          evidence.rows
+            .filter(row => row.state === NOT_FOUND_STATE_LABEL)
+            .map(row => row.supportHref)
+        ).toEqual([null, null, null]);
+        expect(
+          evidence.rows
+            .filter(row => row.state !== NOT_FOUND_STATE_LABEL)
+            .map(row => row.supportHref)
+        ).toEqual([
+          "#public-readiness",
+          "#profile-identity",
+          "#profile-provenance",
+          "#profile-career",
+        ]);
       } finally {
         await page.close();
       }
