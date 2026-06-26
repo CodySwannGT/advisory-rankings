@@ -23,12 +23,16 @@ const browserDescribe =
 const COMPARE_BUTTON_SELECTOR = ".compare-entry-button";
 const ADVISOR_DIRECTORY_ROW_SELECTOR = ".advisor-directory-row";
 const READINESS_BADGE_SELECTOR = ".advisor-readiness-badge";
+const PUBLIC_READINESS_CARD_SELECTOR = ".advisor-mobile-evidence .card";
+const PUBLIC_READINESS_TITLE = "Public readiness";
 const CONTACT_READY_LABEL = "Contact ready";
 const SECOND_ADVISOR_ID = "advisor-watch-2";
 const MISSING_CONTACT_ID = "advisor-contact-gap";
 const MISSING_SUBSTANCE_ID = "advisor-substance-gap";
 const MISSING_CRD_ID = "advisor-crd-gap";
 const AVERY_STONE = "Avery Stone";
+const LONG_BUSINESS_EMAIL =
+  "avery.stone.long.public.readiness@example-advisory.test";
 
 interface DirectoryAdvisor {
   readonly id: string;
@@ -157,13 +161,14 @@ browserDescribe("public comparison entry actions (#810)", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expectProfileReadiness(page);
     await page
-      .locator(".advisor-mobile-evidence .card", {
-        hasText: "Public readiness",
+      .locator(PUBLIC_READINESS_CARD_SELECTOR, {
+        hasText: PUBLIC_READINESS_TITLE,
       })
       .waitFor({
         state: "visible",
         timeout: QUICK_TIMEOUT,
       });
+    await expectPublicReadinessNoOverflow(page);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth)
     ).toBe(await page.evaluate(() => document.documentElement.clientWidth));
@@ -333,13 +338,13 @@ async function expectReadinessRow(page: Page, badge: string): Promise<void> {
  * @param page - Browser page rendering the advisor profile.
  */
 async function expectProfileReadiness(page: Page): Promise<void> {
-  await page.getByRole("heading", { name: "Public readiness" }).waitFor({
+  await page.getByRole("heading", { name: PUBLIC_READINESS_TITLE }).waitFor({
     timeout: QUICK_TIMEOUT,
   });
   const text = await page.locator("body").textContent();
   expect(text).toContain("Contact ready");
   expect(text).toContain("Business email");
-  expect(text).toContain("avery@example.test");
+  expect(text).toContain(LONG_BUSINESS_EMAIL);
   expect(text).toContain("Business phone");
   expect(text).toContain("404-555-0100");
   expect(text).toContain("LinkedIn URL");
@@ -349,6 +354,32 @@ async function expectProfileReadiness(page: Page): Promise<void> {
   expect(text).toContain("Freshness");
   expect(text).toContain("Current");
   expect(text).toContain("No public readiness gaps");
+}
+
+/**
+ * Asserts long public-readiness values wrap inside the mobile card.
+ * @param page - Browser page rendering the advisor profile.
+ */
+async function expectPublicReadinessNoOverflow(page: Page): Promise<void> {
+  const metrics = await page
+    .locator(PUBLIC_READINESS_CARD_SELECTOR, {
+      hasText: PUBLIC_READINESS_TITLE,
+    })
+    .evaluate(card => {
+      const emailValue = Array.from(card.querySelectorAll("dd")).find(node =>
+        node.textContent?.includes("@")
+      );
+      const cardRect = card.getBoundingClientRect();
+      const emailRect = emailValue?.getBoundingClientRect();
+      return {
+        cardClientWidth: card.clientWidth,
+        cardScrollWidth: card.scrollWidth,
+        cardRight: cardRect.right,
+        emailRight: emailRect?.right ?? 0,
+      };
+    });
+  expect(metrics.cardScrollWidth).toBeLessThanOrEqual(metrics.cardClientWidth);
+  expect(metrics.emailRight).toBeLessThanOrEqual(metrics.cardRight + 1);
 }
 
 /**
@@ -438,7 +469,7 @@ function readinessDirectoryRows(): readonly DirectoryAdvisor[] {
 function readinessProfileAdvisor(): DirectoryAdvisor {
   return {
     ...readyAdvisor(ADVISOR_ID, AVERY_STONE),
-    businessEmail: "avery@example.test",
+    businessEmail: LONG_BUSINESS_EMAIL,
     businessPhone: "404-555-0100",
     linkedinUrl: "https://linkedin.example/avery",
     bioText: "Public biography with enough source-backed profile substance.",

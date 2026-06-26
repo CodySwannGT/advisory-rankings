@@ -1898,16 +1898,30 @@ body.drawer-open .nav .nav-scrim {
 
 .kvs {
   display: grid;
-  grid-template-columns: minmax(110px, max-content) 1fr;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
   gap: 4px 14px;
   font-size: 13px;
+  min-width: 0;
 }
 .kvs dt {
   color: var(--text-muted);
+  min-width: 0;
 }
 .kvs dd {
   margin: 0;
   color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+@media (max-width: 640px) {
+  .kvs {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .kvs dd:not(:last-child) {
+    margin-bottom: 6px;
+  }
 }
 
 .snap-table {
