@@ -47,6 +47,8 @@ const NAVIGATION_ATTEMPTS = 3;
 const NAVIGATION_RETRY_DELAY_MS = 1500;
 const DYNAMIC_CONTENT_ATTEMPTS = 2;
 const DYNAMIC_CONTENT_RETRY_DELAY_MS = 1500;
+const EXPECTED_VERSION = process.env.SMOKE_EXPECTED_VERSION || "";
+const VERSION_MODULE_TIMEOUT = 8000;
 
 /** One smoke assertion produced by a scenario. */
 export interface Check {
@@ -390,6 +392,37 @@ async function awaitStable(
 export async function awaitDeployedClusterStable(page: Page): Promise<void> {
   if (isLocalDev) return;
   await awaitStable(page, 0, Date.now() + STABILITY_DEADLINE);
+}
+
+/**
+ * Reads the deployed browser version marker and compares it with the release
+ * version the deploy workflow expects this smoke run to validate.
+ * @param page - Browser page whose request context is reused.
+ * @returns A smoke assertion for the deployed runtime version.
+ */
+export async function smokeExpectedRuntimeVersion(page: Page): Promise<Check> {
+  const label = "deploy runtime: version.js matches expected release";
+  if (isLocalDev || !EXPECTED_VERSION) return pass(label);
+  const observed = await page.request
+    .get(`${BASE}/version.js`, { timeout: VERSION_MODULE_TIMEOUT })
+    .then(async response =>
+      response.ok() ? parseVersionModule(await response.text()) : ""
+    )
+    .catch(() => "");
+  return check(
+    observed === EXPECTED_VERSION,
+    label,
+    `expected ${EXPECTED_VERSION}, observed ${observed || "missing"}`
+  );
+}
+
+/**
+ * Extracts APP_VERSION from the generated browser module.
+ * @param source - JavaScript module text from /version.js.
+ * @returns Version string, or an empty string when the module is malformed.
+ */
+function parseVersionModule(source: string): string {
+  return /APP_VERSION\s*=\s*["']([^"']+)["']/.exec(source)?.[1] ?? "";
 }
 
 /**

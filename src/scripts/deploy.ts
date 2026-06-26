@@ -48,6 +48,8 @@ const DEPLOY_TIMEOUT_MS =
     : 420000;
 const FRESHNESS_POLL_ATTEMPTS = 18;
 const FRESHNESS_POLL_INTERVAL_MS = 5000;
+const PUBLIC_RUNTIME_FRESH_ROUNDS = 3;
+const PUBLIC_RUNTIME_FRESH_ROUND_DELAY_MS = 5000;
 const FEED_READINESS_TIMEOUT_MS = 10000;
 // Secondary resource routes (e.g. /AdvisorComparison) cold-start after a
 // restart and can take seconds to answer their first request. Poll them with a
@@ -610,7 +612,43 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
   await verifyPublicRoute(clusterUrl, "/app.css");
   await verifyPublicRoute(clusterUrl, "/compare.js");
   await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
+  await verifyPublicRoute(clusterUrl, "/source-triage");
+  await verifyStablePublicRuntime(clusterUrl);
   console.log("▶ public static assets and comparison resources verified");
+}
+
+/**
+ * Verifies repeated public reads keep returning this build. A single fresh
+ * response can come from one node while the public URL later routes to a stale
+ * peer, so the deploy gate samples consecutive rounds before it reports green.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ * @param rounds - Consecutive fresh rounds still required.
+ * @returns Promise that resolves when all sampled rounds are fresh.
+ */
+async function verifyStablePublicRuntime(
+  clusterUrl: string,
+  rounds = PUBLIC_RUNTIME_FRESH_ROUNDS
+): Promise<void> {
+  const version = await deployedVersion(clusterUrl);
+  if (
+    version.observed !== version.expected ||
+    version.observed === "" ||
+    !version.bundleFresh
+  ) {
+    throw new Error(
+      `public runtime drifted after deploy: expected ${version.expected}, observed ${version.observed || "missing"}, bundle fresh: ${version.bundleFresh}`
+    );
+  }
+  if (rounds <= 1) {
+    console.log(
+      `▶ public runtime stayed fresh for ${PUBLIC_RUNTIME_FRESH_ROUNDS} consecutive rounds`
+    );
+    return;
+  }
+  await new Promise(resolve =>
+    setTimeout(resolve, PUBLIC_RUNTIME_FRESH_ROUND_DELAY_MS)
+  );
+  return verifyStablePublicRuntime(clusterUrl, rounds - 1);
 }
 
 /**

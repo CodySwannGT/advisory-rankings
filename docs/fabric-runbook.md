@@ -178,9 +178,12 @@ That gives us, on `:443`:
   are needed to avoid HTTP 500 responses on misses after the unknown-route
   experiments. Top-level unknown routes currently return Harper's bare
   `Not found` response before app-level fallback routes can run.
-- `static.extensions: ['html']` keeps extensionless shell URLs such as
+- `static.extensions: ['html']` should keep extensionless shell URLs such as
   `/source-triage?category=...` resolving to the tracked `web/*.html` files even
-  when the public edge does not expose Fastify route modules.
+  when the public edge does not expose Fastify route modules. The deploy gate
+  also probes `/source-triage` directly because a stale public runtime can
+  otherwise keep returning the old bare `Not found` response after a green core
+  smoke.
 - Clean data coverage route `/coverage`, served by
   `data-coverage/index.js` and backed by `/DataCoverage`.
 - Clean investor proof packet route `/investor-proof`, served by
@@ -1067,9 +1070,13 @@ still completing, so `deploy.ts` uses `HARPER_DEPLOY_TIMEOUT_MS` (default
 (default 60 seconds) for restarts. After deploy it **polls `/version.js`
 and `/index.js` on the public URL until both match the freshly built
 `package.json` version and bundle** (`verifyRuntimeFreshness`), then checks
-the static/resource routes. The deploy passes when the served node reports
-the new version and bundle. Before the route checks retried (above) and
-before the deploy moved to the direct `:9925` path, a transient cold-start
+the static/resource routes. Because the public URL can briefly route one read
+to the fresh node and a later read to a stale peer, the gate samples consecutive
+fresh `/version.js` and `/index.js` rounds before it reports success. The
+post-deploy smoke also receives the release version as `SMOKE_EXPECTED_VERSION`
+and fails if the public `version.js` is not that exact build. Before the route
+checks retried (above) and before the deploy moved to the direct `:9925` path,
+a transient cold-start
 on `/AdvisorComparison` failed verification on a fully-propagated deploy
 and then burned the full `HARPER_DEPLOY_TIMEOUT_MS` against the (then
 Studio-routed) recovery before failing the build (run `27203171950`,

@@ -146,6 +146,7 @@ jobs:
         env:
           BASE_URL: ${{ env.HARPER_CLUSTER_URL }}
           SMOKE_SCOPE: core
+          SMOKE_EXPECTED_VERSION: ${{ needs.release.outputs.version }}
         run: bun run smoke
 
       - name: Upload smoke screenshots on failure

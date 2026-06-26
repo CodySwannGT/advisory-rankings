@@ -21,6 +21,7 @@ import {
   shot,
   smokeGoto,
   smokeWaitForSelector,
+  smokeExpectedRuntimeVersion,
   awaitDeployedClusterStable,
   type Check,
 } from "./web_smoke_support.js";
@@ -422,8 +423,11 @@ async function runScenarios(
   page: Parameters<typeof smokeFeed>[0],
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[]> {
+  const versionCheck = await smokeExpectedRuntimeVersion(page);
   const scoped = await runScopedScenarios(browser, page, extraHTTPHeaders);
-  return scoped ?? (await runDefaultScenarios(browser, page, extraHTTPHeaders));
+  const scenarioChecks =
+    scoped ?? (await runDefaultScenarios(browser, page, extraHTTPHeaders));
+  return [versionCheck, ...scenarioChecks];
 }
 
 async function runScopedScenarios(
