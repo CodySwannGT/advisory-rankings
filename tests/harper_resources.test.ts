@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokensForAdvisor } from "../src/lib/advisor-tokens.js";
 import { advisorSearchIndexId } from "../src/lib/advisor-search-index.js";
+import {
+  sourceArticleTriageReasonLabel,
+  sourceArticleTriageReasons,
+} from "../src/harper/resource-source-article-triage-reasons.js";
 
 /**
  * Harper resource tests use a small in-memory table snapshot so profile,
@@ -3165,6 +3169,74 @@ describe("Harper resource endpoints", () => {
       currentMembers: [{ advisor: { id: "advisor-a" } }],
       pastMembers: [{ advisor: { id: "advisor-b" } }],
     });
+  });
+
+  it("normalizes source article triage reasons and candidate provenance", () => {
+    const complete = sourceArticleTriageReasons({
+      article: {
+        category: "moves",
+        bodyText: "Avery Stone joined Example Wealth.",
+      },
+      eventCardCount: 1,
+      advisorCount: 1,
+      firmCount: 1,
+      teamCount: 1,
+      provenanceRows: [{ confidence: "high" }],
+    });
+    const candidateOnly = sourceArticleTriageReasons({
+      article: { category: "unknown", bodyText: "   " },
+      eventCardCount: 0,
+      advisorCount: 0,
+      firmCount: 0,
+      teamCount: 0,
+      provenanceRows: [{ confidence: "inferred" }, { confidence: "derived" }],
+    });
+    const missingProvenance = sourceArticleTriageReasons({
+      article: { category: "", bodyText: undefined },
+      eventCardCount: 0,
+      advisorCount: 0,
+      firmCount: 0,
+      teamCount: 0,
+      provenanceRows: [],
+    });
+
+    expect(complete).toMatchObject({
+      reasonTokens: [],
+      candidateProvenanceCount: 0,
+      provenanceCount: 1,
+      hasBody: true,
+      entityCount: 3,
+    });
+    expect(candidateOnly).toMatchObject({
+      reasonTokens: [
+        "uncategorized",
+        "no-event-cards",
+        "no-entity-chips",
+        "no-body-text",
+        "candidate-only-provenance",
+      ],
+      candidateProvenanceCount: 2,
+      provenanceCount: 2,
+      hasBody: false,
+      entityCount: 0,
+    });
+    expect(candidateOnly.reasons.map(reason => reason.label)).toEqual([
+      "Uncategorized",
+      "No event cards",
+      "No entity chips",
+      "No body text",
+      "Candidate-only provenance",
+    ]);
+    expect(missingProvenance.reasonTokens).toEqual([
+      "uncategorized",
+      "no-event-cards",
+      "no-entity-chips",
+      "no-body-text",
+      "missing-provenance",
+    ]);
+    expect(sourceArticleTriageReasonLabel("missing-provenance")).toBe(
+      "Missing provenance"
+    );
   });
 
   it("surfaces only reviewed regulatory discrepancy notes on advisor profiles", async () => {
