@@ -25,6 +25,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadCreds, StudioSession } from "./_auth.js";
+import { isFreshnessCheckableDirectDeployFailure } from "../lib/deploy-result.js";
 import { recoverPublicRuntime } from "../lib/deploy-runtime-recovery.js";
 
 const TAR_PATH = "/usr/bin/tar";
@@ -312,17 +313,23 @@ async function restartDeployedService(studio: StudioSession): Promise<number> {
 async function deployPublicRuntime(): Promise<number> {
   const deployPackage = buildDeployPackage();
   console.log(`▶ direct deploy_component ${directOpsUrl()} project=${PROJECT}`);
-  return logDeployResult(
-    await directClusterOp(
-      "deploy_component",
-      {
-        project: PROJECT,
-        payload: deployPackage.payload,
-        restart: true,
-      },
-      DEPLOY_TIMEOUT_MS
-    )
+  const result = await directClusterOp(
+    "deploy_component",
+    {
+      project: PROJECT,
+      payload: deployPackage.payload,
+      restart: true,
+    },
+    DEPLOY_TIMEOUT_MS
   );
+  const status = logDeployResult(result);
+  if (isFreshnessCheckableDirectDeployFailure(status, result.body)) {
+    console.warn(
+      "  direct deploy reached the origin node but replication failed; continuing to runtime freshness checks"
+    );
+    return await restartPublicRuntime();
+  }
+  return status;
 }
 
 /**

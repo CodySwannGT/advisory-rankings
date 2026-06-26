@@ -17,6 +17,7 @@ jsResource:
 # Clean public routes for SEO-friendly directory and profile URLs.
 # These serve the same static HTML shells as the legacy *.html paths.
 fastifyRoutes:
+  urlPath: '.'
   files:
     - 'static-web/index.js'
     - 'branches/index.js'
@@ -29,6 +30,7 @@ fastifyRoutes:
     - 'recruiting/index.js'
     - 'recruiting-shortlist/index.js'
     - 'research-freshness/index.js'
+    - 'source-triage-route/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
@@ -44,3 +46,5 @@ fastifyRoutes:
 # `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
   files: 'web/**'
+  extensions:
+    - 'html'

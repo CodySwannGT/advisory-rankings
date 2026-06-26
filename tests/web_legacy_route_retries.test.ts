@@ -380,7 +380,9 @@ function staticFilePath(requestUrl: string): string {
  */
 function cleanRoutePath(pathname: string): string {
   if (pathname === "/") return "/index.html";
-  if (["/firms", "/teams", "/regulatory"].includes(pathname)) {
+  if (
+    ["/firms", "/teams", "/regulatory", "/source-triage"].includes(pathname)
+  ) {
     return `${pathname}.html`;
   }
   return pathname;
