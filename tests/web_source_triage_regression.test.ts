@@ -204,7 +204,7 @@ async function articleDetailFacts(
     ).length,
     eventCards: payload.eventCards.length,
     firms: payload.firms.length,
-    hasBody: Boolean(payload.body?.text?.trim() ?? payload.body?.html?.trim()),
+    hasBody: Boolean(payload.body?.text?.trim() || payload.body?.html?.trim()),
     teams: payload.teams.length,
   };
 }

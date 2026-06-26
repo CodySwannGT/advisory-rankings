@@ -198,14 +198,7 @@ async function fieldAssertionsForArticles(
   const rows = (await allRows<FieldAssertionRow>(tables.FieldAssertion)).filter(
     row => articleIds.has(row.articleId)
   );
-  return rows.reduce<ReadonlyMap<string, readonly FieldAssertionRow[]>>(
-    (grouped, row) =>
-      new Map([
-        ...grouped,
-        [row.articleId, [...(grouped.get(row.articleId) ?? []), row]],
-      ]),
-    new Map()
-  );
+  return Map.groupBy(rows, row => row.articleId);
 }
 
 /**
