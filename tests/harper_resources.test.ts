@@ -3312,6 +3312,26 @@ describe("Harper resource endpoints", () => {
     setRows("FieldAssertion", [
       ...(tableRows.get("FieldAssertion") ?? []),
       {
+        id: "field-source-gap-candidate-money",
+        articleId: SOURCE_GAP_ARTICLE_ID,
+        targetTable: "Article",
+        targetId: SOURCE_GAP_ARTICLE_ID,
+        fieldName: "moneyMention",
+        assertedValue: "$30 million",
+        quotePhrase: "$30 million",
+        confidence: "candidate",
+      },
+      {
+        id: "field-source-gap-inferred-money",
+        articleId: SOURCE_GAP_ARTICLE_ID,
+        targetTable: "Article",
+        targetId: SOURCE_GAP_ARTICLE_ID,
+        fieldName: "moneyMention",
+        assertedValue: "$20 million",
+        quotePhrase: "$20 million",
+        confidence: "inferred",
+      },
+      {
         id: "field-source-complete",
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
         targetTable: "Advisor",
@@ -3354,14 +3374,14 @@ describe("Harper resource endpoints", () => {
           teamCount: 0,
           eventCardCount: 0,
           hasBody: false,
-          provenanceCount: 0,
-          candidateProvenanceCount: 0,
+          provenanceCount: 2,
+          candidateProvenanceCount: 2,
           reasonTokens: [
             SOURCE_TRIAGE_UNCATEGORIZED,
             SOURCE_TRIAGE_NO_EVENT_CARDS,
             SOURCE_TRIAGE_NO_ENTITY_CHIPS,
             SOURCE_TRIAGE_NO_BODY_TEXT,
-            SOURCE_TRIAGE_MISSING_PROVENANCE,
+            SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE,
           ],
         },
       ],
@@ -3375,7 +3395,7 @@ describe("Harper resource endpoints", () => {
       "No event cards",
       "No entity chips",
       "No body text",
-      "Missing provenance",
+      "Candidate-only provenance",
     ]);
     expect(all).toMatchObject({
       count: 1,
@@ -3403,6 +3423,15 @@ describe("Harper resource endpoints", () => {
           id: SOURCE_SECOND_GAP_ARTICLE_ID,
           articleViewPath:
             "/articles/source-gap-second-article-source-gap-second",
+          provenanceCount: 0,
+          candidateProvenanceCount: 0,
+          reasonTokens: [
+            SOURCE_TRIAGE_UNCATEGORIZED,
+            SOURCE_TRIAGE_NO_EVENT_CARDS,
+            SOURCE_TRIAGE_NO_ENTITY_CHIPS,
+            SOURCE_TRIAGE_NO_BODY_TEXT,
+            SOURCE_TRIAGE_MISSING_PROVENANCE,
+          ],
         },
       ],
     });
