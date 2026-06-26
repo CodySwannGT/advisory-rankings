@@ -88,11 +88,11 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
       ButtonC({
         variant: "neutral",
         children: "Clear",
+        onClick: () => {
+          location.href = "/source-triage";
+        },
         attrs: {
           type: "button",
-          onClick: () => {
-            location.href = "/source-triage";
-          },
         },
       })
     ),

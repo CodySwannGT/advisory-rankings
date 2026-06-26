@@ -60,6 +60,12 @@ describe("source article triage route", () => {
       await firstRow.getByText("Advisors0").waitFor({
         timeout: QUICK_TIMEOUT,
       });
+      await firstRow.getByText("BodyMissing").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await firstRow.getByText("Provenance0 total, 0 candidate").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
       expect(
         await page
           .getByRole("link", { name: "ArticleView" })
@@ -75,6 +81,12 @@ describe("source article triage route", () => {
       expect(
         await page.getByRole("link", { name: "Original source" }).count()
       ).toBe(1);
+      await Promise.all([
+        page.waitForURL(`${baseUrl}${SOURCE_TRIAGE_PATH}`),
+        page.getByRole("button", { name: "Clear" }).click(),
+      ]);
+      expect(new URL(page.url()).pathname).toBe(SOURCE_TRIAGE_PATH);
+      expect(new URL(page.url()).search).toBe("");
       expect(await hasHorizontalOverflow(page)).toBe(false);
     } finally {
       await page.close();

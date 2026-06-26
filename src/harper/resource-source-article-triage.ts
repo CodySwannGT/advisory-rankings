@@ -2,6 +2,7 @@ import type { RouteTarget } from "../types/harper-resource.js";
 import type { ArticleRow, FieldAssertionRow } from "../types/harper-schema.js";
 
 import { feedArticlePage } from "./resource-directory-search-queries.js";
+import { allRows } from "./resource-directory-tables.js";
 import { loadFeedDbForArticles } from "./resource-feed-page-load.js";
 import { feedItem } from "./resource-feed.js";
 import type { FeedItem } from "./resource-feed-types.js";
@@ -193,31 +194,11 @@ async function hydrateArticlePairs(
 async function fieldAssertionsForArticles(
   articles: readonly ArticleRow[]
 ): Promise<ReadonlyMap<string, readonly FieldAssertionRow[]>> {
-  const rows = (
-    await Promise.all(
-      articles.map(article =>
-        Array.fromAsync(
-          (tables.FieldAssertion as unknown as FieldAssertionTable).search({
-            conditions: [
-              {
-                attribute: "articleId",
-                comparator: "equals",
-                value: article.id,
-              },
-            ],
-          })
-        )
-      )
-    )
-  ).flat();
-  return rows.reduce<ReadonlyMap<string, readonly FieldAssertionRow[]>>(
-    (grouped, row) =>
-      new Map([
-        ...grouped,
-        [row.articleId, [...(grouped.get(row.articleId) ?? []), row]],
-      ]),
-    new Map()
+  const articleIds = new Set(articles.map(article => article.id));
+  const rows = (await allRows<FieldAssertionRow>(tables.FieldAssertion)).filter(
+    row => articleIds.has(row.articleId)
   );
+  return Map.groupBy(rows, row => row.articleId);
 }
 
 /**
@@ -294,11 +275,4 @@ function normalizeReason(value: unknown): SourceArticleTriageReason | null {
   return SOURCE_ARTICLE_TRIAGE_REASONS.has(reason as SourceArticleTriageReason)
     ? (reason as SourceArticleTriageReason)
     : null;
-}
-
-/** Minimal Harper table search surface for FieldAssertion reads. */
-interface FieldAssertionTable {
-  readonly search: (
-    query: Readonly<Record<string, unknown>>
-  ) => AsyncIterable<FieldAssertionRow>;
 }
