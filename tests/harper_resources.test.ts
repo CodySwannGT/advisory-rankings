@@ -3807,6 +3807,7 @@ describe("Harper resource endpoints", () => {
         firmId: "firm-a",
         firmQuery: EXAMPLE_WEALTH_LLC,
         gapType: MISSING_DEAL_TERMS_REASON,
+        limit: 1,
         state: "GA",
         unresolved: "include",
         year: "2024",
@@ -3823,10 +3824,7 @@ describe("Harper resource endpoints", () => {
           "RecruitingDealQuote",
           "Article",
         ]),
-        sourceIds: expect.arrayContaining([
-          TRANSITION_TEAM_ID,
-          TRANSITION_OUT_ID,
-        ]),
+        sourceIds: [TRANSITION_OUT_ID],
       },
     });
     expect(gaps.items).toEqual([
@@ -3848,6 +3846,7 @@ describe("Harper resource endpoints", () => {
       }),
     ]);
     expect(gaps.nextCursor).toBe(OFFSET_ONE_CURSOR);
+    expect(gaps.provenance.sourceIds).toHaveLength(gaps.items.length);
 
     const secondPage = await new (
       resources as any
@@ -3864,6 +3863,7 @@ describe("Harper resource endpoints", () => {
     expect(secondPage).toMatchObject({
       items: [expect.objectContaining({ id: TRANSITION_TEAM_ID })],
       nextCursor: null,
+      provenance: { sourceIds: [TRANSITION_TEAM_ID] },
       total: 2,
     });
 

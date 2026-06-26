@@ -142,7 +142,7 @@ export class RecruitingDealDataGaps extends Resource {
     const nextOffset = offset + items.length;
     const nextCursor =
       nextOffset < gaps.length ? encodeOffsetCursor(nextOffset) : null;
-    return response(filters, gaps, items, nextCursor);
+    return response(filters, limit, gaps, items, nextCursor);
   }
 }
 
@@ -303,6 +303,7 @@ function publicLinks(row: PublicMove): DealGapLinks {
 /**
  * Builds the top-level response envelope.
  * @param filters - Applied internal filters.
+ * @param limit - Parsed page size echoed in the public filters.
  * @param gaps - Full filtered gap list.
  * @param items - Current page items.
  * @param nextCursor - Opaque cursor for the next page.
@@ -310,6 +311,7 @@ function publicLinks(row: PublicMove): DealGapLinks {
  */
 function response(
   filters: DealGapFilters,
+  limit: number,
   gaps: readonly DealGapRow[],
   items: readonly DealGapRow[],
   nextCursor: string | null
@@ -319,7 +321,7 @@ function response(
       gaps.length === 0
         ? "No matching public recruiting deal-data gaps are loaded for these filters."
         : null,
-    filters: publicFilters(filters),
+    filters: publicFilters(filters, limit),
     generatedAt: new Date().toISOString(),
     items,
     nextCursor,
@@ -331,7 +333,7 @@ function response(
         "Article",
         "FirmAlias",
       ],
-      sourceIds: gaps.map(row => row.id),
+      sourceIds: items.map(row => row.id),
     },
     summary: summarize(gaps),
     total: gaps.length,
@@ -341,15 +343,19 @@ function response(
 /**
  * Builds the public filter echo.
  * @param filters - Applied internal filters.
+ * @param limit - Parsed page size.
  * @returns Public filter payload.
  */
-function publicFilters(filters: DealGapFilters): PublicDealGapFilters {
+function publicFilters(
+  filters: DealGapFilters,
+  limit: number
+): PublicDealGapFilters {
   return {
     direction: filters.direction,
     firmId: filters.firmId,
     firmQuery: filters.firmQuery,
     gapType: filters.gapType,
-    limit: filters.limit,
+    limit,
     state: filters.state,
     unresolved: filters.unresolved,
     ...watchlist.publicWatchlistFilters(filters),
