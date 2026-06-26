@@ -861,6 +861,60 @@ For the current dev deployment, the replay should load the `Data coverage`
 page, render five `[data-coverage-section]` cards, and show the same
 limitations count returned by `/DataCoverage`.
 
+### Source article triage replay
+
+Use deployed dev as the reviewer replay target for `/SourceArticleTriage`,
+`/source-triage`, and the PRD sample ArticleView rows:
+
+```bash
+BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+
+curl -fsS "$BASE_URL/SourceArticleTriage?category=unknown&reason=no-event-cards&limit=10" \
+  | jq '{
+      itemCount: (.items | length),
+      nextCursor,
+      first: .items[0] | {
+        id,
+        category,
+        triageReasons,
+        articleUrl,
+        sourceUrl,
+        eventCardCount,
+        firmCount,
+        advisorCount,
+        teamCount,
+        hasBody,
+        provenanceCount,
+        candidateProvenanceCount
+      }
+    }'
+
+curl -fsS -H 'Accept: text/html' \
+  "$BASE_URL/source-triage?category=unknown&reason=no-event-cards&limit=10" \
+  | grep -F 'Source Article Triage - AdvisorBook'
+```
+
+The first JSON row should include sample article
+`dd893ee1-92ff-5b63-9e45-c39d63c50904`, `category: "unknown"`, zero event
+cards, one firm, no advisors or teams, no body, two provenance rows, and two
+candidate provenance rows. The filtered response should also include
+`a5550239-6c67-5289-937d-6669653cc0da`, which has zero event cards, no entity
+chips, no body, and no provenance. Open both ArticleView rows when replaying
+manually so the article limitation context is visible from the linked detail
+pages.
+
+The codified replay is:
+
+```bash
+RUN_WEB_SOURCE_TRIAGE_REGRESSION=1 bunx vitest run tests/web_source_triage_regression.test.ts
+```
+
+That test serves local generated web assets, proxies `/SourceArticleTriage` and
+`/ArticleView` to deployed dev, verifies the desktop and mobile filtered route
+state, checks that the two PRD sample ArticleView payloads preserve the expected
+gap counts, and captures `tests/screenshots/source-triage-regression-desktop.png`
+plus `tests/screenshots/source-triage-regression-mobile.png`.
+
 ### Auth model (data plane vs. Fabric control plane)
 
 Harper has two distinct auth surfaces and we use both — neither is a
