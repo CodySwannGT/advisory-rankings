@@ -11,6 +11,7 @@ import {
   parsePagination,
 } from "./resource-pagination.js";
 import {
+  SOURCE_ARTICLE_TRIAGE_REASON_TOKENS,
   sourceArticleTriageReasons,
   type SourceArticleTriageReason,
   type SourceArticleTriageReasonPayload,
@@ -108,14 +109,9 @@ interface SourceArticleTriageTarget {
   readonly get?: (name: string) => unknown;
 }
 
-const SOURCE_ARTICLE_TRIAGE_REASONS = new Set<SourceArticleTriageReason>([
-  "uncategorized",
-  "no-event-cards",
-  "no-entity-chips",
-  "no-body-text",
-  "missing-provenance",
-  "candidate-only-provenance",
-]);
+const SOURCE_ARTICLE_TRIAGE_REASONS = new Set(
+  SOURCE_ARTICLE_TRIAGE_REASON_TOKENS
+);
 
 /**
  * Reads category and reason filters from the request target.
@@ -197,16 +193,31 @@ async function hydrateArticlePairs(
 async function fieldAssertionsForArticles(
   articles: readonly ArticleRow[]
 ): Promise<ReadonlyMap<string, readonly FieldAssertionRow[]>> {
-  const articleIds = new Set(articles.map(article => article.id));
-  if (articleIds.size === 0) return new Map();
-  const rows = await Array.fromAsync(
-    (tables.FieldAssertion as unknown as FieldAssertionTable).search({})
+  const rows = (
+    await Promise.all(
+      articles.map(article =>
+        Array.fromAsync(
+          (tables.FieldAssertion as unknown as FieldAssertionTable).search({
+            conditions: [
+              {
+                attribute: "articleId",
+                comparator: "equals",
+                value: article.id,
+              },
+            ],
+          })
+        )
+      )
+    )
+  ).flat();
+  return rows.reduce<ReadonlyMap<string, readonly FieldAssertionRow[]>>(
+    (grouped, row) =>
+      new Map([
+        ...grouped,
+        [row.articleId, [...(grouped.get(row.articleId) ?? []), row]],
+      ]),
+    new Map()
   );
-  return rows
-    .filter(row => articleIds.has(row.articleId))
-    .reduce<
-      ReadonlyMap<string, readonly FieldAssertionRow[]>
-    >((grouped, row) => new Map([...grouped, [row.articleId, [...(grouped.get(row.articleId) ?? []), row]]]), new Map());
 }
 
 /**
@@ -233,7 +244,9 @@ function triageRow(
     headline: article.headline,
     publishedDate: article.publishedDate,
     sourceUrl: article.url,
-    articleViewPath: `/articles/${encodeURIComponent(article.slug ?? article.id)}`,
+    articleViewPath: article.slug
+      ? `/articles/${encodeURIComponent(article.slug)}-${encodeURIComponent(article.id)}`
+      : `/articles/${encodeURIComponent(article.id)}`,
     category: article.category,
     advisorCount: item.advisors.length,
     firmCount: item.firms.length,

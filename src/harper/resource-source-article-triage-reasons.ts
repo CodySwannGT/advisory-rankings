@@ -9,6 +9,17 @@ export type SourceArticleTriageReason =
   | "missing-provenance"
   | "candidate-only-provenance";
 
+/** Canonical runtime list of reason tokens accepted by triage filters. */
+export const SOURCE_ARTICLE_TRIAGE_REASON_TOKENS: readonly SourceArticleTriageReason[] =
+  [
+    "uncategorized",
+    "no-event-cards",
+    "no-entity-chips",
+    "no-body-text",
+    "missing-provenance",
+    "candidate-only-provenance",
+  ];
+
 /** One public reason returned for a source-article triage row. */
 export interface SourceArticleTriageReasonPayload {
   readonly token: SourceArticleTriageReason;

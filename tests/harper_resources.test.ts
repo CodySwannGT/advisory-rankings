@@ -130,6 +130,7 @@ const SOURCE_TRIAGE_NO_BODY_TEXT = "no-body-text";
 const SOURCE_TRIAGE_MISSING_PROVENANCE = "missing-provenance";
 const SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE = "candidate-only-provenance";
 const SOURCE_GAP_ARTICLE_ID = "article-source-gap";
+const SOURCE_SECOND_GAP_ARTICLE_ID = "article-source-gap-second";
 const SOURCE_COMPLETE_ARTICLE_ID = "article-source-complete";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
@@ -3255,7 +3256,15 @@ describe("Harper resource endpoints", () => {
         headline: "Uncategorized source article",
         url: "https://example.com/source-gap",
         slug: "source-gap",
-        publishedDate: "2025-05-01",
+        publishedDate: "2026-06-02",
+        category: "unknown",
+      },
+      {
+        id: SOURCE_SECOND_GAP_ARTICLE_ID,
+        headline: "Second uncategorized source article",
+        url: "https://example.com/source-gap-second",
+        slug: "source-gap-second",
+        publishedDate: "2026-06-01",
         category: "unknown",
       },
       {
@@ -3338,7 +3347,7 @@ describe("Harper resource endpoints", () => {
           id: SOURCE_GAP_ARTICLE_ID,
           headline: "Uncategorized source article",
           sourceUrl: "https://example.com/source-gap",
-          articleViewPath: "/articles/source-gap",
+          articleViewPath: "/articles/source-gap-article-source-gap",
           category: "unknown",
           advisorCount: 0,
           firmCount: 0,
@@ -3356,8 +3365,8 @@ describe("Harper resource endpoints", () => {
           ],
         },
       ],
-      nextCursor: null,
-      hasMore: false,
+      nextCursor: OFFSET_ONE_CURSOR,
+      hasMore: true,
     });
     expect(
       response.items[0].reasons.map((reason: any) => reason.label)
@@ -3374,6 +3383,29 @@ describe("Harper resource endpoints", () => {
       hasMore: true,
     });
     expect(all.nextCursor).toEqual(OFFSET_ONE_CURSOR);
+    const secondPage = await new (resources as any).SourceArticleTriage().get(
+      routeTarget("", {
+        category: "unknown",
+        reason: SOURCE_TRIAGE_NO_EVENT_CARDS,
+        limit: "1",
+        cursor: response.nextCursor,
+      })
+    );
+    expect(secondPage).toMatchObject({
+      count: 1,
+      filters: {
+        category: "unknown",
+        reason: SOURCE_TRIAGE_NO_EVENT_CARDS,
+        limit: 1,
+      },
+      items: [
+        {
+          id: SOURCE_SECOND_GAP_ARTICLE_ID,
+          articleViewPath:
+            "/articles/source-gap-second-article-source-gap-second",
+        },
+      ],
+    });
   });
 
   it("surfaces only reviewed regulatory discrepancy notes on advisor profiles", async () => {
