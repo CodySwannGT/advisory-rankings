@@ -14,6 +14,23 @@ tests/screenshots/
 tests/parity/
 artifacts/
 
+# Generated clean-route web shells (created by bun run build as
+# directory index.html files from tracked .html shells).
+harper-app/web/advisors/
+harper-app/web/branches/
+harper-app/web/compare/
+harper-app/web/corrections/
+harper-app/web/firms/
+harper-app/web/investor-proof/
+harper-app/web/login/
+harper-app/web/rankings/
+harper-app/web/recruiting/
+harper-app/web/regulatory/
+harper-app/web/report-packet/
+harper-app/web/research/
+harper-app/web/teams/
+harper-app/web/watchlists/
+
 # BrokerCheck scraper runtime output — re-derived on every run, not
 # source-of-truth. State file lets the scraper skip CRDs fetched in
 # the last 7 days; log file mirrors stderr output of the orchestrator.

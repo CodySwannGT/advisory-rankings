@@ -26,6 +26,16 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = new URL("../", import.meta.url).pathname;
 const HARPER_APP = join(REPO_ROOT, "harper-app");
 const HARPER_WEB = join(HARPER_APP, "web");
+const CLEAN_ROUTE_SHELLS = [
+  ["advisors", "advisors.html"],
+  ["branches", "branches.html"],
+  ["investor-proof", "investor-proof.html"],
+  ["recruiting", "recruiting.html"],
+  ["recruiting/shortlist", "recruiting-shortlist.html"],
+  ["regulatory/discrepancies", "regulatory-discrepancies.html"],
+  ["research/freshness", "research-freshness.html"],
+  ["login", "../login/shell.html"],
+] as const;
 
 // Match any relative `from "./lib/<file>.js"` or `from "../lib/<file>.js"`
 // import. We check BOTH forms because:
@@ -202,6 +212,24 @@ describe("build invariant — harper-app/ lib imports must be self-contained", (
     expect(
       missing,
       `harper-app/web/*.html references module entrypoints that the build did not bundle into harper-app/web/. Missing targets:\n${JSON.stringify(missing, null, 2)}`
+    ).toEqual([]);
+  });
+
+  it("generates extensionless static shells for clean public routes", () => {
+    const missingOrMismatched = CLEAN_ROUTE_SHELLS.filter(
+      ([routePath, sourceShell]) => {
+        const cleanShell = join(HARPER_WEB, routePath, "index.html");
+        const htmlShell = join(HARPER_WEB, sourceShell);
+        return (
+          !existsSync(cleanShell) ||
+          readFileSync(cleanShell, "utf8") !== readFileSync(htmlShell, "utf8")
+        );
+      }
+    ).map(([routePath]) => routePath);
+
+    expect(
+      missingOrMismatched,
+      `src/build/build.ts must generate static directory index shells so Fabric can serve clean URLs without fastifyRoutes. Missing or mismatched routes:\n${JSON.stringify(missingOrMismatched, null, 2)}`
     ).toEqual([]);
   });
 });

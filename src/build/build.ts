@@ -1,6 +1,6 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 const HARPER_WEB_DIR = "harper-app/web";
@@ -37,6 +37,27 @@ const WEB_ENTRYPOINTS = [
   "watchlists.js",
 ];
 
+const CLEAN_ROUTE_SHELLS = [
+  ["advisors", "advisors.html"],
+  ["branches", "branches.html"],
+  ["compare", "compare.html"],
+  ["corrections", "correction-inbox.html"],
+  ["coverage", "coverage.html"],
+  ["firms", "firms.html"],
+  ["investor-proof", "investor-proof.html"],
+  ["rankings", "rankings.html"],
+  ["recruiting", "recruiting.html"],
+  ["recruiting/shortlist", "recruiting-shortlist.html"],
+  ["regulatory", "regulatory.html"],
+  ["regulatory/discrepancies", "regulatory-discrepancies.html"],
+  ["report-packet", "report-packet.html"],
+  ["research/freshness", "research-freshness.html"],
+  ["teams", "teams.html"],
+  ["watchlists", "watchlists.html"],
+] as const;
+
+const SPECIAL_CLEAN_ROUTE_SHELLS = [["login", "harper-app/login/shell.html"]];
+
 /** Minimal package fields needed for generated browser metadata. */
 interface PackageManifest {
   readonly version?: string;
@@ -51,6 +72,7 @@ async function copyGeneratedWeb(): Promise<void> {
   await removeGeneratedWebJavaScript(HARPER_WEB_DIR);
   await bundleWebEntrypoints();
   await writeGeneratedVersionModule();
+  await writeCleanRouteShells();
 }
 
 /**
@@ -109,6 +131,44 @@ async function writeGeneratedVersionModule(): Promise<void> {
     join(HARPER_WEB_DIR, "version.js"),
     `export const APP_VERSION = ${JSON.stringify(version)};\n`
   );
+}
+
+/**
+ * Writes static directory index files for clean routes.
+ *
+ * Fabric currently serves `static.files` but ignores the documented
+ * `fastifyRoutes` block for this component. These files let the root static
+ * handler answer `/advisors/` and `/investor-proof/` with the same HTML as the
+ * legacy `.html` URLs without depending on route modules. The directory
+ * `index.html` shape keeps Harper's content type as `text/html`; extensionless
+ * files are served as downloads.
+ */
+async function writeCleanRouteShells(): Promise<void> {
+  for (const [routePath, sourceShell] of CLEAN_ROUTE_SHELLS) {
+    await writeCleanRouteShell(
+      routePath,
+      join(HARPER_WEB_DIR, sourceShell)
+    );
+  }
+  for (const [routePath, sourceShell] of SPECIAL_CLEAN_ROUTE_SHELLS) {
+    await writeCleanRouteShell(routePath, sourceShell);
+  }
+}
+
+/**
+ * Copies one HTML shell to a web-root route directory's `index.html`.
+ * @param routePath Browser path relative to the web root, without a leading slash.
+ * @param sourceShell Source HTML shell path.
+ */
+async function writeCleanRouteShell(
+  routePath: string,
+  sourceShell: string
+): Promise<void> {
+  const targetDir = join(HARPER_WEB_DIR, routePath);
+  await rm(targetDir, { recursive: true, force: true });
+  const target = join(targetDir, "index.html");
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, await readFile(sourceShell, "utf8"));
 }
 
 /**

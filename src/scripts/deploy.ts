@@ -55,6 +55,28 @@ const FEED_READINESS_TIMEOUT_MS = 10000;
 const ROUTE_READINESS_ATTEMPTS = 6;
 const ROUTE_READINESS_INTERVAL_MS = 5000;
 const ROUTE_READINESS_TIMEOUT_MS = 15000;
+const DOCUMENT_ACCEPT =
+  "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+const RESOURCE_ACCEPT = "application/json, text/javascript, */*";
+const PUBLIC_DOCUMENT_ROUTES = [
+  "/branches",
+  "/firms",
+  "/advisors",
+  "/teams",
+  "/coverage",
+  "/investor-proof",
+  "/recruiting",
+  "/recruiting/shortlist",
+  "/research/freshness",
+  "/rankings",
+  "/regulatory",
+  "/regulatory/discrepancies",
+  "/corrections",
+  "/compare",
+  "/report-packet?ids=advisor-a,advisor-b",
+  "/watchlists",
+  "/login",
+] as const;
 const creds = loadCreds();
 
 /**
@@ -318,6 +340,11 @@ async function deployPublicRuntime(): Promise<number> {
       {
         project: PROJECT,
         payload: deployPackage.payload,
+        // Direct deploy targets the public serving node. Fabric peer
+        // replication for this dev cluster intermittently fails before TLS
+        // connects, leaving the public node partially updated and the workflow
+        // red even when this node can be deployed and verified directly.
+        replicated: false,
         restart: true,
       },
       DEPLOY_TIMEOUT_MS
@@ -544,17 +571,19 @@ function describeRouteError(error: unknown): string {
  * retry rather than fail an otherwise healthy deploy.
  * @param clusterUrl - Base URL for the deployed Harper component.
  * @param path - Absolute path to check.
+ * @param accept - Accept header to send while checking the route.
  * @param attempts - Remaining poll attempts.
  * @returns Nothing once the route answers 200, else throws after the budget.
  */
 async function verifyPublicRoute(
   clusterUrl: string,
   path: string,
+  accept = RESOURCE_ACCEPT,
   attempts = ROUTE_READINESS_ATTEMPTS
 ): Promise<void> {
   const outcome = await fetchWithTimeout(
     `${clusterUrl}${path}`,
-    { headers: { Accept: "application/json, text/javascript, */*" } },
+    { headers: { Accept: accept } },
     ROUTE_READINESS_TIMEOUT_MS
   ).then(
     response => ({ ready: response.ok, detail: `HTTP ${response.status}` }),
@@ -570,7 +599,17 @@ async function verifyPublicRoute(
   await new Promise(resolve =>
     setTimeout(resolve, ROUTE_READINESS_INTERVAL_MS)
   );
-  return verifyPublicRoute(clusterUrl, path, attempts - 1);
+  return verifyPublicRoute(clusterUrl, path, accept, attempts - 1);
+}
+
+/**
+ * Verifies every clean public document route serves after deploy.
+ * @param clusterUrl - Base URL for the deployed Harper component.
+ */
+async function verifyPublicDocumentRoutes(clusterUrl: string): Promise<void> {
+  for (const path of PUBLIC_DOCUMENT_ROUTES) {
+    await verifyPublicRoute(clusterUrl, path, DOCUMENT_ACCEPT);
+  }
 }
 
 /**
@@ -603,7 +642,10 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
   await verifyPublicRoute(clusterUrl, "/app.css");
   await verifyPublicRoute(clusterUrl, "/compare.js");
   await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
-  console.log("▶ public static assets and comparison resources verified");
+  await verifyPublicDocumentRoutes(clusterUrl);
+  console.log(
+    "▶ public static assets, clean document routes, and resources verified"
+  );
 }
 
 /**
