@@ -134,6 +134,7 @@ rest: true
 jsResource:
   files: 'resources.js'
 fastifyRoutes:
+  urlPath: '.'
   files:
     - 'static-web/index.js'
     - 'branches/index.js'
@@ -144,6 +145,8 @@ fastifyRoutes:
     - 'data-coverage/index.js'
     - 'investor-proof/index.js'
     - 'recruiting/index.js'
+    - 'research-freshness/index.js'
+    - 'source-triage-route/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
@@ -155,6 +158,8 @@ fastifyRoutes:
     - 'favicon/index.js'
 static:
   files: 'web/**'
+  extensions:
+    - 'html'
 ```
 
 That gives us, on `:443`:
@@ -173,10 +178,20 @@ That gives us, on `:443`:
   are needed to avoid HTTP 500 responses on misses after the unknown-route
   experiments. Top-level unknown routes currently return Harper's bare
   `Not found` response before app-level fallback routes can run.
+- `static.extensions: ['html']` keeps extensionless shell URLs such as
+  `/source-triage?category=...` resolving to the tracked `web/*.html` files even
+  when the public edge does not expose Fastify route modules.
 - Clean data coverage route `/coverage`, served by
   `data-coverage/index.js` and backed by `/DataCoverage`.
 - Clean investor proof packet route `/investor-proof`, served by
   `investor-proof/index.js` and backed by `/InvestorProofPacket`.
+- Clean source article triage route `/source-triage`, served by
+  `source-triage-route/index.js` and backed by `/SourceArticleTriage`. The
+  route module directory intentionally does not match the URL path because a
+  deployed `source-triage/` directory can make Harper treat `/source-triage`
+  as a static-directory request before the Fastify route table.
+- `fastifyRoutes.urlPath: '.'` is required; otherwise Harper mounts these route
+  modules under the component/project prefix instead of the public root path.
 - Clean comparison packet route `/report-packet?ids=...`, served by
   `report-packet/index.js` and backed by `/AdvisorComparison`.
 - Public UI and MCP routes are explicitly allowed by their JS resources.
@@ -893,6 +908,15 @@ continues to the data-plane freshness checks. If the post-deploy freshness
 check still sees a stale serving node, `recoverPublicRuntime` re-attempts
 the direct `:9925` deploy once and re-verifies.
 
+Harper can also return HTTP 500 from the direct `:9925` deploy with
+`was deployed on the origin node but failed to replicate`. Because the direct
+path targets the public serving node, that response is a freshness-checkable
+partial success: the workflow now skips the Studio fallback, explicitly
+restarts the public runtime, and lets `/Feed`, `/version.js`, and bundle
+freshness decide whether the deploy is usable. This avoids the Fabric Connect
+body-size limit on larger packages while still failing if the public runtime
+remains stale.
+
 The public-route checks (`/`, `/app.css`, `/compare.js`, and
 `/AdvisorComparison`) poll with a short per-attempt timeout instead of a
 single shot: a freshly restarted static or resource route cold-starts and
@@ -1556,6 +1580,7 @@ organisms / templates) — see `docs/design-system.md`.
 | `/regulatory/discrepancies` (`regulatory-discrepancies.html`) | Authenticated analyst queue for open `RegulatoryDiscrepancy` rows, showing compared source values, event clues, provenance, severity, status, and available review actions from `/RegulatoryDiscrepancyQueue`. |
 | `/corrections` (`correction-inbox.html`) | Authenticated analyst inbox for pending advisor-submitted correction requests, showing advisor, field, displayed/proposed values, submitter note, source context, age, and disposition controls from `/AdvisorCorrectionRequest`. |
 | `/research/freshness` (`research-freshness.html`) | Public research freshness workbench for advisors due for source checks, showing URL-backed filters, priority-group shortcuts, compact advisor rows, status/missing-field counts, provenance ids, and profile links from `/AdvisorResearchQueue`. |
+| `/source-triage` (`source-triage.html`) | Public source article triage workbench for extraction-gap rows, showing URL-backed category/reason filters, ArticleView links, original-source links, entity/event counts, body/provenance state, and reason labels from `/SourceArticleTriage`. |
 | `/report-packet?ids=<id>,<id>` (`report-packet.html?ids=…` still works) | Public report packet shell that replays the comparison selection, shows generated metadata, selected advisors, and normalized selection caveats from `/AdvisorComparison`. |
 
 ### How the joins happen
