@@ -57,6 +57,13 @@ Once the server is up:
   `/SourceArticleTriage` accepts `category`, `reason`, `cursor`, and `limit`,
   then returns public source articles with extraction-gap reason tokens, public
   source/ArticleView links, entity/event counts, and body/provenance state.
+  Reviewer replay for the current deployed source-triage slice uses:
+  `GET /SourceArticleTriage?category=unknown&reason=no-event-cards&limit=10`,
+  then opens `/source-triage?category=unknown&reason=no-event-cards&limit=10`
+  on desktop and mobile, and finally checks the sample ArticleView rows
+  `dd893ee1-92ff-5b63-9e45-c39d63c50904` and
+  `a5550239-6c67-5289-937d-6669653cc0da` for the expected missing event cards,
+  missing body, and provenance/entity counts.
   `/AdvisorResearchQueue` accepts `sourceType`, `staleDays`, `status`,
   `missingField`, and `limit`, then echoes normalized filters plus summary
   counts and priority-group filter mappings. `/research/freshness` exposes the
