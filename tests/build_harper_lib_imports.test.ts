@@ -29,11 +29,14 @@ const HARPER_WEB = join(HARPER_APP, "web");
 const CLEAN_ROUTE_SHELLS = [
   ["advisors", "advisors.html"],
   ["branches", "branches.html"],
+  ["firms", "firms.html"],
   ["investor-proof", "investor-proof.html"],
   ["recruiting", "recruiting.html"],
   ["recruiting/shortlist", "recruiting-shortlist.html"],
   ["regulatory/discrepancies", "regulatory-discrepancies.html"],
   ["research/freshness", "research-freshness.html"],
+  ["source-triage", "source-triage.html"],
+  ["teams", "teams.html"],
   ["login", "../login/shell.html"],
 ] as const;
 
@@ -229,7 +232,18 @@ describe("build invariant — harper-app/ lib imports must be self-contained", (
 
     expect(
       missingOrMismatched,
-      `src/build/build.ts must generate static directory index shells so Fabric can serve clean URLs without fastifyRoutes. Missing or mismatched routes:\n${JSON.stringify(missingOrMismatched, null, 2)}`
+      `src/build/build.ts must generate static directory index shells for top-level clean URLs. Missing or mismatched routes:\n${JSON.stringify(missingOrMismatched, null, 2)}`
     ).toEqual([]);
+  });
+
+  it("exports resource-backed clean profile document routes", () => {
+    const routeModule = join(HARPER_APP, "resource-clean-web-routes.js");
+    expect(existsSync(routeModule)).toBe(true);
+
+    const source = readFileSync(routeModule, "utf8");
+    expect(source).toContain("static directURLMapping = true");
+    for (const exportName of ["advisors", "firms", "teams", "articles"]) {
+      expect(source).toContain(` as ${exportName}`);
+    }
   });
 });

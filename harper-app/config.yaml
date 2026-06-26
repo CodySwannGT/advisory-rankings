@@ -29,6 +29,7 @@ fastifyRoutes:
     - 'recruiting/index.js'
     - 'recruiting-shortlist/index.js'
     - 'research-freshness/index.js'
+    - 'source-triage/index.js'
     - 'rankings/index.js'
     - 'regulatory/index.js'
     - 'regulatory-discrepancies/index.js'
@@ -39,8 +40,9 @@ fastifyRoutes:
     - 'login/index.js'
     - 'favicon/index.js'
 
-# AdvisorBook web UI.  Served at the same origin as REST so the
-# browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
+# AdvisorBook web UI static fallback. Root URL assets and generated directory
+# indexes must stay mounted at / because Fabric is not consistently mounting
+# the legacy Fastify route surface for this component.
 # `**/*` is recursive so the design-system/ subdirectory ships too.
 static:
   files: 'web/**'

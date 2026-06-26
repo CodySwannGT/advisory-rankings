@@ -68,6 +68,7 @@ const PUBLIC_DOCUMENT_ROUTES = [
   "/recruiting",
   "/recruiting/shortlist",
   "/research/freshness",
+  "/source-triage",
   "/rankings",
   "/regulatory",
   "/regulatory/discrepancies",
@@ -76,6 +77,12 @@ const PUBLIC_DOCUMENT_ROUTES = [
   "/report-packet?ids=advisor-a,advisor-b",
   "/watchlists",
   "/login",
+] as const;
+const DYNAMIC_DOCUMENT_ROUTES = [
+  "/advisors/deploy-smoke-advisor-00000000-0000-0000-0000-000000000000",
+  "/firms/deploy-smoke-firm-00000000-0000-0000-0000-000000000000",
+  "/teams/deploy-smoke-team-00000000-0000-0000-0000-000000000000",
+  "/articles/deploy-smoke-article-00000000-0000-0000-0000-000000000000",
 ] as const;
 const creds = loadCreds();
 
@@ -607,7 +614,7 @@ async function verifyPublicRoute(
  * @param clusterUrl - Base URL for the deployed Harper component.
  */
 async function verifyPublicDocumentRoutes(clusterUrl: string): Promise<void> {
-  for (const path of PUBLIC_DOCUMENT_ROUTES) {
+  for (const path of [...PUBLIC_DOCUMENT_ROUTES, ...DYNAMIC_DOCUMENT_ROUTES]) {
     await verifyPublicRoute(clusterUrl, path, DOCUMENT_ACCEPT);
   }
 }
@@ -807,8 +814,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error(err instanceof Error ? err.stack || err.message : err);
-  process.exitCode = 1;
-});
+main().then(
+  () => process.exit(process.exitCode ?? 0),
+  err => {
+    console.error(err instanceof Error ? err.stack || err.message : err);
+    process.exit(1);
+  }
+);
 /* eslint-enable code-organization/enforce-statement-order, functional/immutable-data, functional/prefer-readonly-type, max-lines -- Re-enable after deploy orchestration module. */

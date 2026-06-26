@@ -52,6 +52,7 @@ const CLEAN_ROUTE_SHELLS = [
   ["regulatory/discrepancies", "regulatory-discrepancies.html"],
   ["report-packet", "report-packet.html"],
   ["research/freshness", "research-freshness.html"],
+  ["source-triage", "source-triage.html"],
   ["teams", "teams.html"],
   ["watchlists", "watchlists.html"],
 ] as const;
@@ -136,12 +137,12 @@ async function writeGeneratedVersionModule(): Promise<void> {
 /**
  * Writes static directory index files for clean routes.
  *
- * Fabric currently serves `static.files` but ignores the documented
- * `fastifyRoutes` block for this component. These files let the root static
- * handler answer `/advisors/` and `/investor-proof/` with the same HTML as the
- * legacy `.html` URLs without depending on route modules. The directory
- * `index.html` shape keeps Harper's content type as `text/html`; extensionless
- * files are served as downloads.
+ * These files let Harper's root static handler answer top-level clean URLs
+ * like `/advisors/`, `/investor-proof/`, and `/source-triage/` with the same
+ * HTML as the legacy `.html` URLs. Dynamic profile routes are served by
+ * exported Harper resources in `resource-clean-web-routes.ts`, so deploy
+ * verification probes both static clean shells and resource-backed dynamic
+ * clean shells.
  */
 async function writeCleanRouteShells(): Promise<void> {
   for (const [routePath, sourceShell] of CLEAN_ROUTE_SHELLS) {

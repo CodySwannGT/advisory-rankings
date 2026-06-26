@@ -14,8 +14,6 @@ import teamsRoutes from "../harper-app/teams/index.js";
 
 type RouteHandler = (request: unknown, reply: unknown) => unknown;
 
-const UNKNOWN_ROUTE_PATTERN = "*";
-
 describe("SEO route shells", () => {
   it("registers explicit entity routes without catching root assets", async () => {
     const paths: string[] = [];
@@ -69,11 +67,12 @@ describe("SEO route shells", () => {
 });
 
 describe("static web route shells", () => {
-  it("keeps Harper static serving on the deploy-safe wildcard mode", async () => {
+  it("keeps Harper static mounted at root for Fabric route fallback", async () => {
     const config = await readFile("harper-app/config.yaml", "utf8");
 
     expect(config).toContain("static:");
     expect(config).toContain("files: 'web/**'");
+    expect(config).not.toContain("urlPath:");
     expect(config).not.toContain("wildcard: false");
   });
 
@@ -95,7 +94,7 @@ describe("static web route shells", () => {
     expect(paths).not.toContain("/design-system/dom.js");
     expect(paths).not.toContain("/design-system/organisms-nav.js");
     expect(paths).not.toContain("/app-money-formatters.js");
-    expect(paths).toContain(UNKNOWN_ROUTE_PATTERN);
+    expect(paths).not.toContain("*");
     expect(paths).not.toContain("/Feed");
     expect(paths).not.toContain("/:asset");
   });
@@ -166,7 +165,7 @@ describe("static web route shells", () => {
     expect(paths).not.toContain("/:asset");
   });
 
-  it("serves the 404 app shell for unknown document routes only", async () => {
+  it("uses Fastify's not-found handler for unknown document routes only", async () => {
     const handlers = new Map<string, RouteHandler>();
     let notFoundHandler: RouteHandler | undefined;
     const sent: unknown[] = [];
@@ -191,28 +190,25 @@ describe("static web route shells", () => {
     };
 
     await staticWebRoutes(fastify);
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
-      { url: "/this-page-does-not-exist", headers: { accept: "text/html" } },
-      reply
-    );
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
-      { url: "/other-missing-route", headers: { accept: "*/*" } },
-      reply
-    );
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
-      { url: "/missing.js", headers: { accept: "*/*" } },
-      reply
-    );
-    await handlers.get(UNKNOWN_ROUTE_PATTERN)?.(
-      { url: "/missing.css?v=stale", headers: { accept: "text/html" } },
-      reply
-    );
+    expect(handlers.has("*")).toBe(false);
     await notFoundHandler?.(
       { url: "/nested/missing", headers: { accept: "text/html" } },
       reply
     );
+    await notFoundHandler?.(
+      { url: "/other-missing-route", headers: { accept: "*/*" } },
+      reply
+    );
+    await notFoundHandler?.(
+      { url: "/missing.js", headers: { accept: "*/*" } },
+      reply
+    );
+    await notFoundHandler?.(
+      { url: "/missing.css?v=stale", headers: { accept: "text/html" } },
+      reply
+    );
 
-    expect(statuses).toEqual([404, 404, 404, 404, 404]);
+    expect(statuses).toEqual([404, 404, 404, 404]);
     expect(headerSets[0]).toMatchObject({
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8",
@@ -221,6 +217,5 @@ describe("static web route shells", () => {
     expect(sent[1]).toBe("Not found");
     expect(sent[2]).toBe("Not found");
     expect(sent[3]).toBe("Not found");
-    expect(String(sent[4])).toContain("/not-found.js");
   });
 });
