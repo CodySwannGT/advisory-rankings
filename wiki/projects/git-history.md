@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-24
+updated: 2026-06-26
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -25,6 +25,8 @@ sources:
   - ../sources/git/2026-06-16-advisory-rankings-git.md
   - ../sources/git/2026-06-17-advisory-rankings-git.md
   - ../sources/git/2026-06-24-advisory-rankings-git.md
+  - ../sources/git/2026-06-25-advisory-rankings-git.md
+  - ../sources/git/2026-06-26-advisory-rankings-git.md
 ---
 
 # Git history
@@ -132,6 +134,16 @@ The 2026-06-24 git ingest ran at HEAD `4a8bc6fd8d2e4b563b43fa2290e6d1363d9ceb37`
 commits since the 2026-06-17 cursor, bringing the branch total to 1867 commits, and refreshed merged
 PR metadata through #1385, "fix: humanize regulatory event card labels." Source:
 wiki/sources/git/2026-06-24-advisory-rankings-git.md.
+
+The 2026-06-25 git ingest ran at HEAD `07110052e154112c35444b7a6025ae7829fe7f86`. It added 35
+commits since the 2026-06-24 cursor, bringing the branch total to 1902 commits, and refreshed merged
+PR metadata through #1409, "test: cover advisor trust checklist deployed replay." Source:
+wiki/sources/git/2026-06-25-advisory-rankings-git.md.
+
+The 2026-06-26 git ingest ran at HEAD `d0ca3df1c20798a1dedac4e8ce6fb4f3ae5571d1`. It added 12
+commits since the 2026-06-25 cursor, bringing the branch total to 1914 commits, and refreshed merged
+PR metadata through #1416, "Fix desktop login header search overlap." Source:
+wiki/sources/git/2026-06-26-advisory-rankings-git.md.
 
 ## Recent themes
 
