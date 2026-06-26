@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-24
+updated: 2026-06-26
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -19,6 +19,8 @@ sources:
   - ../sources/git/2026-06-16-advisory-rankings-git.md
   - ../sources/git/2026-06-17-advisory-rankings-git.md
   - ../sources/git/2026-06-24-advisory-rankings-git.md
+  - ../sources/git/2026-06-25-advisory-rankings-git.md
+  - ../sources/git/2026-06-26-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -118,3 +120,8 @@ checklist mapping, copy metadata preservation, advisor-profile rendering, browse
 deployed replay verification landed together. It also records PublicBranches loaded-gap recovery
 with a branchId lookup revert, investor proof provenance copy cleanup, and continued test/complexity
 threshold maintenance. Source: wiki/sources/git/2026-06-25-advisory-rankings-git.md.
+
+The 2026-06-26 git ingest shows a smaller maintenance window after the trust-checklist rollout:
+trust-checklist browser assertions were hardened, max-lines-per-function pressure continued, and the
+desktop header search/login layout was repaired to prevent overlap. Source:
+wiki/sources/git/2026-06-26-advisory-rankings-git.md.
