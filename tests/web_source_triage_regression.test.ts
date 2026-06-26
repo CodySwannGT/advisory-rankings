@@ -154,6 +154,7 @@ async function sourceTriageFacts(
     .waitFor({ timeout: REGRESSION_TIMEOUT });
   await page
     .locator(`a[href*="${FIRST_SAMPLE_ID}"]`)
+    .first()
     .waitFor({ timeout: REGRESSION_TIMEOUT });
 
   return await page.evaluate(() => {
