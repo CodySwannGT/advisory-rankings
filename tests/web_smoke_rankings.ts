@@ -434,10 +434,7 @@ function loadedRankingsChecks(loaded, sortChange) {
     finiteFacetCheck(loaded),
     check(
       loaded.hasHumanImportedDate,
-      "rankings: source dates are human readable",
-      JSON.stringify({
-        hasHumanImportedDate: loaded.hasHumanImportedDate,
-      })
+      "rankings: source dates are human readable"
     ),
     check(
       loaded.rawDateLabels.length === 0,

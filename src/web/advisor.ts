@@ -309,7 +309,6 @@ function advisorCenterSections(
   mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
   const transitions = resourceRows(d.transitions);
-  const articles = resourceRows(d.articles);
   const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [],
     reviewedCorrections = d.reviewedCorrectionRequests ?? [];
   const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
@@ -356,7 +355,7 @@ function advisorCenterSections(
         })
       : null,
     PartialFailureCard("Transitions involving this advisor", d.transitions),
-    advisorCoverageSection(articles),
+    advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
   ];
 }

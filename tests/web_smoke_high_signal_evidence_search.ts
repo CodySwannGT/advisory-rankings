@@ -61,7 +61,13 @@ export async function captureSearchKindEvidence(
     Promise.resolve([])
   );
 
-  return observations.flatMap((observation): readonly Check[] => [
+  return observations.flatMap(searchKindObservationChecks);
+}
+
+function searchKindObservationChecks(
+  observation: SearchKindObservation
+): readonly Check[] {
+  return [
     check(
       observation.responseStatus === 200,
       `[EVIDENCE: search-kind-filter] ${observation.kindCase.kind} request returns 2xx`,
@@ -95,7 +101,7 @@ export async function captureSearchKindEvidence(
       `[EVIDENCE: search-kind-filter] ${observation.kindCase.kind} count hint names kind`,
       observation.countHint
     ),
-  ]);
+  ];
 }
 
 /**
