@@ -123,6 +123,14 @@ const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
 const EXAMPLE_WEALTH_QUERY = "example wealth";
 const OFFSET_ONE_CURSOR = "MQ";
+const SOURCE_TRIAGE_UNCATEGORIZED = "uncategorized";
+const SOURCE_TRIAGE_NO_EVENT_CARDS = "no-event-cards";
+const SOURCE_TRIAGE_NO_ENTITY_CHIPS = "no-entity-chips";
+const SOURCE_TRIAGE_NO_BODY_TEXT = "no-body-text";
+const SOURCE_TRIAGE_MISSING_PROVENANCE = "missing-provenance";
+const SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE = "candidate-only-provenance";
+const SOURCE_GAP_ARTICLE_ID = "article-source-gap";
+const SOURCE_COMPLETE_ARTICLE_ID = "article-source-complete";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
 const DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE =
@@ -3209,11 +3217,11 @@ describe("Harper resource endpoints", () => {
     });
     expect(candidateOnly).toMatchObject({
       reasonTokens: [
-        "uncategorized",
-        "no-event-cards",
-        "no-entity-chips",
-        "no-body-text",
-        "candidate-only-provenance",
+        SOURCE_TRIAGE_UNCATEGORIZED,
+        SOURCE_TRIAGE_NO_EVENT_CARDS,
+        SOURCE_TRIAGE_NO_ENTITY_CHIPS,
+        SOURCE_TRIAGE_NO_BODY_TEXT,
+        SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE,
       ],
       candidateProvenanceCount: 2,
       provenanceCount: 2,
@@ -3228,15 +3236,144 @@ describe("Harper resource endpoints", () => {
       "Candidate-only provenance",
     ]);
     expect(missingProvenance.reasonTokens).toEqual([
-      "uncategorized",
-      "no-event-cards",
-      "no-entity-chips",
-      "no-body-text",
-      "missing-provenance",
+      SOURCE_TRIAGE_UNCATEGORIZED,
+      SOURCE_TRIAGE_NO_EVENT_CARDS,
+      SOURCE_TRIAGE_NO_ENTITY_CHIPS,
+      SOURCE_TRIAGE_NO_BODY_TEXT,
+      SOURCE_TRIAGE_MISSING_PROVENANCE,
     ]);
-    expect(sourceArticleTriageReasonLabel("missing-provenance")).toBe(
-      "Missing provenance"
+    expect(
+      sourceArticleTriageReasonLabel(SOURCE_TRIAGE_MISSING_PROVENANCE)
+    ).toBe("Missing provenance");
+  });
+
+  it("returns source article triage rows with reason filters and cursors", async () => {
+    setRows("Article", [
+      ...(tableRows.get("Article") ?? []),
+      {
+        id: SOURCE_GAP_ARTICLE_ID,
+        headline: "Uncategorized source article",
+        url: "https://example.com/source-gap",
+        slug: "source-gap",
+        publishedDate: "2025-05-01",
+        category: "unknown",
+      },
+      {
+        id: SOURCE_COMPLETE_ARTICLE_ID,
+        headline: "Complete source article",
+        url: "https://example.com/source-complete",
+        slug: "source-complete",
+        publishedDate: "2025-04-15",
+        bodyText: "Avery Stone joined Example Wealth Management.",
+        category: "moves",
+      },
+    ]);
+    setRows("ArticleAdvisorMention", [
+      ...(tableRows.get("ArticleAdvisorMention") ?? []),
+      {
+        id: "mention-source-complete-advisor",
+        articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        advisorId: "advisor-a",
+      },
+    ]);
+    setRows("ArticleFirmMention", [
+      ...(tableRows.get("ArticleFirmMention") ?? []),
+      {
+        id: "mention-source-complete-firm",
+        articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        firmId: "firm-a",
+      },
+    ]);
+    setRows("ArticleTeamMention", [
+      ...(tableRows.get("ArticleTeamMention") ?? []),
+      {
+        id: "mention-source-complete-team",
+        articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        teamId: "team-a",
+      },
+    ]);
+    setRows("ArticleTransitionEventMention", [
+      ...(tableRows.get("ArticleTransitionEventMention") ?? []),
+      {
+        id: "mention-source-complete-transition",
+        articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        transitionEventId: TRANSITION_A_ID,
+      },
+    ]);
+    setRows("FieldAssertion", [
+      ...(tableRows.get("FieldAssertion") ?? []),
+      {
+        id: "field-source-complete",
+        articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        targetTable: "Advisor",
+        targetId: "advisor-a",
+        fieldName: "legalName",
+        assertedValue: JSON.stringify(AVERY_STONE_NAME),
+        quotePhrase: AVERY_STONE_NAME,
+        confidence: "high",
+      },
+    ]);
+
+    const response = await new (resources as any).SourceArticleTriage().get(
+      routeTarget("", {
+        category: "unknown",
+        reason: SOURCE_TRIAGE_NO_EVENT_CARDS,
+        limit: "1",
+      })
     );
+    const all = await new (resources as any).SourceArticleTriage().get(
+      routeTarget("", { limit: "1" })
+    );
+
+    expect(new (resources as any).SourceArticleTriage().allowRead()).toBe(true);
+    expect(response).toMatchObject({
+      count: 1,
+      filters: {
+        category: "unknown",
+        reason: SOURCE_TRIAGE_NO_EVENT_CARDS,
+        limit: 1,
+      },
+      items: [
+        {
+          id: SOURCE_GAP_ARTICLE_ID,
+          headline: "Uncategorized source article",
+          sourceUrl: "https://example.com/source-gap",
+          articleViewPath: "/articles/source-gap",
+          category: "unknown",
+          advisorCount: 0,
+          firmCount: 0,
+          teamCount: 0,
+          eventCardCount: 0,
+          hasBody: false,
+          provenanceCount: 0,
+          candidateProvenanceCount: 0,
+          reasonTokens: [
+            SOURCE_TRIAGE_UNCATEGORIZED,
+            SOURCE_TRIAGE_NO_EVENT_CARDS,
+            SOURCE_TRIAGE_NO_ENTITY_CHIPS,
+            SOURCE_TRIAGE_NO_BODY_TEXT,
+            SOURCE_TRIAGE_MISSING_PROVENANCE,
+          ],
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    });
+    expect(
+      response.items[0].reasons.map((reason: any) => reason.label)
+    ).toEqual([
+      "Uncategorized",
+      "No event cards",
+      "No entity chips",
+      "No body text",
+      "Missing provenance",
+    ]);
+    expect(all).toMatchObject({
+      count: 1,
+      filters: { category: "all", reason: null, limit: 1 },
+      hasMore: true,
+    });
+    expect(all.nextCursor).toEqual(OFFSET_ONE_CURSOR);
   });
 
   it("surfaces only reviewed regulatory discrepancy notes on advisor profiles", async () => {
