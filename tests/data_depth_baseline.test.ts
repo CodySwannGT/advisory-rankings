@@ -144,6 +144,16 @@ describe("data-depth baseline evidence", () => {
       missingFieldTags: ["missing-aum", "missing-deal-terms", "missing-source"],
       filterSlices: {
         directions: ["inbound", "outbound"],
+        firmIds: [
+          "from-0",
+          "from-1",
+          "from-2",
+          "from-3",
+          "to-0",
+          "to-1",
+          "to-2",
+          "to-3",
+        ],
         states: ["CA", "NY"],
       },
       validationReport: {
@@ -162,7 +172,7 @@ describe("data-depth baseline evidence", () => {
         recentMoves: [recruitingMove(0)],
       })
     ).toThrow(
-      /moves 1 < 25; firm momentum rows 1 < 8; market activity rows 1 < 10/
+      "RecruitingMarket depth check failed: moves 1 < 25; firm momentum rows 1 < 8; market activity rows 1 < 10; source coverage percent 0 < 1; state filter slices 1 < 2; firm filter slices 2 < 4"
     );
   });
 
