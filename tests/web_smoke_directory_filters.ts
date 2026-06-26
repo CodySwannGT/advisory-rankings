@@ -39,6 +39,12 @@ interface TeamClearFacts {
   readonly inactiveClearAbsent: boolean;
 }
 
+interface TeamFilterLayoutFacts {
+  readonly emptyControlsAvailable: boolean;
+  readonly wide320: boolean;
+  readonly wide390: boolean;
+}
+
 type FilteredState = Awaited<ReturnType<typeof captureFilteredState>>;
 
 /**
@@ -199,11 +205,7 @@ async function smokeTeamDirectoryFilters(
 function teamDirectoryFilterChecks(
   fixture: TeamFixture,
   filtered: FilteredState,
-  layout: {
-    readonly wide390: boolean;
-    readonly wide320: boolean;
-    readonly emptyControlsAvailable: boolean;
-  },
+  layout: TeamFilterLayoutFacts,
   liveFacts: LiveFilterFacts,
   clearFacts: TeamClearFacts
 ): readonly Check[] {

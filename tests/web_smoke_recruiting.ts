@@ -541,8 +541,7 @@ function watchlistRecruitingChecks(
     ),
     check(
       restored.coverageCount >= 1,
-      "recruiting: watchlist exposes per-item source coverage",
-      `coverage blocks ${restored.coverageCount}`
+      "recruiting: watchlist exposes per-item source coverage"
     ),
     check(
       noMatch.hasWatchlist &&

@@ -38,6 +38,12 @@ export const RATING_ROUTE = "**/AdvisorRating/**";
 const COMPARISON_ROUTE = "**/AdvisorComparison**";
 
 const ME_ROUTE = "**/Me";
+const SOURCE_TYPE_COVERAGE = {
+  web_research: 1,
+  firm_bio: 1,
+  rankings: 0,
+  press: 1,
+};
 
 /** Desktop + mobile viewports captured for evidence. */
 const EVIDENCE_VIEWPORTS = [
@@ -309,12 +315,7 @@ function advisorProfile(id: string): unknown {
       lastCheckedAt: "2026-05-25T12:00:00Z",
       nearestNextCheckAfter: "2026-06-01T00:00:00Z",
       statusCounts: { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 },
-      sourceTypeCoverage: {
-        web_research: 1,
-        firm_bio: 1,
-        rankings: 0,
-        press: 1,
-      },
+      sourceTypeCoverage: SOURCE_TYPE_COVERAGE,
     },
     confidenceSummary: {
       hasData: true,

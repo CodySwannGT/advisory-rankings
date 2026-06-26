@@ -28,6 +28,7 @@ import {
 const STATE_FILE = "research/brokercheck-state.json";
 const SKIP_RECENT_DAYS = 7;
 const SKIP_RECENT_MS = SKIP_RECENT_DAYS * 86_400_000;
+const MODE_REQUIRED_ERROR = "one BrokerCheck fetch mode is required";
 const arg = (name: string): string | undefined => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
@@ -250,9 +251,7 @@ const runSelectedMode = async (
       firmRoster,
       { write, max, force, log }
     );
-  throw new Error(
-    "one mode required: --crd, --firm-id, --enrich, --search-name, --firm-roster, or --from-fixture"
-  );
+  throw new Error(MODE_REQUIRED_ERROR);
 };
 
 const main = async (): Promise<void> => {
