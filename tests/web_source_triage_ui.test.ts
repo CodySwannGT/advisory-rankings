@@ -11,6 +11,7 @@ import {
 
 const SOURCE_TRIAGE_PATH = "/source-triage";
 const NO_EVENT_REASON = "no-event-cards";
+const NO_EVENT_LABEL = "No event cards";
 
 describe("source article triage route", () => {
   let browser: Browser;
@@ -53,7 +54,7 @@ describe("source article triage route", () => {
       expect(await selectedValue(page, "category")).toBe("unknown");
       expect(await selectedValue(page, "reason")).toBe(NO_EVENT_REASON);
       const firstRow = page.locator(".source-triage-row").first();
-      await firstRow.getByText("No event cards").waitFor({
+      await firstRow.getByText(NO_EVENT_LABEL).waitFor({
         timeout: QUICK_TIMEOUT,
       });
       await firstRow.getByText("Advisors0").waitFor({
@@ -71,6 +72,9 @@ describe("source article triage route", () => {
           .first()
           .getAttribute("href")
       ).toBe("https://www.advisorhub.com/market-brief");
+      expect(
+        await page.getByRole("link", { name: "Original source" }).count()
+      ).toBe(1);
       expect(await hasHorizontalOverflow(page)).toBe(false);
     } finally {
       await page.close();
@@ -142,7 +146,7 @@ function triagePayload(): Readonly<Record<string, unknown>> {
         candidateProvenanceCount: 0,
         reasons: [
           { token: "uncategorized", label: "Uncategorized" },
-          { token: NO_EVENT_REASON, label: "No event cards" },
+          { token: NO_EVENT_REASON, label: NO_EVENT_LABEL },
           { token: "no-body-text", label: "No body text" },
           { token: "missing-provenance", label: "Missing provenance" },
         ],
@@ -152,6 +156,23 @@ function triagePayload(): Readonly<Record<string, unknown>> {
           "no-body-text",
           "missing-provenance",
         ],
+      },
+      {
+        id: "article-2",
+        headline: "LinkedIn snippet needs review",
+        publishedDate: "2026-06-25T00:00:00.000Z",
+        sourceUrl: "https://www.linkedin.com/in/example-advisor",
+        articleViewPath: "/articles/linkedin-snippet-article-2",
+        category: "unknown",
+        advisorCount: 0,
+        firmCount: 0,
+        teamCount: 0,
+        eventCardCount: 0,
+        hasBody: false,
+        provenanceCount: 0,
+        candidateProvenanceCount: 0,
+        reasons: [{ token: NO_EVENT_REASON, label: NO_EVENT_LABEL }],
+        reasonTokens: [NO_EVENT_REASON],
       },
     ],
     nextCursor: null,

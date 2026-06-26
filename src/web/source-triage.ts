@@ -76,11 +76,12 @@ function loadTriage(center: HTMLElement, right: HTMLElement): void {
       renderTriage(data, center, right);
     })
     .catch(error => {
+      console.error("Source triage route failed to load", errorMessage(error));
       clear(center);
       center.appendChild(
         EmptyCardC({
           title: "Could not load source triage",
-          body: errorMessage(error),
+          body: "Source article triage is temporarily unavailable. Try again shortly.",
         })
       );
     });

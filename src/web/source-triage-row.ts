@@ -101,19 +101,22 @@ function rowState(row: SourceArticleTriageRow): HTMLElement {
  * @returns Actions section.
  */
 function rowActions(row: SourceArticleTriageRow): HTMLElement {
+  const source = articleSource({ url: row.sourceUrl });
   return el(
     "div",
     { class: "source-triage-actions" },
     el("a", { href: row.articleViewPath }, "ArticleView"),
-    el(
-      "a",
-      {
-        href: row.sourceUrl,
-        target: "_blank",
-        rel: "noopener noreferrer",
-      },
-      "Original source"
-    )
+    source.publicOriginalLink
+      ? el(
+          "a",
+          {
+            href: row.sourceUrl,
+            target: "_blank",
+            rel: "noopener noreferrer",
+          },
+          "Original source"
+        )
+      : null
   );
 }
 
