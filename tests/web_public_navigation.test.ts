@@ -44,6 +44,7 @@ describe("public navigation", () => {
         "Branches",
         "Coverage",
         "Investor proof",
+        "Source triage",
         "Recruiting",
         "Rankings",
         "Advisors",
