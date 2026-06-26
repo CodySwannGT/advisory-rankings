@@ -32,6 +32,7 @@ const WEB_ENTRYPOINTS = [
   "report-packet.js",
   "research-freshness.js",
   "route-loading.js",
+  "source-triage.js",
   "team.js",
   "watchlists.js",
 ];
