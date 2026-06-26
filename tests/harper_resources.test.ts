@@ -3788,6 +3788,189 @@ describe("Harper resource endpoints", () => {
     );
   });
 
+  it("serves public recruiting deal-data gaps with shareable filters", async () => {
+    const gaps = await new (resources as any).RecruitingDealDataGaps().get(
+      routeTarget("", {
+        firm: EXAMPLE_WEALTH_LLC,
+        gapType: MISSING_DEAL_TERMS_REASON,
+        limit: "1",
+        state: "ga",
+        year: "2024",
+      })
+    );
+
+    expect(new (resources as any).RecruitingDealDataGaps().allowRead()).toBe(
+      true
+    );
+    expect(gaps).toMatchObject({
+      filters: {
+        firmId: "firm-a",
+        firmQuery: EXAMPLE_WEALTH_LLC,
+        gapType: MISSING_DEAL_TERMS_REASON,
+        limit: 1,
+        state: "GA",
+        unresolved: "include",
+        year: "2024",
+      },
+      summary: {
+        count: 2,
+        sourceBackedCount: 0,
+        unresolvedCount: 0,
+      },
+      total: 2,
+      provenance: {
+        sourceTables: expect.arrayContaining([
+          "TransitionEvent",
+          "RecruitingDealQuote",
+          "Article",
+        ]),
+        sourceIds: [TRANSITION_OUT_ID],
+      },
+    });
+    expect(gaps.items).toEqual([
+      expect.objectContaining({
+        id: TRANSITION_OUT_ID,
+        fromFirm: expect.objectContaining({ id: "firm-a" }),
+        gapTypes: expect.arrayContaining([MISSING_DEAL_TERMS_REASON]),
+        links: expect.objectContaining({
+          recruitingMarket: "/recruiting",
+        }),
+        market: expect.objectContaining({ state: "GA" }),
+        missingFieldLabels: expect.arrayContaining(["Missing deal terms"]),
+        sourceStatus: expect.arrayContaining([
+          MISSING_SOURCE_REASON,
+          MISSING_AUM_REASON,
+          MISSING_T12_REASON,
+          MISSING_DEAL_TERMS_REASON,
+        ]),
+      }),
+    ]);
+    expect(gaps.nextCursor).toBe(OFFSET_ONE_CURSOR);
+    expect(gaps.provenance.sourceIds).toHaveLength(gaps.items.length);
+
+    const secondPage = await new (
+      resources as any
+    ).RecruitingDealDataGaps().get(
+      routeTarget("", {
+        cursor: gaps.nextCursor,
+        firm: EXAMPLE_WEALTH_LLC,
+        gapType: MISSING_DEAL_TERMS_REASON,
+        limit: "1",
+        state: "ga",
+        year: "2024",
+      })
+    );
+    expect(secondPage).toMatchObject({
+      items: [expect.objectContaining({ id: TRANSITION_TEAM_ID })],
+      nextCursor: null,
+      provenance: { sourceIds: [TRANSITION_TEAM_ID] },
+      total: 2,
+    });
+
+    await expect(
+      new (resources as any).RecruitingDealDataGaps().get(
+        routeTarget("", {
+          direction: "outbound",
+          firm: EXAMPLE_WEALTH_LLC,
+          state: "ga",
+          year: "2024",
+        })
+      )
+    ).resolves.toMatchObject({
+      filters: { direction: "outbound" },
+      items: [expect.objectContaining({ id: TRANSITION_OUT_ID })],
+      total: 1,
+    });
+
+    await expect(
+      new (resources as any).RecruitingDealDataGaps().get(
+        routeTarget("", {
+          firm: EXAMPLE_WEALTH_LLC,
+          gapType: MISSING_TOTAL_PCT_T12_REASON,
+          state: "ga",
+          year: "2024",
+        })
+      )
+    ).resolves.toMatchObject({
+      emptyState: null,
+      items: [
+        expect.objectContaining({
+          id: TRANSITION_A_ID,
+          links: expect.objectContaining({
+            article: `/articles/article-a`,
+            subject: `/advisors/advisor-a`,
+          }),
+        }),
+      ],
+      total: 1,
+    });
+
+    await expect(
+      new (resources as any).RecruitingDealDataGaps().get(
+        routeTarget("", { state: "zz" })
+      )
+    ).resolves.toMatchObject({
+      emptyState:
+        "No matching public recruiting deal-data gaps are loaded for these filters.",
+      items: [],
+      total: 0,
+    });
+  });
+
+  it("filters recruiting deal-data gaps by unresolved visibility", async () => {
+    const unresolvedTransitionId = "transition-unresolved";
+    setRows("TransitionEvent", [
+      ...(tableRows.get("TransitionEvent") ?? []),
+      {
+        id: unresolvedTransitionId,
+        fromFirmId: "firm-b",
+        toFirmId: "firm-a",
+        toBranchId: "branch-a",
+        moveDate: "2024-05-01",
+        aumMoved: 125_000_000,
+        productionT12: 900_000,
+      },
+    ]);
+
+    const unresolvedOnly = await new (
+      resources as any
+    ).RecruitingDealDataGaps().get(
+      routeTarget("", {
+        firm: EXAMPLE_WEALTH_LLC,
+        state: "ga",
+        unresolved: "only",
+        year: "2024",
+      })
+    );
+    expect(unresolvedOnly).toMatchObject({
+      filters: { unresolved: "only" },
+      items: [
+        expect.objectContaining({
+          id: unresolvedTransitionId,
+          gapTypes: expect.arrayContaining([UNRESOLVED_ENTITY_REASON]),
+          missingFieldLabels: expect.arrayContaining([
+            "Unresolved advisor or team",
+          ]),
+        }),
+      ],
+      summary: { count: 1, unresolvedCount: 1 },
+    });
+
+    const excludeUnresolved = await new (
+      resources as any
+    ).RecruitingDealDataGaps().get(
+      routeTarget("", {
+        firm: EXAMPLE_WEALTH_LLC,
+        state: "ga",
+        unresolved: "exclude",
+        year: "2024",
+      })
+    );
+    expect(excludeUnresolved.items.map((row: any) => row.id)).not.toContain(
+      unresolvedTransitionId
+    );
+  });
+
   it("matches Date-valued recruiting move dates for year filters", async () => {
     setRows(
       "TransitionEvent",

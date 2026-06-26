@@ -1137,15 +1137,21 @@ curl -s \
   | jq '{summary, marketActivity, recentMoves: [.recentMoves[] | {id, subject, fromFirm, toFirm, sourceStatus, provenance}]}'
 
 curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingDealDataGaps?limit=3' \
+  | jq '{summary, items: [.items[] | {id, gapTypes, missingFieldLabels, links}]}'
+
+curl -s \
   'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RankingsExplorer?limit=10' \
   | jq '{coverage, items: [.items[] | {id, label: (.subject.displayName // .id), firmText, sourceStatus}]}'
 ```
 
 `/RecruitingMarket` is backed by `src/harper/resource-recruiting-market.ts` and
 reports transition-event depth by firm, market, recent move, source-status flag,
-and provenance ID. `/RankingsExplorer` reports ranking-row coverage buckets and
-source-status gaps. Treat these resource payloads as the first coverage audit
-before opening screenshots or table-level REST.
+and provenance ID. `/RecruitingDealDataGaps` narrows the same public move model
+to gap-bearing rows with firm/state/year/direction/gapType/unresolved filters
+and public link metadata for follow-up. `/RankingsExplorer` reports ranking-row
+coverage buckets and source-status gaps. Treat these resource payloads as the
+first coverage audit before opening screenshots or table-level REST.
 
 For recruiting expansion replay, `sourceStatus` is the main interpretation
 field. `source-backed` rows have public article URLs suitable for UI and JSON
@@ -1567,6 +1573,7 @@ defined in `src/harper/resources.ts`:
 | `GET /TeamProfile/<id>` | `TeamProfile` | Memberships current/past, snapshots, transitions, mention articles. |
 | `GET /PublicBranches` | `PublicBranches` | Branch rows joined to firm names and linked `EmploymentHistory` rows for source metadata and distinct current advisor counts. |
 | `GET /RecruitingMarket` | `RecruitingMarket` | Transition events, advisor/team/firm names, recruiting-deal terms, state and city activity, source URLs, and Recruiting Market Map rollups. |
+| `GET /RecruitingDealDataGaps` | `RecruitingDealDataGaps` | Public recruiting move rows with missing deal-data fields, source-status gap types, missing-field labels, shareable filters, cursor pagination, and public follow-up links. |
 | `GET /DataCoverage` | `DataCoverage` | Public entity counts, route/resource probes, rankings and recruiting coverage gaps, research freshness, source-table context, and limitations for `/coverage`. |
 | `GET /InvestorProofPacket` | `InvestorProofPacket` | Investor-facing packet data composed from `DataCoverage` and `AdvisorResearchQueue`, plus representative public links for feed, firm, rankings, and recruiting proof. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
