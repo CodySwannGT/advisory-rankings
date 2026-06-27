@@ -197,7 +197,7 @@ async function routeTriageFromRequest(
     await route.fulfill({
       json: triagePayloadForFilters({
         category: params.get("category") || "all",
-        reason: params.get("reason"),
+        reason: params.get("reason") || null,
         limit: Number(params.get("limit") || "20"),
       }),
     });
