@@ -136,7 +136,6 @@ jsResource:
 fastifyRoutes:
   urlPath: '.'
   files:
-    - 'static-web/index.js'
     - 'branches/index.js'
     - 'firms/index.js'
     - 'advisors/index.js'
@@ -158,6 +157,7 @@ fastifyRoutes:
     - 'watchlists/index.js'
     - 'login/index.js'
     - 'favicon/index.js'
+    - 'static-web/index.js'
 static:
   files: 'web/**'
   extensions:
@@ -175,11 +175,12 @@ That gives us, on `:443`:
 - A Facebook-style activity-feed UI under `/` (HTML + CSS tracked in
   `web/`, JavaScript generated from `src/web/**/*.ts`).
 - Harper static serving owns `/`, built `web/**` assets, and its own wildcard
-  miss handler. `static-web/index.js` also registers exact root and asset routes
-  for the generated web files; deployed recovery showed those explicit routes
-  are needed to avoid HTTP 500 responses on misses after the unknown-route
-  experiments. Top-level unknown routes currently return Harper's bare
-  `Not found` response before app-level fallback routes can run.
+  miss handler. `static-web/index.js` is intentionally registered after the
+  clean route modules so profile/detail shells like `/firms/<slug>-<id>` win
+  before the fallback route can answer. It also registers exact root and asset
+  routes for the generated web files; deployed recovery showed those explicit
+  routes are needed to avoid HTTP 500 responses on misses after the
+  unknown-route experiments.
 - `static.extensions: ['html']` should keep extensionless shell URLs such as
   `/source-triage?category=...` resolving to the tracked `web/*.html` files even
   when the public edge does not expose Fastify route modules. The deploy gate
@@ -456,16 +457,19 @@ re-reads files on reload; no special handling.
 > redirects to `/login` for old bookmarks instead of serving a static file.
 > Harper static serves `/`, built assets from `web/**` (`/app.css`, generated
 > `/*.js`, and nested `design-system/*`), and its wildcard miss handler.
-> `static-web/index.js` also registers exact root and built-asset routes; do not
-> remove them as duplicate-looking code without deployed replay. Earlier deployed
-> attempts showed the static wildcard miss handler consumed top-level unknown
-> routes before `setNotFoundHandler`, a single-segment `/:unknownRoute`, the
-> `/*` wildcard, or the root `*` wildcard could run, even though direct
-> `/404.html` assets were live. A later `wildcard: false` attempt, followed by
-> removing explicit static-web asset routes, made deployed misses return HTTP 500
-> `Cannot read properties of undefined (reading 'length')`; keep the deploy-safe
-> wildcard mode and explicit asset routes until Harper's missing-document path
-> can be handled without regressing static or API routes.
+> `static-web/index.js` also registers exact root and built-asset routes, but it
+> must stay after the clean route modules in `config.yaml` so generated detail
+> URLs are served by the profile/article shells before the fallback can answer;
+> do not remove the static-web routes as duplicate-looking code without deployed
+> replay. Earlier deployed attempts showed the static wildcard miss handler
+> consumed top-level unknown routes before `setNotFoundHandler`, a
+> single-segment `/:unknownRoute`, the `/*` wildcard, or the root `*` wildcard
+> could run, even though direct `/404.html` assets were live. A later
+> `wildcard: false` attempt, followed by removing explicit static-web asset
+> routes, made deployed misses return HTTP 500 `Cannot read properties of
+> undefined (reading 'length')`; keep the deploy-safe wildcard mode and explicit
+> asset routes until Harper's missing-document path can be handled without
+> regressing static or API routes.
 > Each page is a thin shell that
 > imports a per-page JS module, which calls the matching custom
 > resource (`/Feed`, `/FirmProfile/<id>`, etc.) for one

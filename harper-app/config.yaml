@@ -19,7 +19,6 @@ jsResource:
 fastifyRoutes:
   urlPath: '.'
   files:
-    - 'static-web/index.js'
     - 'branches/index.js'
     - 'firms/index.js'
     - 'advisors/index.js'
@@ -41,6 +40,7 @@ fastifyRoutes:
     - 'watchlists/index.js'
     - 'login/index.js'
     - 'favicon/index.js'
+    - 'static-web/index.js'
 
 # AdvisorBook web UI.  Served at the same origin as REST so the
 # browser can `fetch('/Feed')` without CORS.  GET / serves index.html.
