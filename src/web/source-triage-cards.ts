@@ -15,12 +15,15 @@ type DesignSystemComponent = (...args: ReadonlyArray<unknown>) => HTMLElement;
 const ButtonC = Button as unknown as DesignSystemComponent;
 const EmptyCardC = EmptyCard as unknown as DesignSystemComponent;
 const SectionCardC = SectionCard as unknown as DesignSystemComponent;
+const ALL_REASONS_LABEL = "All reasons";
 
 const CATEGORY_OPTIONS = [
   "",
   "unknown",
   "advisorhub_article",
+  "economy",
   "firm_bio",
+  "market",
   "press",
   "rankings",
   "web_research",
@@ -72,18 +75,30 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         "Category",
         "category",
         data.filters.category,
-        CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const)
+        CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const),
+        filterLabel
       ),
-      selectField("Reason", "reason", data.filters.reason ?? "", [
-        ["", "All reasons"],
-        ...SOURCE_ARTICLE_TRIAGE_REASON_TOKENS.map(
-          token => [token, sourceArticleTriageReasonLabel(token)] as const
-        ),
-      ]),
+      selectField(
+        "Reason",
+        "reason",
+        data.filters.reason ?? "",
+        [
+          ["", ALL_REASONS_LABEL],
+          ...SOURCE_ARTICLE_TRIAGE_REASON_TOKENS.map(
+            token => [token, sourceArticleTriageReasonLabel(token)] as const
+          ),
+        ],
+        reasonFallbackLabel
+      ),
+      el("input", {
+        type: "hidden",
+        name: "limit",
+        value: String(data.filters.limit),
+      }),
       ButtonC({
         variant: "primary",
+        type: "submit",
         children: "Apply",
-        attrs: { type: "submit" },
       }),
       ButtonC({
         variant: "neutral",
@@ -152,14 +167,20 @@ function stat(label: string, value: string): HTMLElement {
  * @param name - Query parameter name.
  * @param current - Current selected value.
  * @param options - Select options.
+ * @param fallbackLabel - Label builder for custom current values.
  * @returns Field element.
  */
 function selectField(
   label: string,
   name: string,
   current: string,
-  options: ReadonlyArray<readonly [string, string]>
+  options: ReadonlyArray<readonly [string, string]>,
+  fallbackLabel: (value: string) => string
 ): HTMLElement {
+  const visibleOptions =
+    current && !options.some(([value]) => value === current)
+      ? ([[current, fallbackLabel(current)] as const, ...options] as const)
+      : options;
   return el(
     "label",
     { class: "source-triage-field" },
@@ -167,7 +188,7 @@ function selectField(
     el(
       "select",
       { name },
-      ...options.map(([value, optionLabel]) =>
+      ...visibleOptions.map(([value, optionLabel]) =>
         el(
           "option",
           { value, selected: value === String(current || "") },
@@ -208,5 +229,16 @@ function filterLabel(value: string): string {
  * @returns Visible label.
  */
 function reasonLabel(reason: SourceArticleTriageReason | null): string {
-  return reason ? sourceArticleTriageReasonLabel(reason) : "All reasons";
+  return reason ? sourceArticleTriageReasonLabel(reason) : ALL_REASONS_LABEL;
+}
+
+/**
+ * Formats a fallback reason option if a future token is echoed by the resource.
+ * @param reason - Reason token.
+ * @returns Visible label.
+ */
+function reasonFallbackLabel(reason: string): string {
+  return reason
+    ? sourceArticleTriageReasonLabel(reason as SourceArticleTriageReason)
+    : ALL_REASONS_LABEL;
 }
