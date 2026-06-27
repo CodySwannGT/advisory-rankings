@@ -148,6 +148,7 @@ const COMPLIANCE_DISCLOSURES_MODE = "compliance-disclosures";
 const LOADED_STATUS = "loaded";
 const REGULATORY_DISCREPANCY_TABLE = "RegulatoryDiscrepancy";
 const ADVISOR_CORRECTION_REQUEST_TABLE = "AdvisorCorrectionRequest";
+const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 const ANALYST_EMAIL = "analyst@example.test";
 const DATE_2018_01_01 = "2018-01-01";
 const DATE_2020_01_01 = "2020-01-01";
@@ -3048,6 +3049,10 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).FirmAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).AdvisorProfile().allowRead()).toBe(true);
     expect(new (resources as any).TeamProfile().allowRead()).toBe(true);
+    expect(new (resources as any).advisors().allowRead()).toBe(true);
+    expect(new (resources as any).articles().allowRead()).toBe(true);
+    expect(new (resources as any).firms().allowRead()).toBe(true);
+    expect(new (resources as any).teams().allowRead()).toBe(true);
     expect(new (resources as any).PublicFirms().allowRead()).toBe(true);
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
     expect(new (resources as any).PublicTeams().allowRead()).toBe(true);
@@ -3055,6 +3060,36 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).RecruitingMarket().allowRead()).toBe(true);
     expect(new (resources as any).Search().allowRead()).toBe(true);
     expect(new (resources as any).mcp().allowCreate()).toBe(true);
+  });
+
+  it("serves clean dynamic detail routes as direct Harper web resources", async () => {
+    expect((resources as any).advisors.directURLMapping).toBe(true);
+    expect((resources as any).articles.directURLMapping).toBe(true);
+    expect((resources as any).firms.directURLMapping).toBe(true);
+    expect((resources as any).teams.directURLMapping).toBe(true);
+
+    await expect(
+      new (resources as any).firms().get({
+        toString: () => "/wells-fargo-2a3debc2-3d21-528c-b08f-2f7d0722c8e1",
+      })
+    ).resolves.toMatchObject({
+      contentType: HTML_CONTENT_TYPE,
+      data: expect.stringContaining("<title>Firm"),
+    });
+    await expect(
+      new (resources as any).advisors().get({
+        toString: () => "/adam-smith-f8a0c977-d58b-5dbe-8c2e-58e2712713eb",
+      })
+    ).resolves.toMatchObject({
+      contentType: HTML_CONTENT_TYPE,
+      data: expect.stringContaining("<title>Advisor"),
+    });
+    await expect(
+      new (resources as any).articles().get()
+    ).resolves.toMatchObject({
+      contentType: HTML_CONTENT_TYPE,
+      data: expect.stringContaining("<title>Article"),
+    });
   });
 
   it("handles MCP initialize and unsupported methods as JSON-RPC", async () => {
