@@ -1236,6 +1236,10 @@ curl -s \
   | jq '{summary, items: [.items[] | {id, gapTypes, missingFieldLabels, links}]}'
 
 curl -s \
+  'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RecruitingDealDataGaps?gapType=missing-deal-terms&limit=3' \
+  | jq '{filters, summary, items: [.items[] | {id, gapTypes, missingFieldLabels, links}]}'
+
+curl -s \
   'https://advisory-rankings-de.cody-swann-org.harperfabric.com/RankingsExplorer?limit=10' \
   | jq '{coverage, items: [.items[] | {id, label: (.subject.displayName // .id), firmText, sourceStatus}]}'
 ```
@@ -1247,6 +1251,34 @@ to gap-bearing rows with firm/state/year/direction/gapType/unresolved filters
 and public link metadata for follow-up. `/RankingsExplorer` reports ranking-row
 coverage buckets and source-status gaps. Treat these resource payloads as the
 first coverage audit before opening screenshots or table-level REST.
+
+For deal-gap queue replay, capture both default JSON and a filtered slice. The
+filtered `/RecruitingDealDataGaps?gapType=missing-deal-terms&limit=3` response
+must echo `filters.gapType = "missing-deal-terms"` and `filters.limit = 3`, and
+each visible row should keep `gapTypes`, `missingFieldLabels`, and public
+`links` for article, firm/advisor/team when available. Then open the matching
+browser route on desktop and mobile:
+
+```bash
+BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com
+mkdir -p artifacts/recruiting-deal-gaps-replay
+
+bunx playwright screenshot \
+  --viewport-size=1440,1000 \
+  "$BASE_URL/recruiting/deal-gaps?gapType=missing-deal-terms&limit=3" \
+  artifacts/recruiting-deal-gaps-replay/desktop.png
+
+bunx playwright screenshot \
+  --viewport-size=390,844 \
+  "$BASE_URL/recruiting/deal-gaps?gapType=missing-deal-terms&limit=3" \
+  artifacts/recruiting-deal-gaps-replay/mobile.png
+```
+
+Inspect the screenshots for the `Recruiting Deal Gaps` heading, three
+`.deal-gap-row` cards, source-backed status/missing-field labels, public
+follow-up links, and no horizontal overflow. This replay is public-data-only:
+do not require private notes, paid APIs, watchlists, analyst assignments,
+correction internals, or reviewer data to complete it.
 
 For recruiting expansion replay, `sourceStatus` is the main interpretation
 field. `source-backed` rows have public article URLs suitable for UI and JSON
