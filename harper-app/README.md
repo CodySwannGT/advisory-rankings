@@ -54,6 +54,15 @@ Once the server is up:
   `/RecruitingMarket`, supports firm/state/year/direction/gapType/unresolved
   filters plus cursor pagination, and returns missing-field labels and public
   article/profile/recruiting links for source-backed follow-up.
+  Deployed reviewer replay for the deal-gap queue uses:
+  `GET /RecruitingDealDataGaps?limit=3` and
+  `GET /RecruitingDealDataGaps?gapType=missing-deal-terms&limit=3`, then opens
+  `/recruiting/deal-gaps?gapType=missing-deal-terms&limit=3` on desktop and
+  mobile. Confirm the JSON filters echo the requested `gapType`/`limit`, rows
+  include `missingFieldLabels` and public `links`, and the browser route renders
+  `.deal-gap-row` cards without horizontal overflow. Treat the payload as a
+  public-data replay only; it does not expose private watchlists, paid-source
+  notes, analyst assignments, correction internals, or reviewer data.
   `/SourceArticleTriage` accepts `category`, `reason`, `cursor`, and `limit`,
   then returns public source articles with extraction-gap reason tokens, public
   source/ArticleView links, entity/event counts, and body/provenance state.
@@ -143,9 +152,10 @@ Once the server is up:
   Directories are also available at `/firms`, `/advisors`, and `/teams`;
   the coverage dashboard is available at `/coverage`; the recruiting explorer
   is available at `/recruiting`; the recruiting shortlist brief is available
-  at `/recruiting/shortlist?firm=<name>&firm=<name>`; the rankings explorer is
-  available at `/rankings`; the compliance page is available at `/regulatory`; advisor
-  comparison links are available at
+  at `/recruiting/shortlist?firm=<name>&firm=<name>`; the recruiting deal-gap
+  queue is available at `/recruiting/deal-gaps?gapType=<gap>&limit=<n>`; the
+  rankings explorer is available at `/rankings`; the compliance page is
+  available at `/regulatory`; advisor comparison links are available at
   `/compare?ids=<advisorId>,<advisorId>` and the report packet route
   is available at `/report-packet?ids=<advisorId>,<advisorId>`;
   profile pages use `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, and
