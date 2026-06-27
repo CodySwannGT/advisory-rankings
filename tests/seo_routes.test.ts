@@ -80,6 +80,24 @@ describe("static web route shells", () => {
     expect(config).not.toContain("wildcard: false");
   });
 
+  it("registers static-web after clean shell routes so generated details win", async () => {
+    const config = await readFile("harper-app/config.yaml", "utf8");
+
+    const staticWebIndex = config.indexOf("- 'static-web/index.js'");
+    const cleanDetailIndexes = [
+      "- 'firms/index.js'",
+      "- 'advisors/index.js'",
+      "- 'teams/index.js'",
+      "- 'articles/index.js'",
+    ].map(entry => config.indexOf(entry));
+
+    expect(staticWebIndex).toBeGreaterThan(0);
+    expect(cleanDetailIndexes.every(index => index >= 0)).toBe(true);
+    expect(cleanDetailIndexes.every(index => index < staticWebIndex)).toBe(
+      true
+    );
+  });
+
   it("registers root web assets explicitly without catching API resources", async () => {
     const paths: string[] = [];
     const fastify = {
