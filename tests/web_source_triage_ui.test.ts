@@ -12,6 +12,8 @@ import {
 const SOURCE_TRIAGE_PATH = "/source-triage";
 const NO_EVENT_REASON = "no-event-cards";
 const NO_EVENT_LABEL = "No event cards";
+const NO_BODY_REASON = "no-body-text";
+const MARKET_BRIEF_TITLE = "Market brief needs review";
 
 describe("source article triage route", () => {
   let browser: Browser;
@@ -49,7 +51,7 @@ describe("source article triage route", () => {
         .filter({ hasText: "Source Article Triage" })
         .waitFor({ timeout: QUICK_TIMEOUT });
       await page
-        .getByRole("link", { name: "Market brief needs review" })
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(await selectedValue(page, "category")).toBe("unknown");
       expect(await selectedValue(page, "reason")).toBe(NO_EVENT_REASON);
@@ -88,6 +90,58 @@ describe("source article triage route", () => {
       expect(new URL(page.url()).pathname).toBe(SOURCE_TRIAGE_PATH);
       expect(new URL(page.url()).search).toBe("");
       expect(await hasHorizontalOverflow(page)).toBe(false);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("preserves selected filters and result count in the copied URL", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    });
+    const resourceQueries: string[] = [];
+    try {
+      await routeAuth(page, false);
+      await routeTriageFromRequest(page, resourceQueries);
+
+      await page.goto(
+        `${baseUrl}${SOURCE_TRIAGE_PATH}?category=unknown&reason=${NO_EVENT_REASON}&limit=2`,
+        { waitUntil: "domcontentloaded" }
+      );
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page.locator('select[name="category"]').selectOption("market");
+      await page.locator('select[name="reason"]').selectOption(NO_BODY_REASON);
+      await Promise.all([
+        page.waitForURL(
+          `${baseUrl}${SOURCE_TRIAGE_PATH}?category=market&reason=${NO_BODY_REASON}&limit=2`
+        ),
+        page.getByRole("button", { name: "Apply" }).click(),
+      ]);
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      const copiedUrl = page.url();
+      await page.goto("about:blank");
+      await page.goto(copiedUrl, { waitUntil: "domcontentloaded" });
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      const lastQuery = resourceQueries.at(-1) ?? "";
+      expect(await selectedValue(page, "category")).toBe("market");
+      expect(await selectedValue(page, "reason")).toBe(NO_BODY_REASON);
+      expect(
+        await page.getByRole("link", { name: /needs review/u }).count()
+      ).toBe(2);
+      expect(new URL(copiedUrl).search).toBe(
+        `?category=market&reason=${NO_BODY_REASON}&limit=2`
+      );
+      expect(new URLSearchParams(lastQuery).get("category")).toBe("market");
+      expect(new URLSearchParams(lastQuery).get("reason")).toBe(NO_BODY_REASON);
+      expect(new URLSearchParams(lastQuery).get("limit")).toBe("2");
     } finally {
       await page.close();
     }
@@ -132,6 +186,53 @@ async function routeTriage(
   });
 }
 
+async function routeTriageFromRequest(
+  page: Page,
+  resourceQueries: string[]
+): Promise<void> {
+  await page.route("**/SourceArticleTriage**", async route => {
+    const url = new URL(route.request().url());
+    resourceQueries.push(url.search);
+    const params = url.searchParams;
+    await route.fulfill({
+      json: triagePayloadForFilters({
+        category: params.get("category") || "all",
+        reason: params.get("reason"),
+        limit: Number(params.get("limit") || "20"),
+      }),
+    });
+  });
+}
+
+function triagePayloadForFilters(filters: {
+  readonly category: string;
+  readonly reason: string | null;
+  readonly limit: number;
+}): Readonly<Record<string, unknown>> {
+  const payload = triagePayload() as Readonly<Record<string, unknown>> & {
+    readonly items: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  };
+  return {
+    ...payload,
+    count: filters.limit,
+    filters,
+    items: Array.from({ length: filters.limit }, (_, index) => ({
+      ...payload.items[index % payload.items.length],
+      id: `article-${index + 1}`,
+      headline: index === 0 ? MARKET_BRIEF_TITLE : "Economy brief needs review",
+      category: filters.category,
+      reasons: [
+        {
+          token: filters.reason ?? NO_EVENT_REASON,
+          label:
+            filters.reason === NO_BODY_REASON ? "No body text" : NO_EVENT_LABEL,
+        },
+      ],
+      reasonTokens: [filters.reason ?? NO_EVENT_REASON],
+    })),
+  };
+}
+
 function triagePayload(): Readonly<Record<string, unknown>> {
   return {
     generatedAt: "2026-06-26T19:00:00.000Z",
@@ -144,7 +245,7 @@ function triagePayload(): Readonly<Record<string, unknown>> {
     items: [
       {
         id: "article-1",
-        headline: "Market brief needs review",
+        headline: MARKET_BRIEF_TITLE,
         publishedDate: "2026-06-26T00:00:00.000Z",
         sourceUrl: "https://www.advisorhub.com/market-brief",
         articleViewPath: "/articles/market-brief-article-1",
@@ -159,13 +260,13 @@ function triagePayload(): Readonly<Record<string, unknown>> {
         reasons: [
           { token: "uncategorized", label: "Uncategorized" },
           { token: NO_EVENT_REASON, label: NO_EVENT_LABEL },
-          { token: "no-body-text", label: "No body text" },
+          { token: NO_BODY_REASON, label: "No body text" },
           { token: "missing-provenance", label: "Missing provenance" },
         ],
         reasonTokens: [
           "uncategorized",
           NO_EVENT_REASON,
-          "no-body-text",
+          NO_BODY_REASON,
           "missing-provenance",
         ],
       },

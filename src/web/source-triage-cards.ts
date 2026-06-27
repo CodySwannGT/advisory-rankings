@@ -20,7 +20,9 @@ const CATEGORY_OPTIONS = [
   "",
   "unknown",
   "advisorhub_article",
+  "economy",
   "firm_bio",
+  "market",
   "press",
   "rankings",
   "web_research",
@@ -80,10 +82,15 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
           token => [token, sourceArticleTriageReasonLabel(token)] as const
         ),
       ]),
+      el("input", {
+        type: "hidden",
+        name: "limit",
+        value: String(data.filters.limit),
+      }),
       ButtonC({
         variant: "primary",
+        type: "submit",
         children: "Apply",
-        attrs: { type: "submit" },
       }),
       ButtonC({
         variant: "neutral",
@@ -160,6 +167,10 @@ function selectField(
   current: string,
   options: ReadonlyArray<readonly [string, string]>
 ): HTMLElement {
+  const visibleOptions =
+    current && !options.some(([value]) => value === current)
+      ? ([[current, filterLabel(current)] as const, ...options] as const)
+      : options;
   return el(
     "label",
     { class: "source-triage-field" },
@@ -167,7 +178,7 @@ function selectField(
     el(
       "select",
       { name },
-      ...options.map(([value, optionLabel]) =>
+      ...visibleOptions.map(([value, optionLabel]) =>
         el(
           "option",
           { value, selected: value === String(current || "") },

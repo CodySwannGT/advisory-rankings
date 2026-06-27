@@ -50,6 +50,7 @@ const SectionCardC = SectionCard as unknown as DesignSystemComponent;
 const EmptyCardC = EmptyCard as unknown as DesignSystemComponent;
 const SkeletonCardC = SkeletonCard as unknown as DesignSystemComponent;
 const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
 
 MountThreeColumnPage({
   active: "source-triage",
@@ -98,7 +99,7 @@ function resourceQuery(): string {
   const reason = current.get("reason")?.trim();
   if (category) params.set("category", category);
   if (isReason(reason)) params.set("reason", reason);
-  params.set("limit", String(DEFAULT_LIMIT));
+  params.set("limit", String(boundedLimit(current.get("limit"))));
   return `?${params.toString()}`;
 }
 
@@ -149,6 +150,17 @@ function isReason(
   return SOURCE_ARTICLE_TRIAGE_REASON_TOKENS.includes(
     value as SourceArticleTriageReason
   );
+}
+
+/**
+ * Normalizes the shareable queue size from the browser URL.
+ * @param value - Raw `limit` search value.
+ * @returns Bounded resource limit.
+ */
+function boundedLimit(value: string | null): number {
+  const parsed = Number(String(value ?? "").trim() || DEFAULT_LIMIT);
+  if (!Number.isFinite(parsed)) return DEFAULT_LIMIT;
+  return Math.min(MAX_LIMIT, Math.max(1, Math.trunc(parsed)));
 }
 
 /**
