@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-26
+updated: 2026-06-27
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -27,6 +27,7 @@ sources:
   - ../sources/git/2026-06-24-advisory-rankings-git.md
   - ../sources/git/2026-06-25-advisory-rankings-git.md
   - ../sources/git/2026-06-26-advisory-rankings-git.md
+  - ../sources/git/2026-06-27-advisory-rankings-git.md
 ---
 
 # Git history
@@ -145,6 +146,11 @@ commits since the 2026-06-25 cursor, bringing the branch total to 1914 commits, 
 PR metadata through #1416, "Fix desktop login header search overlap." Source:
 wiki/sources/git/2026-06-26-advisory-rankings-git.md.
 
+The 2026-06-27 git ingest ran at HEAD `027cd458a86301b8b69e92e0c449c8f388b4e1f9`. It added 68
+commits since the 2026-06-26 cursor, bringing the branch total to 1982 commits, and refreshed merged
+PR metadata through #1464, "test: cover recruiting deal gap route." Source:
+wiki/sources/git/2026-06-27-advisory-rankings-git.md.
+
 ## Recent themes
 
 - Rankings explorer, recruiting-market, and firm due-diligence product surfaces.
@@ -238,6 +244,10 @@ wiki/sources/git/2026-06-26-advisory-rankings-git.md.
   threshold moving to 86, investor proof copy cleanup, PublicBranches loaded-gap repair and lookup
   revert, advisor trust checklist mapping/copy/rendering/deployed replay work, max-lines threshold
   maintenance, and release markers through 0.1.521.
+- The 2026-06-26 wiki ingest PR merged, followed by mobile advisor-readiness overflow repair,
+  recruiting-depth assertion hardening, coverage/max-lines threshold maintenance, source article
+  triage resource/route/replay work, recruiting deal-gap resource/route/provenance work, Fabric
+  deploy freshness hardening, and release markers through 0.1.544.
 
 ## Use
 
@@ -262,4 +272,6 @@ wiki/sources/git/2026-06-15-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-16-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-17-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-24-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-25-advisory-rankings-git.md.
+wiki/sources/git/2026-06-25-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-26-advisory-rankings-git.md, and
+wiki/sources/git/2026-06-27-advisory-rankings-git.md.
