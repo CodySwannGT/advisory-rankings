@@ -388,16 +388,147 @@ a:hover {
   justify-content: flex-end;
 }
 
+.deal-gap-header .card-body,
+.deal-gap-filter-card .card-body,
+.deal-gap-results-card .card-body {
+  display: grid;
+  gap: 14px;
+}
+
+.deal-gap-lede {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.deal-gap-stat-grid,
+.deal-gap-filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.deal-gap-stat,
+.deal-gap-row,
+.deal-gap-count-pill {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.deal-gap-stat {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.deal-gap-stat span,
+.deal-gap-field,
+.deal-gap-meta,
+.deal-gap-state-line span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.deal-gap-stat strong {
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.deal-gap-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.deal-gap-field input,
+.deal-gap-field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.deal-gap-list,
+.deal-gap-row-main,
+.deal-gap-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.deal-gap-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(180px, 0.8fr) auto;
+  align-items: start;
+  padding: 12px;
+}
+
+.deal-gap-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.deal-gap-tags,
+.deal-gap-counts,
+.deal-gap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.deal-gap-count-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 6px 8px;
+}
+
+.deal-gap-count-pill span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.deal-gap-state-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.deal-gap-state-line strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.deal-gap-actions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
-  .source-triage-row {
+  .source-triage-row,
+  .deal-gap-row {
     grid-template-columns: 1fr;
   }
 
-  .source-triage-actions {
+  .source-triage-actions,
+  .deal-gap-actions {
     justify-content: flex-start;
   }
 
-  .source-triage-state-line strong {
+  .source-triage-state-line strong,
+  .deal-gap-state-line strong {
     text-align: left;
   }
 }
