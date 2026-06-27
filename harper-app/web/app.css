@@ -458,6 +458,7 @@ a:hover {
 
 .deal-gap-list,
 .deal-gap-row-main,
+.deal-gap-provenance,
 .deal-gap-summary {
   display: grid;
   gap: 10px;
@@ -466,7 +467,9 @@ a:hover {
 .deal-gap-row {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(180px, 0.8fr) auto;
+  grid-template-columns:
+    minmax(180px, 1.4fr) minmax(160px, 0.7fr) minmax(190px, 0.9fr)
+    auto;
   align-items: start;
   padding: 12px;
 }
@@ -481,6 +484,7 @@ a:hover {
 
 .deal-gap-tags,
 .deal-gap-counts,
+.deal-gap-source-status,
 .deal-gap-actions {
   display: flex;
   flex-wrap: wrap;
@@ -497,6 +501,13 @@ a:hover {
 .deal-gap-count-pill span {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.deal-gap-public-action {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .deal-gap-state-line {

@@ -12,6 +12,7 @@ import {
   Tag,
   el,
 } from "./design-system/index.js";
+import { statusTag } from "./recruiting-section-cells.js";
 
 /** Callable adapter for untyped design-system components. */
 type DesignSystemComponent = (...args: ReadonlyArray<unknown>) => HTMLElement;
@@ -167,6 +168,7 @@ export function dealGapRowCard(row: DealGapRow): HTMLElement {
     { class: "deal-gap-row" },
     rowMain(row),
     rowMetrics(row),
+    rowProvenance(row),
     rowActions(row)
   );
 }
@@ -207,6 +209,25 @@ function rowMetrics(row: DealGapRow): HTMLElement {
       "Headcount",
       row.headcountMoved == null ? "Unknown" : String(row.headcountMoved)
     )
+  );
+}
+
+/**
+ * Builds source-status and public provenance copy for one row.
+ * @param row - Deal gap row.
+ * @returns Provenance section.
+ */
+function rowProvenance(row: DealGapRow): HTMLElement {
+  return el(
+    "div",
+    { class: "deal-gap-provenance" },
+    el(
+      "div",
+      { class: "deal-gap-source-status", "aria-label": "Source status" },
+      ...row.sourceStatus.map(status => statusTag(status))
+    ),
+    stateLine("Source row", provenanceSummary(row)),
+    el("p", { class: "deal-gap-public-action" }, publicAction(row))
   );
 }
 
@@ -263,6 +284,28 @@ function recruitingMarketPath(row: DealGapRow): string {
   const params = new URLSearchParams();
   if (row.market.state) params.set("state", row.market.state);
   return `/recruiting${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
+/**
+ * Formats the public source row backing this UI item.
+ * @param row - Deal gap row.
+ * @returns Compact source table/id label.
+ */
+function provenanceSummary(row: DealGapRow): string {
+  const sourceId = row.provenance.sourceIds[0] ?? row.id;
+  return `${row.provenance.sourceTable} ${sourceId}`;
+}
+
+/**
+ * Describes the next public-only research step without implying completeness.
+ * @param row - Deal gap row.
+ * @returns Public follow-up copy.
+ */
+function publicAction(row: DealGapRow): string {
+  if (row.gapTypes.includes("missing-source")) {
+    return "Public follow-up: find a public source and keep unknown deal fields marked incomplete until evidence is found.";
+  }
+  return "Public follow-up: review linked public sources and keep unknown deal fields marked incomplete until evidence is found.";
 }
 
 /**

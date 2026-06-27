@@ -12,10 +12,14 @@ import {
 const DEAL_GAPS_PATH = "/recruiting/deal-gaps";
 const RESOURCE_ROUTE = "**/RecruitingDealDataGaps**";
 const ADVISOR_NAME = "Avery Stone";
+const ATLANTA_MARKET = "Atlanta, GA";
 const EXAMPLE_WEALTH = "Example Wealth";
 const GAP_TYPE_PARAM = "gapType";
 const MISSING_AUM = "missing-aum";
+const MISSING_SOURCE = "missing-source";
+const RECRUITING_PATH = "/recruiting";
 const STATE_GA = "GA";
+const SOURCE_GAP_ID = "transition-gap-missing-source";
 const TRANSITION_GAP_ID = "transition-gap-1";
 const UNRESOLVED_PARAM = "unresolved";
 const ROW_TITLE = `${ADVISOR_NAME} to ${EXAMPLE_WEALTH}`;
@@ -61,10 +65,40 @@ describe("recruiting deal gaps route", () => {
       expect(await selectedValue(page, UNRESOLVED_PARAM)).toBe("exclude");
 
       const row = page.locator(".deal-gap-row").first();
-      await row.getByText("Missing AUM").waitFor({ timeout: QUICK_TIMEOUT });
-      await row.getByText("Missing deal terms").waitFor({
+      const gapTags = row.locator(".deal-gap-tags");
+      await gapTags.getByText("Missing AUM").waitFor({
         timeout: QUICK_TIMEOUT,
       });
+      await gapTags.getByText("Missing deal terms").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await row
+        .getByLabel("Source status")
+        .getByText("Source confirmed")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await row.getByText("TransitionEvent transition-gap-1").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await row
+        .getByText(
+          "Public follow-up: review linked public sources and keep unknown deal fields marked incomplete until evidence is found."
+        )
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      const missingSourceRow = page
+        .locator(".deal-gap-row")
+        .filter({ hasText: "Blake River" });
+      await missingSourceRow.getByText("Missing source article").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await missingSourceRow
+        .getByLabel("Source status")
+        .getByText("Source unavailable")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await missingSourceRow
+        .getByText(
+          "Public follow-up: find a public source and keep unknown deal fields marked incomplete until evidence is found."
+        )
+        .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
         await row.getByRole("link", { name: "Article" }).getAttribute("href")
       ).toBe("/articles/article-gap-1");
@@ -102,13 +136,11 @@ describe("recruiting deal gaps route", () => {
       await page.locator('input[name="firm"]').fill(EXAMPLE_WEALTH);
       await page.locator('input[name="state"]').fill(STATE_GA);
       await page.locator('select[name="direction"]').selectOption("inbound");
-      await page
-        .locator('select[name="gapType"]')
-        .selectOption("missing-source");
+      await page.locator('select[name="gapType"]').selectOption(MISSING_SOURCE);
 
       await Promise.all([
         page.waitForURL(
-          `${baseUrl}${DEAL_GAPS_PATH}?firm=Example+Wealth&state=GA&year=&direction=inbound&gapType=missing-source&unresolved=include&limit=2`
+          `${baseUrl}${DEAL_GAPS_PATH}?firm=Example+Wealth&state=GA&year=&direction=inbound&gapType=${MISSING_SOURCE}&unresolved=include&limit=2`
         ),
         page.getByRole("button", { name: "Apply" }).click(),
       ]);
@@ -117,7 +149,7 @@ describe("recruiting deal gaps route", () => {
       expect(lastQuery.get("firm")).toBe(EXAMPLE_WEALTH);
       expect(lastQuery.get("state")).toBe(STATE_GA);
       expect(lastQuery.get("direction")).toBe("inbound");
-      expect(lastQuery.get(GAP_TYPE_PARAM)).toBe("missing-source");
+      expect(lastQuery.get(GAP_TYPE_PARAM)).toBe(MISSING_SOURCE);
       expect(lastQuery.get("limit")).toBe("2");
     } finally {
       await page.close();
@@ -149,7 +181,7 @@ describe("recruiting deal gaps route", () => {
         await page
           .getByRole("link", { name: "Open Recruiting Market" })
           .getAttribute("href")
-      ).toBe("/recruiting");
+      ).toBe(RECRUITING_PATH);
       expect(await hasHorizontalOverflow(page)).toBe(false);
     } finally {
       await page.close();
@@ -176,8 +208,8 @@ function dealGapPayload(): unknown {
       unresolved: "exclude",
       year: null,
     },
-    summary: { count: 1, sourceBackedCount: 1, unresolvedCount: 0 },
-    total: 1,
+    summary: { count: 2, sourceBackedCount: 1, unresolvedCount: 0 },
+    total: 2,
     nextCursor: null,
     provenance: {
       sourceTables: ["TransitionEvent", "RecruitingDealQuote", "Article"],
@@ -199,8 +231,8 @@ function dealGapPayload(): unknown {
         productionT12: 1200000,
         headcountMoved: null,
         deal: null,
-        location: { city: "Atlanta", state: "GA", label: "Atlanta, GA" },
-        market: { city: "Atlanta", state: "GA", label: "Atlanta, GA" },
+        location: { city: "Atlanta", state: "GA", label: ATLANTA_MARKET },
+        market: { city: "Atlanta", state: "GA", label: ATLANTA_MARKET },
         article: {
           id: "article-gap-1",
           headline: "Example Wealth hires Avery Stone",
@@ -217,12 +249,50 @@ function dealGapPayload(): unknown {
           subject: "/advisors/advisor-gap-1",
           fromFirm: "/firms/firm-old",
           toFirm: "/firms/firm-example",
-          recruitingMarket: "/recruiting",
+          recruitingMarket: RECRUITING_PATH,
         },
         provenance: {
           sourceTable: "TransitionEvent",
           sourceIds: [TRANSITION_GAP_ID],
           articleMentionIds: ["mention-gap-1"],
+          dealQuoteIds: [],
+        },
+      },
+      {
+        id: SOURCE_GAP_ID,
+        subject: { kind: "advisor", id: "advisor-gap-2", name: "Blake River" },
+        fromFirm: { id: "firm-old", name: "Old Firm", short: "Old Firm" },
+        toFirm: {
+          id: "firm-example",
+          name: EXAMPLE_WEALTH,
+          short: EXAMPLE_WEALTH,
+        },
+        moveDate: "2026-04-01",
+        aumMoved: 900000000,
+        productionT12: null,
+        headcountMoved: 2,
+        deal: null,
+        location: { city: "Atlanta", state: "GA", label: ATLANTA_MARKET },
+        market: { city: "Atlanta", state: "GA", label: ATLANTA_MARKET },
+        article: null,
+        loadedAt: null,
+        sourceStatus: [MISSING_SOURCE, "missing-t12"],
+        gapTypes: [MISSING_SOURCE, "missing-t12"],
+        missingFieldLabels: [
+          "Missing source article",
+          "Missing T12 production",
+        ],
+        links: {
+          article: null,
+          subject: "/advisors/advisor-gap-2",
+          fromFirm: "/firms/firm-old",
+          toFirm: "/firms/firm-example",
+          recruitingMarket: RECRUITING_PATH,
+        },
+        provenance: {
+          sourceTable: "TransitionEvent",
+          sourceIds: [SOURCE_GAP_ID],
+          articleMentionIds: [],
           dealQuoteIds: [],
         },
       },
