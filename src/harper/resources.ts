@@ -9,6 +9,7 @@ export * from "./resource-user-watchlists.js";
 export * from "./resource-advisor-correction-request.js";
 export * from "./resource-regulatory-discrepancy-review.js";
 export * from "./resource-mcp.js";
+export * from "./resource-mcp-catalog.js";
 export * from "./resource-recruiting-market.js";
 export * from "./resource-recruiting-deal-data-gaps.js";
 export * from "./resource-source-article-triage.js";
