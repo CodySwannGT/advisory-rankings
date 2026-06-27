@@ -28,6 +28,7 @@ fastifyRoutes:
     - 'data-coverage/index.js'
     - 'investor-proof/index.js'
     - 'recruiting/index.js'
+    - 'recruiting-deal-gaps/index.js'
     - 'recruiting-shortlist/index.js'
     - 'research-freshness/index.js'
     - 'source-triage-route/index.js'

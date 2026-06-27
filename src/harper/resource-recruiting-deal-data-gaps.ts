@@ -70,7 +70,7 @@ interface PublicDealGapFilters extends PublicRecruitingFilters {
 }
 
 /** Public links that help reviewers follow up on one gap row. */
-interface DealGapLinks {
+export interface DealGapLinks {
   readonly article: string | null;
   readonly subject: string | null;
   readonly fromFirm: string | null;
@@ -79,7 +79,7 @@ interface DealGapLinks {
 }
 
 /** Public recruiting move decorated with missing-field metadata. */
-interface DealGapRow extends PublicMove {
+export interface DealGapRow extends PublicMove {
   readonly market: MoveLocation;
   readonly missingFieldLabels: readonly string[];
   readonly gapTypes: readonly string[];
@@ -87,14 +87,14 @@ interface DealGapRow extends PublicMove {
 }
 
 /** Aggregate counts for the filtered deal-gap slice. */
-interface DealGapSummary {
+export interface DealGapSummary {
   readonly count: number;
   readonly unresolvedCount: number;
   readonly sourceBackedCount: number;
 }
 
 /** Source tables and ids backing the response rows. */
-interface DealGapProvenance {
+export interface DealGapProvenance {
   readonly sourceTables: ReadonlyArray<
     | "TransitionEvent"
     | "RecruitingDealQuote"
@@ -106,7 +106,7 @@ interface DealGapProvenance {
 }
 
 /** Top-level response payload for `/RecruitingDealDataGaps`. */
-interface DealGapResponse {
+export interface DealGapResponse {
   readonly generatedAt: string;
   readonly filters: PublicDealGapFilters;
   readonly summary: DealGapSummary;

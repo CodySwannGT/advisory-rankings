@@ -7,6 +7,7 @@ import articlesRoutes from "../harper-app/articles/index.js";
 import branchesRoutes from "../harper-app/branches/index.js";
 import firmsRoutes from "../harper-app/firms/index.js";
 import loginRoutes from "../harper-app/login/index.js";
+import recruitingDealGapRoutes from "../harper-app/recruiting-deal-gaps/index.js";
 import recruitingRoutes from "../harper-app/recruiting/index.js";
 import regulatoryRoutes from "../harper-app/regulatory/index.js";
 import staticWebRoutes from "../harper-app/static-web/index.js";
@@ -24,6 +25,7 @@ describe("SEO route shells", () => {
     await branchesRoutes(fastify);
     await firmsRoutes(fastify);
     await recruitingRoutes(fastify);
+    await recruitingDealGapRoutes(fastify);
     await advisorsRoutes(fastify);
     await teamsRoutes(fastify);
     await articlesRoutes(fastify);
@@ -35,6 +37,7 @@ describe("SEO route shells", () => {
       "/firms",
       "/firms/:slug",
       "/recruiting",
+      "/recruiting/deal-gaps",
       "/advisors",
       "/advisors/:slug",
       "/teams",
