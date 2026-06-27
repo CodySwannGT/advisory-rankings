@@ -303,7 +303,7 @@ function provenanceSummary(row: DealGapRow): string {
  */
 function publicAction(row: DealGapRow): string {
   if (row.gapTypes.includes("missing-source")) {
-    return "Public follow-up: find a public source before treating this move as source-backed.";
+    return "Public follow-up: find a public source and keep unknown deal fields marked incomplete until evidence is found.";
   }
   return "Public follow-up: review linked public sources and keep unknown deal fields marked incomplete until evidence is found.";
 }
