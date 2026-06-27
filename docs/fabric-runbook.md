@@ -191,7 +191,10 @@ That gives us, on `:443`:
 - Clean investor proof packet route `/investor-proof`, served by
   `investor-proof/index.js` and backed by `/InvestorProofPacket`.
 - Clean recruiting deal gaps route `/recruiting/deal-gaps`, served by
-  `recruiting-deal-gaps/index.js` and backed by `/RecruitingDealDataGaps`.
+  `web/recruiting/deal-gaps.html` through Harper's `static.extensions:
+  ['html']` fallback and backed by `/RecruitingDealDataGaps`. The
+  `recruiting-deal-gaps/index.js` Fastify route stays registered, but this
+  Fabric runtime has not served nested Fastify routes reliably.
 - Clean source article triage route `/source-triage`, served by
   `source-triage-route/index.js` and backed by `/SourceArticleTriage`. The
   route module directory intentionally does not match the URL path because a
@@ -255,6 +258,7 @@ fabric-deploy branch layout (commit a03f495):
     investor-proof.html / investor-proof-packet.js  public investor proof packet
     recruiting.html / recruiting.js          recruiting market explorer
     recruiting-deal-gaps.html / recruiting-deal-gaps.js  recruiting deal gap queue
+    recruiting/deal-gaps.html                nested static shell for /recruiting/deal-gaps
     recruiting-shortlist.html / recruiting-shortlist.js  recruiting shortlist brief
     rankings.html / rankings.js              interactive rankings explorer
     regulatory.html                          compliance page shell
