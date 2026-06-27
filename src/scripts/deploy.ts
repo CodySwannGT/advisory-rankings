@@ -613,6 +613,9 @@ async function verifyRuntimeFreshness(clusterUrl: string): Promise<void> {
   await verifyPublicRoute(clusterUrl, "/compare.js");
   await verifyPublicRoute(clusterUrl, "/AdvisorComparison");
   await verifyPublicRoute(clusterUrl, "/source-triage");
+  await verifyPublicRoute(clusterUrl, "/firms/deploy-route-probe");
+  await verifyPublicRoute(clusterUrl, "/advisors/deploy-route-probe");
+  await verifyPublicRoute(clusterUrl, "/articles/deploy-route-probe");
   await verifyStablePublicRuntime(clusterUrl);
   console.log("▶ public static assets and comparison resources verified");
 }

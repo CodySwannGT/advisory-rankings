@@ -176,11 +176,11 @@ That gives us, on `:443`:
   `web/`, JavaScript generated from `src/web/**/*.ts`).
 - Harper static serving owns `/`, built `web/**` assets, and its own wildcard
   miss handler. `static-web/index.js` is intentionally registered after the
-  clean route modules so profile/detail shells like `/firms/<slug>-<id>` win
-  before the fallback route can answer. It also registers exact root and asset
-  routes for the generated web files; deployed recovery showed those explicit
-  routes are needed to avoid HTTP 500 responses on misses after the
-  unknown-route experiments.
+  clean route modules for runtimes that mount `fastifyRoutes`, but deployed
+  Fabric also needs lowercase direct-mapped Harper resources for dynamic clean
+  paths such as `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, and
+  `/articles/<slug>-<id>`. Deploy verification probes those dynamic routes so
+  a green deploy cannot hide a bare `Not found` response.
 - `static.extensions: ['html']` should keep extensionless shell URLs such as
   `/source-triage?category=...` resolving to the tracked `web/*.html` files even
   when the public edge does not expose Fastify route modules. The deploy gate
@@ -458,10 +458,11 @@ re-reads files on reload; no special handling.
 > Harper static serves `/`, built assets from `web/**` (`/app.css`, generated
 > `/*.js`, and nested `design-system/*`), and its wildcard miss handler.
 > `static-web/index.js` also registers exact root and built-asset routes, but it
-> must stay after the clean route modules in `config.yaml` so generated detail
-> URLs are served by the profile/article shells before the fallback can answer;
-> do not remove the static-web routes as duplicate-looking code without deployed
-> replay. Earlier deployed attempts showed the static wildcard miss handler
+> must stay after the clean route modules in `config.yaml` for runtimes that
+> mount `fastifyRoutes`; deployed dynamic profile/article URLs are additionally
+> served by lowercase direct-mapped Harper resources. Do not remove the
+> static-web routes as duplicate-looking code without deployed replay. Earlier
+> deployed attempts showed the static wildcard miss handler
 > consumed top-level unknown routes before `setNotFoundHandler`, a
 > single-segment `/:unknownRoute`, the `/*` wildcard, or the root `*` wildcard
 > could run, even though direct `/404.html` assets were live. A later
