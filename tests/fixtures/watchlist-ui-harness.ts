@@ -461,7 +461,7 @@ function resolveStaticPath(urlPath: string): string {
     return resolve(WEB_ROOT, "recruiting-shortlist.html");
   }
   if (urlPath === "/recruiting/deal-gaps") {
-    return resolve(WEB_ROOT, "recruiting-deal-gaps.html");
+    return resolve(WEB_ROOT, "recruiting/deal-gaps.html");
   }
   const cleanPath = normalize(decodeURIComponent(urlPath)).replace(
     /^(\.\.(\/|\\|$))+/u,

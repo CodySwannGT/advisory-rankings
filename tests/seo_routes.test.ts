@@ -94,6 +94,7 @@ describe("static web route shells", () => {
     expect(paths).toContain("/app.css");
     expect(paths).toContain("/index.html");
     expect(paths).toContain("/compare.html");
+    expect(paths).toContain("/recruiting/deal-gaps.html");
     expect(paths).toContain("/design-system/components.css");
     expect(paths).not.toContain("/design-system/dom.js");
     expect(paths).not.toContain("/design-system/organisms-nav.js");
