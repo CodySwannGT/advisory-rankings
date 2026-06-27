@@ -61,10 +61,25 @@ describe("recruiting deal gaps route", () => {
       expect(await selectedValue(page, UNRESOLVED_PARAM)).toBe("exclude");
 
       const row = page.locator(".deal-gap-row").first();
-      await row.getByText("Missing AUM").waitFor({ timeout: QUICK_TIMEOUT });
-      await row.getByText("Missing deal terms").waitFor({
+      const gapTags = row.locator(".deal-gap-tags");
+      await gapTags.getByText("Missing AUM").waitFor({
         timeout: QUICK_TIMEOUT,
       });
+      await gapTags.getByText("Missing deal terms").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await row
+        .getByLabel("Source status")
+        .getByText("Source confirmed")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await row.getByText("TransitionEvent transition-gap-1").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await row
+        .getByText(
+          "Public follow-up: review linked public sources and keep unknown deal fields marked incomplete until evidence is found."
+        )
+        .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
         await row.getByRole("link", { name: "Article" }).getAttribute("href")
       ).toBe("/articles/article-gap-1");
