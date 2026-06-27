@@ -6,6 +6,7 @@ class Resource {}
 (globalThis as any).Resource = Resource;
 
 const mcpResource = await import("../src/harper/resource-mcp.js");
+const mcpCatalog = await import("../src/harper/resource-mcp-catalog.js");
 
 const PROTOCOL_VERSION = "2025-06-18";
 
@@ -60,6 +61,30 @@ const RESOURCE_TEMPLATE_URIS = [
   "advisorbook://team/{id}",
   "advisorbook://article/{id}",
 ];
+
+const mcpCatalogProbe = {
+  initialize: async () => ({
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities: MCP_CAPABILITIES,
+    serverInfo: {
+      name: "advisorbook",
+      title: "AdvisorBook",
+      version: "0.1.0",
+    },
+  }),
+  listTools: async () =>
+    READ_ONLY_TOOL_NAMES.map(name => ({
+      name,
+      title: name,
+      description: "Public read-only AdvisorBook capability.",
+    })),
+  listResourceTemplates: async () =>
+    RESOURCE_TEMPLATE_URIS.map(uriTemplate => ({
+      uriTemplate,
+      name: uriTemplate,
+      description: "Public AdvisorBook resource.",
+    })),
+};
 
 describe("MCP transport", () => {
   it("accepts anonymous initialize requests", async () => {
@@ -205,6 +230,84 @@ describe("MCP transport", () => {
         },
       },
     ]);
+  });
+});
+
+describe("MCP catalog", () => {
+  it("returns a public same-origin inventory for gallery consumers", async () => {
+    const catalog = await mcpCatalog.buildMcpCatalog(mcpCatalogProbe);
+
+    expect(catalog).toMatchObject({
+      status: "ready",
+      endpoint: {
+        url: "/mcp",
+        transport: "streamable-http",
+        authRequired: false,
+      },
+      readOnlyBoundary: {
+        status: "read-only",
+        filteredCapabilities: 0,
+      },
+      initialize: {
+        capabilities: MCP_CAPABILITIES,
+        serverInfo: { name: "advisorbook" },
+      },
+    });
+    expect(catalog.tools.map((tool: any) => tool.name)).toEqual(
+      READ_ONLY_TOOL_NAMES
+    );
+    expect(
+      catalog.resourceTemplates.map((template: any) => template.uriTemplate)
+    ).toEqual(RESOURCE_TEMPLATE_URIS);
+  });
+
+  it("fails closed with an explicit unavailable state", async () => {
+    const catalog = await mcpCatalog.buildMcpCatalog({
+      ...mcpCatalogProbe,
+      listTools: async () => {
+        throw new Error("MCP endpoint timed out");
+      },
+    });
+
+    expect(catalog).toMatchObject({
+      status: "unavailable",
+      endpoint: { url: "/mcp" },
+      readOnlyBoundary: { status: "unavailable" },
+      initialize: null,
+      tools: [],
+      resourceTemplates: [],
+      unavailableReason: "MCP endpoint timed out",
+    });
+  });
+
+  it("filters unsafe tool and resource metadata from the public catalog", async () => {
+    const catalog = await mcpCatalog.buildMcpCatalog({
+      ...mcpCatalogProbe,
+      listTools: async () => [
+        ...(await mcpCatalogProbe.listTools()),
+        {
+          name: "raw_sql_admin",
+          title: "Raw SQL admin",
+          description: "Write arbitrary SQL.",
+        },
+      ],
+      listResourceTemplates: async () => [
+        ...(await mcpCatalogProbe.listResourceTemplates()),
+        {
+          uriTemplate: "advisorbook://raw/table/{id}",
+          name: "raw_table",
+          description: "Expose a raw table.",
+        },
+      ],
+    });
+
+    expect(catalog.readOnlyBoundary.filteredCapabilities).toBe(2);
+    expect(catalog.tools.map((tool: any) => tool.name)).not.toContain(
+      "raw_sql_admin"
+    );
+    expect(
+      catalog.resourceTemplates.map((template: any) => template.uriTemplate)
+    ).not.toContain("advisorbook://raw/table/{id}");
   });
 });
 

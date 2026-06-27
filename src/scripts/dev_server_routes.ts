@@ -106,9 +106,10 @@ export async function handleMcpRoute(
 }
 
 const NO_ARG_RESOURCE =
-  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RecruitingDealDataGaps|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue|AdvisorResearchQueue|InvestorProofPacket|AdvisorCorrectionRequest)$/;
+  /^\/(Feed|PublicFirms|PublicAdvisors|PublicTeams|Search|RecruitingMarket|RecruitingDealDataGaps|RankingsExplorer|AdvisorComparison|RegulatoryDiscrepancyQueue|AdvisorResearchQueue|InvestorProofPacket|AdvisorCorrectionRequest|McpCatalog)$/;
 const PROFILE_RESOURCE =
   /^\/(ArticleView|FirmProfile|AdvisorProfile|TeamProfile|FirmAdvisors|RegulatoryDiscrepancyReview|AdvisorCorrectionRequest)\/(.+)$/;
+const TABLELESS_RESOURCES = new Set(["McpCatalog"]);
 
 /**
  * Serves the AdvisorBook HTML shell for browser document navigations to the
@@ -187,7 +188,7 @@ async function sendResource(
   id: string | undefined,
   searchParams: URLSearchParams
 ): Promise<true> {
-  const r = await loadResources();
+  const r = await loadResources({ loadTables: !TABLELESS_RESOURCES.has(kind) });
   const ResourceClass = r[kind];
   if (typeof ResourceClass !== "function")
     return sendJsonHandled(res, 500, { error: `unknown resource: ${kind}` });

@@ -82,6 +82,9 @@ Once the server is up:
   firm, rankings, and recruiting proof into public-safe packet data. Missing
   proof remains explicit as unavailable/limitation copy rather than zero-filled
   claims.
+  `/McpCatalog` returns same-origin public metadata for the MCP gallery:
+  endpoint URL, initialize result, curated tools, resource templates, and an
+  explicit read-only boundary with unavailable fallback state.
   `/AdvisorCorrectionRequest` requires a signed-in user and stores proposed
   advisor profile corrections as review rows without mutating source-backed
   profile facts. Analyst sessions can also GET `/AdvisorCorrectionRequest` to
@@ -99,7 +102,9 @@ Once the server is up:
   intentionally read-only and exposes no raw table, write, admin, or
   credential surface.
 
-  Supported MCP methods are `initialize`, `tools/list`, `tools/call`,
+  The companion `/McpCatalog` GET resource probes the same MCP dispatch path
+  for gallery consumers and fails closed to `status: "unavailable"` if the
+  probe cannot prove the current inventory. Supported MCP methods are `initialize`, `tools/list`, `tools/call`,
   `resources/templates/list`, and `resources/read`. Curated tools are
   `search_advisorbook`, `get_feed`, `get_advisor_profile`,
   `get_firm_profile`, `get_team_profile`, and `get_article`. Resource

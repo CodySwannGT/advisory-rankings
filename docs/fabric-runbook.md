@@ -1711,6 +1711,7 @@ defined in `src/harper/resources.ts`:
 | `GET /SourceArticleTriage` | `SourceArticleTriage` | Public source-article extraction-gap rows with category/reason filters, source and ArticleView links, entity/event counts, body/provenance state, reason labels, and cursor pagination. |
 | `GET /DataCoverage` | `DataCoverage` | Public entity counts, route/resource probes, rankings and recruiting coverage gaps, research freshness, source-table context, and limitations for `/coverage`. |
 | `GET /InvestorProofPacket` | `InvestorProofPacket` | Investor-facing packet data composed from `DataCoverage` and `AdvisorResearchQueue`, plus representative public links for feed, firm, rankings, and recruiting proof. |
+| `GET /McpCatalog` | `McpCatalog` | Same-origin public metadata for the MCP gallery: endpoint URL, initialize result, curated tools, resource templates, read-only boundary status, and unavailable fallback state. |
 | `GET /RankingsExplorer` | `RankingsExplorer` | Ranking and ranking-entry rows, resolved profile links, firm aliases, filters, source metadata, and unavailable-field states. |
 | `GET /RegulatoryDiscrepancyQueue` | `RegulatoryDiscrepancyQueue` | Open discrepancy rows joined to advisor, current firm, disclosure, source value, regulator, docket, and review-action context for authenticated analyst review. |
 | `POST /mcp` | `mcp` | Streamable HTTP JSON-RPC transport for curated read-only AdvisorBook tools and resources. |
@@ -1720,7 +1721,8 @@ The classes in `src/harper/resources.ts` extend Harper's globally-injected
 Updating any page's data shape means editing the matching method
 **and** the matching `src/web/<page>.ts` renderer in the same change.
 
-The MCP endpoint is composed from `src/harper/resource-mcp*.ts` and emitted
+The MCP endpoint and same-origin catalog are composed from
+`src/harper/resource-mcp*.ts` and emitted
 through the same `resources.js` bundle. Supported JSON-RPC methods are
 `initialize`, `tools/list`, `tools/call`, `resources/templates/list`, and
 `resources/read`. The tool list is `search_advisorbook`, `get_feed`,
@@ -1730,7 +1732,9 @@ through the same `resources.js` bundle. Supported JSON-RPC methods are
 `advisorbook://team/{id}`, and `advisorbook://article/{id}`. The root
 `server.json` manifest points remote clients at
 `https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp` and
-does not require auth headers or secrets.
+does not require auth headers or secrets. `GET /McpCatalog` wraps the
+same dispatch path for public gallery pages and reports `status:
+"unavailable"` instead of exposing partial inventory when probing fails.
 
 ### Auth
 
