@@ -13,6 +13,7 @@ const DEAL_GAPS_PATH = "/recruiting/deal-gaps";
 const RESOURCE_ROUTE = "**/RecruitingDealDataGaps**";
 const ADVISOR_NAME = "Avery Stone";
 const ATLANTA_MARKET = "Atlanta, GA";
+const BLAKE_RIVER_NAME = "Blake River";
 const EXAMPLE_WEALTH = "Example Wealth";
 const GAP_TYPE_PARAM = "gapType";
 const MISSING_AUM = "missing-aum";
@@ -22,6 +23,7 @@ const STATE_GA = "GA";
 const SOURCE_GAP_ID = "transition-gap-missing-source";
 const TRANSITION_GAP_ID = "transition-gap-1";
 const UNRESOLVED_PARAM = "unresolved";
+const DEAL_GAP_ROW_SELECTOR = ".deal-gap-row";
 const ROW_TITLE = `${ADVISOR_NAME} to ${EXAMPLE_WEALTH}`;
 
 describe("recruiting deal gaps route", () => {
@@ -64,7 +66,7 @@ describe("recruiting deal gaps route", () => {
       expect(await selectedValue(page, GAP_TYPE_PARAM)).toBe(MISSING_AUM);
       expect(await selectedValue(page, UNRESOLVED_PARAM)).toBe("exclude");
 
-      const row = page.locator(".deal-gap-row").first();
+      const row = page.locator(DEAL_GAP_ROW_SELECTOR).first();
       const gapTags = row.locator(".deal-gap-tags");
       await gapTags.getByText("Missing AUM").waitFor({
         timeout: QUICK_TIMEOUT,
@@ -84,9 +86,10 @@ describe("recruiting deal gaps route", () => {
           "Public follow-up: review linked public sources and keep unknown deal fields marked incomplete until evidence is found."
         )
         .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await page.locator(DEAL_GAP_ROW_SELECTOR).count()).toBe(2);
       const missingSourceRow = page
-        .locator(".deal-gap-row")
-        .filter({ hasText: "Blake River" });
+        .locator(DEAL_GAP_ROW_SELECTOR)
+        .filter({ hasText: BLAKE_RIVER_NAME });
       await missingSourceRow.getByText("Missing source article").waitFor({
         timeout: QUICK_TIMEOUT,
       });
@@ -151,6 +154,14 @@ describe("recruiting deal gaps route", () => {
       expect(lastQuery.get("direction")).toBe("inbound");
       expect(lastQuery.get(GAP_TYPE_PARAM)).toBe(MISSING_SOURCE);
       expect(lastQuery.get("limit")).toBe("2");
+      expect(await page.locator(DEAL_GAP_ROW_SELECTOR).count()).toBe(1);
+      await page.getByText(BLAKE_RIVER_NAME).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText(ROW_TITLE).waitFor({
+        state: "detached",
+        timeout: QUICK_TIMEOUT,
+      });
     } finally {
       await page.close();
     }
@@ -176,6 +187,11 @@ describe("recruiting deal gaps route", () => {
 
       await page
         .getByText("No matching recruiting deal gaps")
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator(".deal-gap-stat")
+        .filter({ hasText: "Rows" })
+        .getByText("0")
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(
         await page
@@ -260,7 +276,11 @@ function dealGapPayload(): unknown {
       },
       {
         id: SOURCE_GAP_ID,
-        subject: { kind: "advisor", id: "advisor-gap-2", name: "Blake River" },
+        subject: {
+          kind: "advisor",
+          id: "advisor-gap-2",
+          name: BLAKE_RIVER_NAME,
+        },
         fromFirm: { id: "firm-old", name: "Old Firm", short: "Old Firm" },
         toFirm: {
           id: "firm-example",
@@ -302,6 +322,13 @@ function dealGapPayload(): unknown {
 
 function dealGapPayloadForQuery(search: string): unknown {
   const params = new URLSearchParams(search);
+  const gapType = params.get("gapType");
+  const items =
+    gapType === MISSING_SOURCE
+      ? dealGapPayload().items.filter(item =>
+          item.gapTypes.includes(MISSING_SOURCE)
+        )
+      : dealGapPayload().items;
   return {
     ...dealGapPayload(),
     filters: {
@@ -314,6 +341,9 @@ function dealGapPayloadForQuery(search: string): unknown {
       unresolved: params.get("unresolved") || "include",
       year: params.get("year") || null,
     },
+    items,
+    summary: { count: items.length, sourceBackedCount: 0, unresolvedCount: 0 },
+    total: items.length,
   };
 }
 

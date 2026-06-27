@@ -93,6 +93,7 @@ const RANKING_ENTRY_B_ID = "ranking-entry-b";
 const TRANSITION_A_ID = "transition-a";
 const TRANSITION_TEAM_ID = "transition-team";
 const TRANSITION_OUT_ID = "transition-out";
+const TRANSITION_COMPLETE_ID = "transition-complete";
 const DISCLOSURE_A_ID = "disclosure-a";
 const REGULATORY_DISCREPANCY_A_ID = "reg-discrepancy-a";
 const REGULATORY_DISCREPANCY_REVIEWED_ID = "reg-discrepancy-public-reviewed";
@@ -132,6 +133,7 @@ const SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE = "candidate-only-provenance";
 const SOURCE_GAP_ARTICLE_ID = "article-source-gap";
 const SOURCE_SECOND_GAP_ARTICLE_ID = "article-source-gap-second";
 const SOURCE_COMPLETE_ARTICLE_ID = "article-source-complete";
+const COMPLETE_DEAL_ID = "deal-complete";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
 const DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE =
@@ -154,6 +156,7 @@ const DATE_2022_01_01 = "2022-01-01";
 const DATE_2023_01_01 = "2023-01-01";
 const DATE_2024_01_01 = "2024-01-01";
 const DATE_2024_04_01 = "2024-04-01";
+const DATE_2024_05_01 = "2024-05-01";
 const DATE_2025_01_02 = "2025-01-02";
 const ADVISOR_READY_ID = "advisor-ready";
 const ADVISOR_SUBSTANCE_GAP_ID = "advisor-substance-gap";
@@ -4059,6 +4062,42 @@ describe("Harper resource endpoints", () => {
   });
 
   it("serves public recruiting deal-data gaps with shareable filters", async () => {
+    setRows("TransitionEvent", [
+      ...(tableRows.get("TransitionEvent") ?? []),
+      {
+        id: TRANSITION_COMPLETE_ID,
+        subjectAdvisorId: "advisor-a",
+        fromFirmId: "firm-b",
+        toFirmId: "firm-a",
+        toBranchId: "branch-a",
+        moveDate: DATE_2024_05_01,
+        aumMoved: 750_000_000,
+        productionT12: 2_100_000,
+        recruitingDealId: COMPLETE_DEAL_ID,
+      },
+    ]);
+    setRows("RecruitingDealQuote", [
+      ...(tableRows.get("RecruitingDealQuote") ?? []),
+      {
+        id: COMPLETE_DEAL_ID,
+        upfrontPctT12: 175,
+        totalPctT12: 320,
+        forgivableLoanTermYears: 9,
+        producerTier: "top",
+        backendMetrics: "Growth hurdle disclosed",
+        clawbackTerms: "Standard 9-year note",
+        sourceArticleId: "article-a",
+      },
+    ]);
+    setRows("ArticleTransitionEventMention", [
+      ...(tableRows.get("ArticleTransitionEventMention") ?? []),
+      {
+        id: "mention-transition-complete",
+        articleId: "article-a",
+        transitionEventId: TRANSITION_COMPLETE_ID,
+      },
+    ]);
+
     const gaps = await new (resources as any).RecruitingDealDataGaps().get(
       routeTarget("", {
         firm: EXAMPLE_WEALTH_LLC,
@@ -4115,6 +4154,9 @@ describe("Harper resource endpoints", () => {
         ]),
       }),
     ]);
+    expect(gaps.items.map((row: { id: string }) => row.id)).not.toContain(
+      TRANSITION_COMPLETE_ID
+    );
     expect(gaps.nextCursor).toBe(OFFSET_ONE_CURSOR);
     expect(gaps.provenance.sourceIds).toHaveLength(gaps.items.length);
 
@@ -4174,6 +4216,19 @@ describe("Harper resource endpoints", () => {
       ],
       total: 1,
     });
+    await expect(
+      new (resources as any).RecruitingDealDataGaps().get(
+        routeTarget("", {
+          firm: EXAMPLE_WEALTH_LLC,
+          gapType: MISSING_UPFRONT_PCT_T12_REASON,
+          state: "ga",
+          year: "2024",
+        })
+      )
+    ).resolves.toMatchObject({
+      items: [],
+      total: 0,
+    });
 
     await expect(
       new (resources as any).RecruitingDealDataGaps().get(
@@ -4196,7 +4251,7 @@ describe("Harper resource endpoints", () => {
         fromFirmId: "firm-b",
         toFirmId: "firm-a",
         toBranchId: "branch-a",
-        moveDate: "2024-05-01",
+        moveDate: DATE_2024_05_01,
         aumMoved: 125_000_000,
         productionT12: 900_000,
       },
@@ -4585,7 +4640,7 @@ describe("Harper resource endpoints", () => {
         subjectAdvisorId: "advisor-a",
         fromFirmId: "firm-b",
         toFirmId: "firm-a",
-        moveDate: "2024-05-01",
+        moveDate: DATE_2024_05_01,
         aumMoved: 125_000_000,
         productionT12: null,
       },
