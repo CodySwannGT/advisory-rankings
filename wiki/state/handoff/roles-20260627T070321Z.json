@@ -1,0 +1,17 @@
+{
+  "connector": "roles",
+  "profile": "project",
+  "runAt": "2026-06-27T07:03:21Z",
+  "sourceNote": "wiki/sources/roles/2026-06-27-roles.md",
+  "cursorBefore": {
+    "roles": 0,
+    "pages": 0,
+    "lastIngest": "2026-06-26"
+  },
+  "cursorAfter": {
+    "roles": 0,
+    "pages": 0,
+    "lastIngest": "2026-06-27"
+  },
+  "schemaVersion": "1.0.0"
+}

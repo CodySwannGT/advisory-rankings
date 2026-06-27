@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-26
+updated: 2026-06-27
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -21,6 +21,7 @@ sources:
   - ../sources/git/2026-06-24-advisory-rankings-git.md
   - ../sources/git/2026-06-25-advisory-rankings-git.md
   - ../sources/git/2026-06-26-advisory-rankings-git.md
+  - ../sources/git/2026-06-27-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -125,3 +126,9 @@ The 2026-06-26 git ingest shows a smaller maintenance window after the trust-che
 trust-checklist browser assertions were hardened, max-lines-per-function pressure continued, and the
 desktop header search/login layout was repaired to prevent overlap. Source:
 wiki/sources/git/2026-06-26-advisory-rankings-git.md.
+
+The 2026-06-27 git ingest shows architecture work around source article triage and recruiting
+deal-gap operations: both areas now have resource, route, replay, provenance, and coverage work
+recorded in the same window. It also records Fabric deploy hardening for partial deploys and
+deployed runtime freshness checks, plus continued coverage and max-lines threshold maintenance.
+Source: wiki/sources/git/2026-06-27-advisory-rankings-git.md.
