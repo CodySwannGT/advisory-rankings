@@ -20,7 +20,43 @@ const browserDescribe =
     ? describe
     : describe.skip;
 
-browserDescribe("MCP gallery route (#1472)", () => {
+const RESOURCE_TEMPLATE_URIS = [
+  "advisorbook://feed",
+  "advisorbook://advisor/{id}",
+  "advisorbook://firm/{id}",
+  "advisorbook://team/{id}",
+  "advisorbook://article/{id}",
+] as const;
+
+const TOOL_NAMES = [
+  "search_advisorbook",
+  "get_feed",
+  "get_advisor_profile",
+  "get_firm_profile",
+  "get_team_profile",
+  "get_article",
+] as const;
+
+const FORBIDDEN_INVENTORY_TERMS = [
+  "admin",
+  "auth",
+  "credential",
+  "delete",
+  "ingest",
+  "insert",
+  "mutation",
+  "raw",
+  "refresh",
+  "scrape",
+  "sql",
+  "table",
+  "token",
+  "update",
+  "upsert",
+  "write",
+] as const;
+
+browserDescribe("MCP gallery route (#1474)", () => {
   let browser: Browser;
   let server: Server;
   let baseUrl: string;
@@ -63,8 +99,9 @@ browserDescribe("MCP gallery route (#1472)", () => {
       await page.getByText("AdvisorBook 0.1.0").waitFor({
         timeout: QUICK_TIMEOUT,
       });
-      await expectEntryCount(page, "tool", 6);
-      await expectEntryCount(page, "template", 5);
+      await expectInventory(page, "tool", TOOL_NAMES);
+      await expectInventory(page, "template", RESOURCE_TEMPLATE_URIS);
+      await expectSafeInventoryText(page);
       await page.getByText("Public data only").waitFor({
         timeout: QUICK_TIMEOUT,
       });
@@ -84,7 +121,7 @@ browserDescribe("MCP gallery route (#1472)", () => {
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(await hasHorizontalOverflow(page)).toBe(false);
 
-      await captureViewports(page, "issue-1472-mcp-gallery");
+      await captureViewports(page, "issue-1474-mcp-gallery");
     } finally {
       await page.close();
     }
@@ -169,6 +206,46 @@ async function expectEntryCount(
 }
 
 /**
+ * Asserts visible inventory entries match the public MCP catalog exactly.
+ * @param page - Browser page.
+ * @param kind - Inventory kind.
+ * @param expected - Expected displayed codes.
+ */
+async function expectInventory(
+  page: Page,
+  kind: "tool" | "template",
+  expected: readonly string[]
+): Promise<void> {
+  await expectEntryCount(page, kind, expected.length);
+  const entries = page.locator(`[data-mcp-gallery-entry="${kind}"] code`);
+  await expect
+    .poll(
+      async () =>
+        await entries.evaluateAll(nodes =>
+          nodes.map(node => node.textContent?.trim() ?? "")
+        ),
+      { timeout: QUICK_TIMEOUT }
+    )
+    .toEqual(expected);
+}
+
+/**
+ * Asserts inventory cards do not advertise unsafe MCP capability families.
+ * @param page - Browser page.
+ */
+async function expectSafeInventoryText(page: Page): Promise<void> {
+  const inventoryText = await page
+    .locator("[data-mcp-gallery-entry]")
+    .evaluateAll(nodes =>
+      nodes
+        .map(node => node.textContent ?? "")
+        .join(" ")
+        .toLowerCase()
+    );
+  expect(inventoryText).not.toMatch(forbiddenInventoryPattern());
+}
+
+/**
  * Checks document-level horizontal overflow.
  * @param page - Browser page.
  * @returns Whether the document overflows horizontally.
@@ -205,48 +282,41 @@ function readyCatalog(): McpCatalogResponse {
         version: "0.1.0",
       },
     },
-    tools: [
-      tool("search_advisors", "Search advisors"),
-      tool("get_advisor_profile", "Get advisor profile"),
-      tool("search_firms", "Search firms"),
-      tool("get_firm_profile", "Get firm profile"),
-      tool("search_articles", "Search articles"),
-      tool("get_article", "Get article"),
-    ],
-    resourceTemplates: [
-      template("advisorbook://advisors/{id}", "Advisor profile"),
-      template("advisorbook://firms/{id}", "Firm profile"),
-      template("advisorbook://articles/{id}", "Article"),
-      template("advisorbook://rankings/{id}", "Ranking"),
-      template("advisorbook://search/{query}", "Search"),
-    ],
-  };
-}
-
-/**
- * Builds a tool fixture.
- * @param name - Tool name.
- * @param title - Tool title.
- * @returns Tool fixture.
- */
-function tool(name: string, title: string): unknown {
-  return {
-    name,
-    title,
-    description: `${title} using public AdvisorBook data.`,
+    tools: TOOL_NAMES.map(tool),
+    resourceTemplates: RESOURCE_TEMPLATE_URIS.map(template),
   };
 }
 
 /**
  * Builds a resource template fixture.
  * @param uriTemplate - Template URI.
- * @param title - Template title.
  * @returns Resource template fixture.
  */
-function template(uriTemplate: string, title: string): unknown {
+function template(uriTemplate: string): unknown {
   return {
     uriTemplate,
-    title,
-    description: `${title} resource template.`,
+    title: uriTemplate,
+    description: `${uriTemplate} public payload.`,
   };
+}
+
+/**
+ * Builds a tool fixture.
+ * @param name - Tool name.
+ * @returns Tool fixture.
+ */
+function tool(name: string): unknown {
+  return {
+    name,
+    title: name,
+    description: `${name} public payload.`,
+  };
+}
+
+/**
+ * Builds a whole-word matcher for unsafe inventory terms.
+ * @returns Forbidden inventory term pattern.
+ */
+function forbiddenInventoryPattern(): RegExp {
+  return new RegExp(`\\b(${FORBIDDEN_INVENTORY_TERMS.join("|")})\\b`, "u");
 }
