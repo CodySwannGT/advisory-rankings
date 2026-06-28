@@ -26,6 +26,7 @@ fastifyRoutes:
     - 'articles/index.js'
     - 'data-coverage/index.js'
     - 'investor-proof/index.js'
+    - 'mcp-gallery/index.js'
     - 'recruiting/index.js'
     - 'recruiting-deal-gaps/index.js'
     - 'recruiting-shortlist/index.js'

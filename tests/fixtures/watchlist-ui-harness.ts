@@ -457,12 +457,8 @@ function resolveStaticPath(urlPath: string): string {
   if (urlPath === "/login") return LOGIN_SHELL;
   const shell = cleanRouteShell(urlPath);
   if (shell) return resolve(WEB_ROOT, shell);
-  if (urlPath === "/recruiting/shortlist") {
-    return resolve(WEB_ROOT, "recruiting-shortlist.html");
-  }
-  if (urlPath === "/recruiting/deal-gaps") {
-    return resolve(WEB_ROOT, "recruiting/deal-gaps.html");
-  }
+  const exactShell = exactRouteShell(urlPath);
+  if (exactShell) return resolve(WEB_ROOT, exactShell);
   const cleanPath = normalize(decodeURIComponent(urlPath)).replace(
     /^(\.\.(\/|\\|$))+/u,
     ""
@@ -476,6 +472,19 @@ function resolveStaticPath(urlPath: string): string {
     return join(WEB_ROOT, "404.html");
   }
   return candidate;
+}
+
+/**
+ * Maps non-detail clean routes to their generated static shells.
+ * @param urlPath - Request URL path.
+ * @returns Matching shell filename, or null when no exact shell applies.
+ */
+function exactRouteShell(urlPath: string): string | null {
+  if (urlPath === "/developers/mcp" || urlPath === "/mcp-gallery")
+    return "mcp-gallery.html";
+  if (urlPath === "/recruiting/shortlist") return "recruiting-shortlist.html";
+  if (urlPath === "/recruiting/deal-gaps") return "recruiting/deal-gaps.html";
+  return null;
 }
 
 /**
