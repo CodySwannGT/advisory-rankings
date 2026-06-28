@@ -8,6 +8,10 @@ import {
   el,
   mountThreeColumnPage,
 } from "./design-system/index.js";
+import {
+  queryTemplatesCard,
+  setupSnippetsCard,
+} from "./mcp-gallery-content.js";
 import type { McpCatalogResponse } from "../harper/resource-mcp-catalog.js";
 
 /** Callable adapter for untyped design-system components. */
@@ -71,6 +75,8 @@ function renderCatalog(
   if (catalog.status === "unavailable") {
     center.appendChild(unavailableCard(catalog));
   } else {
+    center.appendChild(queryTemplatesCard(SectionCardC, TagC));
+    center.appendChild(setupSnippetsCard(SectionCardC));
     center.appendChild(inventoryCard("Tools", catalog.tools, "tool"));
     center.appendChild(
       inventoryCard("Resource templates", catalog.resourceTemplates, "template")

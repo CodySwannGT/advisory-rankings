@@ -145,7 +145,9 @@ a:hover {
 .mcp-gallery-header .card-body,
 .mcp-gallery-inventory .card-body,
 .mcp-gallery-endpoint .card-body,
-.mcp-gallery-boundary .card-body {
+.mcp-gallery-boundary .card-body,
+.mcp-gallery-templates .card-body,
+.mcp-gallery-snippets .card-body {
   display: grid;
   gap: 14px;
 }
@@ -159,7 +161,8 @@ a:hover {
 
 .mcp-gallery-lede,
 .mcp-gallery-muted,
-.mcp-gallery-entry-description {
+.mcp-gallery-entry-description,
+.mcp-gallery-detail-row p {
   margin: 0;
   color: var(--text-muted);
 }
@@ -171,14 +174,18 @@ a:hover {
 }
 
 .mcp-gallery-stat-grid,
-.mcp-gallery-inventory-grid {
+.mcp-gallery-inventory-grid,
+.mcp-gallery-template-grid,
+.mcp-gallery-snippet-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
 .mcp-gallery-stat,
-.mcp-gallery-entry {
+.mcp-gallery-entry,
+.mcp-gallery-template,
+.mcp-gallery-snippet {
   display: grid;
   gap: 7px;
   min-width: 0;
@@ -195,8 +202,12 @@ a:hover {
 
 .mcp-gallery-stat strong,
 .mcp-gallery-entry h3,
+.mcp-gallery-template h3,
+.mcp-gallery-snippet h3,
 .mcp-gallery-entry code,
-.mcp-gallery-endpoint-code {
+.mcp-gallery-endpoint-code,
+.mcp-gallery-detail-row code,
+.mcp-gallery-code-block {
   overflow-wrap: anywhere;
 }
 
@@ -205,13 +216,16 @@ a:hover {
   line-height: 1.2;
 }
 
-.mcp-gallery-entry h3 {
+.mcp-gallery-entry h3,
+.mcp-gallery-template h3,
+.mcp-gallery-snippet h3 {
   margin: 0;
   font-size: 16px;
 }
 
 .mcp-gallery-entry code,
-.mcp-gallery-endpoint-code {
+.mcp-gallery-endpoint-code,
+.mcp-gallery-detail-row code {
   width: fit-content;
   max-width: 100%;
   padding: 3px 6px;
@@ -220,6 +234,54 @@ a:hover {
   color: var(--text);
   font-size: 12px;
   white-space: normal;
+}
+
+.mcp-gallery-template-heading,
+.mcp-gallery-snippet-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mcp-gallery-detail-row {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mcp-gallery-detail-row span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mcp-gallery-copy-button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mcp-gallery-code-block {
+  max-width: 100%;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .branches-header .card-body,
