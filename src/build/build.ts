@@ -24,6 +24,7 @@ const WEB_ENTRYPOINTS = [
   "index.js",
   "investor-proof-packet.js",
   "login.js",
+  "mcp-gallery.js",
   "not-found.js",
   "rankings.js",
   "recruiting-deal-gaps.js",

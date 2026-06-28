@@ -155,6 +155,7 @@ export function primaryBrowseItems(
     browseItem("Branches", "branches", "/branches"),
     browseItem("Coverage", "coverage", "/coverage"),
     browseItem("Investor proof", "coverage", "/investor-proof"),
+    browseItem("MCP gallery", "research", "/mcp-gallery"),
     browseItem("Source triage", "research", "/source-triage"),
     browseItem("Recruiting", "recruiting", "/recruiting"),
     browseItem("Rankings", "rankings", "/rankings"),

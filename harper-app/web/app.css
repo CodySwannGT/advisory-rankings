@@ -142,6 +142,86 @@ a:hover {
   padding-left: 18px;
 }
 
+.mcp-gallery-header .card-body,
+.mcp-gallery-inventory .card-body,
+.mcp-gallery-endpoint .card-body,
+.mcp-gallery-boundary .card-body {
+  display: grid;
+  gap: 14px;
+}
+
+.mcp-gallery-header-body,
+.mcp-gallery-rail-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mcp-gallery-lede,
+.mcp-gallery-muted,
+.mcp-gallery-entry-description {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.mcp-gallery-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mcp-gallery-stat-grid,
+.mcp-gallery-inventory-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.mcp-gallery-stat,
+.mcp-gallery-entry {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.mcp-gallery-stat span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.mcp-gallery-stat strong,
+.mcp-gallery-entry h3,
+.mcp-gallery-entry code,
+.mcp-gallery-endpoint-code {
+  overflow-wrap: anywhere;
+}
+
+.mcp-gallery-stat strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.mcp-gallery-entry h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.mcp-gallery-entry code,
+.mcp-gallery-endpoint-code {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  white-space: normal;
+}
+
 .branches-header .card-body,
 .branches-filter-card .card-body,
 .branches-results-card .card-body {

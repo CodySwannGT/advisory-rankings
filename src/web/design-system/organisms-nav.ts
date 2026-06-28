@@ -30,6 +30,7 @@ const NAV_LINKS: readonly NavLink[] = [
   { active: "firms", href: "/firms", label: "Firms" },
   { active: "branches", href: "/branches", label: "Branches" },
   { active: "investor-proof", href: "/investor-proof", label: "Proof" },
+  { active: "mcp-gallery", href: "/mcp-gallery", label: "MCP" },
   { active: "recruiting", href: "/recruiting", label: "Recruiting" },
   { active: "rankings", href: "/rankings", label: "Rankings" },
   { active: "advisors", href: "/advisors", label: "Advisors" },

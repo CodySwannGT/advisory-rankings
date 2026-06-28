@@ -7,6 +7,7 @@ import articlesRoutes from "../harper-app/articles/index.js";
 import branchesRoutes from "../harper-app/branches/index.js";
 import firmsRoutes from "../harper-app/firms/index.js";
 import loginRoutes from "../harper-app/login/index.js";
+import mcpGalleryRoutes from "../harper-app/mcp-gallery/index.js";
 import recruitingDealGapRoutes from "../harper-app/recruiting-deal-gaps/index.js";
 import recruitingRoutes from "../harper-app/recruiting/index.js";
 import regulatoryRoutes from "../harper-app/regulatory/index.js";
@@ -24,6 +25,7 @@ describe("SEO route shells", () => {
 
     await branchesRoutes(fastify);
     await firmsRoutes(fastify);
+    await mcpGalleryRoutes(fastify);
     await recruitingRoutes(fastify);
     await recruitingDealGapRoutes(fastify);
     await advisorsRoutes(fastify);
@@ -36,6 +38,8 @@ describe("SEO route shells", () => {
       "/branches",
       "/firms",
       "/firms/:slug",
+      "/mcp-gallery",
+      "/developers/mcp",
       "/recruiting",
       "/recruiting/deal-gaps",
       "/advisors",
@@ -112,6 +116,7 @@ describe("static web route shells", () => {
     expect(paths).toContain("/app.css");
     expect(paths).toContain("/index.html");
     expect(paths).toContain("/compare.html");
+    expect(paths).toContain("/mcp-gallery.html");
     expect(paths).toContain("/recruiting/deal-gaps.html");
     expect(paths).toContain("/design-system/components.css");
     expect(paths).not.toContain("/design-system/dom.js");
