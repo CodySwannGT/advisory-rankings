@@ -6,7 +6,7 @@ const headers = {
 };
 
 /**
- * Register public MCP gallery URL shells.
+ * Register the public MCP gallery URL shell.
  * @param fastify Fastify instance provided by Harper.
  */
 export default async function mcpGalleryRoutes(fastify) {
@@ -19,5 +19,4 @@ export default async function mcpGalleryRoutes(fastify) {
     return reply.headers(headers).send(html.page);
   };
   fastify.get("/mcp-gallery", sendGallery);
-  fastify.get("/developers/mcp", sendGallery);
 }

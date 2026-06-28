@@ -39,7 +39,6 @@ describe("SEO route shells", () => {
       "/firms",
       "/firms/:slug",
       "/mcp-gallery",
-      "/developers/mcp",
       "/recruiting",
       "/recruiting/deal-gaps",
       "/advisors",
