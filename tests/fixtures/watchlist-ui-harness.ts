@@ -480,8 +480,7 @@ function resolveStaticPath(urlPath: string): string {
  * @returns Matching shell filename, or null when no exact shell applies.
  */
 function exactRouteShell(urlPath: string): string | null {
-  if (urlPath === "/developers/mcp" || urlPath === "/mcp-gallery")
-    return "mcp-gallery.html";
+  if (urlPath === "/mcp-gallery") return "mcp-gallery.html";
   if (urlPath === "/recruiting/shortlist") return "recruiting-shortlist.html";
   if (urlPath === "/recruiting/deal-gaps") return "recruiting/deal-gaps.html";
   return null;

@@ -110,7 +110,7 @@ browserDescribe("MCP gallery route (#1472)", () => {
         unavailableReason: "MCP endpoint timed out",
       });
 
-      await page.goto(`${baseUrl}/developers/mcp`, {
+      await page.goto(`${baseUrl}/mcp-gallery`, {
         waitUntil: "domcontentloaded",
       });
 
