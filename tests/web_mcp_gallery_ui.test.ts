@@ -121,10 +121,7 @@ browserDescribe("MCP gallery route (#1474)", () => {
         .waitFor({ timeout: QUICK_TIMEOUT });
       await page
         .locator("[data-mcp-gallery-snippet='Inspector setup']")
-        .getByText(
-          "https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp",
-          { exact: false }
-        )
+        .getByText("/mcp", { exact: false })
         .waitFor({ timeout: QUICK_TIMEOUT });
       await page
         .locator("[data-mcp-gallery-snippet='Inspector setup']")

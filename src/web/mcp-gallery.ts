@@ -76,7 +76,7 @@ function renderCatalog(
     center.appendChild(unavailableCard(catalog));
   } else {
     center.appendChild(queryTemplatesCard(SectionCardC, TagC));
-    center.appendChild(setupSnippetsCard(SectionCardC));
+    center.appendChild(setupSnippetsCard(SectionCardC, catalog.endpoint.url));
     center.appendChild(inventoryCard("Tools", catalog.tools, "tool"));
     center.appendChild(
       inventoryCard("Resource templates", catalog.resourceTemplates, "template")

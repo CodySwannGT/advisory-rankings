@@ -20,8 +20,6 @@ interface SetupSnippet {
   readonly body: string;
 }
 
-const DEPLOYED_MCP_ENDPOINT =
-  "https://advisory-rankings-de.cody-swann-org.harperfabric.com/mcp";
 const QUERY_TEMPLATES: readonly QueryTemplate[] = [
   {
     title: "Research desk source trail",
@@ -71,38 +69,6 @@ const QUERY_TEMPLATES: readonly QueryTemplate[] = [
       "Use generatedAt and source-backed event cards as freshness context for demos.",
   },
 ];
-const SETUP_SNIPPETS: readonly SetupSnippet[] = [
-  {
-    title: "Inspector setup",
-    body: `Transport: Streamable HTTP
-Server URL: ${DEPLOYED_MCP_ENDPOINT}
-Headers: none
-Credentials: none`,
-  },
-  {
-    title: "Generic Streamable HTTP call",
-    body: `fetch("${DEPLOYED_MCP_ENDPOINT}", {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({
-    jsonrpc: "2.0",
-    id: "advisorbook-search",
-    method: "tools/call",
-    params: {
-      name: "search_advisorbook",
-      arguments: { query: "Morgan Stanley", limit: 3 }
-    }
-  })
-})`,
-  },
-  {
-    title: "Bounded sample query",
-    body: `Tool: search_advisorbook
-Arguments: {"query":"Morgan Stanley","limit":3}
-Expected freshness: read counts and returned urls with the catalog generated timestamp before citing results.`,
-  },
-];
-
 /**
  * Builds workflow templates that explain how public MCP entries map to jobs.
  * @param SectionCardC - Design-system section card adapter.
@@ -127,10 +93,12 @@ export function queryTemplatesCard(
 /**
  * Builds copyable setup and sample snippets.
  * @param SectionCardC - Design-system section card adapter.
+ * @param endpointUrl - Catalog-derived MCP endpoint URL.
  * @returns Setup snippets card.
  */
 export function setupSnippetsCard(
-  SectionCardC: DesignSystemComponent
+  SectionCardC: DesignSystemComponent,
+  endpointUrl: string
 ): HTMLElement {
   return SectionCardC({
     title: "Setup snippets",
@@ -138,9 +106,48 @@ export function setupSnippetsCard(
     body: el(
       "div",
       { class: "mcp-gallery-snippet-grid" },
-      ...SETUP_SNIPPETS.map(snippetCard)
+      ...setupSnippets(endpointUrl).map(snippetCard)
     ),
   });
+}
+
+/**
+ * Builds setup snippets from the same endpoint metadata rendered elsewhere.
+ * @param endpointUrl - Catalog-derived MCP endpoint URL.
+ * @returns Setup snippet definitions.
+ */
+function setupSnippets(endpointUrl: string): readonly SetupSnippet[] {
+  return [
+    {
+      title: "Inspector setup",
+      body: `Transport: Streamable HTTP
+Server URL: ${endpointUrl}
+Headers: none
+Credentials: none`,
+    },
+    {
+      title: "Generic Streamable HTTP call",
+      body: `fetch("${endpointUrl}", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: "advisorbook-search",
+    method: "tools/call",
+    params: {
+      name: "search_advisorbook",
+      arguments: { query: "Morgan Stanley", limit: 3 }
+    }
+  })
+})`,
+    },
+    {
+      title: "Bounded sample query",
+      body: `Tool: search_advisorbook
+Arguments: {"query":"Morgan Stanley","limit":3}
+Expected freshness: read counts and returned urls with the catalog generated timestamp before citing results.`,
+    },
+  ];
 }
 
 /**
@@ -224,5 +231,7 @@ function detailRow(label: string, value: string, code = false): HTMLElement {
  */
 function copyText(text: string): void {
   if (!navigator.clipboard) return;
-  void navigator.clipboard.writeText(text);
+  void navigator.clipboard.writeText(text).catch(() => {
+    // Clipboard access can be denied by browser policy; copying is optional.
+  });
 }
