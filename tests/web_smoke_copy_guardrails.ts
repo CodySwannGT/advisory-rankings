@@ -15,6 +15,7 @@ const EXPECTED_BROWSE_LABELS = [
   "Branches",
   "Coverage",
   "Investor proof",
+  "MCP gallery",
   "Source triage",
   "Recruiting",
   "Rankings",
