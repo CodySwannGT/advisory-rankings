@@ -101,6 +101,35 @@ browserDescribe("MCP gallery route (#1474)", () => {
       });
       await expectInventory(page, "tool", TOOL_NAMES);
       await expectInventory(page, "template", RESOURCE_TEMPLATE_URIS);
+      await page.getByText("Research desk source trail").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("Recruiter firm lookup").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("Investor due diligence profile").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("Investor evaluator coverage check").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page
+        .getByText('{"query":"Morgan Stanley","limit":3}', { exact: true })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .getByText("Transport: Streamable HTTP", { exact: false })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator("[data-mcp-gallery-snippet='Inspector setup']")
+        .getByText("/mcp", { exact: false })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator("[data-mcp-gallery-snippet='Inspector setup']")
+        .getByText("Credentials: none", { exact: false })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .getByText("fetch(", { exact: false })
+        .waitFor({ timeout: QUICK_TIMEOUT });
       await expectSafeInventoryText(page);
       await page.getByText("Public data only").waitFor({
         timeout: QUICK_TIMEOUT,
@@ -118,6 +147,10 @@ browserDescribe("MCP gallery route (#1474)", () => {
       await page
         .locator(".mcp-gallery-boundary")
         .getByText("private watchlists", { exact: false })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page
+        .locator("[data-mcp-gallery-snippet='Generic Streamable HTTP call']")
+        .getByText("search_advisorbook", { exact: false })
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(await hasHorizontalOverflow(page)).toBe(false);
 
