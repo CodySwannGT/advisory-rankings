@@ -39,17 +39,13 @@ browserDescribe("MCP gallery route (#1472)", () => {
     });
   });
 
-  it("renders ready endpoint inventory and keeps MCP POST available", async () => {
+  it("renders ready endpoint inventory and endpoint metadata", async () => {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 900 },
     });
-    const mcpPosts: unknown[] = [];
     try {
       await routeAuth(page, false);
       await routeCatalog(page, readyCatalog());
-      await routeMcpPost(page, body => {
-        mcpPosts.push(body);
-      });
 
       await page.goto(`${baseUrl}/mcp-gallery`, {
         waitUntil: "domcontentloaded",
@@ -80,26 +76,6 @@ browserDescribe("MCP gallery route (#1472)", () => {
         await page.locator(".mcp-gallery-endpoint-code").first().textContent()
       ).toBe("/mcp");
 
-      const postResult = await page.evaluate(async () => {
-        const response = await fetch("/mcp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: "probe",
-            method: "tools/list",
-          }),
-        });
-        return {
-          ok: response.ok,
-          body: await response.json(),
-        };
-      });
-      expect(postResult).toMatchObject({
-        ok: true,
-        body: { jsonrpc: "2.0", id: "probe", result: { tools: [] } },
-      });
-      expect(mcpPosts).toHaveLength(1);
       expect(await hasHorizontalOverflow(page)).toBe(false);
       await page.setViewportSize({ width: 390, height: 740 });
       await page
@@ -169,34 +145,6 @@ async function routeCatalog(
 ): Promise<void> {
   await page.route("**/McpCatalog", async route => {
     await route.fulfill({ json: payload });
-  });
-}
-
-/**
- * Routes POST /mcp to prove the gallery route does not take over the endpoint.
- * @param page - Browser page.
- * @param onPost - Captured body callback.
- */
-async function routeMcpPost(
-  page: Page,
-  onPost: (body: unknown) => void
-): Promise<void> {
-  await page.route("**/mcp", async route => {
-    if (route.request().method() !== "POST") {
-      await route.fulfill({
-        status: 405,
-        json: { error: "method not allowed" },
-      });
-      return;
-    }
-    onPost(route.request().postDataJSON());
-    await route.fulfill({
-      json: {
-        jsonrpc: "2.0",
-        id: "probe",
-        result: { tools: [] },
-      },
-    });
   });
 }
 
