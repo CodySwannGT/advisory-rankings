@@ -13,6 +13,7 @@ This repository is operated through its Lisa LLM Wiki.
   desktop/mobile evidence for `/recruiting/deal-gaps?gapType=missing-deal-terms&limit=3`.
 - Major firm-source import artifacts: `bun run firm-source:major-imports`
 - Bounded recruiting article backfill: `bun run backfill:recruiting-articles -- --limit 5`
+- Branch coverage read-model backfill: `bun run backfill:branch-coverage`
 - Advisor research queue: `bun run research:advisors -- due --max 5 --stale-days 30 --json`
 - Research freshness workbench: `/research/freshness`, backed by
   `/AdvisorResearchQueue?sourceType=web_research&staleDays=30&limit=25`.

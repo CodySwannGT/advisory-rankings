@@ -68,6 +68,7 @@ const BRANCH_ATLANTA_CURSOR =
   "ZXhhbXBsZSB3ZWFsdGggbWFuYWdlbWVudABnYQBhdGxhbnRhAGF0bGFudGEgbWFya2V0AGJyYW5jaC1hdGxhbnRh";
 const PUBLIC_ADVISORS_RESOURCE = "/PublicAdvisors";
 const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
+const BRANCH_COVERAGE_TABLE = "BranchCoverage";
 const PUBLIC_FIRMS_RESOURCE = "/PublicFirms";
 const PUBLIC_TEAMS_RESOURCE = "/PublicTeams";
 const FEED_RESOURCE = "/Feed";
@@ -78,6 +79,7 @@ const ADVISOR_RESEARCH_QUEUE_RESOURCE = "/AdvisorResearchQueue";
 const DATA_COVERAGE_RESOURCE = "/DataCoverage";
 const RESEARCH_FRESHNESS_SECTION = "research-freshness";
 const REPRESENTATIVE_FEED_LINK = "representative-feed";
+const BRANCHES_WITH_CURRENT_ADVISORS_METRIC = "branches-with-current-advisors";
 const REPRESENTATIVE_FIRM_LINK = "representative-firm";
 const REPRESENTATIVE_RANKING_LINK = "representative-ranking";
 const REPRESENTATIVE_RECRUITING_LINK = "representative-recruiting";
@@ -281,6 +283,7 @@ const table = (name: string) => ({
   ArticleTransitionEventMention: table("ArticleTransitionEventMention"),
   Branch: table("Branch"),
   BranchAssignment: table("BranchAssignment"),
+  BranchCoverage: table(BRANCH_COVERAGE_TABLE),
   BrokerCheckSnapshot: table("BrokerCheckSnapshot"),
   Designation: table("Designation"),
   Disclosure: table("Disclosure"),
@@ -438,6 +441,7 @@ const baseRows = () => {
       address: "1 Main",
     },
   ]);
+  setRows(BRANCH_COVERAGE_TABLE, []);
   setRows("EmploymentHistory", [
     {
       id: EMPLOYMENT_A_ID,
@@ -2174,13 +2178,13 @@ describe("Harper feed and profile builders", () => {
       publicResource: PUBLIC_BRANCHES_RESOURCE,
       limitation: null,
     });
-    expect(metricById(payload, "branches-with-current-advisors")).toMatchObject(
-      {
-        source: "EmploymentHistory.branchId",
-        publicResource: PUBLIC_BRANCHES_RESOURCE,
-        limitation: null,
-      }
-    );
+    expect(
+      metricById(payload, BRANCHES_WITH_CURRENT_ADVISORS_METRIC)
+    ).toMatchObject({
+      source: "BranchCoverage.currentAdvisorCount",
+      publicResource: PUBLIC_BRANCHES_RESOURCE,
+      limitation: null,
+    });
     expect(metricById(payload, RANKING_ENTRIES_METRIC)).toMatchObject({
       value: 2,
       source: "RankingEntry",
@@ -2548,12 +2552,12 @@ describe("Harper feed and profile builders", () => {
 
     const payload = await new (resources as any).DataCoverage().get();
 
-    expect(metricById(payload, "branches-with-current-advisors")).toMatchObject(
-      {
-        value: 1,
-        limitation: null,
-      }
-    );
+    expect(
+      metricById(payload, BRANCHES_WITH_CURRENT_ADVISORS_METRIC)
+    ).toMatchObject({
+      value: 1,
+      limitation: null,
+    });
   });
 
   it("builds a source-backed rankings explorer payload", async () => {
@@ -6180,6 +6184,85 @@ describe("Harper directory and search resources", () => {
     }
   });
 
+  it("serves loaded public branch gaps from materialized coverage rows", async () => {
+    setRows("Branch", [
+      {
+        id: BRANCH_GAP_LOADED_ID,
+        firmId: "firm-a",
+        name: "Loaded Branch",
+        level: "branch",
+        city: "Austin",
+        state: "TX",
+      },
+      {
+        id: BRANCH_GAP_PARTIAL_ID,
+        firmId: "firm-a",
+        name: "Partial Branch",
+        level: "branch",
+        city: "Atlanta",
+        state: "GA",
+      },
+    ]);
+    setRows(BRANCH_COVERAGE_TABLE, [
+      {
+        id: BRANCH_GAP_LOADED_ID,
+        branchId: BRANCH_GAP_LOADED_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 3,
+        coverageStatus: "loaded",
+        gapGroup: "loaded",
+        sourceTypes: ["brokercheck"],
+      },
+      {
+        id: BRANCH_GAP_PARTIAL_ID,
+        branchId: BRANCH_GAP_PARTIAL_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 0,
+        coverageStatus: "partial",
+        gapGroup: "partial",
+        sourceTypes: [],
+        sourceLabels: [],
+      },
+    ]);
+    setRows("EmploymentHistory", []);
+    const original = (globalThis as any).tables.EmploymentHistory;
+    (globalThis as any).tables.EmploymentHistory = {
+      search: () => {
+        throw new Error("PublicBranches must use BranchCoverage when present");
+      },
+    };
+
+    try {
+      const loaded = await new (resources as any).PublicBranches().get(
+        routeTarget("", { gapGroup: "loaded", limit: "3" })
+      );
+      const partial = await new (resources as any).PublicBranches().get(
+        routeTarget("", { gapGroup: "partial", limit: "3" })
+      );
+
+      expect(loaded).toMatchObject({
+        total: 1,
+        items: [
+          expect.objectContaining({
+            id: BRANCH_GAP_LOADED_ID,
+            currentAdvisorCount: 3,
+            gapGroup: "loaded",
+            sourceMetadata: expect.objectContaining({
+              sourceTypes: ["brokercheck"],
+              sourceLabels: ["FINRA BrokerCheck registration data"],
+            }),
+          }),
+        ],
+      });
+      expect(partial).toMatchObject({
+        total: 1,
+        items: [expect.objectContaining({ id: BRANCH_GAP_PARTIAL_ID })],
+      });
+    } finally {
+      (globalThis as any).tables.EmploymentHistory = original;
+    }
+  });
+
   it("groups public branch coverage gaps without flattening unknown states", async () => {
     setRows("Branch", [
       {
@@ -6228,6 +6311,19 @@ describe("Harper directory and search resources", () => {
         advisorId: "advisor-a",
         firmId: "firm-a",
         branchId: BRANCH_GAP_LOADED_ID,
+        sourceType: "brokercheck",
+      },
+      {
+        id: "employment-loaded-firm-locator",
+        advisorId: "advisor-a",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_LOADED_ID,
+        sourceType: "firm_locator",
+      },
+      {
+        id: "employment-unbranched",
+        advisorId: "advisor-z",
+        firmId: "firm-a",
         sourceType: "brokercheck",
       },
       {
@@ -6364,6 +6460,46 @@ describe("Harper directory and search resources", () => {
     expect(metricById(payload, "branch-gap-missing-source")).toMatchObject({
       value: 1,
       limitation: expect.stringContaining("missing public source labels"),
+    });
+  });
+
+  it("reports DataCoverage branch gaps from materialized coverage rows", async () => {
+    setRows("Branch", [
+      { id: BRANCH_GAP_LOADED_ID, firmId: "firm-a", level: "branch" },
+      { id: BRANCH_GAP_PARTIAL_ID, firmId: "firm-a", level: "branch" },
+    ]);
+    setRows("EmploymentHistory", []);
+    setRows(BRANCH_COVERAGE_TABLE, [
+      {
+        id: BRANCH_GAP_LOADED_ID,
+        branchId: BRANCH_GAP_LOADED_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 4,
+        coverageStatus: "loaded",
+        gapGroup: "loaded",
+        sourceTypes: ["brokercheck"],
+      },
+      {
+        id: BRANCH_GAP_PARTIAL_ID,
+        branchId: BRANCH_GAP_PARTIAL_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 0,
+        coverageStatus: "partial",
+        gapGroup: "partial",
+        sourceTypes: [],
+      },
+    ]);
+
+    const payload = await new (resources as any).DataCoverage().get();
+
+    expect(
+      metricById(payload, BRANCHES_WITH_CURRENT_ADVISORS_METRIC)
+    ).toMatchObject({ value: 1 });
+    expect(metricById(payload, "branch-gap-loaded")).toMatchObject({
+      value: 1,
+    });
+    expect(metricById(payload, "branch-gap-partial")).toMatchObject({
+      value: 1,
     });
   });
 
