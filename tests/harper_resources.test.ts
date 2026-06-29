@@ -3051,7 +3051,9 @@ describe("Harper resource endpoints", () => {
     expect(new (resources as any).TeamProfile().allowRead()).toBe(true);
     expect(new (resources as any).advisors().allowRead()).toBe(true);
     expect(new (resources as any).articles().allowRead()).toBe(true);
+    expect(new (resources as any).corrections().allowRead()).toBe(true);
     expect(new (resources as any).firms().allowRead()).toBe(true);
+    expect(new (resources as any).login().allowRead()).toBe(true);
     expect(new (resources as any).teams().allowRead()).toBe(true);
     expect(new (resources as any).PublicFirms().allowRead()).toBe(true);
     expect(new (resources as any).PublicAdvisors().allowRead()).toBe(true);
@@ -3065,7 +3067,9 @@ describe("Harper resource endpoints", () => {
   it("serves clean dynamic detail routes as direct Harper web resources", async () => {
     expect((resources as any).advisors.directURLMapping).toBe(true);
     expect((resources as any).articles.directURLMapping).toBe(true);
+    expect((resources as any).corrections.directURLMapping).toBe(true);
     expect((resources as any).firms.directURLMapping).toBe(true);
+    expect((resources as any).login.directURLMapping).toBe(true);
     expect((resources as any).teams.directURLMapping).toBe(true);
 
     await expect(
@@ -3089,6 +3093,16 @@ describe("Harper resource endpoints", () => {
     ).resolves.toMatchObject({
       contentType: HTML_CONTENT_TYPE,
       data: expect.stringContaining("<title>Article"),
+    });
+    await expect(
+      new (resources as any).corrections().get()
+    ).resolves.toMatchObject({
+      contentType: HTML_CONTENT_TYPE,
+      data: expect.stringContaining("<title>Correction request inbox"),
+    });
+    await expect(new (resources as any).login().get()).resolves.toMatchObject({
+      contentType: HTML_CONTENT_TYPE,
+      data: expect.stringContaining("<title>Sign in"),
     });
   });
 
