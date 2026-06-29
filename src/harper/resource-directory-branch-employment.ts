@@ -60,6 +60,24 @@ export async function employmentRowsForBranches(
 }
 
 /**
+ * Loads legacy branch employment context only when the materialized coverage
+ * read model is unavailable.
+ * @param tables - Harper table registry.
+ * @param branches - Branch rows whose branch ids need employment context.
+ * @param firmMergeAudits - Firm merge rows used to expand canonical firm ids.
+ * @returns Employment rows keyed by branch id.
+ */
+export async function fallbackEmploymentsByBranch(
+  tables: HarperTables,
+  branches: ReadonlyArray<BranchRow>,
+  firmMergeAudits: ReadonlyArray<FirmMergeAuditRow>
+): Promise<ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>> {
+  return groupEmploymentsByBranch(
+    await employmentRowsForBranches(tables, branches, firmMergeAudits)
+  );
+}
+
+/**
  * Expands branch firm ids with pre-merge ids that still appear on employment
  * rows.
  * @param branches - Branches being rendered.
@@ -103,4 +121,19 @@ export function groupEmploymentsByBranch(
       );
     }, [])
   );
+}
+
+/**
+ * Counts distinct currently linked advisors for a branch.
+ * @param employments - Employment rows already scoped to one branch.
+ * @returns Current distinct advisor count.
+ */
+export function currentBranchAdvisorCount(
+  employments: ReadonlyArray<EmploymentHistoryRow>
+): number {
+  return new Set(
+    employments
+      .filter(employment => !employment.endDate)
+      .map(employment => employment.advisorId)
+  ).size;
 }

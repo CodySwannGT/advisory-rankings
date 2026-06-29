@@ -10,6 +10,7 @@ import type {
   ArticleTeamMentionRow,
   ArticleTransitionEventMentionRow,
   BranchAssignmentRow,
+  BranchCoverageRow,
   BranchRow,
   BrokerCheckSnapshotRow,
   DesignationRow,
@@ -60,6 +61,7 @@ export const RESOURCE_TABLE_SPECS = [
   ["clusters", "DisclosureCluster"],
   ["regApps", "RegistrationApplication"],
   ["branchAssignments", "BranchAssignment"],
+  ["branchCoverages", "BranchCoverage", true],
   ["rankings", "Ranking", true],
   ["rankingEntries", "RankingEntry", true],
   ["mAdv", "ArticleAdvisorMention"],
@@ -106,6 +108,7 @@ export interface ResourceTableRows {
   readonly clusters: readonly DisclosureClusterRow[];
   readonly regApps: readonly RegistrationApplicationRow[];
   readonly branchAssignments: readonly BranchAssignmentRow[];
+  readonly branchCoverages: readonly BranchCoverageRow[];
   readonly rankings: readonly RankingRow[];
   readonly rankingEntries: readonly RankingEntryRow[];
   readonly mAdv: readonly ArticleAdvisorMentionRow[];
@@ -280,6 +283,7 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
     clusters: at<DisclosureClusterRow>("clusters"),
     regApps: at<RegistrationApplicationRow>("regApps"),
     branchAssignments: at<BranchAssignmentRow>("branchAssignments"),
+    branchCoverages: at<BranchCoverageRow>("branchCoverages"),
     rankings: at<RankingRow>("rankings"),
     rankingEntries: at<RankingEntryRow>("rankingEntries"),
     mAdv: at<ArticleAdvisorMentionRow>("mAdv"),

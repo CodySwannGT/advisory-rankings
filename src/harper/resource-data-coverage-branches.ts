@@ -1,10 +1,11 @@
+import type { BranchCoverageRow } from "../types/harper-schema.js";
 import type { ResourceIndex } from "./resource-data.js";
 import type {
   DataCoverageMetric,
   DataCoverageSection,
 } from "./resource-data-coverage.js";
+import { buildBranchCoverageRows } from "./resource-branch-coverage-read-model.js";
 import type { BranchGapGroup } from "./resource-branch-gap-groups.js";
-import { branchGapGroup } from "./resource-branch-gap-groups.js";
 
 export const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
 
@@ -29,16 +30,13 @@ export function branchCoverageSection(db: ResourceIndex): DataCoverageSection {
 function branchCoverageMetrics(
   db: ResourceIndex
 ): ReadonlyArray<DataCoverageMetric> {
-  const knownBranchIds = new Set(db.branches.map(row => row.id));
-  const knownFirmIds = new Set(db.firms.map(row => row.id));
+  const coverageRows = publicBranchCoverageRows(db);
   const branchIdsWithCurrentAdvisors = new Set(
-    db.employments
-      .filter(
-        row => row.branchId && !row.endDate && knownBranchIds.has(row.branchId)
-      )
+    coverageRows
+      .filter(row => row.currentAdvisorCount > 0)
       .map(row => row.branchId)
   );
-  const gapCounts = branchGapCounts(db, knownFirmIds);
+  const gapCounts = branchGapCounts(coverageRows);
   return [
     branchMetric(
       "branches",
@@ -53,7 +51,7 @@ function branchCoverageMetrics(
       "branches-with-current-advisors",
       "Branches with current advisors",
       branchIdsWithCurrentAdvisors.size,
-      "EmploymentHistory.branchId",
+      "BranchCoverage.currentAdvisorCount",
       branchIdsWithCurrentAdvisors.size < db.branches.length
         ? "Some branch rows have partial advisor linkage."
         : null
@@ -64,38 +62,14 @@ function branchCoverageMetrics(
 
 /**
  * Counts public branch rows by gap group.
- * @param db Shared Harper resource index.
- * @param knownFirmIds Firm ids present in the public firm table.
+ * @param coverageRows Public branch coverage rows.
  * @returns Counts for every public gap group.
  */
 function branchGapCounts(
-  db: ResourceIndex,
-  knownFirmIds: ReadonlySet<string>
+  coverageRows: ReadonlyArray<BranchCoverageRow>
 ): Record<BranchGapGroup, number> {
-  return db.branches.reduce<Record<BranchGapGroup, number>>(
-    (counts, branch) => {
-      const linkedEmployments = db.employments.filter(
-        row => row.branchId === branch.id
-      );
-      const group = branchGapGroup({
-        firm: knownFirmIds.has(branch.firmId) ? { id: branch.firmId } : null,
-        currentAdvisorCount: new Set(
-          linkedEmployments
-            .filter(row => !row.endDate)
-            .map(row => row.advisorId)
-        ).size,
-        sourceMetadata: {
-          sourceTypes: distinctStrings(
-            linkedEmployments.map(row => row.sourceType)
-          ),
-          sourceLabels: [],
-          sourceRefs: distinctStrings(
-            linkedEmployments.map(row => row.sourceRef)
-          ),
-        },
-      });
-      return { ...counts, [group]: counts[group] + 1 };
-    },
+  return coverageRows.reduce<Record<BranchGapGroup, number>>(
+    (counts, row) => ({ ...counts, [row.gapGroup]: counts[row.gapGroup] + 1 }),
     {
       loaded: 0,
       partial: 0,
@@ -104,6 +78,27 @@ function branchGapCounts(
       "missing-source": 0,
     }
   );
+}
+
+/**
+ * Chooses materialized branch coverage rows when present, otherwise builds
+ * them inside the aggregate-only DataCoverage resource.
+ * @param db Shared Harper resource index.
+ * @returns Public branch coverage rows.
+ */
+function publicBranchCoverageRows(
+  db: ResourceIndex
+): ReadonlyArray<BranchCoverageRow> {
+  const fallbackRows = buildBranchCoverageRows({
+    branches: db.branches,
+    firms: db.firms,
+    employments: db.employments,
+  });
+  if (db.branchCoverages.length === 0) return fallbackRows;
+  const coverageByBranch = new Map(
+    db.branchCoverages.map(row => [row.branchId, row])
+  );
+  return fallbackRows.map(row => coverageByBranch.get(row.branchId) ?? row);
 }
 
 /**
@@ -119,14 +114,14 @@ function branchGapMetrics(
       "branch-gap-loaded",
       "Loaded branch rows",
       gapCounts.loaded,
-      "Branch + EmploymentHistory.branchId",
+      "BranchCoverage.gapGroup",
       null
     ),
     branchMetric(
       "branch-gap-partial",
       "Partial branch rows",
       gapCounts.partial,
-      "Branch + EmploymentHistory.branchId",
+      "BranchCoverage.gapGroup",
       gapCounts.partial > 0
         ? "Some branch rows need source or advisor linkage before they can be treated as loaded."
         : null
@@ -144,7 +139,7 @@ function branchGapMetrics(
       "branch-gap-zero-advisor",
       "Zero-advisor branch rows",
       gapCounts["zero-advisor"],
-      "EmploymentHistory.branchId",
+      "BranchCoverage.currentAdvisorCount",
       gapCounts["zero-advisor"] > 0
         ? "Some sourced branch rows have no current linked advisors."
         : null
@@ -153,34 +148,12 @@ function branchGapMetrics(
       "branch-gap-missing-source",
       "Missing-source branch rows",
       gapCounts["missing-source"],
-      "EmploymentHistory.sourceType",
+      "BranchCoverage.sourceTypes",
       gapCounts["missing-source"] > 0
         ? "Some advisor-linked branch rows are missing public source labels."
         : null
     ),
   ];
-}
-
-/**
- * Returns sorted unique non-empty string values.
- * @param values Candidate values.
- * @returns Stable unique values.
- */
-function distinctStrings(
-  values: ReadonlyArray<string | null | undefined>
-): ReadonlyArray<string> {
-  return [...new Set(values.filter(isNonEmptyString))].sort((a, b) =>
-    a.localeCompare(b)
-  );
-}
-
-/**
- * Narrows non-empty strings.
- * @param value Candidate value.
- * @returns True when value is a non-empty string.
- */
-function isNonEmptyString(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.trim().length > 0;
 }
 
 /**

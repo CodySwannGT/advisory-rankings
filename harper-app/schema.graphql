@@ -110,6 +110,20 @@ type BranchAssignment @table @export {
   createdAt: Date @createdTime
 }
 
+type BranchCoverage @table @export {
+  id: ID @primaryKey
+  branchId: ID! @indexed
+  firmId: ID! @indexed
+  currentAdvisorCount: Int!
+  coverageStatus: String! @indexed
+  gapGroup: String! @indexed
+  sourceTypes: [String]!
+  sourceLabels: [String]!
+  builtAt: Date @indexed
+  createdAt: Date @createdTime
+  updatedAt: Date @updatedTime
+}
+
 # ─── ADVISORS ──────────────────────────────────────────────────────
 
 type Advisor @table @export {

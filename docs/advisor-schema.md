@@ -363,7 +363,10 @@ firm hierarchy references point to `Morgan Stanley`.
 > `Branch.parent_branch_id` to keep one entity rather than three.
 
 Public branch directory filtering (`GET /PublicBranches`) is derived from
-`Branch`, canonical `Firm`, and linked `EmploymentHistory` rows. `q` matches
+`Branch`, canonical `Firm`, and the materialized `BranchCoverage` serving
+table. `BranchCoverage` is projected from linked `EmploymentHistory` rows
+during data preparation/backfill so public branch requests do not scan
+`EmploymentHistory` or rely on served-node secondary indexes. `q` matches
 branch name, building, address, city, state, or firm name by case-insensitive
 substring; `firm` matches firm id or name; `state` exactly matches
 `Branch.state`; `city` and `market` match city/name/building/address;
@@ -379,10 +382,10 @@ coverage gaps stay explicit.
 Firm profiles link their branch card into `/branches?firm=<firm_id>` so a
 visitor can inspect the same branch rows with URL-backed filters preserved.
 The public `DataCoverage` resource reports branch row counts and
-current-advisor linkage through `/PublicBranches`, plus matching branch gap
-group counts. Missing or unlinked rows are described as unavailable, partial,
-zero-advisor, or missing-source coverage, never as proof that a firm has no
-offices.
+current-advisor linkage through the same `BranchCoverage` facts used by
+`/PublicBranches`, plus matching branch gap group counts. Missing or unlinked
+rows are described as unavailable, partial, zero-advisor, or missing-source
+coverage, never as proof that a firm has no offices.
 
 ### 4.7 `EmploymentHistory`
 

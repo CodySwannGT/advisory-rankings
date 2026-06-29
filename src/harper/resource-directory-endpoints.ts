@@ -1,4 +1,5 @@
 import type {
+  BranchCoverageRow,
   BranchRow,
   EmploymentHistoryRow,
   FirmAliasRow,
@@ -47,10 +48,15 @@ import {
 import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
 import { branchGapGroup } from "./resource-branch-gap-groups.js";
+import {
+  branchCoverageByBranch,
+  branchCoverageSourceMetadata,
+  type BranchCoverageByBranch,
+} from "./resource-branch-coverage-read-model.js";
 import { branchSourceSummary } from "./resource-branch-source-labels.js";
 import {
-  employmentRowsForBranches,
-  groupEmploymentsByBranch,
+  currentBranchAdvisorCount,
+  fallbackEmploymentsByBranch,
 } from "./resource-directory-branch-employment.js";
 
 export type {
@@ -189,23 +195,26 @@ export class PublicBranches extends Resource {
    * @returns Branch page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<BranchDirectoryRow>> {
-    const [branches, firms, firmMergeAudits] = await Promise.all([
+    const [branches, firms, branchCoverages] = await Promise.all([
       allRows<BranchRow>(tables.Branch),
       allRows<FirmRow>(tables.Firm),
-      optionalAll<FirmMergeAuditRow>(tables.FirmMergeAudit),
+      optionalAll<BranchCoverageRow>(tables.BranchCoverage),
     ]);
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
-    const employmentsByBranch = groupEmploymentsByBranch(
-      await employmentRowsForBranches(
-        { EmploymentHistory: tables.EmploymentHistory },
-        branches,
-        firmMergeAudits
-      )
-    );
+    const coverageByBranch = branchCoverageByBranch(branchCoverages);
+    const employmentsByBranch =
+      coverageByBranch.size === branches.length
+        ? new Map<string, ReadonlyArray<EmploymentHistoryRow>>()
+        : await fallbackEmploymentsByBranch(
+            { EmploymentHistory: tables.EmploymentHistory },
+            branches,
+            await optionalAll<FirmMergeAuditRow>(tables.FirmMergeAudit)
+          );
     const filters = parseBranchDirectoryFilters(target);
     const rows = matchingBranchDirectoryRows(
       branches,
       byFirm,
+      coverageByBranch,
       employmentsByBranch,
       filters
     );
@@ -225,6 +234,7 @@ export class PublicBranches extends Resource {
  * stays consistent with the aggregate coverage resources.
  * @param branches - Branch rows to evaluate in source order.
  * @param byFirm - Firm lookup keyed by id.
+ * @param coverageByBranch - Materialized branch coverage keyed by branch id.
  * @param employmentsByBranch - Employment rows keyed by branch id.
  * @param filters - Normalized public branch filters.
  * @returns Matching public branch rows in source order.
@@ -232,12 +242,19 @@ export class PublicBranches extends Resource {
 function matchingBranchDirectoryRows(
   branches: ReadonlyArray<BranchRow>,
   byFirm: ReadonlyMap<string, FirmRow>,
+  coverageByBranch: BranchCoverageByBranch,
   employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
   filters: ReturnType<typeof parseBranchDirectoryFilters>
 ): ReadonlyArray<BranchDirectoryRow> {
   return branches
     .map(branch =>
-      branchDirectoryMatch(branch, byFirm, employmentsByBranch, filters)
+      branchDirectoryMatch(
+        branch,
+        byFirm,
+        coverageByBranch,
+        employmentsByBranch,
+        filters
+      )
     )
     .filter(isBranchDirectoryRow);
 }
@@ -246,6 +263,7 @@ function matchingBranchDirectoryRows(
  * Builds an enriched branch row when it matches public filters.
  * @param branch - Source branch row.
  * @param byFirm - Firm lookup keyed by id.
+ * @param coverageByBranch - Materialized branch coverage keyed by branch id.
  * @param employmentsByBranch - Employment rows keyed by branch id.
  * @param filters - Normalized public branch filters.
  * @returns Branch directory row, or null when filtered out.
@@ -253,21 +271,39 @@ function matchingBranchDirectoryRows(
 function branchDirectoryMatch(
   branch: BranchRow,
   byFirm: ReadonlyMap<string, FirmRow>,
+  coverageByBranch: BranchCoverageByBranch,
   employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
   filters: ReturnType<typeof parseBranchDirectoryFilters>
 ): BranchDirectoryRow | null {
   const firm = byFirm.get(branch.firmId) ?? null;
-  const linkedEmployments = employmentsByBranch.get(branch.id) ?? [];
-  const currentAdvisorCount = currentBranchAdvisorCount(linkedEmployments);
-  const sourceMetadata = branchSourceSummary(linkedEmployments);
+  const coverage = coverageByBranch.get(branch.id) ?? null;
+  const linkedEmployments = coverage
+    ? []
+    : (employmentsByBranch.get(branch.id) ?? []);
+  const currentAdvisorCount =
+    coverage?.currentAdvisorCount ??
+    currentBranchAdvisorCount(linkedEmployments);
+  const sourceMetadata = coverage
+    ? branchCoverageSourceMetadata(coverage)
+    : branchSourceSummary(linkedEmployments);
+  const gapGroup =
+    coverage?.gapGroup ??
+    branchGapGroup({ firm, currentAdvisorCount, sourceMetadata });
   return branchMatchesFilters(
     branch,
     filters,
     firm,
     sourceMetadata.sourceTypes,
-    currentAdvisorCount
+    currentAdvisorCount,
+    gapGroup
   )
-    ? branchDirectoryRow(branch, firm, currentAdvisorCount, sourceMetadata)
+    ? branchDirectoryRow(
+        branch,
+        firm,
+        currentAdvisorCount,
+        sourceMetadata,
+        coverage
+      )
     : null;
 }
 
@@ -283,33 +319,20 @@ function isBranchDirectoryRow(
 }
 
 /**
- * Counts distinct currently linked advisors for a branch.
- * @param employments - Employment rows already scoped to one branch.
- * @returns Current distinct advisor count.
- */
-function currentBranchAdvisorCount(
-  employments: ReadonlyArray<EmploymentHistoryRow>
-): number {
-  return new Set(
-    employments
-      .filter(employment => !employment.endDate)
-      .map(employment => employment.advisorId)
-  ).size;
-}
-
-/**
  * Builds the public branch explorer payload row.
  * @param branch - Source branch row.
  * @param firm - Resolved firm context, when present.
  * @param currentAdvisorCount - Distinct active advisor count for this branch.
  * @param sourceMetadata - Public source summary for linked employment rows.
+ * @param coverage - Materialized coverage row, when present.
  * @returns Branch directory row safe for anonymous clients.
  */
 function branchDirectoryRow(
   branch: BranchRow,
   firm: FirmRow | null,
   currentAdvisorCount: number,
-  sourceMetadata: BranchDirectoryRow["sourceMetadata"]
+  sourceMetadata: BranchDirectoryRow["sourceMetadata"],
+  coverage: BranchCoverageRow | null = null
 ): BranchDirectoryRow {
   return {
     id: branch.id,
@@ -326,8 +349,12 @@ function branchDirectoryRow(
     displayName: branchDisplayName(branch),
     firmName: firm?.name ?? null,
     currentAdvisorCount,
-    coverageStatus: branchCoverageStatus(firm, currentAdvisorCount),
-    gapGroup: branchGapGroup({ firm, currentAdvisorCount, sourceMetadata }),
+    coverageStatus:
+      coverage?.coverageStatus ??
+      branchCoverageStatus(firm, currentAdvisorCount),
+    gapGroup:
+      coverage?.gapGroup ??
+      branchGapGroup({ firm, currentAdvisorCount, sourceMetadata }),
     sourceMetadata,
   };
 }

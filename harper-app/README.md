@@ -139,8 +139,11 @@ Once the server is up:
   - `/PublicBranches?cursor=…&limit=50` — branch directory page. Returns
     `{ items, nextCursor, total }` with firm name, location, public source
     labels, coverage status, gap group, and current advisor count. Raw source
-    reference strings remain withheld from anonymous branch rows. Gap groups are
-    `loaded`, `partial`, `unavailable`, `zero-advisor`, and `missing-source`.
+    reference strings remain withheld from anonymous branch rows. The resource
+    reads the materialized `BranchCoverage` table when present, avoiding
+    request-path `EmploymentHistory` scans or stale secondary-index lookups.
+    Gap groups are `loaded`, `partial`, `unavailable`, `zero-advisor`, and
+    `missing-source`.
     Supported filters are `q` (branch name/building/address/location
     substring), `firm` (firm id or name substring), `state` (exact state),
     `city`/`market` (location substring), `gapGroup` (exact public gap group),
@@ -183,6 +186,9 @@ The expected section ids are `public-entity-groups`, `rankings`,
 `recruiting`, `research-freshness`, and `source-context`. Source limitations
 in that response describe aggregate public-source gaps; they are not private
 rows and should be referenced as caveats when reviewing `/coverage`.
+Run `bun run backfill:branch-coverage` after schema deploys or bulk branch
+imports so `/DataCoverage` and `/PublicBranches?gapGroup=...` read the same
+materialized branch coverage facts.
 
 Capture browser evidence with Playwright:
 

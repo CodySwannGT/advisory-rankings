@@ -131,6 +131,26 @@ export interface BranchAssignmentRow {
   readonly createdAt?: HarperDate;
 }
 
+/** Materialized public branch coverage row. */
+export interface BranchCoverageRow {
+  readonly id: string;
+  readonly branchId: string;
+  readonly firmId: string;
+  readonly currentAdvisorCount: number;
+  readonly coverageStatus: "loaded" | "partial" | "unavailable";
+  readonly gapGroup:
+    | "loaded"
+    | "partial"
+    | "unavailable"
+    | "zero-advisor"
+    | "missing-source";
+  readonly sourceTypes: readonly string[];
+  readonly sourceLabels: readonly string[];
+  readonly builtAt?: HarperDate;
+  readonly createdAt?: HarperDate;
+  readonly updatedAt?: HarperDate;
+}
+
 // ─── ADVISORS ──────────────────────────────────────────────────────
 
 /** Advisor row. */
