@@ -162,6 +162,7 @@ type WatchlistMobileViewport = (typeof WATCHLIST_MOBILE_VIEWPORTS)[number];
 interface WatchlistMobileMetrics {
   readonly controlOverlapCount: number;
   readonly controlsOverflow: number;
+  readonly firmGuidanceVisible: boolean;
   readonly itemCount: number;
   readonly keyMetricCount: number;
   readonly pageOverflow: number;
@@ -249,6 +250,7 @@ async function readWatchlistMobileMetrics(
         overflow: row.scrollWidth - row.clientWidth,
       }))
     );
+  const firmGuidanceVisible = await readFirmGuidanceVisible(page);
   const itemCount = await page.locator(WATCHLIST_ITEM_SELECTOR).count();
   const pageOverflow = await page.evaluate(() =>
     Math.max(
@@ -268,12 +270,37 @@ async function readWatchlistMobileMetrics(
       hasOverlappingRects(row.boxes)
     ).length,
     controlsOverflow: maxControlOverflow(controlRows),
+    firmGuidanceVisible,
     itemCount,
     keyMetricCount: metricWidths.length,
     pageOverflow,
     watchlistOverflow,
     zeroWidthMetricCount: metricWidths.filter(width => width < 1).length,
   };
+}
+
+/**
+ * Confirms the watched-firm helper copy is present and visible.
+ * @param page - Browser page rendering the Recruiting route.
+ * @returns Whether the watched-firm guidance is visible.
+ */
+async function readFirmGuidanceVisible(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const help = document.querySelector(
+      ".recruiting-watchlist-form .filter-field-help"
+    );
+    const box = help?.getBoundingClientRect();
+    const style = help ? getComputedStyle(help) : null;
+    return (
+      Boolean(box && box.width > 0 && box.height > 0) &&
+      style?.display !== "none" &&
+      style?.visibility !== "hidden" &&
+      style?.opacity !== "0" &&
+      help?.textContent?.includes(
+        "Choose an exact firm result from the suggestions."
+      ) === true
+    );
+  });
 }
 
 /**
@@ -320,6 +347,10 @@ function watchlistMobileChecks(
       metrics.controlOverlapCount === 0 && metrics.controlsOverflow === 0,
       `recruiting: watchlist controls do not overlap at ${viewport.width}px`,
       `overlaps ${metrics.controlOverlapCount}, controls overflow +${metrics.controlsOverflow}px`
+    ),
+    check(
+      metrics.firmGuidanceVisible,
+      `recruiting: watched-firm guidance remains visible at ${viewport.width}px`
     ),
     check(
       metrics.pageOverflow <= WATCHLIST_PAGE_OVERFLOW_BUDGET_PX &&
