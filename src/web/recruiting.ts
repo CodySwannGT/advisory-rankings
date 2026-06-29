@@ -332,13 +332,29 @@ function labelInput(
   attrs: InputAttrs = {},
   help?: string
 ): HTMLElement {
+  const helpId = help ? filterHelpId(name, attrs) : undefined;
+  const inputAttrs = helpId ? { ...attrs, "aria-describedby": helpId } : attrs;
   return elC(
     "label",
     { class: "filter-field" },
     elC("span", {}, label),
-    elC("input", { name, value, ...attrs }),
-    help ? elC("span", { class: "filter-field-help" }, help) : null
+    elC("input", { name, value, ...inputAttrs }),
+    help ? elC("span", { class: "filter-field-help", id: helpId }, help) : null
   );
+}
+
+/**
+ * Builds a deterministic id for helper copy associated with a filter input.
+ * @param name - Query parameter name.
+ * @param attrs - Additional input attributes.
+ * @returns DOM id for the helper span.
+ */
+function filterHelpId(name: string, attrs: InputAttrs): string {
+  const qualifier = String(attrs["aria-label"] || name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-|-$/gu, "");
+  return `${name}-filter-help-${qualifier}`;
 }
 
 /**

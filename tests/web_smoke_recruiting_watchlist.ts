@@ -290,8 +290,12 @@ async function readFirmGuidanceVisible(page: Page): Promise<boolean> {
       ".recruiting-watchlist-form .filter-field-help"
     );
     const box = help?.getBoundingClientRect();
+    const style = help ? getComputedStyle(help) : null;
     return (
       Boolean(box && box.width > 0 && box.height > 0) &&
+      style?.display !== "none" &&
+      style?.visibility !== "hidden" &&
+      style?.opacity !== "0" &&
       help?.textContent?.includes(
         "Choose an exact firm result from the suggestions."
       ) === true
