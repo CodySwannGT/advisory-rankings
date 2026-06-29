@@ -7,16 +7,16 @@ import type { RouteTarget } from "../types/harper-resource.js";
 const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
 /**
- * Reads a generated web shell from the deployed component root.
- * @param shellFile - Shell file under `harper-app/web/`.
+ * Reads a generated shell from the deployed component root.
+ * @param shellFile - Shell file under `harper-app/`.
  * @returns Shell HTML body.
  */
 function readShellHtml(shellFile: string): Promise<string> {
-  return readFile(new URL(`./web/${shellFile}`, import.meta.url), "utf8").catch(
+  return readFile(new URL(`./${shellFile}`, import.meta.url), "utf8").catch(
     error => {
       if (!isNotFound(error)) throw error;
       return readFile(
-        new URL(`../../harper-app/web/${shellFile}`, import.meta.url),
+        new URL(`../../harper-app/${shellFile}`, import.meta.url),
         "utf8"
       );
     }
@@ -38,7 +38,7 @@ function isNotFound(error: unknown): boolean {
 
 /**
  * Builds a Harper raw-content response for an HTML app shell.
- * @param shellFile - Shell file under `harper-app/web/`.
+ * @param shellFile - Shell file under `harper-app/`.
  * @returns Harper content response.
  */
 async function shellResponse(shellFile: string): Promise<ContentResponse> {
@@ -74,7 +74,7 @@ class AdvisorsRoute extends CleanWebRoute {
    */
   async get(target?: RouteTarget): Promise<ContentResponse> {
     return shellResponse(
-      normalizeId(target) ? "advisor.html" : "advisors.html"
+      normalizeId(target) ? "web/advisor.html" : "web/advisors.html"
     );
   }
 }
@@ -87,7 +87,9 @@ class FirmsRoute extends CleanWebRoute {
    * @returns HTML shell response.
    */
   async get(target?: RouteTarget): Promise<ContentResponse> {
-    return shellResponse(normalizeId(target) ? "firm.html" : "firms.html");
+    return shellResponse(
+      normalizeId(target) ? "web/firm.html" : "web/firms.html"
+    );
   }
 }
 
@@ -99,7 +101,9 @@ class TeamsRoute extends CleanWebRoute {
    * @returns HTML shell response.
    */
   async get(target?: RouteTarget): Promise<ContentResponse> {
-    return shellResponse(normalizeId(target) ? "team.html" : "teams.html");
+    return shellResponse(
+      normalizeId(target) ? "web/team.html" : "web/teams.html"
+    );
   }
 }
 
@@ -110,13 +114,37 @@ class ArticlesRoute extends CleanWebRoute {
    * @returns HTML shell response.
    */
   async get(): Promise<ContentResponse> {
-    return shellResponse("article.html");
+    return shellResponse("web/article.html");
+  }
+}
+
+/** Clean correction inbox route: `/corrections`. */
+class CorrectionsRoute extends CleanWebRoute {
+  /**
+   * Serves the analyst correction inbox shell.
+   * @returns HTML shell response.
+   */
+  async get(): Promise<ContentResponse> {
+    return shellResponse("web/correction-inbox.html");
+  }
+}
+
+/** Clean login route: `/login`. */
+class LoginRoute extends CleanWebRoute {
+  /**
+   * Serves the public login shell.
+   * @returns HTML shell response.
+   */
+  async get(): Promise<ContentResponse> {
+    return shellResponse("login/shell.html");
   }
 }
 
 export {
   AdvisorsRoute as advisors,
   ArticlesRoute as articles,
+  CorrectionsRoute as corrections,
   FirmsRoute as firms,
+  LoginRoute as login,
   TeamsRoute as teams,
 };

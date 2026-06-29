@@ -179,8 +179,9 @@ That gives us, on `:443`:
   clean route modules for runtimes that mount `fastifyRoutes`, but deployed
   Fabric also needs lowercase direct-mapped Harper resources for dynamic clean
   paths such as `/firms/<slug>-<id>`, `/advisors/<slug>-<id>`, and
-  `/articles/<slug>-<id>`. Deploy verification probes those dynamic routes so
-  a green deploy cannot hide a bare `Not found` response.
+  `/articles/<slug>-<id>`, plus advertised top-level shells such as `/login`
+  and `/corrections`. Deploy verification probes those routes so a green deploy
+  cannot hide a bare `Not found` response.
 - `static.extensions: ['html']` should keep extensionless shell URLs such as
   `/source-triage?category=...` resolving to the tracked `web/*.html` files even
   when the public edge does not expose Fastify route modules. The deploy gate
@@ -459,8 +460,9 @@ re-reads files on reload; no special handling.
 > `/*.js`, and nested `design-system/*`), and its wildcard miss handler.
 > `static-web/index.js` also registers exact root and built-asset routes, but it
 > must stay after the clean route modules in `config.yaml` for runtimes that
-> mount `fastifyRoutes`; deployed dynamic profile/article URLs are additionally
-> served by lowercase direct-mapped Harper resources. Do not remove the
+> mount `fastifyRoutes`; deployed dynamic profile/article URLs plus `/login`
+> and `/corrections` are additionally served by lowercase direct-mapped Harper
+> resources. Do not remove the
 > static-web routes as duplicate-looking code without deployed replay. Earlier
 > deployed attempts showed the static wildcard miss handler
 > consumed top-level unknown routes before `setNotFoundHandler`, a

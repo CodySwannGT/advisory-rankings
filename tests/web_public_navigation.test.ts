@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page, type Route } from "playwright";
 
 const WEB_ROOT = join(process.cwd(), "harper-app", "web");
+const LOGIN_SHELL = join(process.cwd(), "harper-app", "login", "shell.html");
 const RESEARCH_QUEUE_PATH = "/research/freshness";
 const DISCREPANCIES_PATH = "/regulatory/discrepancies";
 
@@ -83,6 +84,41 @@ describe("public navigation", () => {
       await page.close();
     }
   });
+
+  it("opens advertised login and corrections routes from desktop and mobile navigation", async () => {
+    const cases = [
+      {
+        name: "desktop",
+        viewport: { width: 1600, height: 900 },
+        openNav: async (_page: Page): Promise<void> => {},
+      },
+      {
+        name: "mobile",
+        viewport: { width: 390, height: 844 },
+        openNav: async (page: Page): Promise<void> => {
+          await page.locator("button.nav-burger").click();
+        },
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const page = await browser.newPage({ viewport: testCase.viewport });
+      try {
+        await expectRouteClick(page, testCase.openNav, {
+          heading: "Sign in",
+          href: "/login",
+          name: `${testCase.name} login`,
+        });
+        await expectRouteClick(page, testCase.openNav, {
+          heading: "Correction request inbox",
+          href: "/corrections",
+          name: `${testCase.name} corrections`,
+        });
+      } finally {
+        await page.close();
+      }
+    }
+  });
 });
 
 /**
@@ -142,6 +178,41 @@ async function browseEvidence(
 }
 
 /**
+ * Opens the app shell and follows one advertised navigation link.
+ * @param page - Browser page under test.
+ * @param openNav - Viewport-specific navigation opener.
+ * @param route - Clean route and expected route heading.
+ * @param route.heading - Expected route-level heading.
+ * @param route.href - Clean route path to click.
+ * @param route.name - Assertion label for the route and viewport.
+ */
+async function expectRouteClick(
+  page: Page,
+  openNav: (page: Page) => Promise<void>,
+  route: {
+    readonly heading: string;
+    readonly href: string;
+    readonly name: string;
+  }
+): Promise<void> {
+  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  await openNav(page);
+
+  const responsePromise = page.waitForResponse(
+    response => response.url() === `${baseUrl}${route.href}`
+  );
+  await page.locator(`a[href="${route.href}"]`).first().click();
+  const response = await responsePromise;
+
+  await page.getByRole("heading", { level: 1, name: route.heading }).waitFor();
+  const bodyText = await page.locator("body").innerText();
+
+  expect(response.status(), route.name).toBe(200);
+  expect(page.url(), route.name).toBe(`${baseUrl}${route.href}`);
+  expect(bodyText.trim(), route.name).not.toBe("Not found");
+}
+
+/**
  * Starts a local web server for generated web assets and mocked public APIs.
  * @returns Static server for generated web assets.
  */
@@ -161,6 +232,11 @@ async function startStaticServer(): Promise<Server> {
     if (url.startsWith("/Search")) {
       response.writeHead(200, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ advisors: [], firms: [], teams: [] }));
+      return;
+    }
+    if (url.startsWith("/AdvisorCorrectionRequest")) {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ items: [], nextCursor: null, total: 0 }));
       return;
     }
 
@@ -192,6 +268,10 @@ async function startStaticServer(): Promise<Server> {
  */
 function resolveStaticPath(url: string): string {
   const pathname = new URL(url, "http://local.test").pathname;
+  if (pathname === "/login") return LOGIN_SHELL;
+  if (pathname === "/corrections") {
+    return resolve(WEB_ROOT, "correction-inbox.html");
+  }
   const relative = pathname === "/" ? "index.html" : pathname.slice(1);
   const normalized = normalize(relative);
   if (normalized.startsWith("..") || normalized.includes(`..${sep}`)) {
