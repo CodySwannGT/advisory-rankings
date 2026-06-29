@@ -2682,6 +2682,13 @@ body.drawer-open .nav .nav-scrim {
   font-size: 14px;
   padding: 8px 10px;
 }
+.filter-field-help {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .filter-button {
   height: 37px;
   border: 0;
@@ -3167,6 +3174,14 @@ body.drawer-open .nav .nav-scrim {
   .filter-button,
   .feed-filter-clear {
     grid-column: 1 / -1;
+  }
+  .recruiting-watchlist-form .watchlist-firms,
+  .recruiting-watchlist-form .watchlist-firm-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .recruiting-watchlist-form .watchlist-remove-button,
+  .recruiting-watchlist-form .watchlist-add-button {
+    width: 100%;
   }
   .snap-table-scroll:has(.recruiting-table),
   .snap-table-scroll:has(.rankings-table) {

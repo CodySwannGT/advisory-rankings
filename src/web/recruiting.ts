@@ -234,12 +234,18 @@ function firmInputRow(value: string, index: number): HTMLElement {
   return elC(
     "div",
     { class: "watchlist-firm-row" },
-    labelInput("Watched firm", "firm", value, {
-      "aria-label": `Firm ${index + 1}`,
-      autocomplete: "organization",
-      list: FIRM_SUGGESTIONS_ID,
-      placeholder: "Type a firm name, then choose a suggestion",
-    }),
+    labelInput(
+      "Watched firm",
+      "firm",
+      value,
+      {
+        "aria-label": `Firm ${index + 1}`,
+        autocomplete: "organization",
+        list: FIRM_SUGGESTIONS_ID,
+        placeholder: "Type a firm name",
+      },
+      "Choose an exact firm result from the suggestions."
+    ),
     elC(
       "button",
       {
@@ -316,19 +322,22 @@ function resetFirmRows(group: HTMLElement): void {
  * @param name - Query parameter name.
  * @param value - Current query value.
  * @param attrs - Additional input attributes.
+ * @param help - Optional helper copy rendered below the input.
  * @returns Field wrapper.
  */
 function labelInput(
   label: string,
   name: string,
   value: string,
-  attrs: InputAttrs = {}
+  attrs: InputAttrs = {},
+  help?: string
 ): HTMLElement {
   return elC(
     "label",
     { class: "filter-field" },
     elC("span", {}, label),
-    elC("input", { name, value, ...attrs })
+    elC("input", { name, value, ...attrs }),
+    help ? elC("span", { class: "filter-field-help" }, help) : null
   );
 }
 
