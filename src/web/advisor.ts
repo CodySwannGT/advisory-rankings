@@ -348,14 +348,25 @@ function advisorCenterSections(
       )
     ),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
-    transitions.length
-      ? SectionCardComponent({
-          title: "Transitions involving this advisor",
-          body: el("div", {}, ...transitions.map(transitionEventCard)),
-        })
-      : null,
+    advisorTransitionsSection(transitions),
     PartialFailureCard("Transitions involving this advisor", d.transitions),
     advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
   ];
+}
+
+/**
+ * Builds the advisor transition history section.
+ * @param transitions - Transition rows for the advisor.
+ * @returns Transition section when rows are present.
+ */
+function advisorTransitionsSection(
+  transitions: readonly unknown[]
+): HTMLElement | null {
+  return transitions.length
+    ? SectionCardComponent({
+        title: "Transitions involving this advisor",
+        body: el("div", {}, ...transitions.map(transitionEventCard)),
+      })
+    : null;
 }

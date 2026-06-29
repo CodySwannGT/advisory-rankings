@@ -144,17 +144,13 @@ function render(
     return;
   }
   const t = d.team;
-  const metricSnapshots = narrowRows(
-    resourceRows(d.metricSnapshots),
-    isMetricSnapshot
-  );
-  const currentMembers = narrowRows(
-    resourceRows(d.currentMembers),
-    isTeamMemberRow
-  );
-  const pastMembers = narrowRows(resourceRows(d.pastMembers), isTeamMemberRow);
-  const transitions = resourceRows(d.transitions);
-  const articles = resourceRows(d.articles);
+  const {
+    articles,
+    currentMembers,
+    metricSnapshots,
+    pastMembers,
+    transitions,
+  } = teamProfileRows(d);
   const latest: MetricSnapshotView | undefined =
     metricSnapshots[metricSnapshots.length - 1];
   const currentFirm: CurrentFirmChip | null = asCurrentFirm(d.currentFirm);
@@ -181,6 +177,24 @@ function render(
     mobileTeamDetailsCard(t, currentFirm),
   ]);
   appendTeamSidebar(right, t, currentFirm, latest);
+}
+
+/**
+ * Derives typed row collections from a team profile payload.
+ * @param d - TeamProfile payload returned by the TeamProfile resource.
+ * @returns Row collections used by the team cards.
+ */
+function teamProfileRows(d: TeamProfileResponse) {
+  return {
+    articles: resourceRows(d.articles),
+    currentMembers: narrowRows(resourceRows(d.currentMembers), isTeamMemberRow),
+    metricSnapshots: narrowRows(
+      resourceRows(d.metricSnapshots),
+      isMetricSnapshot
+    ),
+    pastMembers: narrowRows(resourceRows(d.pastMembers), isTeamMemberRow),
+    transitions: resourceRows(d.transitions),
+  };
 }
 
 /**

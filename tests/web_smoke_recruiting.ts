@@ -518,6 +518,25 @@ function watchlistRecruitingChecks(
   const { restored, noMatch, partialFirm, updatedFirmValues, updatedUrl } =
     watchlist;
   return [
+    ...restoredWatchlistRecruitingChecks(restored),
+    ...updatedWatchlistRecruitingChecks(
+      noMatch,
+      partialFirm,
+      updatedFirmValues,
+      updatedUrl
+    ),
+  ];
+}
+
+/**
+ * Converts restored watchlist observations into smoke checks.
+ * @param restored - Restored watchlist route observations.
+ * @returns Restored watchlist checks.
+ */
+function restoredWatchlistRecruitingChecks(
+  restored: WatchlistRecruitingState["restored"]
+): readonly Check[] {
+  return [
     check(
       restored.hasWatchlist && restored.panelCount >= 2,
       "recruiting: watchlist cards render from URL firms"
@@ -543,6 +562,24 @@ function watchlistRecruitingChecks(
       restored.coverageCount >= 1,
       "recruiting: watchlist exposes per-item source coverage"
     ),
+  ];
+}
+
+/**
+ * Converts editable watchlist observations into smoke checks.
+ * @param noMatch - No-match watchlist observations.
+ * @param partialFirm - Partial firm query observations.
+ * @param updatedFirmValues - Firm values after filter update.
+ * @param updatedUrl - URL after filter update.
+ * @returns Editable watchlist checks.
+ */
+function updatedWatchlistRecruitingChecks(
+  noMatch: WatchlistRecruitingState["noMatch"],
+  partialFirm: WatchlistRecruitingState["partialFirm"],
+  updatedFirmValues: WatchlistRecruitingState["updatedFirmValues"],
+  updatedUrl: WatchlistRecruitingState["updatedUrl"]
+): readonly Check[] {
+  return [
     check(
       noMatch.hasWatchlist &&
         noMatch.hasEmptyCopy &&
