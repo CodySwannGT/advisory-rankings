@@ -156,14 +156,7 @@ function renderCorrectionForm(
   }
 
   const controls = correctionControls(fields);
-  const submit = asHtmlButtonElement(
-    Button({
-      variant: "primary",
-      type: "submit",
-      children: "Submit correction",
-      attrs: { class: "advisor-correction-submit" },
-    })
-  );
+  const submit = correctionSubmitButton();
   const formControls: CorrectionControls = { ...controls, submit };
   const form = el(
     "form",
@@ -191,6 +184,21 @@ function renderCorrectionForm(
       "Requests queue for analyst review. Public facts do not change from this form."
     ),
     form
+  );
+}
+
+/**
+ * Builds the correction form submit button.
+ * @returns Submit button element.
+ */
+function correctionSubmitButton(): HTMLButtonElement {
+  return asHtmlButtonElement(
+    Button({
+      variant: "primary",
+      type: "submit",
+      children: "Submit correction",
+      attrs: { class: "advisor-correction-submit" },
+    })
   );
 }
 
