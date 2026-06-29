@@ -89,13 +89,16 @@ function branchGapCounts(
 function publicBranchCoverageRows(
   db: ResourceIndex
 ): ReadonlyArray<BranchCoverageRow> {
-  return db.branchCoverages.length > 0
-    ? db.branchCoverages
-    : buildBranchCoverageRows({
-        branches: db.branches,
-        firms: db.firms,
-        employments: db.employments,
-      });
+  const fallbackRows = buildBranchCoverageRows({
+    branches: db.branches,
+    firms: db.firms,
+    employments: db.employments,
+  });
+  if (db.branchCoverages.length === 0) return fallbackRows;
+  const coverageByBranch = new Map(
+    db.branchCoverages.map(row => [row.branchId, row])
+  );
+  return fallbackRows.map(row => coverageByBranch.get(row.branchId) ?? row);
 }
 
 /**

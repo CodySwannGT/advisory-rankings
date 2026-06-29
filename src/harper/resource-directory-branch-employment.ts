@@ -122,3 +122,18 @@ export function groupEmploymentsByBranch(
     }, [])
   );
 }
+
+/**
+ * Counts distinct currently linked advisors for a branch.
+ * @param employments - Employment rows already scoped to one branch.
+ * @returns Current distinct advisor count.
+ */
+export function currentBranchAdvisorCount(
+  employments: ReadonlyArray<EmploymentHistoryRow>
+): number {
+  return new Set(
+    employments
+      .filter(employment => !employment.endDate)
+      .map(employment => employment.advisorId)
+  ).size;
+}

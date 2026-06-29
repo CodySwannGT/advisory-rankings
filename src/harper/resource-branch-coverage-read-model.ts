@@ -101,22 +101,22 @@ export function branchCoverageSourceMetadata(
 function groupEmploymentsByBranch(
   employments: ReadonlyArray<EmploymentHistoryRow>
 ): ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>> {
-  return new Map(
-    employments.reduce<
-      ReadonlyArray<readonly [string, ReadonlyArray<EmploymentHistoryRow>]>
-    >((entries, employment) => {
-      if (!employment.branchId) return entries;
-      const existing = entries.find(
-        ([branchId]) => branchId === employment.branchId
-      );
-      if (!existing) return [...entries, [employment.branchId, [employment]]];
-      return entries.map(([branchId, rows]) =>
-        branchId === employment.branchId
-          ? [branchId, [...rows, employment]]
-          : [branchId, rows]
-      );
-    }, [])
+  return Map.groupBy(
+    employments.filter(hasBranchId),
+    employment => employment.branchId
   );
+}
+
+/**
+ * Narrows employment rows that carry a branch id.
+ * @param employment - Candidate employment row.
+ * @returns True when the row has a branch id.
+ */
+function hasBranchId(
+  employment: EmploymentHistoryRow
+): employment is EmploymentHistoryRow &
+  Readonly<Pick<Required<EmploymentHistoryRow>, "branchId">> {
+  return typeof employment.branchId === "string" && employment.branchId !== "";
 }
 
 /**

@@ -64,6 +64,8 @@ const BRANCH_GAP_PARTIAL_ID = "branch-partial";
 const BRANCH_GAP_UNAVAILABLE_ID = "branch-unavailable";
 const BRANCH_GAP_ZERO_ADVISOR_ID = "branch-zero-advisor";
 const BRANCH_GAP_MISSING_SOURCE_ID = "branch-missing-source";
+const BRANCH_GAP_LOADED_NAME = "Loaded Branch";
+const BRANCH_GAP_PARTIAL_NAME = "Partial Branch";
 const BRANCH_ATLANTA_CURSOR =
   "ZXhhbXBsZSB3ZWFsdGggbWFuYWdlbWVudABnYQBhdGxhbnRhAGF0bGFudGEgbWFya2V0AGJyYW5jaC1hdGxhbnRh";
 const PUBLIC_ADVISORS_RESOURCE = "/PublicAdvisors";
@@ -114,6 +116,7 @@ const UNRESOLVED_ENTITY_REASON = "unresolved-entity";
 const UNRESOLVED_FIRM_REASON = "unresolved-firm";
 const MISSING_SCALE_REASON = "missing-scale";
 const MISSING_SOURCE_REASON = "missing-source";
+const ZERO_ADVISOR_GAP_GROUP = "zero-advisor";
 const MISSING_STATE_REASON = "missing-state";
 const MISSING_AUM_REASON = "missing-aum";
 const MISSING_T12_REASON = "missing-t12";
@@ -6189,7 +6192,7 @@ describe("Harper directory and search resources", () => {
       {
         id: BRANCH_GAP_LOADED_ID,
         firmId: "firm-a",
-        name: "Loaded Branch",
+        name: BRANCH_GAP_LOADED_NAME,
         level: "branch",
         city: "Austin",
         state: "TX",
@@ -6197,10 +6200,18 @@ describe("Harper directory and search resources", () => {
       {
         id: BRANCH_GAP_PARTIAL_ID,
         firmId: "firm-a",
-        name: "Partial Branch",
+        name: BRANCH_GAP_PARTIAL_NAME,
         level: "branch",
         city: "Atlanta",
         state: "GA",
+      },
+      {
+        id: BRANCH_GAP_MISSING_SOURCE_ID,
+        firmId: "firm-a",
+        name: "Missing Source Branch",
+        level: "branch",
+        city: "Boston",
+        state: "MA",
       },
     ]);
     setRows(BRANCH_COVERAGE_TABLE, [
@@ -6223,6 +6234,16 @@ describe("Harper directory and search resources", () => {
         sourceTypes: [],
         sourceLabels: [],
       },
+      {
+        id: BRANCH_GAP_MISSING_SOURCE_ID,
+        branchId: BRANCH_GAP_MISSING_SOURCE_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 1,
+        coverageStatus: "partial",
+        gapGroup: MISSING_SOURCE_REASON,
+        sourceTypes: [],
+        sourceLabels: [],
+      },
     ]);
     setRows("EmploymentHistory", []);
     const original = (globalThis as any).tables.EmploymentHistory;
@@ -6238,6 +6259,9 @@ describe("Harper directory and search resources", () => {
       );
       const partial = await new (resources as any).PublicBranches().get(
         routeTarget("", { gapGroup: "partial", limit: "3" })
+      );
+      const missingSource = await new (resources as any).PublicBranches().get(
+        routeTarget("", { gapGroup: MISSING_SOURCE_REASON, limit: "3" })
       );
 
       expect(loaded).toMatchObject({
@@ -6258,9 +6282,71 @@ describe("Harper directory and search resources", () => {
         total: 1,
         items: [expect.objectContaining({ id: BRANCH_GAP_PARTIAL_ID })],
       });
+      expect(missingSource).toMatchObject({
+        total: 1,
+        items: [expect.objectContaining({ id: BRANCH_GAP_MISSING_SOURCE_ID })],
+      });
     } finally {
       (globalThis as any).tables.EmploymentHistory = original;
     }
+  });
+
+  it("falls back to employment rows for branches missing materialized coverage", async () => {
+    setRows("Branch", [
+      {
+        id: BRANCH_GAP_LOADED_ID,
+        firmId: "firm-a",
+        name: BRANCH_GAP_LOADED_NAME,
+        level: "branch",
+        city: "Austin",
+        state: "TX",
+      },
+      {
+        id: BRANCH_GAP_PARTIAL_ID,
+        firmId: "firm-a",
+        name: BRANCH_GAP_PARTIAL_NAME,
+        level: "branch",
+        city: "Atlanta",
+        state: "GA",
+      },
+    ]);
+    setRows(BRANCH_COVERAGE_TABLE, [
+      {
+        id: BRANCH_GAP_LOADED_ID,
+        branchId: BRANCH_GAP_LOADED_ID,
+        firmId: "firm-a",
+        currentAdvisorCount: 2,
+        coverageStatus: "loaded",
+        gapGroup: "loaded",
+        sourceTypes: ["brokercheck"],
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-partial-source",
+        advisorId: "advisor-partial",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_PARTIAL_ID,
+        endDate: DATE_2024_01_01,
+        sourceType: "firm_locator",
+      },
+    ]);
+
+    const zeroAdvisor = await new (resources as any).PublicBranches().get(
+      routeTarget("", { gapGroup: ZERO_ADVISOR_GAP_GROUP, limit: "3" })
+    );
+
+    expect(zeroAdvisor).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: BRANCH_GAP_PARTIAL_ID,
+          sourceMetadata: expect.objectContaining({
+            sourceTypes: ["firm_locator"],
+          }),
+        }),
+      ],
+    });
   });
 
   it("groups public branch coverage gaps without flattening unknown states", async () => {
@@ -6268,7 +6354,7 @@ describe("Harper directory and search resources", () => {
       {
         id: BRANCH_GAP_LOADED_ID,
         firmId: "firm-a",
-        name: "Loaded Branch",
+        name: BRANCH_GAP_LOADED_NAME,
         level: "branch",
         city: "Austin",
         state: "TX",
@@ -6292,7 +6378,7 @@ describe("Harper directory and search resources", () => {
       {
         id: BRANCH_GAP_PARTIAL_ID,
         firmId: "firm-a",
-        name: "Partial Branch",
+        name: BRANCH_GAP_PARTIAL_NAME,
         level: "branch",
         city: "Atlanta",
         state: "GA",
@@ -6347,7 +6433,7 @@ describe("Harper directory and search resources", () => {
       routeTarget("", { limit: "10" })
     );
     const zeroAdvisor = await new (resources as any).PublicBranches().get(
-      routeTarget("", { gapGroup: "zero-advisor", limit: "10" })
+      routeTarget("", { gapGroup: ZERO_ADVISOR_GAP_GROUP, limit: "10" })
     );
     const missingSource = await new (resources as any).PublicBranches().get(
       routeTarget("", { gapGroup: MISSING_SOURCE_REASON, limit: "10" })
@@ -6360,9 +6446,9 @@ describe("Harper directory and search resources", () => {
       new Map([
         [BRANCH_GAP_PARTIAL_ID, "partial"],
         [BRANCH_GAP_LOADED_ID, "loaded"],
-        [BRANCH_GAP_MISSING_SOURCE_ID, "missing-source"],
+        [BRANCH_GAP_MISSING_SOURCE_ID, MISSING_SOURCE_REASON],
         [BRANCH_GAP_UNAVAILABLE_ID, "unavailable"],
-        [BRANCH_GAP_ZERO_ADVISOR_ID, "zero-advisor"],
+        [BRANCH_GAP_ZERO_ADVISOR_ID, ZERO_ADVISOR_GAP_GROUP],
       ])
     );
     expect(result.items).toEqual(
@@ -6467,8 +6553,20 @@ describe("Harper directory and search resources", () => {
     setRows("Branch", [
       { id: BRANCH_GAP_LOADED_ID, firmId: "firm-a", level: "branch" },
       { id: BRANCH_GAP_PARTIAL_ID, firmId: "firm-a", level: "branch" },
+      {
+        id: BRANCH_GAP_MISSING_SOURCE_ID,
+        firmId: "firm-a",
+        level: "branch",
+      },
     ]);
-    setRows("EmploymentHistory", []);
+    setRows("EmploymentHistory", [
+      {
+        id: "employment-missing-coverage",
+        advisorId: "advisor-missing-coverage",
+        firmId: "firm-a",
+        branchId: BRANCH_GAP_MISSING_SOURCE_ID,
+      },
+    ]);
     setRows(BRANCH_COVERAGE_TABLE, [
       {
         id: BRANCH_GAP_LOADED_ID,
@@ -6494,11 +6592,14 @@ describe("Harper directory and search resources", () => {
 
     expect(
       metricById(payload, BRANCHES_WITH_CURRENT_ADVISORS_METRIC)
-    ).toMatchObject({ value: 1 });
+    ).toMatchObject({ value: 2 });
     expect(metricById(payload, "branch-gap-loaded")).toMatchObject({
       value: 1,
     });
     expect(metricById(payload, "branch-gap-partial")).toMatchObject({
+      value: 1,
+    });
+    expect(metricById(payload, "branch-gap-missing-source")).toMatchObject({
       value: 1,
     });
   });

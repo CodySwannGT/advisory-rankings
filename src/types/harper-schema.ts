@@ -144,8 +144,8 @@ export interface BranchCoverageRow {
     | "unavailable"
     | "zero-advisor"
     | "missing-source";
-  readonly sourceTypes?: readonly string[];
-  readonly sourceLabels?: readonly string[];
+  readonly sourceTypes: readonly string[];
+  readonly sourceLabels: readonly string[];
   readonly builtAt?: HarperDate;
   readonly createdAt?: HarperDate;
   readonly updatedAt?: HarperDate;

@@ -117,8 +117,8 @@ type BranchCoverage @table @export {
   currentAdvisorCount: Int!
   coverageStatus: String! @indexed
   gapGroup: String! @indexed
-  sourceTypes: [String]
-  sourceLabels: [String]
+  sourceTypes: [String]!
+  sourceLabels: [String]!
   builtAt: Date @indexed
   createdAt: Date @createdTime
   updatedAt: Date @updatedTime

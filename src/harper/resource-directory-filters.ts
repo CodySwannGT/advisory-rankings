@@ -8,7 +8,10 @@ import type {
 import type { RouteTarget } from "../types/harper-resource.js";
 import { advisorDisplayName } from "./resource-routing.js";
 import { advisorReadiness } from "./resource-advisor-readiness.js";
-import { branchGapGroup } from "./resource-branch-gap-groups.js";
+import {
+  branchGapGroup,
+  type BranchGapGroup,
+} from "./resource-branch-gap-groups.js";
 import type {
   AdvisorDirectoryFilters,
   BranchDirectoryFilters,
@@ -221,6 +224,7 @@ export function teamMatchesFilters(
  * @param firm - Firm context for the branch, when resolvable.
  * @param sourceTypes - Source types observed in linked employment rows.
  * @param currentAdvisorCount - Current advisor count for the branch.
+ * @param gapGroup - Branch gap group, optionally materialized.
  * @returns Whether the branch should be included in the response.
  */
 export function branchMatchesFilters(
@@ -228,7 +232,12 @@ export function branchMatchesFilters(
   filters: BranchDirectoryFilters,
   firm: FirmRow | null,
   sourceTypes: ReadonlyArray<string>,
-  currentAdvisorCount: number
+  currentAdvisorCount: number,
+  gapGroup: BranchGapGroup = branchGapGroup({
+    firm,
+    currentAdvisorCount,
+    sourceMetadata: { sourceTypes, sourceLabels: [], sourceRefs: [] },
+  })
 ): boolean {
   return (
     textMatches(filters.q, [
@@ -240,14 +249,7 @@ export function branchMatchesFilters(
       firm?.name,
     ]) &&
     textMatches(filters.firm, [branch.firmId, firm?.id, firm?.name]) &&
-    exactMatches(
-      filters.gapGroup,
-      branchGapGroup({
-        firm,
-        currentAdvisorCount,
-        sourceMetadata: { sourceTypes, sourceLabels: [], sourceRefs: [] },
-      })
-    ) &&
+    exactMatches(filters.gapGroup, gapGroup) &&
     exactMatches(filters.state, branch.state) &&
     textMatches(filters.city, [
       branch.city,

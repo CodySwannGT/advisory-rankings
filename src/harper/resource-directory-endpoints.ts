@@ -54,7 +54,10 @@ import {
   type BranchCoverageByBranch,
 } from "./resource-branch-coverage-read-model.js";
 import { branchSourceSummary } from "./resource-branch-source-labels.js";
-import { fallbackEmploymentsByBranch } from "./resource-directory-branch-employment.js";
+import {
+  currentBranchAdvisorCount,
+  fallbackEmploymentsByBranch,
+} from "./resource-directory-branch-employment.js";
 
 export type {
   SearchCounts,
@@ -200,7 +203,7 @@ export class PublicBranches extends Resource {
     const byFirm = new Map(firms.map(firm => [firm.id, firm]));
     const coverageByBranch = branchCoverageByBranch(branchCoverages);
     const employmentsByBranch =
-      coverageByBranch.size > 0
+      coverageByBranch.size === branches.length
         ? new Map<string, ReadonlyArray<EmploymentHistoryRow>>()
         : await fallbackEmploymentsByBranch(
             { EmploymentHistory: tables.EmploymentHistory },
@@ -283,14 +286,24 @@ function branchDirectoryMatch(
   const sourceMetadata = coverage
     ? branchCoverageSourceMetadata(coverage)
     : branchSourceSummary(linkedEmployments);
+  const gapGroup =
+    coverage?.gapGroup ??
+    branchGapGroup({ firm, currentAdvisorCount, sourceMetadata });
   return branchMatchesFilters(
     branch,
     filters,
     firm,
     sourceMetadata.sourceTypes,
-    currentAdvisorCount
+    currentAdvisorCount,
+    gapGroup
   )
-    ? branchDirectoryRow(branch, firm, currentAdvisorCount, sourceMetadata)
+    ? branchDirectoryRow(
+        branch,
+        firm,
+        currentAdvisorCount,
+        sourceMetadata,
+        coverage
+      )
     : null;
 }
 
@@ -306,33 +319,20 @@ function isBranchDirectoryRow(
 }
 
 /**
- * Counts distinct currently linked advisors for a branch.
- * @param employments - Employment rows already scoped to one branch.
- * @returns Current distinct advisor count.
- */
-function currentBranchAdvisorCount(
-  employments: ReadonlyArray<EmploymentHistoryRow>
-): number {
-  return new Set(
-    employments
-      .filter(employment => !employment.endDate)
-      .map(employment => employment.advisorId)
-  ).size;
-}
-
-/**
  * Builds the public branch explorer payload row.
  * @param branch - Source branch row.
  * @param firm - Resolved firm context, when present.
  * @param currentAdvisorCount - Distinct active advisor count for this branch.
  * @param sourceMetadata - Public source summary for linked employment rows.
+ * @param coverage - Materialized coverage row, when present.
  * @returns Branch directory row safe for anonymous clients.
  */
 function branchDirectoryRow(
   branch: BranchRow,
   firm: FirmRow | null,
   currentAdvisorCount: number,
-  sourceMetadata: BranchDirectoryRow["sourceMetadata"]
+  sourceMetadata: BranchDirectoryRow["sourceMetadata"],
+  coverage: BranchCoverageRow | null = null
 ): BranchDirectoryRow {
   return {
     id: branch.id,
@@ -349,8 +349,12 @@ function branchDirectoryRow(
     displayName: branchDisplayName(branch),
     firmName: firm?.name ?? null,
     currentAdvisorCount,
-    coverageStatus: branchCoverageStatus(firm, currentAdvisorCount),
-    gapGroup: branchGapGroup({ firm, currentAdvisorCount, sourceMetadata }),
+    coverageStatus:
+      coverage?.coverageStatus ??
+      branchCoverageStatus(firm, currentAdvisorCount),
+    gapGroup:
+      coverage?.gapGroup ??
+      branchGapGroup({ firm, currentAdvisorCount, sourceMetadata }),
     sourceMetadata,
   };
 }
