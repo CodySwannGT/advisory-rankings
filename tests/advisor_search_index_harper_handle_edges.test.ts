@@ -48,6 +48,7 @@ describe("Harper operations advisor search index handle edges", () => {
     ]);
     await expect(handle.getAdvisor("missing")).resolves.toBeNull();
     expect(harperMocks.sql.mock.calls[0]?.[0]).toContain("advisor''1");
+    expect(harperMocks.sql.mock.calls[1]?.[0]).toContain("advisor''1");
   });
 
   it("skips empty writes and sends non-empty rows to Harper", async () => {

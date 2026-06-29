@@ -34,7 +34,7 @@ describe("directory sorting edges", () => {
         { id: "firm-b", name: "Beta" } as never,
         { id: "firm-a", name: "Alpha" } as never
       )
-    ).toBe(1);
+    ).toBeGreaterThan(0);
     expect(
       compareAdvisorDirectoryRows(
         { id: "advisor-b", lastName: "Smith" } as never,
@@ -46,7 +46,7 @@ describe("directory sorting edges", () => {
         { id: "team-a", name: "Alpha" } as never,
         { id: "team-b", name: "Beta" } as never
       )
-    ).toBe(-1);
+    ).toBeLessThan(0);
     expect(
       compareBranchDirectoryRows(
         {
