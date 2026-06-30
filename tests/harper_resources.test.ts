@@ -1910,6 +1910,7 @@ describe("Harper feed and profile builders", () => {
   it("sorts open discrepancy queue rows and tolerates sparse event context", async () => {
     setRows("EmploymentHistory", [
       { id: "employment-undated", advisorId: "advisor-a", firmId: "firm-a" },
+      { id: "employment-empty-date", advisorId: "advisor-a", firmId: "firm-a" },
     ]);
     setRows(REGULATORY_DISCREPANCY_TABLE, [
       {
@@ -1942,26 +1943,69 @@ describe("Harper feed and profile builders", () => {
         severity: "low",
         status: "open",
       },
+      {
+        id: "reg-disc-unknown-advisor",
+        advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
+        fieldName: "fineAmount",
+        severity: "informational",
+        status: "open",
+        sourceMetadata: '"metadata-scalar"',
+        updatedAt: new Date("2026-06-01T12:00:00.000Z"),
+      },
+      {
+        id: "reg-disc-existing-advisor-no-firm",
+        advisorId: "advisor-b",
+        fieldName: "fineAmount",
+        severity: "informational",
+        status: "open",
+      },
     ]);
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
-    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
+    endpoint.getCurrentUser = () => ({ email: ANALYST_EMAIL });
 
     const payload = await endpoint.get();
 
     expect(payload.summary).toMatchObject({
-      totalOpen: 3,
+      totalOpen: 5,
       highSeverity: 2,
-      severities: { high: 2, low: 1 },
+      severities: { high: 2, informational: 2, low: 1 },
     });
     expect(payload.items.map((item: any) => item.id)).toEqual([
       "reg-disc-a",
       "reg-disc-b",
       "reg-disc-low",
+      "reg-disc-existing-advisor-no-firm",
+      "reg-disc-unknown-advisor",
     ]);
     expect(payload.items[1].event).toMatchObject({
       regulator: null,
       docketNumber: null,
       disclosureIds: [],
+    });
+    expect(payload.items[3]).toMatchObject({
+      advisorId: "advisor-b",
+      firmName: null,
+    });
+    expect(payload.items[4]).toMatchObject({
+      advisorId: CORRECTION_UNKNOWN_ADVISOR_ID,
+      advisorName: CORRECTION_UNKNOWN_ADVISOR_ID,
+      firmName: null,
+      advisorHub: {
+        sourceType: null,
+        sourceRef: null,
+        value: null,
+      },
+      brokerCheck: {
+        sourceType: null,
+        sourceRef: null,
+        value: null,
+      },
+      event: {
+        regulator: null,
+        docketNumber: null,
+        disclosureIds: [],
+      },
+      updatedAt: "2026-06-01T12:00:00.000Z",
     });
   });
 

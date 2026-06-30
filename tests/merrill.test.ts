@@ -9,6 +9,7 @@ import {
 
 const MERRILL_FIRM_NAME = "Merrill Lynch Wealth Management";
 const CHECKED_AT = "2026-05-23";
+const SPARSE_ADVISOR_URL = "https://advisor.ml.com/sparse-advisor";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -138,5 +139,50 @@ describe("Merrill scraper mapping", () => {
       sourceRef: "https://advisor.ml.com/open-advisor",
     });
     expect(rows.Designation).toEqual([]);
+  });
+
+  it("maps sparse Yext rows through fallback names, ids, and URLs", () => {
+    const rows = mapMerrillAdvisors(
+      [
+        {
+          uid: "uid-only",
+          c_marketingName: "Sparse Advisor",
+          c_languagesV2: ["Spanish", "Portuguese"],
+          emails: ["sparse.advisor@example.com"],
+          websiteUrl: { url: SPARSE_ADVISOR_URL },
+        },
+        {
+          c_marketingName: "Nameless Identifier",
+          address: null,
+          c_language: "English",
+        },
+      ],
+      CHECKED_AT
+    );
+
+    expect(rows.Advisor).toHaveLength(2);
+    expect(rows.Advisor[0]).toMatchObject({
+      legalName: "Sparse Advisor",
+      firstName: "Sparse",
+      lastName: "Advisor",
+      businessEmail: "sparse.advisor@example.com",
+      bioText: "Languages: Spanish, Portuguese",
+    });
+    expect(rows.EmploymentHistory[0]).toMatchObject({
+      sourceRef: SPARSE_ADVISOR_URL,
+    });
+    expect(rows.AdvisorResearchCheck[0]).toMatchObject({
+      sourcesChecked: [SPARSE_ADVISOR_URL],
+    });
+    expect(rows.Advisor[1]).toMatchObject({
+      legalName: "Nameless Identifier",
+      firstName: "Nameless",
+      lastName: "Identifier",
+    });
+    expect(rows.Advisor[1]).not.toHaveProperty("bioText");
+    expect(rows.Advisor[1]).not.toHaveProperty("businessEmail");
+    expect(rows.AdvisorResearchCheck[1]).toMatchObject({
+      sourcesChecked: [],
+    });
   });
 });
