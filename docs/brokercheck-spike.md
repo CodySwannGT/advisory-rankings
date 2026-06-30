@@ -250,6 +250,11 @@ Add `--dry-run` to parse-without-write. Add `--force` to ignore the
 7-day "recently fetched" skip. `BC_RATE_SECONDS=3 …` for an even
 slower crawl.
 
+The CLI entrypoint keeps mode selection in `src/scripts/fetch_brokercheck.ts`.
+Shared state persistence and single individual/firm fetch handling live in
+`src/scripts/fetch_brokercheck_core.ts`, so orchestrators and the CLI use the
+same recent-fetch and state-update behavior.
+
 ### The wave-1 orchestrator
 
 `src/scripts/brokercheck_crawl_all.ts` (via `bun run brokercheck:crawl --`)

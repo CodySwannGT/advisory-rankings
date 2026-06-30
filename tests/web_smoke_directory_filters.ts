@@ -144,6 +144,19 @@ function firmDirectoryChecks(facts: {
       "firms filters: first row links to canonical firm profile",
       facts.filtered.firstHref
     ),
+    ...firmOverflowChecks(facts),
+    check(
+      facts.emptyControlsAvailable,
+      "firms filters: empty state keeps controls available"
+    ),
+  ];
+}
+
+function firmOverflowChecks(facts: {
+  readonly wide320: boolean;
+  readonly wide390: boolean;
+}): readonly Check[] {
+  return [
     check(
       !facts.wide390,
       "firms filters: 390px layout has no horizontal overflow"
@@ -151,10 +164,6 @@ function firmDirectoryChecks(facts: {
     check(
       !facts.wide320,
       "firms filters: 320px layout has no horizontal overflow"
-    ),
-    check(
-      facts.emptyControlsAvailable,
-      "firms filters: empty state keeps controls available"
     ),
   ];
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import {
   BrokerCheckBlocked,
@@ -15,52 +15,24 @@ import {
 } from "../lib/brokercheck-load.js";
 import { parseFirm, parseIndividual } from "../lib/brokercheck-parse.js";
 import {
-  emptyCrawlState,
-  normalizeState,
-  recentlyFetched,
-  updateState,
   type BrokerRecord,
   type Counts,
-  type CrawlOptions,
   type CrawlState,
   type LogFn,
 } from "./brokercheck_fetch_helpers.js";
-const STATE_FILE = "research/brokercheck-state.json";
-const SKIP_RECENT_DAYS = 7;
-const SKIP_RECENT_MS = SKIP_RECENT_DAYS * 86_400_000;
+import {
+  fetchOneCrd,
+  fetchOneFirm,
+  loadState,
+  saveState,
+} from "./fetch_brokercheck_core.js";
+
 const MODE_REQUIRED_ERROR = "one BrokerCheck fetch mode is required";
 const arg = (name: string): string | undefined => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
 };
 const has = (name: string): boolean => process.argv.includes(name);
-
-/**
- * Loads BrokerCheck crawl state so repeat runs can skip recently fetched CRDs.
- * @returns Persisted crawl state, or empty buckets when the file does not exist.
- */
-export const loadState = async (): Promise<CrawlState> => {
-  try {
-    return normalizeState(
-      JSON.parse(await readFile(STATE_FILE, "utf8")) as unknown
-    );
-  } catch {
-    return emptyCrawlState();
-  }
-};
-
-/**
- * Persists BrokerCheck crawl state after each successful batch item.
- * @param state - Current state with recent individual and firm fetch markers.
- * @returns Resolves after the state file is written.
- */
-export const saveState = async (state: CrawlState): Promise<void> => {
-  await mkdir("research", { recursive: true });
-  await writeFile(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
-};
-
-const isRecentlyFetched = (value: unknown): boolean =>
-  recentlyFetched(value, SKIP_RECENT_MS);
 
 const loadIndividualContent = async (
   content: BrokerRecord,
@@ -82,106 +54,6 @@ const loadFirmContent = async (
   resolver = new Resolver(rest)
 ): Promise<Counts> => {
   return await loadFirm(parseFirm(content), content, { rest, resolver, write });
-};
-
-/**
- * Fetches one individual CRD, loads parsed rows, and records its fetch marker.
- * @param client - Rate-limited BrokerCheck API client.
- * @param rest - Harper REST writer used by the loader.
- * @param resolver - Entity resolver shared across loader calls.
- * @param state - Crawl state that is updated after a successful load.
- * @param crd - FINRA individual CRD.
- * @param opts - Write, force, and logging options for this request.
- * @returns Loader row counts, or null when the CRD was skipped or empty.
- */
-export const fetchOneCrd = async (
-  client: BrokerCheckClient,
-  rest: HarperREST,
-  resolver: Resolver,
-  state: CrawlState,
-  crd: string,
-  opts: CrawlOptions = {}
-): Promise<Counts | null> => {
-  const log = opts.log ?? console.error;
-  if (!opts.force && isRecentlyFetched(state.individuals[crd])) {
-    log(`[skip] individual ${crd} fetched recently`);
-    return null;
-  }
-  const content = unwrapIndividual(
-    await client.getIndividual(crd)
-  ) as BrokerRecord | null;
-  if (!content) {
-    log(`[warn] individual ${crd}: no content`);
-    return null;
-  }
-  const parsed = parseIndividual(content);
-  const counts = await loadIndividual(parsed, content, {
-    rest,
-    resolver,
-    write: opts.write ?? true,
-  });
-  updateState(state, {
-    individuals: {
-      ...state.individuals,
-      [crd]: {
-        fetchedAt: new Date().toISOString(),
-        legalName: parsed.advisor?.legalName ?? "",
-        counts,
-      },
-    },
-  });
-  log(`[individual ${crd}] ${JSON.stringify(counts)}`);
-  return counts;
-};
-
-/**
- * Fetches one firm, loads parsed rows, and records its fetch marker.
- * @param client - Rate-limited BrokerCheck API client.
- * @param rest - Harper REST writer used by the loader.
- * @param resolver - Entity resolver shared across loader calls.
- * @param state - Crawl state that is updated after a successful load.
- * @param firmId - FINRA firm CRD.
- * @param opts - Write, force, and logging options for this request.
- * @returns Loader row counts, or null when the firm was skipped or empty.
- */
-export const fetchOneFirm = async (
-  client: BrokerCheckClient,
-  rest: HarperREST,
-  resolver: Resolver,
-  state: CrawlState,
-  firmId: string,
-  opts: CrawlOptions = {}
-): Promise<Counts | null> => {
-  const log = opts.log ?? console.error;
-  if (!opts.force && isRecentlyFetched(state.firms[firmId])) {
-    log(`[skip] firm ${firmId} fetched recently`);
-    return null;
-  }
-  const content = unwrapFirm(
-    await client.getFirm(firmId)
-  ) as BrokerRecord | null;
-  if (!content) {
-    log(`[warn] firm ${firmId}: no content`);
-    return null;
-  }
-  const parsed = parseFirm(content);
-  const counts = await loadFirm(parsed, content, {
-    rest,
-    resolver,
-    write: opts.write ?? true,
-  });
-  updateState(state, {
-    firms: {
-      ...state.firms,
-      [firmId]: {
-        fetchedAt: new Date().toISOString(),
-        name: parsed.firm?.name ?? "",
-        counts,
-      },
-    },
-  });
-  log(`[firm ${firmId}] ${JSON.stringify(counts)}`);
-  return counts;
 };
 
 const runFixture = async (
@@ -209,28 +81,21 @@ const runSelectedMode = async (
   log: LogFn
 ): Promise<unknown> => {
   const force = has("--force");
+  const opts = { write, max, force, log };
   const crd = arg("--crd");
-  if (crd)
-    return await fetchOneCrd(client, rest, resolver, state, crd, {
-      write,
-      force,
-      log,
-    });
+  if (crd) return await fetchOneCrd(client, rest, resolver, state, crd, opts);
   const firmId = arg("--firm-id");
   if (firmId)
-    return await fetchOneFirm(client, rest, resolver, state, firmId, {
-      write,
-      force,
-      log,
-    });
+    return await fetchOneFirm(client, rest, resolver, state, firmId, opts);
   const crawls = await import("./fetch_brokercheck_crawls.js");
   if (has("--enrich"))
-    return await crawls.enrichExistingAdvisors(client, rest, resolver, state, {
-      write,
-      max,
-      force,
-      log,
-    });
+    return await crawls.enrichExistingAdvisors(
+      client,
+      rest,
+      resolver,
+      state,
+      opts
+    );
   const searchName = arg("--search-name");
   if (searchName)
     return await crawls.crawlNameSearch(
@@ -239,7 +104,7 @@ const runSelectedMode = async (
       resolver,
       state,
       searchName,
-      { write, max, force, log }
+      opts
     );
   const firmRoster = arg("--firm-roster");
   if (firmRoster)
@@ -249,7 +114,7 @@ const runSelectedMode = async (
       resolver,
       state,
       firmRoster,
-      { write, max, force, log }
+      opts
     );
   throw new Error(MODE_REQUIRED_ERROR);
 };
