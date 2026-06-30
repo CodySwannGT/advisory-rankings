@@ -44,12 +44,15 @@ browserDescribe("source article triage public-data regression", () => {
     });
   });
 
-  it("replays filtered triage rows and linked ArticleView gaps on desktop and mobile", async () => {
+  it("replays filtered triage rows and linked ArticleView gaps across breakpoints", async () => {
     if (!browser) {
       throw new Error("Browser was not initialized");
     }
     const desktop = await browser.newPage({
       viewport: { width: 1280, height: 900 },
+    });
+    const tablet = await browser.newPage({
+      viewport: { width: 820, height: 1180 },
     });
     const mobile = await browser.newPage({
       viewport: { width: 390, height: 844 },
@@ -57,11 +60,18 @@ browserDescribe("source article triage public-data regression", () => {
 
     try {
       await routePublicResources(desktop);
+      await routePublicResources(tablet);
       await routePublicResources(mobile);
 
       const desktopFacts = await sourceTriageFacts(desktop, baseUrl);
       await desktop.screenshot({
         path: join(SHOTS, "source-triage-regression-desktop.png"),
+        fullPage: true,
+      });
+
+      const tabletFacts = await sourceTriageFacts(tablet, baseUrl);
+      await tablet.screenshot({
+        path: join(SHOTS, "source-triage-regression-tablet.png"),
         fullPage: true,
       });
 
@@ -82,10 +92,19 @@ browserDescribe("source article triage public-data regression", () => {
       expect(desktopFacts.firstRowText).toContain(
         "Provenance2 total, 2 candidate"
       );
-      expect(desktopFacts.articleViewHrefs[0]).toContain(FIRST_SAMPLE_ID);
+      expect(
+        desktopFacts.articleViewHrefs.some(href =>
+          href.includes(FIRST_SAMPLE_ID)
+        )
+      ).toBe(true);
       expect(desktopFacts.overflow).toBe(false);
+      expect(desktopFacts.rowOverflow).toBe(false);
+      expect(tabletFacts.visibleIds).toEqual(desktopFacts.visibleIds);
+      expect(tabletFacts.overflow).toBe(false);
+      expect(tabletFacts.rowOverflow).toBe(false);
       expect(mobileFacts.visibleIds).toEqual(desktopFacts.visibleIds);
       expect(mobileFacts.overflow).toBe(false);
+      expect(mobileFacts.rowOverflow).toBe(false);
       expect(firstDetail).toMatchObject({
         eventCards: 0,
         firms: 1,
@@ -107,6 +126,7 @@ browserDescribe("source article triage public-data regression", () => {
         "[EVIDENCE: source-triage-public-data]",
         JSON.stringify({
           desktop: desktopFacts,
+          tablet: tabletFacts,
           mobile: mobileFacts,
           firstDetail,
           secondDetail,
@@ -115,8 +135,10 @@ browserDescribe("source article triage public-data regression", () => {
       );
     } finally {
       await desktop.unrouteAll({ behavior: "ignoreErrors" });
+      await tablet.unrouteAll({ behavior: "ignoreErrors" });
       await mobile.unrouteAll({ behavior: "ignoreErrors" });
       await desktop.close();
+      await tablet.close();
       await mobile.close();
     }
   });
@@ -127,6 +149,7 @@ interface SourceTriageFacts {
   readonly bodyMissingRows: number;
   readonly firstRowText: string;
   readonly overflow: boolean;
+  readonly rowOverflow: boolean;
   readonly selectedCategory: string;
   readonly selectedReason: string;
   readonly visibleIds: readonly string[];
@@ -166,6 +189,9 @@ async function sourceTriageFacts(
         ".source-triage-row a[href^='/articles/']"
       ),
     ].map(link => link.getAttribute("href") ?? "");
+    const resultsCard = document.querySelector<HTMLElement>(
+      ".source-triage-results-card"
+    );
     return {
       articleViewHrefs,
       bodyMissingRows: rows.filter(row =>
@@ -175,6 +201,10 @@ async function sourceTriageFacts(
       overflow:
         document.documentElement.scrollWidth >
         document.documentElement.clientWidth,
+      rowOverflow: [resultsCard, ...rows].some(
+        element =>
+          element !== null && element.scrollWidth > element.clientWidth + 1
+      ),
       selectedCategory:
         document.querySelector<HTMLSelectElement>('select[name="category"]')
           ?.value ?? "",

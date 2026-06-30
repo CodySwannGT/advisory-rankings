@@ -90,6 +90,7 @@ describe("source article triage route", () => {
       expect(new URL(page.url()).pathname).toBe(SOURCE_TRIAGE_PATH);
       expect(new URL(page.url()).search).toBe("");
       expect(await hasHorizontalOverflow(page)).toBe(false);
+      expect(await hasSourceTriageRowOverflow(page)).toBe(false);
     } finally {
       await page.close();
     }
@@ -142,6 +143,40 @@ describe("source article triage route", () => {
       expect(new URLSearchParams(lastQuery).get("category")).toBe("market");
       expect(new URLSearchParams(lastQuery).get("reason")).toBe(NO_BODY_REASON);
       expect(new URLSearchParams(lastQuery).get("limit")).toBe("2");
+      expect(await hasSourceTriageRowOverflow(page)).toBe(false);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("keeps review rows readable at tablet width after filtering", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 820, height: 1180 },
+    });
+    try {
+      await routeAuth(page, false);
+      await routeTriageFromRequest(page, []);
+
+      await page.goto(`${baseUrl}${SOURCE_TRIAGE_PATH}?limit=2`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page.locator('select[name="category"]').selectOption("market");
+      await page.locator('select[name="reason"]').selectOption(NO_BODY_REASON);
+      await Promise.all([
+        page.waitForURL(
+          `${baseUrl}${SOURCE_TRIAGE_PATH}?category=market&reason=${NO_BODY_REASON}&limit=2`
+        ),
+        page.getByRole("button", { name: "Apply" }).click(),
+      ]);
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+      expect(await hasSourceTriageRowOverflow(page)).toBe(false);
     } finally {
       await page.close();
     }
@@ -303,4 +338,19 @@ async function hasHorizontalOverflow(page: Page): Promise<boolean> {
       document.documentElement.scrollWidth >
       document.documentElement.clientWidth
   );
+}
+
+async function hasSourceTriageRowOverflow(page: Page): Promise<boolean> {
+  return await page.evaluate(() => {
+    const resultsCard = document.querySelector<HTMLElement>(
+      ".source-triage-results-card"
+    );
+    const rows = [
+      ...document.querySelectorAll<HTMLElement>(".source-triage-row"),
+    ];
+    return [resultsCard, ...rows].some(
+      element =>
+        element !== null && element.scrollWidth > element.clientWidth + 1
+    );
+  });
 }

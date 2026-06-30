@@ -479,12 +479,34 @@ a:hover {
 .source-triage-row {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 1.5fr) minmax(180px, 1fr) minmax(
-      150px,
-      0.8fr
-    ) auto;
+  grid-template-areas:
+    "main actions"
+    "counts counts"
+    "state state";
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: start;
+  min-width: 0;
   padding: 12px;
+}
+
+.source-triage-row-main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.source-triage-counts {
+  grid-area: counts;
+  min-width: 0;
+}
+
+.source-triage-state {
+  grid-area: state;
+  min-width: 0;
+}
+
+.source-triage-actions {
+  grid-area: actions;
+  min-width: 0;
 }
 
 .source-triage-title {
@@ -673,6 +695,14 @@ a:hover {
   .source-triage-row,
   .deal-gap-row {
     grid-template-columns: 1fr;
+  }
+
+  .source-triage-row {
+    grid-template-areas:
+      "main"
+      "counts"
+      "state"
+      "actions";
   }
 
   .source-triage-actions,
