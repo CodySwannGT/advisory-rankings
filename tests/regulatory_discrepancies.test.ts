@@ -170,6 +170,93 @@ describe("regulatory discrepancy detector", () => {
     expect(rows).toEqual([]);
   });
 
+  it("matches bar discrepancies by shared cluster and normalizes JSON scalar values", () => {
+    const advisorHubBarDisclosure = {
+      ...advisorHubDisclosure,
+      id: "advisorhub-bar-cluster",
+      clusterId: "cluster-bar-1",
+      docketNumber: undefined,
+      regulator: undefined,
+    };
+    const brokerCheckBarDisclosure = {
+      ...brokerCheckDisclosure,
+      id: "brokercheck-bar-cluster",
+      clusterId: "cluster-bar-1",
+      docketNumber: "BAR-2026-1",
+      sourceRef: undefined,
+    };
+    const advisorHubBar = {
+      id: "advisorhub-bar",
+      disclosureId: advisorHubBarDisclosure.id,
+      sanctionType: "bar",
+      durationMonths: 12,
+    };
+    const brokerCheckBar = {
+      id: "brokercheck-bar",
+      disclosureId: brokerCheckBarDisclosure.id,
+      sanctionType: "bar",
+      durationMonths: 6,
+    };
+
+    const rows = detectMaterialDisclosureDiscrepancies({
+      disclosures: [advisorHubBarDisclosure, brokerCheckBarDisclosure],
+      sanctions: [advisorHubBar, brokerCheckBar],
+      fieldAssertions: [
+        {
+          ...advisorHubFineAssertion,
+          id: "assertion-bar-duration",
+          targetId: advisorHubBar.id,
+          fieldName: "durationMonths",
+          assertedValue: '"12"',
+        },
+      ],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      fieldName: "barMonths",
+      advisorHubValue: "12",
+      brokerCheckSourceRef: `crd:${ADVISOR_ID}:docket:BAR-2026-1`,
+      brokerCheckValue: "6",
+    });
+    expect(JSON.parse(rows[0].sourceMetadata ?? "{}")).toMatchObject({
+      regulator: "FINRA",
+      docketNumber: "BAR-2026-1",
+    });
+  });
+
+  it("does not compare regulator matches with invalid or distant dates", () => {
+    const invalidAdvisorHubDisclosure = {
+      ...advisorHubDisclosure,
+      id: "advisorhub-invalid-date",
+      docketNumber: undefined,
+      dateInitiated: "not-a-date",
+    };
+    const distantBrokerCheckDisclosure = {
+      ...brokerCheckDisclosure,
+      id: "brokercheck-distant-date",
+      docketNumber: undefined,
+      dateInitiated: "2026-06-01",
+    };
+
+    const rows = detectMaterialDisclosureDiscrepancies({
+      disclosures: [invalidAdvisorHubDisclosure, distantBrokerCheckDisclosure],
+      sanctions: [
+        {
+          ...advisorHubFine,
+          disclosureId: invalidAdvisorHubDisclosure.id,
+        },
+        {
+          ...brokerCheckFine(2500),
+          disclosureId: distantBrokerCheckDisclosure.id,
+        },
+      ],
+      fieldAssertions: [advisorHubFineAssertion],
+    });
+
+    expect(rows).toEqual([]);
+  });
+
   it("ignores incomplete, BrokerCheck-sourced, and unsupported assertions", () => {
     const brokerCheckSourcedFine = {
       ...advisorHubFine,
@@ -197,6 +284,11 @@ describe("regulatory discrepancy detector", () => {
           disclosureId: brokerCheckDisclosure.id,
           sanctionType: "fine",
         },
+        {
+          id: "unsupported-brokercheck-censure",
+          disclosureId: brokerCheckDisclosure.id,
+          sanctionType: "censure",
+        },
       ],
       fieldAssertions: [
         { ...advisorHubFineAssertion, targetTable: "Disclosure" },
@@ -206,6 +298,11 @@ describe("regulatory discrepancy detector", () => {
           ...advisorHubFineAssertion,
           targetId: "unsupported-censure",
           assertedValue: "not numeric",
+        },
+        {
+          ...advisorHubFineAssertion,
+          id: "empty-supported-assertion",
+          assertedValue: "pending",
         },
       ],
     });

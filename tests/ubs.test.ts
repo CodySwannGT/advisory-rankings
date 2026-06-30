@@ -27,6 +27,9 @@ const STEVEN_PROFILE_URL = "https://advisors.ubs.com/steven.a.smith/";
 const OAKBROOK_BRANCH_URL = "https://local.ubs.com/oakbrook-il";
 const UBS_FIRM_NAME = "UBS Wealth Management USA";
 const BOSTON_BRANCH_URL = "https://local.ubs.com/boston-ma";
+const UBS_LOCATOR_URL = "https://advisors.ubs.com/find-an-advisor/";
+const DENVER_BRANCH_URL = "https://local.ubs.com/denver-co";
+const BLAIR_PROFILE_URL = "https://advisors.ubs.com/blair.parent/";
 
 describe("UBS scraper mapping", () => {
   it("builds the UBS API URL and bounded name-search body", () => {
@@ -120,7 +123,7 @@ describe("UBS scraper mapping", () => {
       sourcesChecked: [
         STEVEN_PROFILE_URL,
         OAKBROOK_BRANCH_URL,
-        "https://advisors.ubs.com/find-an-advisor/",
+        UBS_LOCATOR_URL,
       ],
     });
     expect(rows.Team).toEqual([]);
@@ -150,9 +153,42 @@ describe("UBS scraper mapping", () => {
         TeamSiteUrls: ["https://advisors.ubs.com/boston-team/"],
       },
     };
+    const parentSiteFallback: UbsAdvisorEntity = {
+      UniqueId: "unique-only",
+      ProfileType: "Individual",
+      Company: "Blair Parent",
+      Addresses: [
+        {
+          Address1: "200 Market Street",
+          Address2: "Floor 4",
+          City: "Denver",
+          Region: "CO",
+          PostalCode: "80202",
+        },
+      ],
+      AdditionalData: {
+        Emails: "blair.parent@ubs.com, assistant@example.com",
+        ParentSiteUrl: "//local.ubs.com/denver-co",
+        SiteName: "blair.parent",
+      },
+    };
+    const addressFallback: UbsAdvisorEntity = {
+      ProfileType: "Individual",
+      Company: "Casey Noid",
+      Addresses: [
+        {
+          City: "Austin",
+          Region: "TX",
+        },
+      ],
+      AdditionalData: {},
+    };
 
     const emptyRows = mapUbsAdvisors([]);
-    const rows = mapUbsAdvisors([sparse], CHECKED_AT);
+    const rows = mapUbsAdvisors(
+      [sparse, parentSiteFallback, addressFallback],
+      CHECKED_AT
+    );
 
     expect(emptyRows).toMatchObject({
       ...emptyUbsRows(),
@@ -173,7 +209,36 @@ describe("UBS scraper mapping", () => {
     });
     expect(rows.AdvisorResearchCheck[0].sourcesChecked).toEqual([
       BOSTON_BRANCH_URL,
-      "https://advisors.ubs.com/find-an-advisor/",
+      UBS_LOCATOR_URL,
     ]);
+    expect(rows.Branch[1]).toMatchObject({
+      name: "Denver, CO",
+      address: "200 Market Street, Floor 4",
+      sourceRef: DENVER_BRANCH_URL,
+    });
+    expect(rows.Advisor[1]).toMatchObject({
+      legalName: "Blair Parent",
+      firstName: "Blair",
+      lastName: "Parent",
+      businessEmail: "blair.parent@ubs.com",
+    });
+    expect(rows.EmploymentHistory[1]).toMatchObject({
+      sourceRef: BLAIR_PROFILE_URL,
+    });
+    expect(rows.AdvisorResearchCheck[1].sourcesChecked).toEqual([
+      BLAIR_PROFILE_URL,
+      DENVER_BRANCH_URL,
+      UBS_LOCATOR_URL,
+    ]);
+    expect(rows.Branch[2]).toMatchObject({
+      name: "Austin, TX",
+    });
+    expect(rows.Branch[2]).not.toHaveProperty("sourceRef");
+    expect(rows.Advisor[2]).toMatchObject({
+      legalName: "Casey Noid",
+      firstName: "Casey",
+      lastName: "Noid",
+    });
+    expect(rows.Advisor[2]).not.toHaveProperty("businessEmail");
   });
 });
