@@ -44,6 +44,19 @@ const SOURCE_TYPE_COVERAGE = {
   rankings: 0,
   press: 1,
 };
+const COMPARISON_DATA_CONFIDENCE = {
+  evidenceFreshness: {
+    hasData: true,
+    lastCheckedAt: "2026-05-25T12:00:00Z",
+  },
+  confidenceSummary: {
+    hasData: true,
+    asserted: 2,
+    inferred: 1,
+    derived: 1,
+    total: 4,
+  },
+};
 
 /** Desktop + mobile viewports captured for evidence. */
 const EVIDENCE_VIEWPORTS = [
@@ -390,19 +403,7 @@ function comparisonItem(id: string): unknown {
     ],
     rankings: [],
     articles: [],
-    dataConfidence: {
-      evidenceFreshness: {
-        hasData: true,
-        lastCheckedAt: "2026-05-25T12:00:00Z",
-      },
-      confidenceSummary: {
-        hasData: true,
-        asserted: 2,
-        inferred: 1,
-        derived: 1,
-        total: 4,
-      },
-    },
+    dataConfidence: COMPARISON_DATA_CONFIDENCE,
     attribution: {
       brokerCheck: null,
       articles: [],

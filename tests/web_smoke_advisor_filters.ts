@@ -259,15 +259,19 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
         /No advisors match/i.test(facts.emptyFacts.bodyText),
       "advisors filters: zero-result state keeps controls available"
     ),
-    check(
-      facts.mobile390.scrollWidth <= facts.mobile390.clientWidth &&
-        facts.mobile320.scrollWidth <= facts.mobile320.clientWidth,
-      "advisors filters: no mobile horizontal overflow at 390px and 320px",
-      `390 ${facts.mobile390.scrollWidth}/${facts.mobile390.clientWidth}, 320 ${facts.mobile320.scrollWidth}/${facts.mobile320.clientWidth}`
-    ),
+    advisorMobileOverflowCheck(facts),
     ...mobileAdvisorSearchChecks(facts.mobileSearch),
     advisorDesktopLayoutCheck(facts.desktopLayout),
   ];
+}
+
+function advisorMobileOverflowCheck(facts: FilterCheckFacts): Check {
+  return check(
+    facts.mobile390.scrollWidth <= facts.mobile390.clientWidth &&
+      facts.mobile320.scrollWidth <= facts.mobile320.clientWidth,
+    "advisors filters: no mobile horizontal overflow at 390px and 320px",
+    `390 ${facts.mobile390.scrollWidth}/${facts.mobile390.clientWidth}, 320 ${facts.mobile320.scrollWidth}/${facts.mobile320.clientWidth}`
+  );
 }
 
 function reloadRestoresAdvisorControls(facts: FilterCheckFacts): boolean {

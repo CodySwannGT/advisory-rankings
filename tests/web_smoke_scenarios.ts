@@ -154,24 +154,7 @@ const firmProfileChecks = async (
     "firm.html: Wells Fargo header"
   ),
   ...(await profileHeadingChecks(page, "firm.html", /Wells Fargo/)),
-  check(
-    (await page.locator(CARD_TITLE_SELECTOR).allTextContents()).some(title =>
-      /Current advisors/i.test(title)
-    ),
-    "firm.html: Current advisors section"
-  ),
-  check(
-    (await page.locator(CARD_TITLE_SELECTOR).allTextContents()).some(title =>
-      /Past advisors/i.test(title)
-    ),
-    "firm.html: Past advisors section"
-  ),
-  check(
-    (await page.locator(CARD_TITLE_SELECTOR).allTextContents()).some(title =>
-      /moves to/i.test(title)
-    ),
-    "firm.html: inbound transitions section"
-  ),
+  ...(await firmCardTitleChecks(page)),
   check(
     (await cairnesLink.count()) >= 1,
     "firm.html: past-advisor list includes Cairnes",
@@ -189,6 +172,24 @@ const firmProfileChecks = async (
     "firm.html: right rail shows Branches"
   ),
 ];
+
+const firmCardTitleChecks = async (page: Page): Promise<readonly Check[]> => {
+  const titles = await page.locator(CARD_TITLE_SELECTOR).allTextContents();
+  return [
+    check(
+      titles.some(title => /Current advisors/i.test(title)),
+      "firm.html: Current advisors section"
+    ),
+    check(
+      titles.some(title => /Past advisors/i.test(title)),
+      "firm.html: Past advisors section"
+    ),
+    check(
+      titles.some(title => /moves to/i.test(title)),
+      "firm.html: inbound transitions section"
+    ),
+  ];
+};
 
 /**
  * Checks advisor profile timeline, disclosure, status, and BrokerCheck attribution.
