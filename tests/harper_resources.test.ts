@@ -18,6 +18,9 @@ const STONE_JOINS_EXAMPLE_URL =
 const ADVISORHUB_AW_2025_LABEL = "AdvisorHub Advisors to Watch 2025";
 const ADVISORHUB_NEXTGEN_2025_LABEL = "AdvisorHub Next Gen 2025";
 const FINRA_BROKERCHECK_LABEL = "FINRA BrokerCheck";
+const FINRA_BROKERCHECK_REGISTRATION_DATA_LABEL =
+  "FINRA BrokerCheck registration data";
+const FIRM_PUBLIC_BRANCH_LOCATOR_LABEL = "Firm public branch locator";
 const EXAMPLE_WEALTH_MANAGEMENT = "Example Wealth Management";
 const EXAMPLE_WEALTH_LLC = "Example Wealth LLC";
 const EXAMPLE_WEALTH_SHORT_NAME = "Example Wealth";
@@ -6090,8 +6093,8 @@ describe("Harper directory and search resources", () => {
           sourceMetadata: {
             sourceTypes: ["brokercheck", "firm_locator"],
             sourceLabels: [
-              "FINRA BrokerCheck registration data",
-              "Firm public branch locator",
+              FINRA_BROKERCHECK_REGISTRATION_DATA_LABEL,
+              FIRM_PUBLIC_BRANCH_LOCATOR_LABEL,
             ],
             sourceRefs: [],
           },
@@ -6273,7 +6276,7 @@ describe("Harper directory and search resources", () => {
             gapGroup: "loaded",
             sourceMetadata: expect.objectContaining({
               sourceTypes: ["brokercheck"],
-              sourceLabels: ["FINRA BrokerCheck registration data"],
+              sourceLabels: [FINRA_BROKERCHECK_REGISTRATION_DATA_LABEL],
             }),
           }),
         ],
@@ -6335,6 +6338,12 @@ describe("Harper directory and search resources", () => {
     const zeroAdvisor = await new (resources as any).PublicBranches().get(
       routeTarget("", { gapGroup: ZERO_ADVISOR_GAP_GROUP, limit: "3" })
     );
+    const brokercheck = await new (resources as any).PublicBranches().get(
+      routeTarget("", { sourceType: "brokercheck", limit: "3" })
+    );
+    const firmLocator = await new (resources as any).PublicBranches().get(
+      routeTarget("", { sourceType: "firm_locator", limit: "3" })
+    );
 
     expect(zeroAdvisor).toMatchObject({
       total: 1,
@@ -6342,6 +6351,31 @@ describe("Harper directory and search resources", () => {
         expect.objectContaining({
           id: BRANCH_GAP_PARTIAL_ID,
           sourceMetadata: expect.objectContaining({
+            sourceTypes: ["firm_locator"],
+          }),
+        }),
+      ],
+    });
+    expect(brokercheck).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: BRANCH_GAP_LOADED_ID,
+          currentAdvisorCount: 2,
+          sourceMetadata: expect.objectContaining({
+            sourceLabels: [FINRA_BROKERCHECK_REGISTRATION_DATA_LABEL],
+            sourceTypes: ["brokercheck"],
+          }),
+        }),
+      ],
+    });
+    expect(firmLocator).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          id: BRANCH_GAP_PARTIAL_ID,
+          sourceMetadata: expect.objectContaining({
+            sourceLabels: [FIRM_PUBLIC_BRANCH_LOCATOR_LABEL],
             sourceTypes: ["firm_locator"],
           }),
         }),
@@ -6463,7 +6497,7 @@ describe("Harper directory and search resources", () => {
           id: BRANCH_GAP_ZERO_ADVISOR_ID,
           currentAdvisorCount: 0,
           sourceMetadata: expect.objectContaining({
-            sourceLabels: ["Firm public branch locator"],
+            sourceLabels: [FIRM_PUBLIC_BRANCH_LOCATOR_LABEL],
           }),
         }),
         expect.objectContaining({
