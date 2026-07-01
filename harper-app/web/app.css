@@ -523,6 +523,11 @@ a:hover {
   gap: 6px;
 }
 
+.source-triage-reasons .tag {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .source-triage-count-pill {
   display: inline-flex;
   gap: 6px;
