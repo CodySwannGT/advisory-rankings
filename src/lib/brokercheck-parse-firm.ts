@@ -85,14 +85,7 @@ interface ParsedFirm extends BrokerRecord {
  * @returns Parsed firm rows and summary metadata.
  */
 export function parseFirm(content: BrokerRecord): ParsedFirm {
-  if (!content)
-    return {
-      firm: {},
-      other_names: [],
-      successions: [],
-      owners: [],
-      summary: {},
-    };
+  if (!content) return emptyParsedFirm();
   const payload = content as BrokerCheckFirmPayload;
   const bi = payload.basicInformation ?? {};
   const firm = parsedFirmRow(payload);
@@ -135,6 +128,20 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
       branchCount: bi.firm_branches_count ?? payload.firm_branches_count ?? 0,
       stateRegistrationCount: regs.approvedStateRegistrationCount ?? 0,
     },
+  };
+}
+
+/**
+ * Builds an empty parsed-firm payload for missing BrokerCheck content.
+ * @returns Parsed firm rows with every collection initialized.
+ */
+function emptyParsedFirm(): ParsedFirm {
+  return {
+    firm: {},
+    other_names: [],
+    successions: [],
+    owners: [],
+    summary: {},
   };
 }
 

@@ -106,9 +106,7 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         onClick: () => {
           location.href = "/source-triage";
         },
-        attrs: {
-          type: "button",
-        },
+        attrs: { type: "button" },
       })
     ),
   });

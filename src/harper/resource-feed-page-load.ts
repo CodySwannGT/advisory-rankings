@@ -214,16 +214,16 @@ const loadMentionedEntities = async (
   mentions: MentionTables,
   events: EventRows
 ): Promise<MentionedEntities> => {
-  const advisorIds = distinct([
+  const aIds = distinct([
     ...mentions.mAdv.map(m => m.advisorId),
     ...events.transitions.map(t => t.subjectAdvisorId),
     ...events.disclosures.map(d => d.advisorId),
   ]);
-  const teamIds = distinct([
+  const tIds = distinct([
     ...mentions.mTeam.map(m => m.teamId),
     ...events.transitions.map(t => t.subjectTeamId),
   ]);
-  const earlyFirmIds = distinct([
+  const fIds = distinct([
     ...mentions.mFirm.map(m => m.firmId),
     ...events.transitions.flatMap(t => [
       t.fromFirmId,
@@ -231,32 +231,30 @@ const loadMentionedEntities = async (
       t.subjectFirmId,
     ]),
   ]);
-  const disclosureIds = events.disclosures.map(d => d.id);
+  const dIds = events.disclosures.map(d => d.id);
   const [advisors, teams, earlyFirms, employments, teamSnaps, sanctions] =
     await Promise.all([
-      rowsByIds<AdvisorRow>(tables.Advisor, advisorIds),
-      rowsByIds<TeamRow>(tables.Team, teamIds),
-      rowsByIds<FirmRow>(tables.Firm, earlyFirmIds),
+      rowsByIds<AdvisorRow>(tables.Advisor, aIds),
+      rowsByIds<TeamRow>(tables.Team, tIds),
+      rowsByIds<FirmRow>(tables.Firm, fIds),
       rowsByIndexed<EmploymentHistoryRow>(
         tables.EmploymentHistory,
         "advisorId",
-        advisorIds
+        aIds
       ),
       rowsByIndexed<TeamMetricSnapshotRow>(
         tables.TeamMetricSnapshot,
         "teamId",
-        teamIds
+        tIds
       ),
-      rowsByIndexed<SanctionRow>(
-        tables.Sanction,
-        "disclosureId",
-        disclosureIds
-      ),
+      rowsByIndexed<SanctionRow>(tables.Sanction, "disclosureId", dIds),
     ]);
-  const extraFirms = await loadExtraFirms(earlyFirms, employments, teams);
   return {
     advisors,
-    firms: [...earlyFirms, ...extraFirms],
+    firms: [
+      ...earlyFirms,
+      ...(await loadExtraFirms(earlyFirms, employments, teams)),
+    ],
     teams,
     employments,
     teamSnaps,

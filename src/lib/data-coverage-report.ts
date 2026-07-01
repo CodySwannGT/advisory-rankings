@@ -120,14 +120,22 @@ const CORE_FIELDS = {
   Article: ["headline", "url", "publishedDate", "category"],
 } as const;
 
+/** Builds a data coverage report from a Harper SQL query function. */
+interface DataCoverageReporter {
+  /**
+   * Build the report.
+   * @param query SQL reader for local operations or Fabric proxy operations.
+   * @returns Aggregated data coverage report.
+   */
+  (query: CoverageQuery): Promise<CoverageReport>;
+}
+
 /**
  * Build a data coverage report from a Harper SQL query function.
  * @param query SQL reader for local operations or Fabric proxy operations.
  * @returns Aggregated data coverage report.
  */
-export async function buildDataCoverageReport(
-  query: CoverageQuery
-): Promise<CoverageReport> {
+export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const counts = await tableCounts(query);
   const sources = await safeRows<GroupCountRow>(query, sourceCountSql());
   const categories = await safeRows<GroupCountRow>(query, articleCategorySql());
@@ -177,7 +185,7 @@ export async function buildDataCoverageReport(
       ...firmSourceChecks.warnings,
     ],
   };
-}
+};
 
 /**
  * Summarizes latest-date query results for the coverage report.

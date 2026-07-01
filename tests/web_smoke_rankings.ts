@@ -455,16 +455,25 @@ function loadedRankingsChecks(loaded, sortChange) {
       "rankings: placeholder entities are hidden",
       loaded.placeholderNames.join(", ")
     ),
-    check(
-      Boolean(loaded.profileHref),
-      "rankings: resolved row links to profile"
-    ),
+    profileLinkCheck(loaded),
     check(
       loaded.tableLayout.isContained,
       "rankings: desktop table stays inside the content column",
       JSON.stringify(loaded.tableLayout)
     ),
   ];
+}
+
+/**
+ * Converts profile-link facts into a smoke check.
+ * @param loaded - Loaded rankings facts.
+ * @returns Profile-link check.
+ */
+function profileLinkCheck(loaded) {
+  return check(
+    Boolean(loaded.profileHref),
+    "rankings: resolved row links to profile"
+  );
 }
 
 /**

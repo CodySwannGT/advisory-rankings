@@ -26,12 +26,12 @@ import {
   transitionEventCard,
 } from "./advisor-compare-card.js";
 import {
-  DetailNotFoundCard,
   PartialFailureCard,
   renderDetailLoading,
   renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
+import { renderAdvisorNotFound } from "./advisor-not-found.js";
 import {
   careerSection,
   designationsSection,
@@ -152,14 +152,7 @@ function render(
   showAnalystDetails: boolean
 ): void {
   if (isErrorPayload(d)) {
-    center.appendChild(
-      DetailNotFoundCard({
-        title: "Advisor not found",
-        id: d.id,
-        actionLabel: "Back to Advisors",
-        href: "/advisors",
-      })
-    );
+    renderAdvisorNotFound(center, d.id);
     return;
   }
   const a = d.advisor;
@@ -180,9 +173,11 @@ function render(
     }),
     ...advisorCenterSections(d, mobileEvidenceRoot),
   ]);
-  right.appendChild(identityCard(d.advisor));
-  right.appendChild(desktopEvidenceRoot);
-  right.appendChild(publicReadinessCard(d));
+  right.append(
+    identityCard(d.advisor),
+    desktopEvidenceRoot,
+    publicReadinessCard(d)
+  );
   mountResponsiveEvidenceSections({
     desktopRoot: desktopEvidenceRoot,
     mobileRoot: mobileEvidenceRoot,
