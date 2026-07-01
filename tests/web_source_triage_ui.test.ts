@@ -10,10 +10,16 @@ import {
 } from "./fixtures/watchlist-ui-harness.js";
 
 const SOURCE_TRIAGE_PATH = "/source-triage";
+const SOURCE_TRIAGE_ROW_SELECTOR = ".source-triage-row";
+const ORIGINAL_SOURCE_LABEL = "Original source";
 const NO_EVENT_REASON = "no-event-cards";
 const NO_EVENT_LABEL = "No event cards";
 const NO_BODY_REASON = "no-body-text";
 const MARKET_BRIEF_TITLE = "Market brief needs review";
+const LONG_ROW_TITLE =
+  "MarketBriefNeedsReviewWithoutNaturalBreaksForSourceTriageOverflowCoverage";
+const LONG_SOURCE_URL =
+  "https://source-triage-long-domain-for-overflow-coverage.example.com/articles/market-brief-needs-review-without-natural-breaks";
 
 describe("source article triage route", () => {
   let browser: Browser;
@@ -55,7 +61,7 @@ describe("source article triage route", () => {
         .waitFor({ timeout: QUICK_TIMEOUT });
       expect(await selectedValue(page, "category")).toBe("unknown");
       expect(await selectedValue(page, "reason")).toBe(NO_EVENT_REASON);
-      const firstRow = page.locator(".source-triage-row").first();
+      const firstRow = page.locator(SOURCE_TRIAGE_ROW_SELECTOR).first();
       await firstRow.getByText(NO_EVENT_LABEL).waitFor({
         timeout: QUICK_TIMEOUT,
       });
@@ -76,12 +82,12 @@ describe("source article triage route", () => {
       ).toBe("/articles/market-brief-article-1");
       expect(
         await page
-          .getByRole("link", { name: "Original source" })
+          .getByRole("link", { name: ORIGINAL_SOURCE_LABEL })
           .first()
           .getAttribute("href")
       ).toBe("https://www.advisorhub.com/market-brief");
       expect(
-        await page.getByRole("link", { name: "Original source" }).count()
+        await page.getByRole("link", { name: ORIGINAL_SOURCE_LABEL }).count()
       ).toBe(1);
       await Promise.all([
         page.waitForURL(`${baseUrl}${SOURCE_TRIAGE_PATH}`),
@@ -179,6 +185,43 @@ describe("source article triage route", () => {
       expect(await hasSourceTriageRowOverflow(page)).toBe(false);
     } finally {
       await page.close();
+    }
+  });
+
+  it("wraps long source row text without clipping at common breakpoints", async () => {
+    const viewports = [
+      { width: 1280, height: 900 },
+      { width: 820, height: 1180 },
+      { width: 390, height: 844 },
+    ];
+
+    for (const viewport of viewports) {
+      const page = await browser.newPage({ viewport });
+      try {
+        await routeAuth(page, false);
+        await routeTriage(page, triagePayloadWithLongText());
+
+        await page.goto(`${baseUrl}${SOURCE_TRIAGE_PATH}`, {
+          waitUntil: "domcontentloaded",
+        });
+
+        const row = page.locator(SOURCE_TRIAGE_ROW_SELECTOR).first();
+        await row
+          .getByRole("link", { name: LONG_ROW_TITLE })
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        await row
+          .getByText("ExtremelyLongReasonLabelWithoutWhitespaceToForceWrapping")
+          .waitFor({ timeout: QUICK_TIMEOUT });
+        expect(
+          await row
+            .getByRole("link", { name: ORIGINAL_SOURCE_LABEL })
+            .getAttribute("href")
+        ).toBe(LONG_SOURCE_URL);
+        expect(await hasHorizontalOverflow(page)).toBe(false);
+        expect(await hasSourceTriageRowOverflow(page)).toBe(false);
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -325,6 +368,34 @@ function triagePayload(): Readonly<Record<string, unknown>> {
     ],
     nextCursor: null,
     hasMore: false,
+  };
+}
+
+function triagePayloadWithLongText(): Readonly<Record<string, unknown>> {
+  const payload = triagePayload() as Readonly<Record<string, unknown>> & {
+    readonly items: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  };
+  return {
+    ...payload,
+    items: [
+      {
+        ...payload.items[0],
+        headline: LONG_ROW_TITLE,
+        sourceUrl: LONG_SOURCE_URL,
+        category: "unknown",
+        reasons: [
+          {
+            token: NO_EVENT_REASON,
+            label: "ExtremelyLongReasonLabelWithoutWhitespaceToForceWrapping",
+          },
+          {
+            token: NO_BODY_REASON,
+            label: "AnotherLongReasonLabelWithoutWhitespaceForTheTagRail",
+          },
+        ],
+        reasonTokens: [NO_EVENT_REASON, NO_BODY_REASON],
+      },
+    ],
   };
 }
 
