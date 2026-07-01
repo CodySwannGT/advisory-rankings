@@ -89,28 +89,27 @@ function memberItems(
   currentMembers: readonly TeamMemberRow[],
   pastMembers: readonly TeamMemberRow[]
 ): readonly ContinuityItem[] {
-  const currentRosterItems: readonly ContinuityItem[] = currentMembers.length
-    ? [
-        {
-          kind: "Roster",
-          title: `Current roster: ${summarizeMembers(currentMembers)}`,
-          body: `${currentMembers.length.toLocaleString()} public current member row${currentMembers.length === 1 ? "" : "s"} support this team roster.`,
-          date: earliestMemberStart(currentMembers),
-          href: memberHref(currentMembers[0]),
-          order: 10,
-          provenance: [
-            "Date note: earliest available member start date; roster may predate loaded records.",
-            "Source: public team profile current member rows.",
-            "Evidence: first public advisor profile in the loaded roster.",
-            PUBLIC_TIMELINE_PRIVACY,
-          ],
-          trust:
-            "Built from loaded public roster records; open details for dates and evidence.",
-        },
-      ]
-    : [];
   return [
-    ...currentRosterItems,
+    ...(currentMembers.length
+      ? [
+          {
+            kind: "Roster",
+            title: `Current roster: ${summarizeMembers(currentMembers)}`,
+            body: `${currentMembers.length.toLocaleString()} public current member row${currentMembers.length === 1 ? "" : "s"} support this team roster.`,
+            date: earliestMemberStart(currentMembers),
+            href: memberHref(currentMembers[0]),
+            order: 10,
+            provenance: [
+              "Date note: earliest available member start date; roster may predate loaded records.",
+              "Source: public team profile current member rows.",
+              "Evidence: first public advisor profile in the loaded roster.",
+              PUBLIC_TIMELINE_PRIVACY,
+            ],
+            trust:
+              "Built from loaded public roster records; open details for dates and evidence.",
+          },
+        ]
+      : []),
     ...pastMembers.map(member => ({
       kind: "Roster change",
       title: `${member.advisor.name} listed as a past member`,

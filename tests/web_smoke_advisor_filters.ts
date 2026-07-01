@@ -66,9 +66,7 @@ export async function smokeAdvisorDirectoryFilters(
   // keeps the firm+careerStatus assertion satisfiable against whatever data is
   // deployed.
   const firm = await discoverFilterableFirm(page);
-  const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(
-    firm
-  )}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown`;
+  const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(firm)}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown`;
 
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });

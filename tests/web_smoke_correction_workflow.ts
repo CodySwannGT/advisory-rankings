@@ -99,21 +99,14 @@ async function runAuthenticatedCorrectionWorkflow(
   const proposedValue = `QA Reviewed Advisor ${stamp}`;
   const submitterNote = `${SUBMITTER_NOTE_PREFIX} ${stamp}`;
   const reviewerNote = `${REVIEWER_NOTE_PREFIX} ${stamp}`;
+  const viewport = { width: 1280, height: 900 };
   const submitterContext = await newContext(
     browser,
-    { width: 1280, height: 900 },
+    viewport,
     extraHTTPHeaders
   );
-  const analystContext = await newContext(
-    browser,
-    { width: 1280, height: 900 },
-    extraHTTPHeaders
-  );
-  const publicContext = await newContext(
-    browser,
-    { width: 1280, height: 900 },
-    undefined
-  );
+  const analystContext = await newContext(browser, viewport, extraHTTPHeaders);
+  const publicContext = await newContext(browser, viewport, undefined);
   const contexts = [submitterContext, analystContext, publicContext] as const;
 
   const submitterPage = await submitterContext.newPage();
