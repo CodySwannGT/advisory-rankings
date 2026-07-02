@@ -166,6 +166,18 @@ describe("BrokerCheck parser", () => {
     expect(parsed.summary.regulatoryDisclosureCount).toBe(184);
     expect(parsed.summary.arbitrationCount).toBe(303);
   });
+
+  it("initializes every firm collection when BrokerCheck returns no firm payload", () => {
+    const parsed = parseFirm(null as never);
+
+    expect(parsed).toStrictEqual({
+      firm: {},
+      other_names: [],
+      owners: [],
+      successions: [],
+      summary: {},
+    });
+  });
 });
 
 describe("BrokerCheck loader", () => {
