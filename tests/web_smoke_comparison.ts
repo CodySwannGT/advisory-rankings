@@ -66,20 +66,11 @@ export async function smokeComparison(
   await shot(page, DESKTOP_SHOT);
 
   const desktop = await comparisonMetrics(page);
-  const mobileContext = await newContext(
+  const mobileChecks = await captureMobileComparison(
     browser,
-    { width: 320, height: 900 },
-    extraHTTPHeaders
+    extraHTTPHeaders,
+    path
   );
-  const mobilePage = await mobileContext.newPage();
-  await smokeGoto(mobilePage, `${BASE}${path}`);
-  await smokeWaitForSelector(
-    mobilePage,
-    COMPARISON_TABLE_SELECTOR,
-    QUICK_UI_TIMEOUT
-  );
-  await shot(mobilePage, MOBILE_SHOT);
-  const mobile = await comparisonMetrics(mobilePage);
 
   return [
     check(
@@ -102,8 +93,39 @@ export async function smokeComparison(
       "compare: desktop renders BrokerCheck attribution",
       `attributions ${desktop.brokerCheckAttributionCount}`
     ),
-    ...(await closeWithChecks(mobileContext, mobileComparisonChecks(mobile))),
+    ...mobileChecks,
   ];
+}
+
+/**
+ * Captures the mobile comparison route and returns its smoke assertions.
+ * @param browser - Browser used to create a mobile context.
+ * @param extraHTTPHeaders - Optional auth headers for deployed checks.
+ * @param path - Compare route path selected from live advisor ids.
+ * @returns Mobile comparison checks after closing the context.
+ */
+async function captureMobileComparison(
+  browser: Browser,
+  extraHTTPHeaders: Record<string, string> | undefined,
+  path: string
+): Promise<readonly Check[]> {
+  const mobileContext = await newContext(
+    browser,
+    { width: 320, height: 900 },
+    extraHTTPHeaders
+  );
+  const mobilePage = await mobileContext.newPage();
+  await smokeGoto(mobilePage, `${BASE}${path}`);
+  await smokeWaitForSelector(
+    mobilePage,
+    COMPARISON_TABLE_SELECTOR,
+    QUICK_UI_TIMEOUT
+  );
+  await shot(mobilePage, MOBILE_SHOT);
+  return await closeWithChecks(
+    mobileContext,
+    mobileComparisonChecks(await comparisonMetrics(mobilePage))
+  );
 }
 
 /**

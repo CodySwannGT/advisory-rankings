@@ -219,6 +219,34 @@ function teamDirectoryFilterChecks(
   clearFacts: TeamClearFacts
 ): readonly Check[] {
   return [
+    ...teamFilteredStateChecks(fixture, filtered),
+    ...teamLiveFilterChecks(liveFacts),
+    check(
+      /^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
+      "teams filters: first row links to canonical team profile",
+      filtered.firstHref
+    ),
+    check(
+      !layout.wide390,
+      "teams filters: 390px layout has no horizontal overflow"
+    ),
+    check(
+      !layout.wide320,
+      "teams filters: 320px layout has no horizontal overflow"
+    ),
+    check(
+      layout.emptyControlsAvailable,
+      "teams filters: empty state keeps controls available"
+    ),
+    ...teamClearChecks(clearFacts),
+  ];
+}
+
+function teamFilteredStateChecks(
+  fixture: TeamFixture,
+  filtered: FilteredState
+): readonly Check[] {
+  return [
     check(
       !fixture.currentFirmName ||
         filtered.firmValue === fixture.currentFirmName,
@@ -242,25 +270,6 @@ function teamDirectoryFilterChecks(
       filtered.rawMetricsHidden,
       "teams filters: developer metrics are hidden"
     ),
-    ...teamLiveFilterChecks(liveFacts),
-    check(
-      /^\/teams\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(filtered.firstHref),
-      "teams filters: first row links to canonical team profile",
-      filtered.firstHref
-    ),
-    check(
-      !layout.wide390,
-      "teams filters: 390px layout has no horizontal overflow"
-    ),
-    check(
-      !layout.wide320,
-      "teams filters: 320px layout has no horizontal overflow"
-    ),
-    check(
-      layout.emptyControlsAvailable,
-      "teams filters: empty state keeps controls available"
-    ),
-    ...teamClearChecks(clearFacts),
   ];
 }
 

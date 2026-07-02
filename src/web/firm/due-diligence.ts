@@ -31,6 +31,12 @@ import {
   rosterFootprintCard,
 } from "./modules.js";
 
+const DUE_DILIGENCE_FILTER_OPTIONS = [
+  ["all", "All"],
+  [STATUS_LOADED, COPY_SOURCE_BACKED],
+  [STATUS_MISSING, COPY_NEEDS_DATA],
+] as const;
+
 /**
  * Builds the source-backed firm due-diligence summary.
  * @param diligence - Structured due-diligence modules from FirmProfile.
@@ -116,28 +122,23 @@ export function dueDiligenceFilters(
   grid: HTMLElement,
   emptyState: HTMLElement
 ): HTMLElement {
-  const buttons: readonly HTMLElement[] = (
-    [
-      ["all", "All"],
-      [STATUS_LOADED, COPY_SOURCE_BACKED],
-      [STATUS_MISSING, COPY_NEEDS_DATA],
-    ] as const
-  ).map(([filter, label]) =>
-    ButtonComponent({
-      variant: filter === "all" ? "primary" : "neutral",
-      children: label,
-      attrs: {
-        class: "firm-dd-filter",
-        "data-filter": filter,
-        "aria-pressed": filter === "all" ? "true" : "false",
-      },
-      onClick: (event: Event) =>
-        applyDueDiligenceFilter(
-          grid,
-          emptyState,
-          event.currentTarget as HTMLElement
-        ),
-    })
+  const buttons: readonly HTMLElement[] = DUE_DILIGENCE_FILTER_OPTIONS.map(
+    ([filter, label]) =>
+      ButtonComponent({
+        variant: filter === "all" ? "primary" : "neutral",
+        children: label,
+        attrs: {
+          class: "firm-dd-filter",
+          "data-filter": filter,
+          "aria-pressed": filter === "all" ? "true" : "false",
+        },
+        onClick: (event: Event) =>
+          applyDueDiligenceFilter(
+            grid,
+            emptyState,
+            event.currentTarget as HTMLElement
+          ),
+      })
   );
   const allButton = buttons[0];
   emptyState

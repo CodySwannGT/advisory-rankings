@@ -74,11 +74,10 @@ function readAdvisorFilterFactsInPage(
   const loaded = labels.find(label => label.textContent === "Showing");
   const totalValue = total?.nextElementSibling?.textContent ?? "";
   const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
-  const countFrom = (value: string) => {
-    const match = /\d+/.exec(value.replace(/,/g, ""));
-    return match ? Number(match[0]) : NaN;
-  };
+  const countFrom = (value: string) =>
+    Number(/\d+/.exec(value.replace(/,/g, ""))?.[0] ?? NaN);
   const rows = Array.from(document.querySelectorAll(rowSelector));
+  const firstRow = rows[0];
   return {
     accessibleLabels: expectedLabels.every(
       ([labelText, id, name]) =>
@@ -95,8 +94,8 @@ function readAdvisorFilterFactsInPage(
     freshness: valueOf("freshness"),
     firm: valueOf("firm"),
     firstHref:
-      rows[0]?.closest("a")?.getAttribute("href") ||
-      rows[0]?.querySelector("a")?.getAttribute("href") ||
+      firstRow?.closest("a")?.getAttribute("href") ||
+      firstRow?.querySelector("a")?.getAttribute("href") ||
       "",
     hasCrd: valueOf("hasCrd"),
     loaded: countFrom(loadedValue),

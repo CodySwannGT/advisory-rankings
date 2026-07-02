@@ -113,12 +113,11 @@ function memberItems(
     ...pastMembers.map(member => ({
       kind: "Roster change",
       title: `${member.advisor.name} listed as a past member`,
-      body: [
-        humanize(member.role ?? undefined) || "Past team member",
+      body: `${humanize(member.role ?? undefined) || "Past team member"}; ${
         member.endDate
           ? "departure date is loaded"
-          : "departure date is not loaded",
-      ].join("; "),
+          : "departure date is not loaded"
+      }`,
       date: member.endDate ?? member.startDate,
       href: memberHref(member),
       order: 20,

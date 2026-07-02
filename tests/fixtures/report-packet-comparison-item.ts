@@ -44,12 +44,7 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
   const firmName = `Firm ${index + 1}`;
   return {
     brokerCheck: { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT },
-    career: [
-      {
-        firm: { name: firmName },
-        roleTitle: "Managing director",
-      },
-    ],
+    career: [{ firm: { name: firmName }, roleTitle: "Managing director" }],
     rankings: [
       {
         entry: {
