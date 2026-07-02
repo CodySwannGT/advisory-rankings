@@ -73,23 +73,29 @@ export async function captureFeedSignalModeEvidence(
       "[EVIDENCE: feed-signal-mode] all mode renders at least one row",
       String(allObservation.cardCount)
     ),
-    ...eventObservations.flatMap((observation): readonly Check[] => [
-      check(
-        observation.cardCount >= 1,
-        `[EVIDENCE: feed-signal-mode] ${observation.mode.label} mode renders at least one row`,
-        `${observation.feedRequestKey} | rows=${observation.cardCount}`
-      ),
-      check(
-        observation.allRowsSatisfyMode,
-        `[EVIDENCE: feed-signal-mode] ${observation.mode.label} rows all carry expected event card`,
-        observation.mode.requiredEventSelector
-      ),
-      check(
-        observation.summary.length > 0,
-        `[EVIDENCE: feed-signal-mode] ${observation.mode.label} surface shows summary copy`,
-        observation.summary
-      ),
-    ]),
+    ...eventObservations.flatMap(feedSignalModeChecks),
+  ];
+}
+
+function feedSignalModeChecks(
+  observation: FeedSignalModeObservation
+): readonly Check[] {
+  return [
+    check(
+      observation.cardCount >= 1,
+      `[EVIDENCE: feed-signal-mode] ${observation.mode.label} mode renders at least one row`,
+      `${observation.feedRequestKey} | rows=${observation.cardCount}`
+    ),
+    check(
+      observation.allRowsSatisfyMode,
+      `[EVIDENCE: feed-signal-mode] ${observation.mode.label} rows all carry expected event card`,
+      observation.mode.requiredEventSelector
+    ),
+    check(
+      observation.summary.length > 0,
+      `[EVIDENCE: feed-signal-mode] ${observation.mode.label} surface shows summary copy`,
+      observation.summary
+    ),
   ];
 }
 

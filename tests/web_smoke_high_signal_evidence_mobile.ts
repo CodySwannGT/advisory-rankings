@@ -105,17 +105,9 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
     .locator(SEARCH_RESULT_ROWS)
     .first()
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const responsePromise = page.waitForResponse(
-    response => {
-      const url = new URL(response.url());
-      return (
-        url.pathname === "/Search" &&
-        url.searchParams.get("q") === "wells" &&
-        url.searchParams.get("kind") === "firm"
-      );
-    },
-    { timeout: DEPLOYED_DATA_TIMEOUT }
-  );
+  const responsePromise = page.waitForResponse(isWellsFirmSearchResponse, {
+    timeout: DEPLOYED_DATA_TIMEOUT,
+  });
   await page.getByRole("button", { name: "Firms" }).click();
   const response = await responsePromise;
   await page
@@ -149,4 +141,13 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
       visibleKinds.join(",")
     ),
   ];
+}
+
+function isWellsFirmSearchResponse(response: { url(): string }): boolean {
+  const url = new URL(response.url());
+  return (
+    url.pathname === "/Search" &&
+    url.searchParams.get("q") === "wells" &&
+    url.searchParams.get("kind") === "firm"
+  );
 }

@@ -104,13 +104,11 @@ function limitationItems(
       ? null
       : "No high-confidence source-backed facts are available; candidate extraction may be incomplete.",
   ].filter((item): item is string => Boolean(item));
-  return gaps.length
-    ? [
-        ...gaps,
-        "Public boundary: excludes watchlists, ratings, correction internals, analyst notes, and raw authenticated table data.",
-      ]
-    : gaps;
+  return gaps.length ? [...gaps, PUBLIC_BOUNDARY_LIMITATION] : gaps;
 }
+
+const PUBLIC_BOUNDARY_LIMITATION =
+  "Public boundary: excludes watchlists, ratings, correction internals, analyst notes, and raw authenticated table data.";
 
 /**
  * Describes missing article body text.

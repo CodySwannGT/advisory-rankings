@@ -144,12 +144,7 @@ export function rankingEntries(
       firmText: row.firmText || firm?.name || null,
       location,
       scores: scorePayload(row),
-      metrics: {
-        aum: row.aum ?? null,
-        productionT12: row.productionT12 ?? null,
-        householdCount: row.householdCount ?? null,
-        teamSize: row.teamSize ?? null,
-      },
+      metrics: rankingMetrics(row),
       source: {
         url: row.sourceUrl || ranking?.methodologyUrl || null,
         label: row.sourceLabel || ranking?.name || "Ranking source",
@@ -174,6 +169,20 @@ export function rankingEntries(
       },
     };
   });
+}
+
+/**
+ * Extracts ranking scale metrics from a stored entry row.
+ * @param row Source RankingEntry row.
+ * @returns Numeric ranking metrics with nulls for absent values.
+ */
+function rankingMetrics(row: RankingEntryRow): RankingMetrics {
+  return {
+    aum: row.aum ?? null,
+    productionT12: row.productionT12 ?? null,
+    householdCount: row.householdCount ?? null,
+    teamSize: row.teamSize ?? null,
+  };
 }
 
 /**
