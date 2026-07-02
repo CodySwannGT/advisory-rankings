@@ -36,5 +36,15 @@
     "branches": {
       "production": "main"
     }
+  },
+  "exploration": {
+    "default": "production",
+    "environments": {
+      "production": {
+        "url": "https://advisory-rankings-de.cody-swann-org.harperfabric.com",
+        "mutation": "full",
+        "prodMutationAck": "Single-environment HarperDB service — production is the only deployed environment; the owner has accepted end-user exploration, including create/edit/delete against the live API/MCP surface, as there is no separate dev/staging to exercise instead."
+      }
+    }
   }
 }
