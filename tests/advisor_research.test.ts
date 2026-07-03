@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildResearchCheck,
   selectDueAdvisors,
@@ -92,5 +92,30 @@ describe("advisor research queue", () => {
         checkedAt: today,
       }).id
     );
+  });
+
+  it("defaults research check dates to the current day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-22T23:30:00Z"));
+
+    try {
+      const row = buildResearchCheck({
+        advisorId: "advisor-2",
+        sourceType: "web_research",
+        status: "success",
+      });
+
+      expect(row.checkedAt).toBe("2026-05-22");
+      expect(row.id).toBe(
+        buildResearchCheck({
+          advisorId: "advisor-2",
+          sourceType: "web_research",
+          status: "failed",
+          checkedAt: "2026-05-22",
+        }).id
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
