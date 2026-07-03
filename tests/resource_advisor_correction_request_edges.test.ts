@@ -13,6 +13,7 @@ interface FakeTable {
 
 interface TestResource {
   getCurrentUser?: () => unknown;
+  get: (...args: readonly unknown[]) => Promise<unknown>;
   post: (...args: readonly unknown[]) => Promise<{
     readonly request: AdvisorCorrectionRequestRow;
   }>;
@@ -44,6 +45,61 @@ beforeEach(() => {
 });
 
 describe("AdvisorCorrectionRequest edge paths", () => {
+  it("returns an empty public queue envelope for anonymous list reads", async () => {
+    const resource = await correctionRequestResource(null);
+
+    await expect(resource.get()).resolves.toMatchObject({
+      authenticated: false,
+      authorized: false,
+      summary: { pending: 0, oldestAgeDays: null },
+      items: [],
+    });
+  });
+
+  it("requires sign-in before anonymous callers can read a request by id", async () => {
+    const resource = await correctionRequestResource(null);
+
+    await expect(resource.get(routeTarget(REQUEST_ID))).rejects.toMatchObject({
+      message: "Sign in required",
+      status: 401,
+    });
+  });
+
+  it("hides the analyst queue from signed-in non-analysts", async () => {
+    const resource = await correctionRequestResource({ id: "submitter" });
+
+    await expect(resource.get()).resolves.toMatchObject({
+      authenticated: true,
+      authorized: false,
+      summary: { pending: 0, oldestAgeDays: null },
+      items: [],
+    });
+  });
+
+  it("lets submitters read their own request but denies unrelated users", async () => {
+    const submitterResource = await correctionRequestResource({
+      id: "submitter",
+    });
+    const otherResource = await correctionRequestResource({ id: "other-user" });
+
+    await expect(
+      submitterResource.get(routeTarget(REQUEST_ID))
+    ).resolves.toMatchObject({
+      authenticated: true,
+      request: {
+        id: REQUEST_ID,
+        submitterId: "submitter",
+        status: "pending",
+      },
+    });
+    await expect(
+      otherResource.get(routeTarget(REQUEST_ID))
+    ).rejects.toMatchObject({
+      message: "Correction request access denied",
+      status: 403,
+    });
+  });
+
   it("rejects a review body that omits the correction request id", async () => {
     const resource = await correctionRequestResource({
       id: "reviewer",
