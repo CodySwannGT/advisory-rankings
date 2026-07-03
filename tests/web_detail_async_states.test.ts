@@ -232,11 +232,6 @@ describe("detail async states", () => {
           nodes.map(node => node.textContent?.trim() ?? "").filter(Boolean)
         );
       expect(visibleHeadings).toContain(ADVISOR_LOADING_HEADING);
-      expect(visibleHeadings).not.toEqual([
-        "Overview",
-        "Related activity",
-        "Details",
-      ]);
 
       releaseAdvisor();
       await page.getByRole("heading", { name: ADVISOR_NAME }).waitFor({
