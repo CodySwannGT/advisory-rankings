@@ -111,13 +111,7 @@ const filterCard = (
     "form",
     {
       class: "branches-filter-grid",
-      onSubmit: (event: Event) => {
-        event.preventDefault();
-        writeBranchFilters(
-          formBranchFilters(event.currentTarget as HTMLFormElement)
-        );
-        reload();
-      },
+      onSubmit: submitBranchFilters(reload),
     },
     field("Search", "q", filters.q, "Branch, market, address, or firm"),
     field("Firm", "firm", filters.firm, "Firm name or id"),
@@ -150,6 +144,16 @@ const filterCard = (
     body: form,
   });
 };
+
+const submitBranchFilters =
+  (reload: () => void) =>
+  (event: Event): void => {
+    event.preventDefault();
+    writeBranchFilters(
+      formBranchFilters(event.currentTarget as HTMLFormElement)
+    );
+    reload();
+  };
 
 const resultsCard = (
   state: BranchExplorerState,

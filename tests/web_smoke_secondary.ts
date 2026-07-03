@@ -230,25 +230,35 @@ export async function smokeWatchlists(
     .getByRole("heading", { name: LOGIN_ACCESS_HEADING })
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "06-watchlists-login-access-path");
-  const loginPath = new URL(page.url()).pathname;
-  const loginCopyVisible = await page.getByText(LOGIN_ACCESS_COPY).isVisible();
-  const loginRecoveryVisible = await page
-    .getByText(LOGIN_RECOVERY_COPY)
-    .isVisible();
+  const loginEvidence = await readLoginAccessEvidence(page);
 
   return await closeWithChecks(
     context,
-    watchlistGateChecks({
-      loginCopyVisible,
-      loginPath,
-      loginRecoveryVisible,
-      overflow,
-      signInGuidanceVisible,
-      signInHref,
-      watchlistsHeadingVisible,
-      watchlistsPath,
-    })
+    watchlistGateChecks(
+      watchlistGateEvidence({
+        ...loginEvidence,
+        overflow,
+        signInGuidanceVisible,
+        signInHref,
+        watchlistsHeadingVisible,
+        watchlistsPath,
+      })
+    )
   );
+}
+
+async function readLoginAccessEvidence(page: Page) {
+  return {
+    loginCopyVisible: await page.getByText(LOGIN_ACCESS_COPY).isVisible(),
+    loginPath: new URL(page.url()).pathname,
+    loginRecoveryVisible: await page.getByText(LOGIN_RECOVERY_COPY).isVisible(),
+  };
+}
+
+function watchlistGateEvidence(
+  evidence: WatchlistGateEvidence
+): WatchlistGateEvidence {
+  return evidence;
 }
 
 function watchlistGateChecks(facts: WatchlistGateEvidence): readonly Check[] {

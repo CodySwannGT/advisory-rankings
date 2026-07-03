@@ -245,18 +245,17 @@ async function mobileDrawerChecks(facts: {
         facts.escapeResult.reopened.expanded === "true",
       "mobile: drawer reopens after Escape dismissal"
     ),
-    check(
-      EXPECTED_DRAWER_LABELS.every(label =>
-        facts.drawerLinkLabels.includes(label)
-      ),
-      "mobile: drawer links visible at 390px",
-      facts.drawerLinkLabels.join(", ")
-    ),
-    check(
-      facts.page.url().endsWith("/firms"),
-      "mobile: drawer link navigates to Firms"
-    ),
+    drawerLabelsCheck(facts.drawerLinkLabels),
+    check(facts.page.url().endsWith("/firms"), "mobile: drawer link navigates"),
   ];
+}
+
+function drawerLabelsCheck(drawerLinkLabels: readonly string[]): Check {
+  return check(
+    EXPECTED_DRAWER_LABELS.every(label => drawerLinkLabels.includes(label)),
+    "mobile: drawer links visible at 390px",
+    drawerLinkLabels.join(", ")
+  );
 }
 
 function mobileOverflowCheck(

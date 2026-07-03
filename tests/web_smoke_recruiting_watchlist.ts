@@ -229,27 +229,8 @@ async function smokeWatchlistMobileViewport(
 async function readWatchlistMobileMetrics(
   page: Page
 ): Promise<WatchlistMobileMetrics> {
-  const metricWidths = await page
-    .locator(WATCHLIST_METRIC_SELECTOR)
-    .evaluateAll(metrics =>
-      metrics.map(metric => metric.getBoundingClientRect().width)
-    );
-  const controlRows = await page
-    .locator(".watchlist-firm-row")
-    .evaluateAll(rows =>
-      rows.map(row => ({
-        boxes: Array.from(row.children).map(child => {
-          const box = child.getBoundingClientRect();
-          return {
-            bottom: box.bottom,
-            left: box.left,
-            right: box.right,
-            top: box.top,
-          };
-        }),
-        overflow: row.scrollWidth - row.clientWidth,
-      }))
-    );
+  const metricWidths = await readWatchlistMetricWidths(page);
+  const controlRows = await readWatchlistControlRows(page);
   const firmGuidanceVisible = await readFirmGuidanceVisible(page);
   const itemCount = await page.locator(WATCHLIST_ITEM_SELECTOR).count();
   const pageOverflow = await page.evaluate(() =>
@@ -277,6 +258,35 @@ async function readWatchlistMobileMetrics(
     watchlistOverflow,
     zeroWidthMetricCount: metricWidths.filter(width => width < 1).length,
   };
+}
+
+async function readWatchlistMetricWidths(
+  page: Page
+): Promise<readonly number[]> {
+  return await page
+    .locator(WATCHLIST_METRIC_SELECTOR)
+    .evaluateAll(metrics =>
+      metrics.map(metric => metric.getBoundingClientRect().width)
+    );
+}
+
+async function readWatchlistControlRows(
+  page: Page
+): Promise<readonly WatchlistControlRow[]> {
+  return await page.locator(".watchlist-firm-row").evaluateAll(rows =>
+    rows.map(row => ({
+      boxes: Array.from(row.children).map(child => {
+        const box = child.getBoundingClientRect();
+        return {
+          bottom: box.bottom,
+          left: box.left,
+          right: box.right,
+          top: box.top,
+        };
+      }),
+      overflow: row.scrollWidth - row.clientWidth,
+    }))
+  );
 }
 
 /**

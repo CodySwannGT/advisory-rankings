@@ -103,13 +103,18 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
       ButtonC({
         variant: "neutral",
         children: "Clear",
-        onClick: () => {
-          location.href = "/source-triage";
-        },
+        onClick: clearSourceTriageFilters,
         attrs: { type: "button" },
       })
     ),
   });
+}
+
+/**
+ * Resets the triage filter form to its unfiltered route.
+ */
+function clearSourceTriageFilters(): void {
+  location.href = "/source-triage";
 }
 
 /**
