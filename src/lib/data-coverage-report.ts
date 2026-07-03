@@ -4,9 +4,9 @@ import {
 } from "./data-coverage-firm-source.js";
 import {
   detectUnextractedRecruiting,
-  unextractedRecruitingWarnings,
   type RecruitingGapEntry,
 } from "./data-coverage-recruiting-gap.js";
+import { coverageWarnings } from "./data-coverage-warnings.js";
 
 export type { RecruitingGapEntry } from "./data-coverage-recruiting-gap.js";
 
@@ -169,21 +169,20 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
     freshness: freshnessReport(articles, transitions, firmSourceChecks),
-    warnings: [
-      ...counts.warnings,
-      ...sources.warnings,
-      ...categories.warnings,
-      ...firmSources.warnings,
-      ...fields.warnings,
-      ...sparseAdvisors.warnings,
-      ...sparseFirms.warnings,
-      ...recruiting.warnings,
-      ...recruitingGap.warnings,
-      ...unextractedRecruitingWarnings(recruitingGap.rows),
-      ...articles.warnings,
-      ...transitions.warnings,
-      ...firmSourceChecks.warnings,
-    ],
+    warnings: coverageWarnings({
+      articles,
+      categories,
+      counts,
+      fields,
+      firmSourceChecks,
+      firmSources,
+      recruiting,
+      recruitingGap,
+      sources,
+      sparseAdvisors,
+      sparseFirms,
+      transitions,
+    }),
   };
 };
 

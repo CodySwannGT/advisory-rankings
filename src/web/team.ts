@@ -144,19 +144,38 @@ function render(
     return;
   }
   const t = d.team;
+  const rows = teamProfileRows(d);
+  const latest: MetricSnapshotView | undefined =
+    rows.metricSnapshots[rows.metricSnapshots.length - 1];
+  const currentFirm: CurrentFirmChip | null = asCurrentFirm(d.currentFirm);
+  canonicalizeEntityRoute("team", t);
+  appendSections(center, teamProfileSections(d, rows, currentFirm, latest));
+  appendTeamSidebar(right, t, currentFirm, latest);
+}
+
+/**
+ * Builds the ordered card stack for a team profile.
+ * @param d - TeamProfile payload returned by the TeamProfile resource.
+ * @param rows - Typed row collections used by the team cards.
+ * @param currentFirm - Current firm chip for sidebar/mobile details.
+ * @param latest - Latest team metric snapshot.
+ * @returns Profile card sections.
+ */
+function teamProfileSections(
+  d: TeamProfileResponse,
+  rows: ReturnType<typeof teamProfileRows>,
+  currentFirm: CurrentFirmChip | null,
+  latest: MetricSnapshotView | undefined
+): readonly (HTMLElement | null)[] {
   const {
     articles,
     currentMembers,
     metricSnapshots,
     pastMembers,
     transitions,
-  } = teamProfileRows(d);
-  const latest: MetricSnapshotView | undefined =
-    metricSnapshots[metricSnapshots.length - 1];
-  const currentFirm: CurrentFirmChip | null = asCurrentFirm(d.currentFirm);
-  canonicalizeEntityRoute("team", t);
-  appendSections(center, [
-    teamProfileHead(t, d, currentFirm, latest),
+  } = rows;
+  return [
+    teamProfileHead(d.team, d, currentFirm, latest),
     teamContinuityCard({
       currentMembers,
       pastMembers,
@@ -174,9 +193,8 @@ function render(
     PartialFailureCard("Metric history", d.metricSnapshots),
     coverageCard(articles),
     PartialFailureCard("Coverage", d.articles),
-    mobileTeamDetailsCard(t, currentFirm),
-  ]);
-  appendTeamSidebar(right, t, currentFirm, latest);
+    mobileTeamDetailsCard(d.team, currentFirm),
+  ];
 }
 
 /**

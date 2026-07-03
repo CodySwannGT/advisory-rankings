@@ -90,26 +90,7 @@ function memberItems(
   pastMembers: readonly TeamMemberRow[]
 ): readonly ContinuityItem[] {
   return [
-    ...(currentMembers.length
-      ? [
-          {
-            kind: "Roster",
-            title: `Current roster: ${summarizeMembers(currentMembers)}`,
-            body: `${currentMembers.length.toLocaleString()} public current member row${currentMembers.length === 1 ? "" : "s"} support this team roster.`,
-            date: earliestMemberStart(currentMembers),
-            href: memberHref(currentMembers[0]),
-            order: 10,
-            provenance: [
-              "Date note: earliest available member start date; roster may predate loaded records.",
-              "Source: public team profile current member rows.",
-              "Evidence: first public advisor profile in the loaded roster.",
-              PUBLIC_TIMELINE_PRIVACY,
-            ],
-            trust:
-              "Built from loaded public roster records; open details for dates and evidence.",
-          },
-        ]
-      : []),
+    ...currentRosterItem(currentMembers),
     ...pastMembers.map(member => ({
       kind: "Roster change",
       title: `${member.advisor.name} listed as a past member`,
@@ -134,6 +115,35 @@ function memberItems(
       trust:
         "Supported by public roster history; open details for date and evidence notes.",
     })),
+  ];
+}
+
+/**
+ * Builds the current-roster continuity item when current members are loaded.
+ * @param currentMembers - Public current team membership rows.
+ * @returns Zero or one continuity item.
+ */
+function currentRosterItem(
+  currentMembers: readonly TeamMemberRow[]
+): readonly ContinuityItem[] {
+  if (!currentMembers.length) return [];
+  return [
+    {
+      kind: "Roster",
+      title: `Current roster: ${summarizeMembers(currentMembers)}`,
+      body: `${currentMembers.length.toLocaleString()} public current member row${currentMembers.length === 1 ? "" : "s"} support this team roster.`,
+      date: earliestMemberStart(currentMembers),
+      href: memberHref(currentMembers[0]),
+      order: 10,
+      provenance: [
+        "Date note: earliest available member start date; roster may predate loaded records.",
+        "Source: public team profile current member rows.",
+        "Evidence: first public advisor profile in the loaded roster.",
+        PUBLIC_TIMELINE_PRIVACY,
+      ],
+      trust:
+        "Built from loaded public roster records; open details for dates and evidence.",
+    },
   ];
 }
 

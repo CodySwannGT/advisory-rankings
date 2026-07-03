@@ -100,8 +100,7 @@ export async function smokeAdvisorDirectoryFilters(
   await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile320 = await viewportOverflow(page);
   await shot(page, "06-advisors-filtered-mobile-320");
-  await page.setViewportSize({ width: 375, height: 812 });
-  const mobileSearch = await captureMobileAdvisorSearchState(page);
+  const mobileSearch = await captureMobileAdvisorSearchAt375(page);
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
@@ -115,6 +114,11 @@ export async function smokeAdvisorDirectoryFilters(
     mobileSearch,
     restoredFacts,
   });
+}
+
+async function captureMobileAdvisorSearchAt375(page: Page) {
+  await page.setViewportSize({ width: 375, height: 812 });
+  return await captureMobileAdvisorSearchState(page);
 }
 
 /**

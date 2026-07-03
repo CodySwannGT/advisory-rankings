@@ -110,8 +110,7 @@ async function waitForRankingsText(
 async function readLoadedRankings(page: Page) {
   const evidence = await page.evaluate(args => {
     const pageText = document.body.innerText;
-    const hasText = (label: string) =>
-      pageText.toLowerCase().includes(label.toLowerCase());
+    const pageTextLower = pageText.toLowerCase();
     return {
       browseCardTitles: [
         ...document.querySelectorAll<HTMLElement>(
@@ -134,14 +133,15 @@ async function readLoadedRankings(page: Page) {
         document.body.innerText.includes("Linked profiles") &&
         document.body.innerText.includes("Profiles to link") &&
         document.body.innerText.includes("Markets"),
-      hasResolved: hasText("Linked AdvisorBook profile"),
-      hasSourceBacked: hasText("Verified source"),
+      hasResolved: pageTextLower.includes("linked advisorbook profile"),
+      hasSourceBacked: pageTextLower.includes("verified source"),
       hasTopFirmCountLabels:
         document.body.innerText.includes("Wells Fargo Advisors") &&
         /\b\d+ rankings?\b/.test(document.body.innerText) &&
         document.body.innerText.includes("Matched AdvisorBook firm"),
       hasScoreSignal:
-        hasText("Missing score") || /\b\d{2,3}\.\d\b/.test(pageText),
+        pageTextLower.includes("missing score") ||
+        /\b\d{2,3}\.\d\b/.test(pageText),
       placeholderNames: args.placeholderNames.filter(name =>
         document.body.innerText.includes(name)
       ),
@@ -152,6 +152,12 @@ async function readLoadedRankings(page: Page) {
   }, RANKINGS_EVIDENCE_ARGS);
   return {
     ...evidence,
+    ...(await readRankingsEvidenceDetails(page)),
+  };
+}
+
+async function readRankingsEvidenceDetails(page: Page) {
+  return {
     ...(await readRankingsDateEvidence(page)),
     ...(await readRankingsControlEvidence(page)),
     ...(await readRankingsFacetEvidence(page)),

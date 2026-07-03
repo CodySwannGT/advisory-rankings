@@ -160,15 +160,30 @@ const buildSearchResponse = async (
       row.kind === "advisor"
         ? {
             ...row,
-            sub:
-              subtitleByAdvisor.get(row.id) ??
-              (advisorById.get(row.id)?.careerStatus || null),
+            sub: advisorSearchSubtitle(row.id, subtitleByAdvisor, advisorById),
           }
         : row
     ),
     counts,
   };
 };
+
+/**
+ * Resolves the display subtitle for a displayed advisor search row.
+ * @param id - Displayed advisor id.
+ * @param subtitleByAdvisor - Current-firm subtitles fetched for displayed rows.
+ * @param advisorById - Hydrated advisor fallback rows.
+ * @returns Current firm subtitle or career status fallback.
+ */
+function advisorSearchSubtitle(
+  id: string,
+  subtitleByAdvisor: ReadonlyMap<string, string>,
+  advisorById: ReadonlyMap<string, AdvisorRow>
+): string | null {
+  return (
+    subtitleByAdvisor.get(id) ?? (advisorById.get(id)?.careerStatus || null)
+  );
+}
 
 /**
  * Inputs to {@link resolveSearchAdvisorSubtitles}.

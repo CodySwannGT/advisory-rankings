@@ -290,19 +290,7 @@ function disclosureCard(): Readonly<Record<string, unknown>> {
  */
 function advisorProfile(id: string): unknown {
   return {
-    advisor: {
-      id,
-      legalName: ADVISOR_NAME,
-      preferredName: ADVISOR_NAME,
-      headshotUrl: null,
-      careerStatus: "active",
-      yearsExperience: 12,
-      finraCrd: "12345",
-      secIard: null,
-      industryStartDate: "2014-01-01",
-      birthYear: null,
-      gender: "undisclosed",
-    },
+    advisor: advisorProfileRow(id),
     displayName: ADVISOR_NAME,
     career: [
       {
@@ -337,6 +325,22 @@ function advisorProfile(id: string): unknown {
       derived: 1,
       total: 4,
     },
+  };
+}
+
+function advisorProfileRow(id: string): unknown {
+  return {
+    id,
+    legalName: ADVISOR_NAME,
+    preferredName: ADVISOR_NAME,
+    headshotUrl: null,
+    careerStatus: "active",
+    yearsExperience: 12,
+    finraCrd: "12345",
+    secIard: null,
+    industryStartDate: "2014-01-01",
+    birthYear: null,
+    gender: "undisclosed",
   };
 }
 

@@ -72,8 +72,6 @@ function readAdvisorFilterFactsInPage(
   const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
   const total = labels.find(label => label.textContent === "Matches");
   const loaded = labels.find(label => label.textContent === "Showing");
-  const totalValue = total?.nextElementSibling?.textContent ?? "";
-  const loadedValue = loaded?.nextElementSibling?.textContent ?? "";
   const countFrom = (value: string) =>
     Number(/\d+/.exec(value.replace(/,/g, ""))?.[0] ?? NaN);
   const rows = Array.from(document.querySelectorAll(rowSelector));
@@ -98,7 +96,7 @@ function readAdvisorFilterFactsInPage(
       firstRow?.querySelector("a")?.getAttribute("href") ||
       "",
     hasCrd: valueOf("hasCrd"),
-    loaded: countFrom(loadedValue),
+    loaded: countFrom(loaded?.nextElementSibling?.textContent ?? ""),
     profileSubstance: valueOf("profileSubstance"),
     rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
       label => !labels.some(item => item.textContent?.trim() === label)
@@ -107,6 +105,6 @@ function readAdvisorFilterFactsInPage(
     rowTexts: rows
       .slice(0, 5)
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
-    total: countFrom(totalValue),
+    total: countFrom(total?.nextElementSibling?.textContent ?? ""),
   };
 }

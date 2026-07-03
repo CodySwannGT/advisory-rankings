@@ -61,6 +61,12 @@ const rowsByIndexed = async <T>(
   return fetched.flat();
 };
 
+const indexedRowsForMentions = async <T>(
+  table: unknown,
+  attribute: string,
+  values: readonly string[]
+): Promise<readonly T[]> => rowsByIndexed<T>(table, attribute, values);
+
 /**
  * Loads firms that are referenced by hydrated advisor/team rows but were not
  * directly mentioned by the article join rows.
@@ -210,44 +216,39 @@ interface MentionedEntities {
   readonly sanctions: readonly SanctionRow[];
 }
 
+/** Entity ids discovered from article mentions and related event rows. */
+interface MentionedEntityIds {
+  readonly advisorIds: readonly string[];
+  readonly disclosureIds: readonly string[];
+  readonly firmIds: readonly string[];
+  readonly teamIds: readonly string[];
+}
+
 const loadMentionedEntities = async (
   mentions: MentionTables,
   events: EventRows
 ): Promise<MentionedEntities> => {
-  const aIds = distinct([
-    ...mentions.mAdv.map(m => m.advisorId),
-    ...events.transitions.map(t => t.subjectAdvisorId),
-    ...events.disclosures.map(d => d.advisorId),
-  ]);
-  const tIds = distinct([
-    ...mentions.mTeam.map(m => m.teamId),
-    ...events.transitions.map(t => t.subjectTeamId),
-  ]);
-  const fIds = distinct([
-    ...mentions.mFirm.map(m => m.firmId),
-    ...events.transitions.flatMap(t => [
-      t.fromFirmId,
-      t.toFirmId,
-      t.subjectFirmId,
-    ]),
-  ]);
-  const dIds = events.disclosures.map(d => d.id);
+  const ids = mentionedEntityIds(mentions, events);
   const [advisors, teams, earlyFirms, employments, teamSnaps, sanctions] =
     await Promise.all([
-      rowsByIds<AdvisorRow>(tables.Advisor, aIds),
-      rowsByIds<TeamRow>(tables.Team, tIds),
-      rowsByIds<FirmRow>(tables.Firm, fIds),
-      rowsByIndexed<EmploymentHistoryRow>(
+      rowsByIds<AdvisorRow>(tables.Advisor, ids.advisorIds),
+      rowsByIds<TeamRow>(tables.Team, ids.teamIds),
+      rowsByIds<FirmRow>(tables.Firm, ids.firmIds),
+      indexedRowsForMentions<EmploymentHistoryRow>(
         tables.EmploymentHistory,
         "advisorId",
-        aIds
+        ids.advisorIds
       ),
-      rowsByIndexed<TeamMetricSnapshotRow>(
+      indexedRowsForMentions<TeamMetricSnapshotRow>(
         tables.TeamMetricSnapshot,
         "teamId",
-        tIds
+        ids.teamIds
       ),
-      rowsByIndexed<SanctionRow>(tables.Sanction, "disclosureId", dIds),
+      indexedRowsForMentions<SanctionRow>(
+        tables.Sanction,
+        "disclosureId",
+        ids.disclosureIds
+      ),
     ]);
   return {
     advisors,
@@ -261,6 +262,30 @@ const loadMentionedEntities = async (
     sanctions,
   };
 };
+
+const mentionedEntityIds = (
+  mentions: MentionTables,
+  events: EventRows
+): MentionedEntityIds => ({
+  advisorIds: distinct([
+    ...mentions.mAdv.map(m => m.advisorId),
+    ...events.transitions.map(t => t.subjectAdvisorId),
+    ...events.disclosures.map(d => d.advisorId),
+  ]),
+  disclosureIds: events.disclosures.map(d => d.id),
+  firmIds: distinct([
+    ...mentions.mFirm.map(m => m.firmId),
+    ...events.transitions.flatMap(t => [
+      t.fromFirmId,
+      t.toFirmId,
+      t.subjectFirmId,
+    ]),
+  ]),
+  teamIds: distinct([
+    ...mentions.mTeam.map(m => m.teamId),
+    ...events.transitions.map(t => t.subjectTeamId),
+  ]),
+});
 
 /**
  *
