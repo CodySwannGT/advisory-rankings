@@ -17,6 +17,12 @@ const ARTICLE_FIXTURE_RESOURCE = `/ArticleView/${ARTICLE_FIXTURE_ID}`;
 const ARTICLE_FIXTURE_ROUTE = `**${ARTICLE_FIXTURE_RESOURCE}`;
 const ABOUT_THIS_ARTICLE = "About this article";
 const ADVISOR_NAME = "Avery Stone";
+const ADVISOR_FIXTURE_ID = "advisor-1";
+const ADVISOR_LOADING_HEADING = "Loading advisor profile";
+const ADVISOR_NOT_FOUND_TEXT = "Advisor not found";
+const MORGAN_BAUGHMAN_NAME = "Morgan Baughman";
+const MORGAN_BAUGHMAN_ID = "7f912b4b-f07a-5605-95c2-d04054ae5052";
+const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 const TEMPORARY_OUTAGE = "temporary outage";
 const TRY_AGAIN_TEXT = "Try again shortly.";
 const COULD_NOT_LOAD_ADVISOR = "Could not load advisor";
@@ -84,27 +90,158 @@ describe("detail async states", () => {
       await page.route("**/Me", async route => {
         await route.fulfill({ json: { authenticated: false } });
       });
-      await page.route("**/AdvisorProfile/advisor-1", async route => {
-        await advisorReleased;
-        await route.fulfill({ json: missingAdvisor("advisor-1") });
-      });
+      await page.route(
+        `**/AdvisorProfile/${ADVISOR_FIXTURE_ID}`,
+        async route => {
+          await advisorReleased;
+          await route.fulfill({ json: missingAdvisor(ADVISOR_FIXTURE_ID) });
+        }
+      );
 
-      await page.goto(`${baseUrl}/advisor.html?id=advisor-1`, {
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_FIXTURE_ID}`, {
         waitUntil: "domcontentloaded",
       });
 
-      await page.getByLabel("Loading advisor profile").waitFor({
+      await page.getByLabel(ADVISOR_LOADING_HEADING).waitFor({
         timeout: QUICK_TIMEOUT,
       });
       expect(await page.locator(".detail-loading-card").count()).toBe(4);
 
       releaseAdvisor();
-      await page.getByText("Advisor not found").waitFor({
+      await page.getByText(ADVISOR_NOT_FOUND_TEXT).waitFor({
         timeout: QUICK_TIMEOUT,
       });
       expect(
         await page.getByRole("button", { name: "Back to Advisors" }).isVisible()
       ).toBe(true);
+    } finally {
+      releaseAdvisor();
+      await page.close();
+    }
+  });
+
+  it("keeps advisor loading context readable on mobile", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+    let releaseAdvisor: () => void = () => {};
+    const advisorReleased = new Promise<void>(resolveRelease => {
+      releaseAdvisor = resolveRelease;
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route(
+        `**/AdvisorProfile/${ADVISOR_FIXTURE_ID}`,
+        async route => {
+          await advisorReleased;
+          await route.fulfill({ json: missingAdvisor(ADVISOR_FIXTURE_ID) });
+        }
+      );
+
+      await page.goto(`${baseUrl}/advisor.html?id=${ADVISOR_FIXTURE_ID}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", {
+          name: ADVISOR_LOADING_HEADING,
+        })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+
+      releaseAdvisor();
+      await page.getByText(ADVISOR_NOT_FOUND_TEXT).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    } finally {
+      releaseAdvisor();
+      await page.close();
+    }
+  });
+
+  it("shows advisor loading context immediately after global search navigation", async () => {
+    const page = await browser.newPage();
+    let releaseAdvisor: () => void = () => {};
+    const advisorReleased = new Promise<void>(resolveRelease => {
+      releaseAdvisor = resolveRelease;
+    });
+
+    try {
+      await page.route("**/Me", async route => {
+        await route.fulfill({ json: { authenticated: false } });
+      });
+      await page.route("**/Feed", async route => {
+        await route.fulfill({ json: { items: [] } });
+      });
+      await page.route("**/Search?q=morgan**", async route => {
+        await route.fulfill({
+          json: {
+            q: "morgan",
+            counts: { firms: 0, advisors: 1, teams: 0, total: 1 },
+            items: [
+              {
+                kind: "advisor",
+                id: MORGAN_BAUGHMAN_ID,
+                name: MORGAN_BAUGHMAN_NAME,
+                sub: "Advisor",
+              },
+            ],
+          },
+        });
+      });
+      await page.route("**/advisors/**", async route => {
+        await route.fulfill({
+          body: await readFile(join(WEB_ROOT, "advisor.html")),
+          contentType: HTML_CONTENT_TYPE,
+        });
+      });
+      await page.route(
+        `**/AdvisorProfile/${MORGAN_BAUGHMAN_ID}`,
+        async route => {
+          await advisorReleased;
+          await route.fulfill({
+            json: advisorEvidenceProfile(MORGAN_BAUGHMAN_ID),
+          });
+        }
+      );
+
+      await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+      await page
+        .getByRole("combobox", {
+          name: "Search advisors, firms, teams",
+        })
+        .fill("Morgan");
+      await page.locator("#global-search-results .gs-item").first().click();
+      await page.waitForURL(
+        url =>
+          url.pathname === `/advisors/morgan-baughman-${MORGAN_BAUGHMAN_ID}`,
+        { timeout: QUICK_TIMEOUT }
+      );
+
+      await page
+        .getByRole("heading", {
+          name: ADVISOR_LOADING_HEADING,
+        })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      const visibleHeadings = await page
+        .locator("h1,h2,h3")
+        .evaluateAll(nodes =>
+          nodes.map(node => node.textContent?.trim() ?? "").filter(Boolean)
+        );
+      expect(visibleHeadings).toContain(ADVISOR_LOADING_HEADING);
+      expect(visibleHeadings).not.toEqual([
+        "Overview",
+        "Related activity",
+        "Details",
+      ]);
+
+      releaseAdvisor();
+      await page.getByRole("heading", { name: ADVISOR_NAME }).waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
     } finally {
       releaseAdvisor();
       await page.close();
@@ -154,7 +291,7 @@ describe("detail async states", () => {
         path: "/advisor.html?id=missing-advisor",
         resource: "**/AdvisorProfile/missing-advisor",
         payload: missingDetail("missing-advisor"),
-        title: "Advisor not found",
+        title: ADVISOR_NOT_FOUND_TEXT,
         action: "Back to Advisors",
         recoveryHref: "/advisors",
       },
@@ -1455,7 +1592,7 @@ async function startStaticServer(): Promise<Server> {
   const server = createServer(async (request, response) => {
     const filePath = request.url?.split("?")[0] || "/";
     if (filePath === "/__blank.html") {
-      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      response.writeHead(200, { "Content-Type": HTML_CONTENT_TYPE });
       response.end("<!doctype html><html><body></body></html>");
       return;
     }
@@ -1527,7 +1664,7 @@ function contentType(filePath: string): string {
     case ".css":
       return "text/css; charset=utf-8";
     case ".html":
-      return "text/html; charset=utf-8";
+      return HTML_CONTENT_TYPE;
     case ".js":
       return "text/javascript; charset=utf-8";
     default:

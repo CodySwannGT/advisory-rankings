@@ -194,10 +194,11 @@ function detailErrorNotice({
  * @returns Skeleton card.
  */
 function profileSkeleton(label: string): HTMLElement {
+  const title = `Loading ${label}`;
   return CardComponent({
     attrs: {
       class: "detail-loading-card",
-      "aria-label": `Loading ${label}`,
+      "aria-label": title,
       "aria-busy": "true",
     },
     children: [
@@ -213,6 +214,8 @@ function profileSkeleton(label: string): HTMLElement {
         el(
           "div",
           { class: "profile-title" },
+          el("h1", {}, title),
+          el("p", {}, "Profile details are loading."),
           SkeletonComponent({ width: "60%", height: 28 }),
           SkeletonComponent({ width: "42%", height: 14 }),
           SkeletonComponent({ width: "34%", height: 22 })
