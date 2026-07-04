@@ -86,6 +86,7 @@ export interface NavRowOptions {
   readonly label?: DomChild;
   readonly icon?: DomChild;
   readonly href?: string | null;
+  readonly active?: boolean;
 }
 
 /**
@@ -397,14 +398,30 @@ export function EventStat({
  * @param root0.label - Human-readable check label.
  * @param root0.icon - Design-system icon or legacy glyph shown inside the row avatar.
  * @param root0.href - Optional href.
+ * @param root0.active - Whether the linked destination is the current page.
  * @returns Rendered nav row node.
  */
-export function NavRow({ label, icon, href }: NavRowOptions): HTMLElement {
-  return EntityRow({
+export function NavRow({
+  label,
+  icon,
+  href,
+  active,
+}: NavRowOptions): HTMLElement {
+  const row = EntityRow({
     avatar: el("div", { class: "avatar" }, navIcon(icon)),
     name: label,
-    href: href ?? null,
+    attrs: { class: active ? "active" : null },
   });
+  if (!href) return row;
+  return el(
+    "a",
+    {
+      href,
+      style: "text-decoration:none;color:inherit;",
+      "aria-current": active ? "page" : null,
+    },
+    row
+  );
 }
 
 /**

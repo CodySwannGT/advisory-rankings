@@ -88,6 +88,7 @@ export interface BrowseCardItem {
   readonly label: string;
   readonly icon?: OrganismChildren;
   readonly href?: string;
+  readonly active?: boolean;
 }
 
 /** BrowseCard rendering options. */

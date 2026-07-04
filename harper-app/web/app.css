@@ -2156,6 +2156,13 @@ body.drawer-open .nav .nav-scrim {
 .entity-list .row:first-child {
   border-top: 0;
 }
+.entity-list .row.active {
+  background: var(--chip-bg-firm);
+  border-radius: 8px;
+  color: var(--brand);
+  padding-left: 8px;
+  padding-right: 8px;
+}
 .entity-list .row .avatar {
   width: 32px;
   height: 32px;
