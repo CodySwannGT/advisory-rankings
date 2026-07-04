@@ -2910,6 +2910,7 @@ body.drawer-open .nav .nav-scrim {
   flex-wrap: wrap;
 }
 .rankings-table .tag {
+  flex-shrink: 0;
   max-width: 100%;
   overflow-wrap: normal;
   white-space: nowrap;
@@ -3292,14 +3293,20 @@ body.drawer-open .nav .nav-scrim {
     table-layout: fixed;
     width: 100%;
   }
+  .rankings-table th:nth-child(n),
+  .rankings-table td:nth-child(n) {
+    width: 100%;
+  }
   .rankings-table .tag-list {
     max-width: 100%;
     min-width: 0;
   }
   .rankings-table .tag {
+    flex-shrink: 0;
     max-width: 100%;
-    overflow-wrap: anywhere;
-    white-space: normal;
+    overflow-wrap: normal;
+    white-space: nowrap;
+    word-break: normal;
   }
   .recruiting-table.firm-momentum-table th,
   .recruiting-table.firm-momentum-table td,
@@ -3350,6 +3357,10 @@ body.drawer-open .nav .nav-scrim {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
+  }
+  .rankings-table td:nth-child(2),
+  .rankings-table td:nth-child(8) {
+    grid-template-columns: 1fr;
   }
   .recruiting-table tr:last-child td:not(:last-child),
   .rankings-table tr:last-child td:not(:last-child) {
