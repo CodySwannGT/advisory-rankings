@@ -275,7 +275,7 @@ async function expectCoverageMetricsFit(
   const overflowing = await page.evaluate(() =>
     [
       ...document.querySelectorAll<HTMLElement>(
-        ".coverage-metric-grid, .coverage-metric"
+        ".coverage-stat-grid, .coverage-stat, .coverage-metric-grid, .coverage-metric"
       ),
     ]
       .map(element => ({
