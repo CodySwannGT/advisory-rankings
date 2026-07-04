@@ -8,6 +8,7 @@ const WEB_ROOT = join(process.cwd(), "harper-app", "web");
 const LOGIN_SHELL = join(process.cwd(), "harper-app", "login", "shell.html");
 const RESEARCH_QUEUE_PATH = "/research/freshness";
 const DISCREPANCIES_PATH = "/regulatory/discrepancies";
+const PUBLIC_DATA_TIMESTAMP = "2026-07-04T00:00:00.000Z";
 
 let server: Server;
 let baseUrl: string;
@@ -119,6 +120,52 @@ describe("public navigation", () => {
       }
     }
   });
+
+  it("marks only the current public destination active", async () => {
+    const cases = [
+      {
+        path: "/login",
+        viewport: { width: 1366, height: 900 },
+        expectedBrowseCurrent: null,
+        expectedTopCurrent: null,
+      },
+      {
+        path: "/coverage",
+        viewport: { width: 1366, height: 900 },
+        expectedBrowseCurrent: "Coverage",
+        expectedTopCurrent: null,
+      },
+      {
+        path: "/source-triage",
+        viewport: { width: 390, height: 844 },
+        expectedBrowseCurrent: "Source triage",
+        expectedTopCurrent: null,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const page = await browser.newPage({ viewport: testCase.viewport });
+      try {
+        await routeMe(page, { authenticated: false });
+        await routePublicData(page);
+        await page.goto(`${baseUrl}${testCase.path}`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page.locator(".nav").waitFor();
+
+        const evidence = await activeNavigationEvidence(page);
+        expect(evidence.topCurrent, testCase.path).toBe(
+          testCase.expectedTopCurrent
+        );
+        expect(evidence.browseCurrent, testCase.path).toBe(
+          testCase.expectedBrowseCurrent
+        );
+        expect(evidence.homeTopActive, testCase.path).toBe(false);
+      } finally {
+        await page.close();
+      }
+    }
+  });
 });
 
 /**
@@ -133,6 +180,61 @@ async function routeMe(
   await page.route("**/Me", async (route: Route) => {
     await route.fulfill({ json: payload });
   });
+}
+
+/**
+ * Routes public data resources used by the active-navigation routes.
+ * @param page - Browser page under test.
+ */
+async function routePublicData(page: Page): Promise<void> {
+  await page.route("**/DataCoverage", async (route: Route) => {
+    await route.fulfill({
+      json: dataCoveragePayload(),
+    });
+  });
+  await page.route("**/SourceArticleTriage**", async (route: Route) => {
+    await route.fulfill({
+      json: sourceArticleTriagePayload(),
+    });
+  });
+}
+
+/**
+ * Returns the empty coverage payload shared by test route handlers.
+ * @returns Data coverage payload.
+ */
+function dataCoveragePayload(): {
+  readonly generatedAt: string;
+  readonly keyMetrics: readonly unknown[];
+  readonly limitations: readonly unknown[];
+  readonly sections: readonly unknown[];
+} {
+  return {
+    generatedAt: PUBLIC_DATA_TIMESTAMP,
+    sections: [],
+    keyMetrics: [],
+    limitations: [],
+  };
+}
+
+/**
+ * Returns the empty source-triage payload shared by test route handlers.
+ * @returns Source article triage payload.
+ */
+function sourceArticleTriagePayload(): {
+  readonly categories: readonly unknown[];
+  readonly generatedAt: string;
+  readonly items: readonly unknown[];
+  readonly reasons: readonly unknown[];
+  readonly total: number;
+} {
+  return {
+    generatedAt: PUBLIC_DATA_TIMESTAMP,
+    categories: [],
+    reasons: [],
+    items: [],
+    total: 0,
+  };
 }
 
 /**
@@ -173,6 +275,35 @@ async function browseEvidence(
       topNavHrefs: [...document.querySelectorAll(".nav-links a")].map(
         link => link.getAttribute("href") ?? ""
       ),
+    };
+  });
+}
+
+/**
+ * Reads active-link evidence from top navigation and Browse rail.
+ * @param page - Browser page under test.
+ * @returns Current active navigation labels.
+ */
+async function activeNavigationEvidence(page: Page): Promise<{
+  readonly browseCurrent: string | null;
+  readonly homeTopActive: boolean;
+  readonly topCurrent: string | null;
+}> {
+  return page.evaluate(() => {
+    const topCurrent = document
+      .querySelector(".nav .nav-links a.active")
+      ?.textContent?.trim();
+    const browseCurrent = document
+      .querySelector('.left .card a[aria-current="page"]')
+      ?.textContent?.trim();
+    const homeTopActive =
+      document
+        .querySelector('.nav .nav-links a[href="/"]')
+        ?.classList.contains("active") ?? false;
+    return {
+      browseCurrent: browseCurrent || null,
+      homeTopActive,
+      topCurrent: topCurrent || null,
     };
   });
 }
@@ -239,6 +370,16 @@ async function startStaticServer(): Promise<Server> {
       response.end(JSON.stringify({ items: [], nextCursor: null, total: 0 }));
       return;
     }
+    if (url.startsWith("/DataCoverage")) {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(dataCoveragePayload()));
+      return;
+    }
+    if (url.startsWith("/SourceArticleTriage")) {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(sourceArticleTriagePayload()));
+      return;
+    }
 
     const resolvedPath = resolveStaticPath(url);
     try {
@@ -276,6 +417,9 @@ function resolveStaticPath(url: string): string {
   const normalized = normalize(relative);
   if (normalized.startsWith("..") || normalized.includes(`..${sep}`)) {
     return join(WEB_ROOT, "404.html");
+  }
+  if (!extname(pathname) && pathname !== "/") {
+    return resolve(WEB_ROOT, `${normalized}.html`);
   }
   return resolve(WEB_ROOT, normalized);
 }

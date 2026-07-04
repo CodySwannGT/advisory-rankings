@@ -34,7 +34,6 @@ const ACCESS_HELP_TEXT_STYLE =
   "color: var(--ab-color-text-muted); margin: 8px 0 0; font-size: var(--ab-font-size-sm); line-height: 1.5;";
 
 mountCenteredNarrowPage({
-  active: "home",
   pageTitle: "Sign in",
   refreshMe,
   search,

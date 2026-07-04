@@ -212,7 +212,7 @@ Self-contained UI sections.
 | `SnapshotTable({ snaps, fmtMoney, humanize })` | Team metric history. Wrapped in `ScrollableTable` so it scrolls horizontally on narrow viewports. |
 | `ScrollableTable(table)` | Wraps a wide `<table>` (e.g. provenance, snapshots) in a horizontally-scrollable container so it doesn't blow out a card on mobile. |
 | `SkeletonCard()` | Loading placeholder. |
-| `BrowseCard({ items })` | Left-rail Browse navigation. Public pages should use `primaryBrowseItems()` / `primaryBrowseCard()` so Home and interior rails stay identical and analyst-only links remain role-gated. |
+| `BrowseCard({ items })` | Left-rail Browse navigation. Public pages should use `primaryBrowseItems(active)` / `primaryBrowseCard(active)` so Home and interior rails stay identical, the current route gets `aria-current="page"`, and analyst-only links remain role-gated. |
 | `RollupCard({ title, rows, renderRow })` | Small rail card listing items. |
 | `DetailsCard({ title, pairs })` | Right-rail details card (KvList inside SectionCard). |
 

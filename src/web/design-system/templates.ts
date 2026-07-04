@@ -82,6 +82,95 @@ const renderBrowseCard = BrowseCard as unknown as BrowseCardAdapter;
 
 const ANALYST_ROLES = new Set(["analyst", "super_user", "super", "admin"]);
 
+/** Declarative Browse route entry used to render public and analyst rails. */
+interface BrowseItemConfig {
+  readonly activeKey: string;
+  readonly href: string;
+  readonly icon: IconName;
+  readonly label: string;
+}
+
+const PUBLIC_BROWSE_ITEMS: readonly BrowseItemConfig[] = [
+  { label: "Home", icon: "home", href: "/", activeKey: "home" },
+  { label: "Firms", icon: "building", href: "/firms", activeKey: "firms" },
+  {
+    label: "Branches",
+    icon: "branches",
+    href: "/branches",
+    activeKey: "branches",
+  },
+  {
+    label: "Coverage",
+    icon: "coverage",
+    href: "/coverage",
+    activeKey: "coverage",
+  },
+  {
+    label: "Investor proof",
+    icon: "coverage",
+    href: "/investor-proof",
+    activeKey: "investor-proof",
+  },
+  {
+    label: "MCP gallery",
+    icon: "research",
+    href: "/mcp-gallery",
+    activeKey: "mcp-gallery",
+  },
+  {
+    label: "Source triage",
+    icon: "research",
+    href: "/source-triage",
+    activeKey: "source-triage",
+  },
+  {
+    label: "Recruiting",
+    icon: "recruiting",
+    href: "/recruiting",
+    activeKey: "recruiting",
+  },
+  {
+    label: "Rankings",
+    icon: "rankings",
+    href: "/rankings",
+    activeKey: "rankings",
+  },
+  {
+    label: "Advisors",
+    icon: "advisor",
+    href: "/advisors",
+    activeKey: "advisors",
+  },
+  { label: "Teams", icon: "teams", href: "/teams", activeKey: "teams" },
+  {
+    label: "Watchlists",
+    icon: "watchlist",
+    href: "/watchlists",
+    activeKey: "watchlists",
+  },
+  {
+    label: "Compliance",
+    icon: "compliance",
+    href: "/regulatory",
+    activeKey: "regulatory",
+  },
+];
+
+const ANALYST_BROWSE_ITEMS: readonly BrowseItemConfig[] = [
+  {
+    label: "Research queue",
+    icon: "research",
+    href: "/research/freshness",
+    activeKey: "research",
+  },
+  {
+    label: "Discrepancies",
+    icon: "discrepancies",
+    href: "/regulatory/discrepancies",
+    activeKey: "regulatory-discrepancies",
+  },
+];
+
 // ─── ThreeColumnLayout ────────────────────────────────────────
 // The default page shell: sticky navbar, three-column grid
 // (left rail | center column | right rail), site footer. The
@@ -121,10 +210,10 @@ export function mountThreeColumnPage({
   document.body.appendChild(layout);
   document.body.appendChild(renderSiteFooter());
   appendPageTitle(layout, pageTitle);
-  left.appendChild(primaryBrowseCard());
+  left.appendChild(primaryBrowseCard(active));
   layout.append(left, center, right);
   refreshMe?.()
-    .then(me => updateBrowseCardForSession(left, me))
+    .then(me => updateBrowseCardForSession(left, active, me))
     .catch(() => undefined);
 
   runBuilder(build, { left, center, right, layout });
@@ -132,70 +221,69 @@ export function mountThreeColumnPage({
 
 /**
  * Builds the left-rail browse navigation shared by public pages.
+ * @param active - Current route key for active-row styling.
  * @param session - Optional `/Me` session envelope.
  * @returns Browse card with the primary site sections.
  */
-export function primaryBrowseCard(session?: unknown): HTMLElement {
+export function primaryBrowseCard(
+  active?: string,
+  session?: unknown
+): HTMLElement {
   return renderBrowseCard({
-    items: primaryBrowseItems(session),
+    items: primaryBrowseItems(active, session),
   });
 }
 
 /**
  * Builds the canonical Browse rail entries for public and analyst sessions.
+ * @param active - Current route key for active-row styling.
  * @param session - Optional `/Me` session envelope.
  * @returns Ordered Browse navigation entries.
  */
 export function primaryBrowseItems(
+  active?: string,
   session?: unknown
 ): readonly BrowseCardItem[] {
-  const publicItems: readonly BrowseCardItem[] = [
-    browseItem("Home", "home", "/"),
-    browseItem("Firms", "building", "/firms"),
-    browseItem("Branches", "branches", "/branches"),
-    browseItem("Coverage", "coverage", "/coverage"),
-    browseItem("Investor proof", "coverage", "/investor-proof"),
-    browseItem("MCP gallery", "research", "/mcp-gallery"),
-    browseItem("Source triage", "research", "/source-triage"),
-    browseItem("Recruiting", "recruiting", "/recruiting"),
-    browseItem("Rankings", "rankings", "/rankings"),
-    browseItem("Advisors", "advisor", "/advisors"),
-    browseItem("Teams", "teams", "/teams"),
-    browseItem("Watchlists", "watchlist", "/watchlists"),
-    browseItem("Compliance", "compliance", "/regulatory"),
-  ];
+  const publicItems = PUBLIC_BROWSE_ITEMS.map(item => browseItem(item, active));
   if (!hasAnalystRole(session)) return publicItems;
   return [
     ...publicItems,
-    browseItem("Research queue", "research", "/research/freshness"),
-    browseItem("Discrepancies", "discrepancies", "/regulatory/discrepancies"),
+    ...ANALYST_BROWSE_ITEMS.map(item => browseItem(item, active)),
   ];
 }
 
 /**
  * Creates one Browse item with a named design-system icon.
- * @param label - Public navigation label.
- * @param icon - Design-system icon name.
- * @param href - Browser path.
+ * @param item - Declarative Browse route entry.
+ * @param active - Current route key for active-row styling.
  * @returns Browse navigation item.
  */
 function browseItem(
-  label: string,
-  icon: IconName,
-  href: string
+  item: BrowseItemConfig,
+  active: string | undefined
 ): BrowseCardItem {
-  return { label, icon: Icon({ name: icon }), href };
+  return {
+    label: item.label,
+    icon: Icon({ name: item.icon }),
+    href: item.href,
+    active: active === item.activeKey,
+  };
 }
 
 /**
  * Refreshes the default Browse card once session state resolves.
  * @param left - Left rail containing the initial Browse card.
+ * @param active - Current route key for active-row styling.
  * @param session - Resolved `/Me` session envelope.
  */
-function updateBrowseCardForSession(left: HTMLElement, session: unknown): void {
+function updateBrowseCardForSession(
+  left: HTMLElement,
+  active: string | undefined,
+  session: unknown
+): void {
   const current = left.querySelector(".card");
   if (!current) return;
-  current.replaceWith(primaryBrowseCard(session));
+  current.replaceWith(primaryBrowseCard(active, session));
 }
 
 /**

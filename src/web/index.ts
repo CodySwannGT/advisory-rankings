@@ -173,7 +173,7 @@ function renderFeed(
  */
 function renderLeft(root: HTMLElement, items: readonly FeedItem[]): void {
   const browseCard = BrowseCardC({
-    items: primaryBrowseItems(getCurrentUser()),
+    items: primaryBrowseItems("home", getCurrentUser()),
   });
   const recentTransitions = items
     .flatMap(i => i.eventCards.filter(isTransitionCard))
