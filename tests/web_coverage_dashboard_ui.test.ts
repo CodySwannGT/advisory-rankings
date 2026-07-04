@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import type { Server } from "node:http";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -15,6 +15,7 @@ import {
 import type { DataCoverageResponse } from "../src/harper/resource-data-coverage.js";
 
 const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
+const RECRUITING_MARKET_RESOURCE = "/RecruitingMarket";
 
 const browserDescribe =
   process.env.RUN_WEB_COVERAGE_DASHBOARD_UI === "1" &&
@@ -106,8 +107,11 @@ browserDescribe("coverage dashboard route (#1194)", () => {
       .filter({ hasText: "Some ranking entries still need resolution" })
       .waitFor({ timeout: QUICK_TIMEOUT });
     expect(privateRequests).toEqual([]);
+    await expectCoverageMetricsFit(page, "desktop");
 
     await captureViewports(page, "issue-1193-coverage-dashboard");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectCoverageMetricsFit(page, "mobile");
     await page.close();
   });
 
@@ -201,7 +205,7 @@ function coveragePayload(advisorCount = 1250): DataCoverageResponse {
             "branches-with-current-advisors",
             "Branches with current advisors",
             18,
-            "EmploymentHistory.branchId",
+            "BranchCoverage.currentAdvisorCount",
             PUBLIC_BRANCHES_RESOURCE,
             "Some branch rows have partial advisor linkage."
           ),
@@ -211,7 +215,20 @@ function coveragePayload(advisorCount = 1250): DataCoverageResponse {
         id: "recruiting",
         label: "Recruiting coverage",
         metrics: [
-          metric("moves", "Moves", 42, "TransitionEvent", "/RecruitingMarket"),
+          metric(
+            "moves",
+            "Moves",
+            42,
+            "TransitionEvent",
+            RECRUITING_MARKET_RESOURCE
+          ),
+          metric(
+            "source-backed-moves",
+            "Source-backed moves",
+            39,
+            "ArticleTransitionEventMention",
+            RECRUITING_MARKET_RESOURCE
+          ),
         ],
       },
       {
@@ -239,11 +256,41 @@ function coveragePayload(advisorCount = 1250): DataCoverageResponse {
         PUBLIC_BRANCHES_RESOURCE,
         "/Feed",
         "/RankingsExplorer",
-        "/RecruitingMarket",
+        RECRUITING_MARKET_RESOURCE,
         "/AdvisorResearchQueue",
       ],
     },
   };
+}
+
+/**
+ * Asserts coverage metric cards do not clip visible metric copy.
+ * @param page - Browser page to inspect.
+ * @param viewportLabel - Label included in assertion output.
+ */
+async function expectCoverageMetricsFit(
+  page: Page,
+  viewportLabel: string
+): Promise<void> {
+  const overflowing = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        ".coverage-metric-grid, .coverage-metric"
+      ),
+    ]
+      .map(element => ({
+        label:
+          element.getAttribute("data-coverage-metric") ||
+          element.closest<HTMLElement>("[data-coverage-section]")?.dataset
+            .coverageSection ||
+          "coverage-grid",
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }))
+      .filter(item => item.scrollWidth > item.clientWidth)
+  );
+
+  expect(overflowing, `${viewportLabel} coverage metrics fit`).toEqual([]);
 }
 
 /**
