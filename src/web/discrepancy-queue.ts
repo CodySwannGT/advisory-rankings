@@ -16,7 +16,7 @@ const NOT_LINKED = "Not linked";
 type QueueItem = RegulatoryDiscrepancyQueueResponse["items"][number];
 
 mountThreeColumnPage({
-  active: "regulatory",
+  active: "regulatory-discrepancies",
   refreshMe,
   logout,
   search,

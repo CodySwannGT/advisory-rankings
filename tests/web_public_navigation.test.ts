@@ -189,25 +189,52 @@ async function routeMe(
 async function routePublicData(page: Page): Promise<void> {
   await page.route("**/DataCoverage", async (route: Route) => {
     await route.fulfill({
-      json: {
-        generatedAt: PUBLIC_DATA_TIMESTAMP,
-        sections: [],
-        keyMetrics: [],
-        limitations: [],
-      },
+      json: dataCoveragePayload(),
     });
   });
   await page.route("**/SourceArticleTriage**", async (route: Route) => {
     await route.fulfill({
-      json: {
-        generatedAt: PUBLIC_DATA_TIMESTAMP,
-        categories: [],
-        reasons: [],
-        items: [],
-        total: 0,
-      },
+      json: sourceArticleTriagePayload(),
     });
   });
+}
+
+/**
+ * Returns the empty coverage payload shared by test route handlers.
+ * @returns Data coverage payload.
+ */
+function dataCoveragePayload(): {
+  readonly generatedAt: string;
+  readonly keyMetrics: readonly unknown[];
+  readonly limitations: readonly unknown[];
+  readonly sections: readonly unknown[];
+} {
+  return {
+    generatedAt: PUBLIC_DATA_TIMESTAMP,
+    sections: [],
+    keyMetrics: [],
+    limitations: [],
+  };
+}
+
+/**
+ * Returns the empty source-triage payload shared by test route handlers.
+ * @returns Source article triage payload.
+ */
+function sourceArticleTriagePayload(): {
+  readonly categories: readonly unknown[];
+  readonly generatedAt: string;
+  readonly items: readonly unknown[];
+  readonly reasons: readonly unknown[];
+  readonly total: number;
+} {
+  return {
+    generatedAt: PUBLIC_DATA_TIMESTAMP,
+    categories: [],
+    reasons: [],
+    items: [],
+    total: 0,
+  };
 }
 
 /**
@@ -345,27 +372,12 @@ async function startStaticServer(): Promise<Server> {
     }
     if (url.startsWith("/DataCoverage")) {
       response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(
-        JSON.stringify({
-          generatedAt: PUBLIC_DATA_TIMESTAMP,
-          sections: [],
-          keyMetrics: [],
-          limitations: [],
-        })
-      );
+      response.end(JSON.stringify(dataCoveragePayload()));
       return;
     }
     if (url.startsWith("/SourceArticleTriage")) {
       response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(
-        JSON.stringify({
-          generatedAt: PUBLIC_DATA_TIMESTAMP,
-          categories: [],
-          reasons: [],
-          items: [],
-          total: 0,
-        })
-      );
+      response.end(JSON.stringify(sourceArticleTriagePayload()));
       return;
     }
 
@@ -401,12 +413,13 @@ function resolveStaticPath(url: string): string {
   if (pathname === "/corrections") {
     return resolve(WEB_ROOT, "correction-inbox.html");
   }
-  const cleanRoute = resolve(WEB_ROOT, `${pathname.slice(1)}.html`);
-  if (!extname(pathname) && pathname !== "/") return cleanRoute;
   const relative = pathname === "/" ? "index.html" : pathname.slice(1);
   const normalized = normalize(relative);
   if (normalized.startsWith("..") || normalized.includes(`..${sep}`)) {
     return join(WEB_ROOT, "404.html");
+  }
+  if (!extname(pathname) && pathname !== "/") {
+    return resolve(WEB_ROOT, `${normalized}.html`);
   }
   return resolve(WEB_ROOT, normalized);
 }

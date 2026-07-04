@@ -167,7 +167,7 @@ const ANALYST_BROWSE_ITEMS: readonly BrowseItemConfig[] = [
     label: "Discrepancies",
     icon: "discrepancies",
     href: "/regulatory/discrepancies",
-    activeKey: "regulatory",
+    activeKey: "regulatory-discrepancies",
   },
 ];
 
