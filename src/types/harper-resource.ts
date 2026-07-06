@@ -15,9 +15,7 @@
  * re-exported, not redeclared.
  */
 
-export type { Context, RequestTargetOrId } from "harperdb";
-
-import type { RequestTargetOrId } from "harperdb";
+export type { Context } from "harperdb";
 
 /**
  * Primary-key shape Harper accepts on `Resource` methods. Mirrors the
@@ -36,7 +34,11 @@ export type Id = number | string | readonly (number | string | null)[] | null;
  *   - A bare primary key (`string`/`number`), used by direct REST calls
  *     like `/AdvisorRating/<advisorId>`.
  *   - A `RequestTarget` (proxy-like object with `.get(name)`, `.id`,
- *     `.toString()`, etc.) when Harper is parsing query params.
+ *     `.toString()`, etc.) when Harper is parsing query params. Harper's
+ *     `RequestTarget` structurally satisfies {@link RouteTargetObject}, so
+ *     it is accepted through that member rather than named directly — this
+ *     keeps `RouteTarget` deep-readonly (the `harperdb` `RequestTarget`
+ *     class extends the mutable `URLSearchParams`).
  *   - A plain object (e.g. `{ advisorId, id, toString() }`) the tests
  *     use as a route-target stand-in.
  *
@@ -44,7 +46,7 @@ export type Id = number | string | readonly (number | string | null)[] | null;
  * from `src/harper/resource-routing.ts` instead of inspecting the union
  * directly.
  */
-export type RouteTarget = RequestTargetOrId | RouteTargetObject;
+export type RouteTarget = Id | RouteTargetObject;
 
 /**
  * Test- and fixture-friendly route target. Harper's real `RequestTarget`

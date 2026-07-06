@@ -7,9 +7,6 @@ import {
 } from "./morgan-stanley-row-utils.js";
 import type { RbcAdvisorSource, RbcBranchSource } from "./rbc-types.js";
 
-/** DOM node or selector shape accepted by the loaded Cheerio instance. */
-type CheerioElement = Parameters<cheerio.CheerioAPI>[0];
-
 const STATE_NAMES = new Map([
   ["new york", "NY"],
   ["california", "CA"],
@@ -59,7 +56,7 @@ export function parseRbcAdvisors(
 
 const parseBranch = (
   $: cheerio.CheerioAPI,
-  element: CheerioElement
+  element: Parameters<cheerio.CheerioAPI>[0]
 ): RbcBranchSource | null => {
   const root = $(element);
   const branchId = String(
@@ -81,7 +78,7 @@ const parseBranch = (
 
 const parseAdvisor = (
   $: cheerio.CheerioAPI,
-  element: CheerioElement,
+  element: Parameters<cheerio.CheerioAPI>[0],
   branch: RbcBranchSource
 ): RbcAdvisorSource | null => {
   const root = $(element);
