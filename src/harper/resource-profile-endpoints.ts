@@ -9,7 +9,13 @@ import {
 } from "./detail-shell-negotiation.js";
 import { advisorProfilePayload } from "./resource-advisor.js";
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
-import { loadAll } from "./resource-data.js";
+import { loadAdvisorProfileIndex } from "./resource-advisor-profile-load.js";
+import { loadArticleViewIndex } from "./resource-article-view-load.js";
+import {
+  loadFirmAdvisorsIndex,
+  loadFirmProfileIndex,
+} from "./resource-firm-profile-load.js";
+import { loadTeamProfileIndex } from "./resource-team-profile-load.js";
 import {
   feedEmptyState,
   matchesFeedMode,
@@ -273,6 +279,8 @@ export class ArticleView extends Resource {
 
   /**
    * Loads one article with body, provenance, events, and entity chips.
+   * Hydration is scoped to the subject article via
+   * `loadArticleViewIndex` instead of the legacy full-table `loadAll()`.
    * @param target - Route target containing article id or slug.
    * @returns Article detail payload, a route error, or the HTML shell when a
    *   browser navigates directly to this route.
@@ -284,7 +292,7 @@ export class ArticleView extends Resource {
     if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing article id" };
-    const db = await loadAll();
+    const db = await loadArticleViewIndex(id);
     const article = resolveArticle(db, id);
     if (!article) return { error: "not found", id };
     const fieldAssertions = db.fieldAssertions
@@ -311,6 +319,8 @@ export class FirmProfile extends Resource {
 
   /**
    * Loads one firm profile without expanding large advisor rosters.
+   * Hydration is scoped to the subject firm via `loadFirmProfileIndex`
+   * instead of the legacy full-table `loadAll()`.
    * @param target - Route target containing firm id, slug, or alias.
    * @returns Firm profile payload, a route error, or the HTML shell when a
    *   browser navigates directly to this route.
@@ -322,7 +332,7 @@ export class FirmProfile extends Resource {
     if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing firm id" };
-    const db = await loadAll();
+    const db = await loadFirmProfileIndex(id);
     const firm = resolveFirm(db, id);
     if (!firm) return { error: "not found", id };
     return firmProfilePayload(db, firm);
@@ -340,7 +350,9 @@ export class FirmAdvisors extends Resource {
   }
 
   /**
-   * Loads current or past advisors for one firm.
+   * Loads current or past advisors for one firm. Hydration is scoped to
+   * the subject firm's employment rows via `loadFirmAdvisorsIndex`
+   * instead of the legacy full-table `loadAll()`.
    * @param target - Route target carrying firm id, status, cursor, and limit.
    * @returns Paginated advisor roster.
    */
@@ -350,7 +362,7 @@ export class FirmAdvisors extends Resource {
     const statusParam = readStatusParam(target);
     const status = statusParam === "past" ? "past" : "current";
     const { cursor, limit } = parsePagination(target);
-    const db = await loadAll();
+    const db = await loadFirmAdvisorsIndex(id);
     const rows = firmAdvisorRows(db, id, status);
     const { items, nextCursor } = paginate(
       rows,
@@ -374,6 +386,8 @@ export class AdvisorProfile extends Resource {
 
   /**
    * Loads one advisor profile with career, teams, compliance, and coverage.
+   * Hydration is scoped to the subject advisor via
+   * `loadAdvisorProfileIndex` instead of the legacy full-table `loadAll()`.
    * @param target - Route target containing advisor id or slug.
    * @returns Advisor profile payload, a route error, or the HTML shell when a
    *   browser navigates directly to this route.
@@ -385,7 +399,7 @@ export class AdvisorProfile extends Resource {
     if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing advisor id" };
-    const db = await loadAll();
+    const db = await loadAdvisorProfileIndex(id);
     const advisor = resolveAdvisor(db, id);
     return advisor
       ? advisorProfilePayload(db, advisor)
@@ -405,6 +419,8 @@ export class TeamProfile extends Resource {
 
   /**
    * Loads one team profile with members, metrics, transitions, and coverage.
+   * Hydration is scoped to the subject team via `loadTeamProfileIndex`
+   * instead of the legacy full-table `loadAll()`.
    * @param target - Route target containing team id or slug.
    * @returns Team profile payload, a route error, or the HTML shell when a
    *   browser navigates directly to this route.
@@ -416,7 +432,7 @@ export class TeamProfile extends Resource {
     if (shell) return shell;
     const id = normalizeId(target);
     if (!id) return { error: "missing team id" };
-    const db = await loadAll();
+    const db = await loadTeamProfileIndex(id);
     const team = resolveTeam(db, id);
     return team ? teamProfilePayload(db, team) : { error: "not found", id };
   }

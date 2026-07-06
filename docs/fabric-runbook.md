@@ -1211,8 +1211,9 @@ value }] })` for that same row returns **nothing**. Confirmed on the live
 cluster: `/Feed?mode=event` (and `recruiting` / `compliance`) returned 0
 items for every visitor while `/ArticleView/<id>` for a seeded
 transition/disclosure article rendered its full event card — because
-`ArticleView` reads via the full-scan `loadAll()` and `/Feed` (after
-PR #771) read the article→mention join via indexed `articleId` lookups.
+`ArticleView` (at the time) read via the full-scan `loadAll()` and
+`/Feed` (after PR #771) read the article→mention join via indexed
+`articleId` lookups.
 `ArticleFirmMention` happened to work only because the crawler writes it
 heavily enough to keep its index materialized on the served node; the
 sparsely-seeded advisor / team / transition / disclosure mention tables
@@ -1235,6 +1236,16 @@ tables are too large to scan (the #721/#771 motivation). Regression coverage:
 asserts the feed join still resolves. **Do not** revert the mention join to
 indexed `search({ conditions })` lookups — that reintroduces the dependency
 and re-breaks the deploy.
+
+The single-entity profile endpoints (`/AdvisorProfile`, `/FirmProfile`,
+`/FirmAdvisors`, `/TeamProfile`, `/ArticleView`) were later moved off
+`loadAll()` onto the same split: subject-scoped indexed foreign-key /
+primary-key hydration for the large entity tables, full-scan +
+in-memory filter for the five article→mention join tables and
+`FieldAssertion` (see `src/harper/resource-profile-scoped-load.ts` and
+the `resource-*-load.ts` loaders; regression coverage in
+`tests/profile_endpoints_bounded.test.ts`). The same replication caveat
+applies there: keep the mention/provenance joins scan-based.
 
 ### Firm source import automation
 
