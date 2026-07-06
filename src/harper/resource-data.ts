@@ -184,6 +184,64 @@ export async function loadAll(): Promise<ResourceIndex> {
 }
 
 /**
+ * Loads only the named tables and builds the same canonicalized
+ * `ResourceIndex` as `loadAll()`, leaving every other table empty.
+ *
+ * The cross-entity analytics/queue endpoints (rankings explorer,
+ * data coverage, recruiting market, investor proof packet, analyst
+ * queues, …) genuinely aggregate across whole tables, so their reads
+ * cannot be narrowed to a per-subject index the way the profile
+ * endpoints were — but none of them consumes all 34 tables. Each call
+ * site declares the tables it actually reads (directly or through the
+ * shared payload builders), which both bounds the per-request scan set
+ * and documents the endpoint's data footprint.
+ * @param keys - Table keys the caller consumes.
+ * @returns Canonicalized rows plus join indexes for the named tables.
+ */
+export async function loadTables(
+  keys: readonly (keyof ResourceTableRows)[]
+): Promise<ResourceIndex> {
+  const wanted: ReadonlySet<string> = new Set(keys);
+  const entries = await Promise.all(
+    tableSpecs()
+      .filter(spec => wanted.has(spec.key))
+      .map(
+        async (spec): Promise<readonly [string, readonly RawRow[]]> => [
+          spec.key,
+          await readRows(spec),
+        ]
+      )
+  );
+  const rawByKey: RawRowsByKey = Object.fromEntries(entries);
+  return buildDb(canonicalizeFirmRows(rawByKey));
+}
+
+/**
+ * Builds a `ResourceIndex` from a scoped subset of table rows without
+ * touching Harper. Absent tables default to empty arrays, and the rows
+ * pass through the exact same post-processing as `loadAll()` —
+ * `canonicalizeFirmResourceRows` (curated firm-alias merges plus
+ * foreign-key rewrites) followed by `buildDb` (join indexes) — so
+ * payload builders written against `ResourceIndex` behave identically
+ * whether their input came from a full scan or a per-entity hydration.
+ * Used by the per-entity profile loaders (`resource-*-load.ts`) that
+ * replaced the request-wide 34-table `loadAll()` scan.
+ * @param rows - Subject-scoped table rows keyed like `ResourceTableRows`.
+ * @returns Canonicalized rows plus join indexes.
+ */
+export function buildScopedResourceIndex(
+  rows: Partial<ResourceTableRows>
+): ResourceIndex {
+  const raw: RawRowsByKey = Object.fromEntries(
+    RESOURCE_TABLE_SPECS.map(([key]): readonly [string, readonly RawRow[]] => {
+      const value: unknown = rows[key] ?? [];
+      return [key, isTypedRowArray<RawRow>(value) ? value : []];
+    })
+  );
+  return buildDb(canonicalizeFirmRows(raw));
+}
+
+/**
  * Reads Harper tables concurrently so expensive profile endpoints share one pass.
  * @returns Raw row arrays keyed by their resource-friendly names.
  */

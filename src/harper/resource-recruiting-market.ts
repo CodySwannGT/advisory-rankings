@@ -18,9 +18,10 @@ import type {
   RecruitingMarketResponse,
 } from "./resource-recruiting-market-types.js";
 
-import { loadAll } from "./resource-data.js";
+import { loadTables } from "./resource-data.js";
 import * as watchlist from "./resource-recruiting-watchlist.js";
 import { sourceCoverage } from "./resource-recruiting-market-coverage.js";
+import { RECRUITING_MOVE_TABLES } from "./resource-analytics-table-sets.js";
 import {
   filteredMoves,
   firmMomentum,
@@ -55,7 +56,10 @@ export class RecruitingMarket extends Resource {
    * @returns Source-backed recruiting market payload.
    */
   async get(target?: RouteTarget): Promise<RecruitingMarketResponse> {
-    const db = await loadAll();
+    // Aggregates every TransitionEvent into market rollups by design;
+    // the read is scoped to the recruiting-move table set instead of
+    // the legacy 34-table `loadAll()`.
+    const db = await loadTables(RECRUITING_MOVE_TABLES);
     const filters = parseFilters(target, db);
     const generatedAt = new Date().toISOString();
     const moves = filteredMoves(recruitingMoves(db), filters);

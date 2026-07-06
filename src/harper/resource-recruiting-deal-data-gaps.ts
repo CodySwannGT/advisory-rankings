@@ -17,13 +17,14 @@ import type {
   RecruitingMove,
 } from "./resource-recruiting-market-types.js";
 
-import { loadAll } from "./resource-data.js";
+import { loadTables } from "./resource-data.js";
 import {
   decodeOffsetCursor,
   encodeOffsetCursor,
   parsePagination,
 } from "./resource-pagination.js";
 import * as watchlist from "./resource-recruiting-watchlist.js";
+import { RECRUITING_MOVE_TABLES } from "./resource-analytics-table-sets.js";
 import {
   filteredMoves,
   publicMove,
@@ -133,7 +134,10 @@ export class RecruitingDealDataGaps extends Resource {
    * @returns Cursor-paginated public gap rows.
    */
   async get(target?: RouteTarget): Promise<DealGapResponse> {
-    const db = await loadAll();
+    // Scans every TransitionEvent for missing deal fields by design;
+    // the read is scoped to the recruiting-move table set instead of
+    // the legacy 34-table `loadAll()`.
+    const db = await loadTables(RECRUITING_MOVE_TABLES);
     const filters = parseFilters(target, db);
     const gaps = gapRows(filteredMoves(recruitingMoves(db), filters), filters);
     const { cursor, limit } = parsePagination(target);

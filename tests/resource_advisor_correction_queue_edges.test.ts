@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AdvisorCorrectionRequestRow } from "../src/types/harper-schema.js";
 
-const loadAll = vi.fn();
+const loadTables = vi.fn();
 
-vi.mock("../src/harper/resource-data.js", () => ({ loadAll }));
+vi.mock("../src/harper/resource-data.js", () => ({ loadTables }));
 
 const { correctionRequestQueue } =
   await import("../src/harper/resource-advisor-correction-queue.js");
 
 describe("advisor correction request queue edges", () => {
   it("sorts tied pending requests and normalizes optional queue fields", async () => {
-    loadAll.mockResolvedValue({
+    loadTables.mockResolvedValue({
       byAdvisor: new Map([
         [
           "advisor-1",

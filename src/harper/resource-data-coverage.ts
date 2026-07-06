@@ -1,5 +1,6 @@
 import type { ResourceIndex } from "./resource-data.js";
-import { loadAll } from "./resource-data.js";
+import { loadTables } from "./resource-data.js";
+import { DATA_COVERAGE_TABLES } from "./resource-analytics-table-sets.js";
 import { rankingsCoverage } from "./resource-rankings-explorer-coverage.js";
 import { rankingEntries } from "./resource-rankings-explorer-entries.js";
 import { sourceCoverage } from "./resource-recruiting-market-coverage.js";
@@ -65,10 +66,12 @@ export class DataCoverage extends Resource {
 
   /**
    * Loads public coverage rollups from the shared resource index.
+   * Aggregate table counts are the product here, so the read is scoped
+   * to {@link DATA_COVERAGE_TABLES} instead of the legacy `loadAll()`.
    * @returns Coverage sections for public entity, rankings, recruiting, and research freshness data.
    */
   async get(): Promise<DataCoverageResponse> {
-    return dataCoverageResponse(await loadAll());
+    return dataCoverageResponse(await loadTables(DATA_COVERAGE_TABLES));
   }
 }
 

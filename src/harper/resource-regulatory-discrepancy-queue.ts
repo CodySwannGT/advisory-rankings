@@ -1,5 +1,5 @@
 import { advisorDisplayName } from "./resource-routing.js";
-import { loadAll } from "./resource-data.js";
+import { loadTables } from "./resource-data.js";
 import {
   currentUser,
   hasAnalystRole,
@@ -141,7 +141,17 @@ function emptyQueue(
  */
 async function loadQueueData(): Promise<ResourceIndex> {
   try {
-    return await loadAll();
+    // The queue joins open discrepancies to advisor names, disclosure
+    // context, and current-firm labels; the read is scoped to those six
+    // tables instead of the legacy 34-table `loadAll()`.
+    return await loadTables([
+      "regulatoryDiscrepancies",
+      "advisors",
+      "disclosures",
+      "employments",
+      "firms",
+      "firmAliases",
+    ]);
   } catch (error) {
     throw new RegulatoryDiscrepancyQueueLoadError(
       "Failed to load regulatory discrepancy queue data",
