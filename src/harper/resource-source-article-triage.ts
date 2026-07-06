@@ -188,19 +188,6 @@ async function hydrateArticlePairs(
 
 /**
  * Reads public provenance rows for the supplied articles.
- *
- * Deliberately a bounded scan of the single `FieldAssertion` table
- * filtered in memory, NOT an indexed `articleId` lookup: FieldAssertion
- * is written by the same article-ingestion path as the article→mention
- * join tables, whose secondary indexes do not replicate reliably to the
- * Fabric public-serving node (see `resource-feed-page-load.ts` header
- * and `docs/fabric-runbook.md` §6). No production read path exercises
- * FieldAssertion's `articleId` index today, so its replication health is
- * unverified — switching this to `search({conditions})` risks silently
- * empty provenance for every visitor, the same failure mode that broke
- * the feed after #771. The table is article-derived and small relative
- * to the entity tables; the scan is one table, not the 34-table
- * `loadAll()` this module never used.
  * @param articles - Article rows in the current raw page.
  * @returns Field assertion rows grouped by article id.
  */

@@ -8,8 +8,7 @@ import type {
   AdvisorResearchCheckRow,
   AdvisorRow,
 } from "../types/harper-schema.js";
-import { loadTables } from "./resource-data.js";
-import { ADVISOR_RESEARCH_QUEUE_TABLES } from "./resource-analytics-table-sets.js";
+import { loadAll } from "./resource-data.js";
 import {
   dateString,
   queueItem,
@@ -71,16 +70,12 @@ export class AdvisorResearchQueue extends Resource {
   }
 
   /**
-   * Reads advisors due for public-web research. Scans the full Advisor
-   * and AdvisorResearchCheck tables by design (staleness is a
-   * whole-population question), so the read is scoped to
-   * {@link ADVISOR_RESEARCH_QUEUE_TABLES} instead of the legacy
-   * 34-table `loadAll()`.
+   * Reads advisors due for public-web research.
    * @param target - Optional request target carrying query filters.
    * @returns Due research queue payload.
    */
   async get(target?: RouteTarget): Promise<AdvisorResearchQueueResponse> {
-    const db = await loadTables(ADVISOR_RESEARCH_QUEUE_TABLES);
+    const db = await loadAll();
     return advisorResearchQueueResponse(db, target);
   }
 }
@@ -92,7 +87,7 @@ export class AdvisorResearchQueue extends Resource {
  * @returns Due research queue payload.
  */
 export function advisorResearchQueueResponse(
-  db: Awaited<ReturnType<typeof loadTables>>,
+  db: Awaited<ReturnType<typeof loadAll>>,
   target?: RouteTarget
 ): AdvisorResearchQueueResponse {
   const filters = parseFilters(target);

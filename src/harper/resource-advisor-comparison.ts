@@ -1,6 +1,5 @@
 import { advisorProfilePayload } from "./resource-advisor.js";
-import { loadTables } from "./resource-data.js";
-import { ADVISOR_COMPARISON_TABLES } from "./resource-analytics-table-sets.js";
+import { loadAll } from "./resource-data.js";
 import { normalizeId, resolveAdvisor } from "./resource-routing.js";
 import type { ResourceIndex } from "./resource-data.js";
 import type { RouteError } from "./resource-profile-endpoints-types.js";
@@ -57,10 +56,7 @@ export class AdvisorComparison extends Resource {
     target?: RouteTarget
   ): Promise<AdvisorComparisonPayload | RouteError> {
     const selection = comparisonSelection(target);
-    // Builds up to four full advisor profiles plus ranking/assertion
-    // overlays; the read is scoped to the tables `advisorProfilePayload`
-    // and `comparisonItem` consume instead of the legacy `loadAll()`.
-    const db = await loadTables(ADVISOR_COMPARISON_TABLES);
+    const db = await loadAll();
     const advisors = selection.cappedIds.map(id => ({
       id,
       advisor: resolveAdvisor(db, id),
