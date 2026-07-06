@@ -753,6 +753,38 @@ Browser flow:
    next request maps to "no user" and `/Me` returns
    `authenticated:false`.
 
+**CSRF posture.** Harper hardcodes the session cookie to `SameSite=None;
+Secure` on HTTPS, which removes the browser's built-in cross-site protection.
+Because the app serves its UI and REST from one origin, every state-changing
+`post` (`/Login`, `/Logout`, `/UserWatchlists`, `/AdvisorRating`,
+`/AdvisorCorrectionRequest`, `/RegulatoryDiscrepancyReview`) calls
+`requireSameOrigin(getContext())` (`src/harper/resource-request-origin.ts`),
+which rejects (403) any request whose browser-attested `Origin`/`Referer`
+host differs from the serving host (`Host`/`X-Forwarded-Host`, so it stays
+correct behind the Fabric edge proxy). Requests with neither header — curl,
+the smoke harness, MCP tooling — are allowed, since a browser always attaches
+`Origin` to a credentialed cross-site `fetch`.
+
+**Login throttling.** `/Login` runs a per-worker in-memory failed-attempt
+throttle (`src/harper/resource-login-throttle.ts`): after 5 failures for an
+account, further attempts are locked with an exponentially growing window
+(2s doubling to 15m max), returning 429. It is a best-effort brake per Harper
+thread, resets on restart, and is not a distributed lockout — front the
+cluster with edge rate-limiting for a hard guarantee.
+
+**Security headers.** The fastify static/shell layer
+(`harper-app/seo_shell.js`, `harper-app/static-web/index.js`) sends
+`X-Content-Type-Options: nosniff` on every response and, on HTML documents,
+`Content-Security-Policy: frame-ancestors 'none'`, `X-Frame-Options: DENY`,
+HSTS, `Referrer-Policy`, and a minimal `Permissions-Policy`. The ZAP baseline
+(`.zap/baseline.conf`) fails the build if any of these regress on HTML.
+
+**MQTT/WS broker.** The Fabric topology exposes only `:9925` (ops) and
+`:9926` (REST); no MQTT (1883/8883) or resource-WebSocket port is reachable,
+so the real-time subscription surface that `@export` enables on all 33
+exported tables is not internet-facing. Keep it that way — if a broker port
+is ever opened, table-level auth applies but the exposure posture changes.
+
 There's one gotcha: `ctx.session.delete()` alone removes the row
 but does not trigger a Set-Cookie clearing-header on the response,
 so the cookie itself remains. We rely on the server-side state being

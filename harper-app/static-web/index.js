@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { extname } from "node:path";
 
+import { DOCUMENT_SECURITY_HEADERS, SECURITY_HEADERS } from "../seo_shell.js";
+
 const WEB_ROOT = new URL("../web/", import.meta.url);
 
 const MIME = {
@@ -132,7 +134,9 @@ function readAssetBody(assetUrl, extension) {
 }
 
 /**
- * Builds response headers for a static asset extension.
+ * Builds response headers for a static asset extension. HTML documents get
+ * the full security-header set (clickjacking denial, HSTS, referrer and
+ * feature trimming); other assets get `nosniff`.
  * @param extension File extension including the leading dot.
  * @returns HTTP headers for the asset response.
  */
@@ -142,5 +146,6 @@ function headersFor(extension) {
     "cache-control": CACHEABLE.has(extension)
       ? "public, max-age=3600"
       : "no-store",
+    ...(extension === ".html" ? DOCUMENT_SECURITY_HEADERS : SECURITY_HEADERS),
   };
 }

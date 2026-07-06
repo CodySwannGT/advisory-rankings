@@ -5,6 +5,7 @@ import type {
 import type { RouteTarget } from "../types/harper-resource.js";
 
 import { normalizeId } from "./resource-routing.js";
+import { requireSameOrigin } from "./resource-request-origin.js";
 import {
   currentUserId,
   deleteRow,
@@ -21,6 +22,8 @@ import {
 
 const MAX_NAME_LENGTH = 120;
 const MAX_NOTE_LENGTH = 2_000;
+/** Per-user cap on watchlists; list ids are random, so inserts are unbounded without it. */
+const MAX_LISTS_PER_USER = 50;
 const ADVISOR_ID_REQUIRED = "advisor id required";
 
 /**
@@ -145,6 +148,7 @@ export class UserWatchlists extends Resource {
    * @returns The response variant matching the executed action.
    */
   async post(...args: readonly unknown[]): Promise<WatchlistMutationResponse> {
+    requireSameOrigin(this.getContext?.());
     const body = findBody(args);
     const userId = currentUserId(this);
     if (!userId) throwStatus("Sign in required", 401);
@@ -180,6 +184,14 @@ async function createList(
 ): Promise<WatchlistResponse> {
   const name = textValue(body.name, MAX_NAME_LENGTH);
   if (!name) throwStatus("watchlist name required", 400);
+  const existing = await rowsFor(
+    userListTable(tables.UserWatchlist),
+    "userId",
+    userId
+  );
+  if (existing.length >= MAX_LISTS_PER_USER) {
+    throwStatus(`watchlist limit reached (${MAX_LISTS_PER_USER})`, 400);
+  }
   const row: UserWatchlistRow = {
     id: newId("list", userId),
     userId,

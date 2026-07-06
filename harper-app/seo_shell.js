@@ -1,8 +1,32 @@
 import { readFile } from "node:fs/promises";
 
+/**
+ * Security headers attached to every response served by the fastify route
+ * layer. `nosniff` is safe for assets and documents alike.
+ */
+export const SECURITY_HEADERS = {
+  "x-content-type-options": "nosniff",
+};
+
+/**
+ * Additional security headers for HTML documents: clickjacking denial
+ * (CSP frame-ancestors + X-Frame-Options), HSTS, and referrer/feature
+ * trimming. Browsers ignore HSTS over plain HTTP, so local serving is
+ * unaffected.
+ */
+export const DOCUMENT_SECURITY_HEADERS = {
+  ...SECURITY_HEADERS,
+  "content-security-policy": "frame-ancestors 'none'",
+  "x-frame-options": "DENY",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+};
+
 const headers = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "no-store",
+  ...DOCUMENT_SECURITY_HEADERS,
 };
 
 /**
