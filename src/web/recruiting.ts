@@ -22,16 +22,12 @@ import {
   type ThreeColumnLayout,
 } from "./recruiting-types.js";
 import { buildRecruitingResourceQuery } from "./recruiting-query.js";
+import { wireWatchlistControls } from "./recruiting-watchlist-controls.js";
 import { recruitingSummaryStatGrid } from "./recruiting-summary-stats.js";
 import { showDelayedRouteLoadingFeedback } from "./route-loading.js";
 
 const DEFAULT_LIMIT = 30;
 const FIRM_SUGGESTIONS_ID = "recruiting-firm-suggestions";
-const FIRM_INPUT_SELECTOR = 'input[name="firm"]';
-const WATCHLIST_ADD_BUTTON_SELECTOR = ".watchlist-add-button";
-const WATCHLIST_FIRMS_SELECTOR = "[data-watchlist-firms]";
-const WATCHLIST_REMOVE_BUTTON_SELECTOR = ".watchlist-remove-button";
-const WATCHLIST_ROW_SELECTOR = ".watchlist-firm-row";
 
 /** Input attribute bag accepted by `labelInput`. */
 type InputAttrs = Readonly<Record<string, string | number | boolean>>;
@@ -181,7 +177,7 @@ function filterCard(data: RecruitingMarketResponse): HTMLElement {
     directionSelect(data.filters.direction),
     elC("button", { class: "filter-button", type: "submit" }, "Apply")
   );
-  wireWatchlistControls(form);
+  wireWatchlistControls(form, firmInputRow);
   return SectionCardC({
     title: "Filters",
     body: form,
@@ -270,50 +266,6 @@ function firmDatalist(names: readonly string[]): HTMLElement {
     { id: FIRM_SUGGESTIONS_ID },
     ...[...new Set(names)].map(name => elC("option", { value: name }))
   );
-}
-
-/**
- * Enables add/remove controls for repeated firm inputs.
- * @param form - Recruiting filter form.
- */
-function wireWatchlistControls(form: HTMLElement): void {
-  form.addEventListener("click", event => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    const group = form.querySelector<HTMLElement>(WATCHLIST_FIRMS_SELECTOR);
-    if (!group) return;
-    if (target.closest(WATCHLIST_ADD_BUTTON_SELECTOR)) {
-      const addButton = group.querySelector<HTMLElement>(
-        WATCHLIST_ADD_BUTTON_SELECTOR
-      );
-      group.insertBefore(
-        firmInputRow("", group.querySelectorAll(FIRM_INPUT_SELECTOR).length),
-        addButton
-      );
-    }
-    if (target.closest(WATCHLIST_REMOVE_BUTTON_SELECTOR)) {
-      target.closest(WATCHLIST_ROW_SELECTOR)?.remove();
-      resetFirmRows(group);
-    }
-  });
-}
-
-/**
- * Rebuilds repeated firm rows so labels stay stable after removal.
- * @param group - Firm control group.
- */
-function resetFirmRows(group: HTMLElement): void {
-  const inputs = [
-    ...group.querySelectorAll<HTMLInputElement>(FIRM_INPUT_SELECTOR),
-  ];
-  const values = inputs.map(input => input.value);
-  const addButton = group.querySelector<HTMLElement>(
-    WATCHLIST_ADD_BUTTON_SELECTOR
-  );
-  const rows = (values.length ? values : [""]).map((value, index) =>
-    firmInputRow(value, index)
-  );
-  group.replaceChildren(...rows, ...(addButton ? [addButton] : []));
 }
 
 /**

@@ -78,6 +78,40 @@ describe("recruiting filter controls", () => {
       await page.close();
     }
   });
+
+  it("keeps Add firm disabled until the current row matches a suggestion", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+    const resourceQueries: string[] = [];
+    try {
+      await routeAuth(page, false);
+      await routeRecruitingMarket(page, resourceQueries);
+
+      await page.goto(`${baseUrl}${RECRUITING_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.locator(".recruiting-filters").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+
+      const addFirm = page.getByRole("button", { name: "Add firm" });
+      expect(await addFirm.isDisabled()).toBe(true);
+      await addFirm.evaluate(button => (button as HTMLButtonElement).click());
+      await expectFirmRows(page, [""]);
+
+      await page.locator(FIRM_INPUT_SELECTOR).fill("Morgan");
+      expect(await addFirm.isDisabled()).toBe(true);
+
+      await page.locator(FIRM_INPUT_SELECTOR).fill(MORGAN_STANLEY);
+      expect(await addFirm.isDisabled()).toBe(false);
+      await addFirm.click();
+      await expectFirmRows(page, [MORGAN_STANLEY, ""]);
+      expect(await addFirm.isDisabled()).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 /**

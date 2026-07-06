@@ -2779,6 +2779,13 @@ body.drawer-open .nav .nav-scrim {
 .watchlist-remove-button:hover {
   background: var(--bg);
 }
+.watchlist-add-button[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+.watchlist-add-button[disabled]:hover {
+  background: var(--card);
+}
 .feed-filter-clear {
   min-height: 37px;
   border-radius: 8px;
