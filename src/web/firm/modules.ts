@@ -102,34 +102,7 @@ export function rankingPresenceCard(
     "Ranking presence",
     module,
     appearances.length
-      ? el(
-          "div",
-          { class: CLASS_LIST },
-          ...appearances
-            .slice(0, 4)
-            .map(appearance =>
-              el(
-                "div",
-                { class: CLASS_LIST_ROW },
-                el(
-                  "span",
-                  {},
-                  [
-                    appearance.ranking?.year,
-                    appearance.ranking?.name || "Unresolved ranking",
-                    appearance.subjectType,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                ),
-                el(
-                  "strong",
-                  {},
-                  appearance.rank ? `#${appearance.rank}` : "rank pending"
-                )
-              )
-            )
-        )
+      ? rankingAppearanceList(appearances)
       : EmptyTextComponent({
           children: "No ranking appearances are loaded for this firm yet.",
         }),
@@ -140,6 +113,45 @@ export function rankingPresenceCard(
       metricTile("Unresolved", fmtNumber(module?.unresolvedCount)),
       metricTile("Top rank", topRank ? `#${topRank}` : COPY_NOT_LOADED)
     )
+  );
+}
+
+/**
+ * Builds the visible ranking appearance list.
+ * @param appearances - Ranking appearances from the module payload.
+ * @returns Ranking appearance list element.
+ */
+function rankingAppearanceList(
+  appearances: readonly RankingAppearance[]
+): HTMLElement {
+  return el(
+    "div",
+    { class: CLASS_LIST },
+    ...appearances.slice(0, 4).map(rankingAppearanceRow)
+  );
+}
+
+/**
+ * Builds one ranking appearance row.
+ * @param appearance - Ranking appearance to render.
+ * @returns Ranking appearance row.
+ */
+function rankingAppearanceRow(appearance: RankingAppearance): HTMLElement {
+  return el(
+    "div",
+    { class: CLASS_LIST_ROW },
+    el(
+      "span",
+      {},
+      [
+        appearance.ranking?.year,
+        appearance.ranking?.name || "Unresolved ranking",
+        appearance.subjectType,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    ),
+    el("strong", {}, appearance.rank ? `#${appearance.rank}` : "rank pending")
   );
 }
 

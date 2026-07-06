@@ -308,12 +308,7 @@ function advisorCenterSections(
     reviewedCorrections = d.reviewedCorrectionRequests ?? [];
   const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
   return [
-    compareAdvisorCard(d.advisor.id),
-    addToWatchlistCard(d.advisor.id),
-    privateRatingCard(d.advisor.id),
-    advisorCorrectionCard(d),
-    advisorTrustChecklistCard(d),
-    mobileEvidenceRoot,
+    ...advisorPrimaryCards(d, mobileEvidenceRoot),
     careerSection(d),
     teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
     PartialFailureCard("Teams", d.teams),
@@ -347,6 +342,26 @@ function advisorCenterSections(
     PartialFailureCard("Transitions involving this advisor", d.transitions),
     advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
+  ];
+}
+
+/**
+ * Builds the fixed set of primary advisor action cards.
+ * @param d - Advisor profile payload.
+ * @param mobileEvidenceRoot - Responsive evidence slot.
+ * @returns Primary action and evidence cards.
+ */
+function advisorPrimaryCards(
+  d: AdvisorProfilePayload,
+  mobileEvidenceRoot: HTMLElement
+): readonly HTMLElement[] {
+  return [
+    compareAdvisorCard(d.advisor.id),
+    addToWatchlistCard(d.advisor.id),
+    privateRatingCard(d.advisor.id),
+    advisorCorrectionCard(d),
+    advisorTrustChecklistCard(d),
+    mobileEvidenceRoot,
   ];
 }
 

@@ -37,6 +37,25 @@ export function recruitingValidationReport(
   input: RecruitingValidationReportInput
 ): JsonRecord {
   const knownAumCount = Math.max(input.moveCount - input.missingAumCount, 0);
+  const checks = recruitingValidationChecks(input, knownAumCount);
+  const passCount = checks.filter(check => check.passed).length;
+  return {
+    passCount,
+    failCount: checks.length - passCount,
+    checks,
+  };
+}
+
+/**
+ * Builds the individual recruiting validation checks.
+ * @param input - Counts and thresholds for the report.
+ * @param knownAumCount - Derived number of rows with known AUM.
+ * @returns Ordered validation checks.
+ */
+function recruitingValidationChecks(
+  input: RecruitingValidationReportInput,
+  knownAumCount: number
+): readonly ValidationCheck[] {
   const checks = [
     validationCheck(
       "move-depth",
@@ -76,12 +95,7 @@ export function recruitingValidationReport(
       1
     ),
   ];
-  const passCount = checks.filter(check => check.passed).length;
-  return {
-    passCount,
-    failCount: checks.length - passCount,
-    checks,
-  };
+  return checks;
 }
 
 /**

@@ -32,6 +32,21 @@ interface RecruitingCompactSummaryFacts {
   readonly summary: JsonRecord;
 }
 
+/** Input slices before compact recruiting depth counts are derived. */
+interface RecruitingCompactSummaryInput {
+  readonly filterSlices: JsonRecord;
+  readonly firmMomentum: ReadonlyArray<unknown>;
+  readonly marketActivity: ReadonlyArray<unknown>;
+  readonly missingAumCount: number;
+  readonly missingDealEconomicsStatusCount: number;
+  readonly missingFieldTags: ReadonlyArray<string>;
+  readonly moveCount: number;
+  readonly recentMoves: ReadonlyArray<unknown>;
+  readonly sourceBackedCount: number;
+  readonly sourceStatusTags: ReadonlyArray<string>;
+  readonly summary: JsonRecord;
+}
+
 /**
  * Builds the recruiting-resource baseline summary.
  * @param body - Decoded `/RecruitingMarket` JSON object.
@@ -67,11 +82,10 @@ export function summarizeRecruitingResourcePayload(
     sourceCoverage,
     recentMoves
   );
-  const filterSlices = recruitingFilterSlices(recentMoves);
-  const facts = {
-    filterSlices,
-    firmMomentumCount: firmMomentum.length,
-    marketActivityCount: marketActivity.length,
+  const facts = buildRecruitingCompactSummaryFacts({
+    filterSlices: recruitingFilterSlices(recentMoves),
+    firmMomentum,
+    marketActivity,
     missingAumCount,
     missingDealEconomicsStatusCount,
     missingFieldTags,
@@ -80,11 +94,26 @@ export function summarizeRecruitingResourcePayload(
     sourceBackedCount,
     sourceStatusTags,
     summary,
-  };
+  });
   const compactSummary = recruitingCompactSummary(facts);
   return {
     ...compactSummary,
     validationReport: recruitingResourceValidationReport(facts),
+  };
+}
+
+/**
+ * Adds derived collection counts to compact recruiting summary facts.
+ * @param input - Summary facts with full collection slices.
+ * @returns Facts ready for compact summary and validation output.
+ */
+function buildRecruitingCompactSummaryFacts(
+  input: RecruitingCompactSummaryInput
+): RecruitingCompactSummaryFacts {
+  return {
+    ...input,
+    firmMomentumCount: input.firmMomentum.length,
+    marketActivityCount: input.marketActivity.length,
   };
 }
 

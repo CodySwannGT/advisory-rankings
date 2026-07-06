@@ -145,18 +145,17 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
   const recruiting = await recruitingCoverage(query);
   const recruitingGap = await detectUnextractedRecruiting(query);
-  const articles = await latestDate(
-    query,
-    "SELECT MAX(publishedDate) AS latest FROM data.Article"
-  );
-  const transitions = await latestDate(
-    query,
-    "SELECT MAX(moveDate) AS latest FROM data.TransitionEvent"
-  );
-  const firmSourceChecks = await latestDate(
-    query,
-    "SELECT MAX(checkedAt) AS latest FROM data.AdvisorResearchCheck"
-  );
+  const [articles, transitions, firmSourceChecks] = await Promise.all([
+    latestDate(query, "SELECT MAX(publishedDate) AS latest FROM data.Article"),
+    latestDate(
+      query,
+      "SELECT MAX(moveDate) AS latest FROM data.TransitionEvent"
+    ),
+    latestDate(
+      query,
+      "SELECT MAX(checkedAt) AS latest FROM data.AdvisorResearchCheck"
+    ),
+  ]);
   return {
     generatedAt: new Date().toISOString(),
     counts: counts.counts,
