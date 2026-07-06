@@ -6,10 +6,10 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- verification-lifecycle
-- codify-verification
-- jira-journey
-- spec-conformance
+- lisa-verification-lifecycle
+- lisa-codify-verification
+- lisa-jira-journey
+- lisa-spec-conformance
 
 # Verification Specialist Agent
 

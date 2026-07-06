@@ -1,0 +1,4 @@
+display_name: "Gluestack Nativewind"
+short_description: "This skill enforces Gluestack UI v3 and NativeWind v4 design patterns for consistent, performant, and maintainable styling"
+default_prompt:
+  - "Use $gluestack-nativewind: This skill enforces Gluestack UI v3 and NativeWind v4 design patterns for consistent, performant, and maintainable styling."

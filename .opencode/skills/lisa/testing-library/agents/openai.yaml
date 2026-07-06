@@ -1,0 +1,4 @@
+display_name: "Testing Library"
+short_description: "Enforces best practices for unit testing with Jest, @testing-library/react-native, and jest-expo in Expo projects"
+default_prompt:
+  - "Use $testing-library: Enforces best practices for unit testing with Jest, @testing-library/react-native, and jest-expo in Expo projects."

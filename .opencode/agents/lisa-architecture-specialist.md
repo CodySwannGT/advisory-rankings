@@ -6,9 +6,9 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- codebase-research
-- task-decomposition
-- epic-triage
+- lisa-codebase-research
+- lisa-task-decomposition
+- lisa-epic-triage
 
 # Architecture Specialist Agent
 

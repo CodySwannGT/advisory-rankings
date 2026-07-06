@@ -1,0 +1,4 @@
+display_name: "Local State"
+short_description: "implementing local state management in this React Native/Expo codebase"
+default_prompt:
+  - "Use $local-state: implementing local state management in this React Native/Expo codebase."

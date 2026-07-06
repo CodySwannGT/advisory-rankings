@@ -1,0 +1,4 @@
+display_name: "Atomic Design Gluestack"
+short_description: "|"
+default_prompt:
+  - "Use $atomic-design-gluestack: |."

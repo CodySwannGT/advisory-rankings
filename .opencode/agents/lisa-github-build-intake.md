@@ -6,15 +6,15 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- github-build-intake
-- github-read-issue
-- github-verify
-- github-validate-issue
-- github-write-issue
-- github-sync
-- github-evidence
-- github-add-journey
-- ticket-triage
+- lisa-github-build-intake
+- lisa-github-read-issue
+- lisa-github-verify
+- lisa-github-validate-issue
+- lisa-github-write-issue
+- lisa-github-sync
+- lisa-github-evidence
+- lisa-github-add-journey
+- lisa-ticket-triage
 
 # GitHub Build Intake Agent
 

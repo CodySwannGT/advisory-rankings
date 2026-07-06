@@ -1,12 +1,5 @@
 # BEGIN: AI GUARDRAILS
 
-# Skip pre-push checks in Claude Code remote environment
-# These checks run in CI/CD anyway, and remote environments have limited resources
-if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then
-  echo "ℹ️  Skipping pre-push checks (running in Claude Code remote environment)"
-  exit 0
-fi
-
 # Detect package manager (check if tool is available before using it)
 # Priority: bun > yarn > npm (bun first since package.json engines prefer it)
 if ([ -f "bun.lockb" ] || [ -f "bun.lock" ]) && command -v bun >/dev/null 2>&1; then
@@ -314,6 +307,19 @@ fi
 #     echo "✅ Lighthouse CI performance audit passed"
 #   fi
 # fi
+
+# Managed verification (UAT) extension slot (see .husky/pre-push.verify).
+# Opt-in project types (e.g. phaser) ship this snippet via Lisa; it mirrors the
+# CI verification_coverage gate locally. It is absent for types that have not
+# opted into verify_enforced, so this block is a no-op for them.
+if [ -f .husky/pre-push.verify ]; then
+  # shellcheck source=/dev/null
+  . .husky/pre-push.verify
+  if [ $? -ne 0 ]; then
+    echo "❌ Verification (UAT) coverage check failed."
+    exit 1
+  fi
+fi
 
 # Project-specific extension slot (see .husky/pre-push.local).
 # This hook sources pre-push.local if present so per-project checks

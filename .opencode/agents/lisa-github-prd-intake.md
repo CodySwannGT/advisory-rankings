@@ -6,13 +6,13 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- github-prd-intake
-- github-to-tracker
-- tracker-validate
-- tracker-source-artifacts
-- product-walkthrough
-- tracker-write
-- prd-ticket-coverage
+- lisa-github-prd-intake
+- lisa-github-to-tracker
+- lisa-tracker-validate
+- lisa-tracker-source-artifacts
+- lisa-product-walkthrough
+- lisa-tracker-write
+- lisa-prd-ticket-coverage
 
 # PRD Intake Agent (GitHub)
 

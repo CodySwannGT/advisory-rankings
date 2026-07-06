@@ -5,8 +5,8 @@ developer_instructions = """
 
 This agent operates in a Lisa-managed Codex environment with access to the following skills:
 
-- spec-conformance
-- jira-read-ticket
+- lisa-spec-conformance
+- lisa-jira-read-ticket
 
 
 # Spec Conformance Specialist Agent

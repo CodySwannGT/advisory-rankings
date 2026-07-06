@@ -5,15 +5,15 @@ developer_instructions = """
 
 This agent operates in a Lisa-managed Codex environment with access to the following skills:
 
-- jira-build-intake
-- jira-read-ticket
-- jira-verify
-- jira-validate-ticket
-- jira-write-ticket
-- jira-sync
-- jira-evidence
-- jira-add-journey
-- ticket-triage
+- lisa-jira-build-intake
+- lisa-jira-read-ticket
+- lisa-jira-verify
+- lisa-jira-validate-ticket
+- lisa-jira-write-ticket
+- lisa-jira-sync
+- lisa-jira-evidence
+- lisa-jira-add-journey
+- lisa-ticket-triage
 
 
 # JIRA Build Intake Agent

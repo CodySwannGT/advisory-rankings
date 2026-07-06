@@ -6,8 +6,8 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- reproduce-bug
-- root-cause-analysis
+- lisa-reproduce-bug
+- lisa-root-cause-analysis
 
 # Debug Specialist Agent
 

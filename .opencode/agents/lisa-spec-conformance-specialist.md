@@ -6,8 +6,8 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- spec-conformance
-- jira-read-ticket
+- lisa-spec-conformance
+- lisa-jira-read-ticket
 
 # Spec Conformance Specialist Agent
 

@@ -6,7 +6,7 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- quality-review
+- lisa-quality-review
 
 # Quality Specialist Agent
 

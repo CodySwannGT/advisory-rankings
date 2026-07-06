@@ -1,0 +1,4 @@
+display_name: "Harper Config Yaml"
+short_description: "creating or editing a Harper (HarperDB/Fabric) component's config.yaml — enabling a built-in extension (graphqlSchema, jsResource, rest…"
+default_prompt:
+  - "Use $harper-config-yaml: creating or editing a Harper (HarperDB/Fabric) component's config.yaml — enabling a built-in extension (graphqlSchema, jsResource, rest…."
