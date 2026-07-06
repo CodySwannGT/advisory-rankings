@@ -5,7 +5,7 @@ import type {
 } from "../types/harper-schema.js";
 import type { ResourceIndex } from "./resource-data.js";
 
-import { loadTables } from "./resource-data.js";
+import { loadAll } from "./resource-data.js";
 import { advisorDisplayName } from "./resource-routing.js";
 import {
   rowsFor,
@@ -59,15 +59,7 @@ export async function correctionRequestQueue(
   const rows = (await rowsFor(table, "status", "pending"))
     .slice()
     .sort(comparePendingRequests);
-  // Queue rows come from the correction table above; the resource index
-  // is only used to label advisors with their current firm, so the read
-  // is scoped to those four tables instead of the legacy `loadAll()`.
-  const db = await loadTables([
-    "advisors",
-    "employments",
-    "firms",
-    "firmAliases",
-  ]);
+  const db = await loadAll();
   const items = rows.map(row => queueItem(row, db));
   const datedItems = items.filter(item => item.createdAt !== null);
   return {

@@ -204,27 +204,6 @@ export function canonicalizeForSearch(
 }
 
 /**
- * Maps stale curated-alias firm ids to their canonical firm id for the
- * supplied firm rows. Exposed so the scoped per-entity profile loaders
- * can widen an indexed firm-id query to include rows stored under a
- * stale alias id — the same rows `loadAll()` reaches by rewriting every
- * table via `rewriteFirmReferences` after a full scan.
- * @param firms - Firm rows to inspect (typically the full Firm table).
- * @returns Stale firm id → canonical firm id replacements.
- */
-export function staleFirmIdReplacements(
-  firms: ReadonlyArray<FirmRow>
-): ReadonlyMap<string, string> {
-  return new Map(
-    firms
-      .filter(firm =>
-        isMorganStanleyAliasFirm({ id: firm.id, name: firm.name })
-      )
-      .map(firm => [firm.id, MORGAN_STANLEY_ID])
-  );
-}
-
-/**
  * Re-keys the caller's typed rows map into the loose `RawRowsByKey`
  * shape the canonicalizer implementation operates on. Per-row interfaces
  * from `harper-schema.ts` are structurally `Readonly<Record<string,

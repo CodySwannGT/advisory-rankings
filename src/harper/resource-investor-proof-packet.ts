@@ -5,8 +5,7 @@ import type {
   TransitionEventRow,
 } from "../types/harper-schema.js";
 import type { ResourceIndex } from "./resource-data.js";
-import { loadTables } from "./resource-data.js";
-import { INVESTOR_PROOF_PACKET_TABLES } from "./resource-analytics-table-sets.js";
+import { loadAll } from "./resource-data.js";
 import {
   dataCoverageResponse,
   type DataCoverageMetric,
@@ -85,15 +84,10 @@ export class InvestorProofPacket extends Resource {
 
   /**
    * Builds a public-safe investor proof packet from existing resource models.
-   * Embeds whole-table coverage and freshness rollups by design, so the
-   * read is scoped to {@link INVESTOR_PROOF_PACKET_TABLES} instead of
-   * the legacy 34-table `loadAll()`.
    * @returns Coverage, freshness, and representative replay links.
    */
   async get(): Promise<InvestorProofPacketResponse> {
-    return investorProofPacketResponse(
-      await loadTables(INVESTOR_PROOF_PACKET_TABLES)
-    );
+    return investorProofPacketResponse(await loadAll());
   }
 }
 
