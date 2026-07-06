@@ -6,8 +6,8 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- security-review
-- security-zap-scan
+- lisa-security-review
+- lisa-security-zap-scan
 
 # Security Specialist Agent
 

@@ -6,15 +6,15 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- linear-build-intake
-- linear-read-issue
-- linear-verify
-- linear-validate-issue
-- linear-write-issue
-- linear-sync
-- linear-evidence
-- linear-add-journey
-- ticket-triage
+- lisa-linear-build-intake
+- lisa-linear-read-issue
+- lisa-linear-verify
+- lisa-linear-validate-issue
+- lisa-linear-write-issue
+- lisa-linear-sync
+- lisa-linear-evidence
+- lisa-linear-add-journey
+- lisa-ticket-triage
 
 # Linear Build Intake Agent
 

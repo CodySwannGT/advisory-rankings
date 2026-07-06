@@ -1,0 +1,4 @@
+display_name: "Expo Router Best Practices"
+short_description: "creating new routes, configuring navigation layouts, implementing deep linking, or organizing the app/ directory structure in Expo Router…"
+default_prompt:
+  - "Use $expo-router-best-practices: creating new routes, configuring navigation layouts, implementing deep linking, or organizing the app/ directory structure in Expo Router…."

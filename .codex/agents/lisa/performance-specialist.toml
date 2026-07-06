@@ -5,7 +5,7 @@ developer_instructions = """
 
 This agent operates in a Lisa-managed Codex environment with access to the following skills:
 
-- performance-review
+- lisa-performance-review
 
 
 # Performance Specialist Agent

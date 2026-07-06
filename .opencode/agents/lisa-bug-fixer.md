@@ -6,9 +6,9 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- bug-triage
-- tdd-implementation
-- jsdoc-best-practices
+- lisa-bug-triage
+- lisa-tdd-implementation
+- lisa-jsdoc-best-practices
 
 # Bug Fixer Agent
 

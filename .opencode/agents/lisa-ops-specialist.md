@@ -10,11 +10,11 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- ops-run-local
-- ops-deploy
-- ops-check-logs
-- ops-verify-jobs
-- ops-verify-telemetry
+- lisa-ops-run-local
+- lisa-ops-deploy
+- lisa-ops-check-logs
+- lisa-ops-verify-jobs
+- lisa-ops-verify-telemetry
 
 # Ops Specialist Agent
 
@@ -212,7 +212,7 @@ check_env() {
 | Solid Queue jobs stuck | Worker process crashed | Check `docker compose logs worker`; restart worker container |
 | Migrations fail on deploy | Unsafe migration detected by Strong Migrations | Fix the migration per Strong Migrations guidance, then redeploy |
 | `ActiveRecord::NoDatabaseError` | Database not created | `bin/rails db:create` (local) or check ECS task definition env vars |
-| AWS credentials expired | SSO session timed out | `aws sso login --profile {profile}` |
+| AWS credentials expired | SSO session timed out locally, or missing env-backed profile headless | Interactive local: refresh the local AWS profile outside headless automation. Headless: use the configured environment-backed assume-role profile |
 | ECS tasks keep restarting | Health check failing or OOM | Check CloudWatch logs for the task; verify `/up` returns 200; check memory limits |
 | OpenTelemetry traces missing | Collector not configured or endpoint wrong | Verify `OTEL_EXPORTER_OTLP_ENDPOINT` in environment; check collector sidecar logs |
 | `Bundler::GemNotFound` | Missing `bundle install` after Gemfile change | `bundle install` locally; for deploy, rebuild Docker image |

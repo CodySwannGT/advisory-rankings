@@ -1,0 +1,4 @@
+display_name: "Directory Structure"
+short_description: "This skill enforces the project's directory structure standards when creating or moving files"
+default_prompt:
+  - "Use $directory-structure: This skill enforces the project's directory structure standards when creating or moving files."

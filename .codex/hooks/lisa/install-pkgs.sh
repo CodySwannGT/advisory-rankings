@@ -7,7 +7,33 @@ set -uo pipefail
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$repo_root" 2>/dev/null || exit 0
 
-if [ -d "node_modules" ] || [ ! -f "package.json" ]; then
+if [ ! -f "package.json" ]; then
+  exit 0
+fi
+
+link_primary_worktree_node_modules() {
+  [ ! -e "node_modules" ] && [ ! -L "node_modules" ] || return 1
+
+  case "$repo_root" in
+    */.claude/worktrees/*)
+      primary_root="${repo_root%%/.claude/worktrees/*}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  [ "$primary_root" != "$repo_root" ] || return 1
+  [ -d "$primary_root/node_modules" ] || return 1
+
+  ln -s "$primary_root/node_modules" "node_modules"
+}
+
+if [ -d "node_modules" ]; then
+  exit 0
+fi
+
+if link_primary_worktree_node_modules && [ -d "node_modules" ]; then
   exit 0
 fi
 
@@ -39,10 +65,10 @@ detect_package_manager() {
 
 PACKAGE_MANAGER="$(detect_package_manager)"
 case "$PACKAGE_MANAGER" in
-  bun) command -v bun >/dev/null 2>&1 && bun install ;;
-  pnpm) command -v pnpm >/dev/null 2>&1 && pnpm install ;;
-  yarn) command -v yarn >/dev/null 2>&1 && yarn install ;;
-  *) command -v npm >/dev/null 2>&1 && npm install ;;
+  bun) command -v bun >/dev/null 2>&1 && bun install >&2 ;;
+  pnpm) command -v pnpm >/dev/null 2>&1 && pnpm install >&2 ;;
+  yarn) command -v yarn >/dev/null 2>&1 && yarn install >&2 ;;
+  *) command -v npm >/dev/null 2>&1 && npm install >&2 ;;
 esac
 
 exit 0

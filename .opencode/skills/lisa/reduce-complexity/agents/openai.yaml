@@ -1,0 +1,4 @@
+display_name: "Reduce Complexity"
+short_description: "This skill provides strategies and patterns for reducing cognitive complexity in React components"
+default_prompt:
+  - "Use $reduce-complexity: This skill provides strategies and patterns for reducing cognitive complexity in React components."

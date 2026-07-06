@@ -6,9 +6,9 @@ mode: subagent
 
 This agent operates in a Lisa-managed OpenCode environment with access to the following skills:
 
-- jira-read-ticket
-- github-read-issue
-- tracker-read
+- lisa-jira-read-ticket
+- lisa-github-read-issue
+- lisa-tracker-read
 
 # Tracker Mining Specialist Agent
 

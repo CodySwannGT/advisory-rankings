@@ -16,5 +16,8 @@
       "enabled": true,
       "_lisaManaged": true
     }
-  }
+  },
+  "instructions": [
+    ".opencode/lisa-rules/eager/*.md"
+  ]
 }
