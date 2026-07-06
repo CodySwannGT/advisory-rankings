@@ -1,5 +1,9 @@
 import { advisorDisplayName } from "./resource-routing.js";
 import { loadAll } from "./resource-data.js";
+import {
+  currentUser,
+  hasAnalystRole,
+} from "./resource-user-watchlists-store.js";
 import type { ResourceIndex } from "./resource-data.js";
 import type {
   AdvisorRow,
@@ -94,10 +98,13 @@ export class RegulatoryDiscrepancyQueue extends Resource {
 
   /**
    * Reads open discrepancies and joins analyst review context.
+   * Non-analyst sessions receive the authenticated empty envelope, mirroring
+   * the advisor-correction queue: discrepancy rows are analyst work product.
    * @returns Auth-aware discrepancy queue payload.
    */
   async get(): Promise<RegulatoryDiscrepancyQueueResponse> {
     if (!currentUserId(this)) return emptyQueue(false);
+    if (!hasAnalystRole(currentUser(this))) return emptyQueue(true);
     const db = await loadQueueData();
     const rows = db.regulatoryDiscrepancies
       .filter(row => row.status === OPEN_STATUS)

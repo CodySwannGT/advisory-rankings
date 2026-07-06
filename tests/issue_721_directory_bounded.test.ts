@@ -264,6 +264,41 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
     }
   });
 
+  it("seeds sorted searches so no query ships the empty-conditions+sort crash shape", async () => {
+    // Harper rejects `search({ conditions: [], sort })` and 500s the moment
+    // a row's sort attribute is undefined (runbook §6 / §662). The
+    // unfiltered directory produces zero filter conditions, so the shared
+    // query layer must inject a `lastName greater_than ""` seed on every
+    // sorted call — page AND count companions alike.
+    const rows = seedAdvisors(30);
+    setAdvisorRows(rows);
+    const recorded = recordedTable(rows);
+    const originalAdvisor = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = recorded;
+
+    try {
+      await new (resources as any).PublicAdvisors().get(
+        routeTarget({ limit: "10" })
+      );
+
+      const sortedCalls = recorded.calls.filter(
+        c => (c.sort as any)?.attribute === "lastName"
+      );
+      expect(sortedCalls.length).toBeGreaterThan(0);
+      for (const call of sortedCalls) {
+        expect(call.conditions.length).toBeGreaterThan(0);
+        expect(
+          call.conditions.some(
+            (c: any) =>
+              c.attribute === "lastName" && c.comparator === "greater_than"
+          )
+        ).toBe(true);
+      }
+    } finally {
+      (globalThis as any).tables.Advisor = originalAdvisor;
+    }
+  });
+
   it("bounds derived readiness finder scans with explicit page limits", async () => {
     const rows = seedAdvisors(250).map(row => ({
       ...row,

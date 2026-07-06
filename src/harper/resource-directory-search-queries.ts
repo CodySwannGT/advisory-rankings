@@ -65,13 +65,58 @@ export interface PageAndCount<T> {
 }
 
 /**
+ * Floor values used to seed sorted searches, keyed by sort attribute.
+ * String attributes fall back to `""`; date-typed attributes need a
+ * parseable date floor so Harper's cast layer accepts the comparison.
+ */
+const SORT_ATTRIBUTE_FLOORS: Readonly<Record<string, string>> = {
+  publishedDate: "1970-01-01",
+};
+
+/**
+ * Guarantees every sorted search carries a seed condition on its sort
+ * attribute. Harper rejects `search({ conditions: [], sort })` (the
+ * planner cannot seed the btree cursor without a condition) and throws
+ * `Invalid value for attribute <attr>: 'undefined'` the moment the
+ * result set contains a row whose sort attribute is missing — see
+ * docs/fabric-runbook.md §6 (the `/Feed` incident). An indexed
+ * `greater_than <floor>` condition on the sort attribute satisfies both
+ * constraints and excludes attribute-less rows from the sort, which is
+ * the established `/Feed` semantic. Centralized here so no caller can
+ * reproduce the crash by forgetting the sentinel (the advisor directory
+ * did exactly that before this helper existed).
+ * @param conditions - Caller-supplied search conditions.
+ * @param sort - Optional Harper sort.
+ * @returns Conditions guaranteed safe to combine with the sort.
+ */
+function withSortSeed(
+  conditions: readonly HarperCondition[],
+  sort?: HarperSort
+): readonly HarperCondition[] {
+  if (!sort) return conditions;
+  if (conditions.some(condition => condition.attribute === sort.attribute)) {
+    return conditions;
+  }
+  return [
+    {
+      attribute: sort.attribute,
+      comparator: "greater_than",
+      value: SORT_ATTRIBUTE_FLOORS[sort.attribute] ?? "",
+    },
+    ...conditions,
+  ];
+}
+
+/**
  * Runs a paginated Harper search and returns a fully-materialized page
  * plus a separate count of matching rows. The count is computed by a
  * second `search({ conditions })` pass; Harper's `count` operations API
  * (spike §0.1 Q4) is more efficient but exposed only outside the
  * `tables.X.search()` surface, so this module favours the readable
  * single-API path and accepts the cost. The two queries run in
- * parallel.
+ * parallel. Sorted queries are seeded via {@link withSortSeed}; the
+ * count pass reuses the seeded conditions so `total` counts exactly the
+ * rows the sorted page query can ever return.
  * @param table - Harper table handle (statically resolved).
  * @param options - Conditions, sort, page bounds.
  * @returns Page rows plus matching-row count.
@@ -81,7 +126,8 @@ export async function searchPageAndCount<T>(
   options: PageAndCountOptions
 ): Promise<PageAndCount<T>> {
   const searchable = table as SearchableTable<T>;
-  const { conditions, sort, limit, offset } = options;
+  const { sort, limit, offset } = options;
+  const conditions = withSortSeed(options.conditions, sort);
   const pageQuery: Readonly<Record<string, unknown>> = sort
     ? { conditions, sort, limit, offset }
     : { conditions, limit, offset };
@@ -221,36 +267,19 @@ export async function feedArticlePage(
   limit: number,
   offset: number
 ): Promise<PageAndCount<ArticleRow>> {
-  // Every Article query here sorts by `publishedDate`, and Harper throws
-  // "Invalid value for attribute publishedDate: 'undefined'" the moment the
-  // result set contains a row whose `publishedDate` is missing (some ingested
-  // rows do, despite the schema). An indexed `publishedDate > epoch` condition
-  // both satisfies Harper's "needs at least one condition" rule AND excludes
-  // those date-less rows from the sort, so it is applied on EVERY path — not
-  // just the unfiltered "all" feed. Omitting it on the category-filtered path
-  // is what made `/Feed?category=<x>` 500 for every visitor (and broke the
-  // deploy smoke gate). Date-less rows are already absent from the default
-  // feed, so excluding them from category views too is consistent. See
-  // docs/fabric-runbook.md §6.
-  const publishedFloor: HarperCondition = {
-    attribute: "publishedDate",
-    comparator: "greater_than",
-    value: "1970-01-01",
-  };
+  // Every Article query here sorts by `publishedDate`; the mandatory
+  // `publishedDate > 1970-01-01` seed condition (which also excludes
+  // date-less ingested rows from the sort — see docs/fabric-runbook.md
+  // §6) is injected centrally by `searchPageAndCount` via
+  // `withSortSeed`, so no feed path can regress by omitting it.
   const categoryAliases = feedCategoryAliases(category);
   if (categoryAliases.length > 1) {
-    return mergedFeedArticlePage(
-      categoryAliases,
-      publishedFloor,
-      limit,
-      offset
-    );
+    return mergedFeedArticlePage(categoryAliases, limit, offset);
   }
   const conditions: readonly HarperCondition[] =
     categoryAliases.length === 0
-      ? [publishedFloor]
+      ? []
       : [
-          publishedFloor,
           {
             attribute: "category",
             comparator: "equals",
@@ -280,15 +309,14 @@ function feedCategoryAliases(category: string): readonly string[] {
 
 /**
  * Merges bounded pages from category aliases using the same published-date sort.
+ * The published-date seed condition is injected by `searchPageAndCount`.
  * @param categories - Stored category aliases.
- * @param publishedFloor - Common published-date guard condition.
  * @param limit - Response page size.
  * @param offset - Global offset across the merged category set.
  * @returns Merged page and total.
  */
 async function mergedFeedArticlePage(
   categories: readonly string[],
-  publishedFloor: HarperCondition,
   limit: number,
   offset: number
 ): Promise<PageAndCount<ArticleRow>> {
@@ -296,7 +324,6 @@ async function mergedFeedArticlePage(
     categories.map(category =>
       searchPageAndCount<ArticleRow>(tables.Article, {
         conditions: [
-          publishedFloor,
           { attribute: "category", comparator: "equals", value: category },
         ],
         sort: { attribute: "publishedDate", descending: true },

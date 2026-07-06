@@ -143,6 +143,45 @@ export function currentUserId(resource: CurrentUserResource): string | null {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
+/** Roles allowed to perform analyst review actions on shared queue data. */
+const ANALYST_ROLES = ["analyst", "super_user", "super", "admin"] as const;
+
+/**
+ * Reads the current Harper user object from a resource instance.
+ * @param resource Harper resource exposing `getCurrentUser`.
+ * @returns Current user object or null.
+ */
+export function currentUser(resource: CurrentUserResource): unknown {
+  return resource.getCurrentUser?.() ?? null;
+}
+
+/**
+ * Checks whether a signed-in user can perform analyst review actions.
+ * @param user Current Harper user object.
+ * @returns True when the user role is analyst or elevated.
+ */
+export function hasAnalystRole(user: unknown): boolean {
+  return ANALYST_ROLES.includes(
+    roleValue(user) as (typeof ANALYST_ROLES)[number]
+  );
+}
+
+/**
+ * Extracts a role string from Harper's flat or nested role shapes.
+ * @param value Current user object.
+ * @returns Role name or empty string.
+ */
+function roleValue(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const role = Reflect.get(value, "role");
+  if (typeof role === "string") return role;
+  if (role && typeof role === "object") {
+    const nested = Reflect.get(role, "role");
+    return typeof nested === "string" ? nested : "";
+  }
+  return "";
+}
+
 /**
  * Normalizes free-text input: trims whitespace and caps length to protect storage.
  * @param value Raw input value of unknown type.
@@ -192,7 +231,9 @@ export function entryId(listId: string, advisorId: string): string {
  */
 export function throwStatus(message: string, status: number): never {
   const error = new Error(message);
-  Object.assign(error, { status });
+  // Harper's thrown-error response writer reads `statusCode` (falling back to
+  // 500); `status` is kept for returned-response symmetry and callers/tests.
+  Object.assign(error, { status, statusCode: status });
   throw error;
 }
 

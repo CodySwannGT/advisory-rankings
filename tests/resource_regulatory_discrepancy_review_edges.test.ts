@@ -76,7 +76,7 @@ describe("RegulatoryDiscrepancyReview", () => {
 
   it("persists a route-target review with the active user id", async () => {
     const resource = new ReviewResource();
-    resource.getCurrentUser = () => ({ id: "analyst-1" });
+    resource.getCurrentUser = () => ({ id: "analyst-1", role: "analyst" });
 
     const response = await resource.post(routeTarget, {
       reviewerNote: "  prefers BrokerCheck  ",
@@ -103,7 +103,10 @@ describe("RegulatoryDiscrepancyReview", () => {
       tables: { RegulatoryDiscrepancy: table },
     });
     const resource = new ReviewResource();
-    resource.getCurrentUser = () => ({ email: "analyst@example.com" });
+    resource.getCurrentUser = () => ({
+      email: "analyst@example.com",
+      role: { role: "analyst" },
+    });
 
     const response = await resource.post({
       id: "disc-1",
@@ -129,7 +132,7 @@ describe("RegulatoryDiscrepancyReview", () => {
       tables: { RegulatoryDiscrepancy: table },
     });
     const resource = new ReviewResource();
-    resource.getCurrentUser = () => ({ username: "analyst" });
+    resource.getCurrentUser = () => ({ role: "admin", username: "analyst" });
 
     const response = await resource.post(routeTarget, {
       status: "needs_followup",
@@ -151,7 +154,7 @@ describe("RegulatoryDiscrepancyReview", () => {
       tables: { RegulatoryDiscrepancy: table },
     });
     const resource = new ReviewResource();
-    resource.getCurrentUser = () => ({ id: "analyst-1" });
+    resource.getCurrentUser = () => ({ id: "analyst-1", role: "analyst" });
 
     await expect(
       resource.post(routeTarget, { status: "accepted_advisorhub" })
@@ -163,9 +166,37 @@ describe("RegulatoryDiscrepancyReview", () => {
 
     await expect(resource.get(routeTarget)).rejects.toThrow("Sign in required");
 
-    resource.getCurrentUser = () => ({ username: "analyst" });
+    resource.getCurrentUser = () => ({ role: "analyst", username: "analyst" });
     await expect(
       resource.post(routeTarget, { status: "still_open" })
     ).rejects.toThrow("unsupported review status");
+  });
+
+  it("rejects signed-in non-analyst reads and writes with a 403", async () => {
+    const resource = new ReviewResource();
+    resource.getCurrentUser = () => ({ id: "user-1", role: "app_user" });
+
+    await expect(resource.get(routeTarget)).rejects.toMatchObject({
+      message: "Analyst role required",
+      status: 403,
+      statusCode: 403,
+    });
+    await expect(
+      resource.post(routeTarget, { status: "accepted_brokercheck" })
+    ).rejects.toMatchObject({
+      message: "Analyst role required",
+      status: 403,
+      statusCode: 403,
+    });
+    expect(table.put).not.toHaveBeenCalled();
+  });
+
+  it("tags thrown auth errors with Harper's statusCode property", async () => {
+    const resource = new ReviewResource();
+
+    await expect(resource.get(routeTarget)).rejects.toMatchObject({
+      status: 401,
+      statusCode: 401,
+    });
   });
 });
