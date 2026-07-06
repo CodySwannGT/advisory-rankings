@@ -2,7 +2,9 @@ import type { RegulatoryDiscrepancyRow } from "../types/harper-schema.js";
 import type { JsonBody, RouteTarget } from "../types/harper-resource.js";
 
 import {
+  currentUser,
   currentUserId,
+  hasAnalystRole,
   rowsFor,
   tableByName,
   textValue,
@@ -63,8 +65,7 @@ export class RegulatoryDiscrepancyReview extends Resource {
    * @returns The stored discrepancy row.
    */
   async get(target?: RouteTarget): Promise<DiscrepancyReviewResponse> {
-    const userId = currentUserId(this as CurrentUserResource);
-    if (!userId) throwStatus("Sign in required", 401);
+    requireAnalyst(this as CurrentUserResource);
     return {
       authenticated: true,
       discrepancy: await requireDiscrepancy(normalizeId(target)),
@@ -77,8 +78,7 @@ export class RegulatoryDiscrepancyReview extends Resource {
    * @returns The updated discrepancy row.
    */
   async post(...args: readonly unknown[]): Promise<DiscrepancyReviewResponse> {
-    const userId = currentUserId(this as CurrentUserResource);
-    if (!userId) throwStatus("Sign in required", 401);
+    const userId = requireAnalyst(this as CurrentUserResource);
 
     const body = findBody(args);
     const id = normalizeId(args.find(isRouteTarget)) || stringValue(body.id);
@@ -98,6 +98,22 @@ export class RegulatoryDiscrepancyReview extends Resource {
     await writeDiscrepancy(updated);
     return { authenticated: true, discrepancy: updated };
   }
+}
+
+/**
+ * Requires a signed-in analyst session, mirroring the advisor-correction gate.
+ * Regulatory review dispositions are analyst actions; a plain signed-in user
+ * must not be able to adjudicate discrepancies or stamp reviewer identity.
+ * @param resource Current Harper resource instance.
+ * @returns Stable user id of the verified analyst session.
+ */
+function requireAnalyst(resource: CurrentUserResource): string {
+  const userId = currentUserId(resource);
+  if (!userId) throwStatus("Sign in required", 401);
+  if (!hasAnalystRole(currentUser(resource))) {
+    throwStatus("Analyst role required", 403);
+  }
+  return userId;
 }
 
 /**

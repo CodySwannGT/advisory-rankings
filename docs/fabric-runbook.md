@@ -727,12 +727,21 @@ Endpoints (implemented in `src/harper/resources.ts` and emitted to
 | Route | Method | Auth | Behavior |
 |---|---|---|---|
 | `/Login` | POST | `allowCreate=true` (anonymous) | Body `{email, password}`. Calls `context.login()`. On success, Harper issues a Set-Cookie session for that user. Returns `{ok:true, username}`. 401 on bad creds. |
-| `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. |
+| `/Logout` | POST | `allowCreate=true` | Calls `ctx.session.update({})` then `ctx.session.delete(ctx.session.id)`. The first triggers Harper's middleware to clear server-side session state; the second cleans the row. Returns `{ok:true}`. If a session helper exists but throws (server-side session may survive), the endpoint now surfaces a 500 instead of a false `{ok:true}`; absent helpers (local shim) are still skipped. |
 | `/Me` | GET | `allowRead=true` | Returns `{authenticated, username, role}` if `getCurrentUser()` resolves a user, otherwise `{authenticated:false}`. The frontend hits this on every page load to render the navbar's sign-in/sign-out affordance. |
 | `/AdvisorCorrectionRequest` | GET/POST | `allowRead=true`, `allowCreate=true`, session required for writes | GET returns an analyst-only pending correction inbox envelope for `/corrections`; anonymous and non-analyst callers receive no private rows. POST creates a pending correction request row for signed-in users without changing source-backed advisor facts. Body includes advisor id, field name, displayed/proposed values, submitter note, and source context. |
 | `/AdvisorCorrectionRequest/<id>` | GET/POST | `allowRead=true`, `allowCreate=true`, session required in handler | Reads one request or persists analyst disposition fields (`accepted` / `rejected`, reviewer note, reviewer id, reviewed timestamp). |
-| `/RegulatoryDiscrepancyQueue` | GET | `allowRead=true`, details require session | Returns `{authenticated:false, items:[]}` for anonymous users and open source-conflict review rows for authenticated analyst sessions. |
+| `/RegulatoryDiscrepancyQueue` | GET | `allowRead=true`, details require analyst session | Returns `{authenticated:false, items:[]}` for anonymous users, the authenticated empty envelope for signed-in non-analysts, and open source-conflict review rows only for analyst-role sessions (`analyst`/`super_user`/`super`/`admin`). `/RegulatoryDiscrepancyReview` reads and writes require the analyst role outright (403 otherwise), matching the correction-request gate. |
 | `/AdvisorResearchQueue` | GET | `allowRead=true` | Returns public-safe due advisor research rows and returned-slice priority groups for `sourceType`, `staleDays`, `status`, `missingField`, and `limit` filters. Rows reuse `selectDueAdvisors` semantics, `status=never_checked` selects advisors with no check for the active source type, and the payload omits user-private rating/watchlist data. |
+
+**Wire status codes for thrown resource errors.** Harper's thrown-error
+response writer reads `error.statusCode` (falling back to 500); it ignores
+`error.status`. Every `throwStatus`/`StatusError` helper in
+`src/harper/**` therefore sets BOTH properties. Before this was fixed,
+every intended 400/401/403/404 from the scoped resources (auth, ratings,
+watchlists, corrections, discrepancy review) reached the wire as HTTP 500 —
+if a dashboard shows a historical cliff of 500s on those routes, that was
+the cause, not a server fault.
 
 Browser flow:
 

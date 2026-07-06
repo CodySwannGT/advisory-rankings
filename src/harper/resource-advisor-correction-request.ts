@@ -8,7 +8,9 @@ import {
 } from "./resource-advisor-correction-queue.js";
 import { normalizeId } from "./resource-routing.js";
 import {
+  currentUser,
   currentUserId,
+  hasAnalystRole,
   rowsFor,
   tableByName,
   textValue,
@@ -24,7 +26,6 @@ const MAX_VALUE_LENGTH = 2_000;
 const MAX_NOTE_LENGTH = 2_000;
 const MAX_SOURCE_LENGTH = 500;
 const MAX_CONTEXT_LENGTH = 4_000;
-const ANALYST_ROLES = ["analyst", "super_user", "super", "admin"] as const;
 
 /**
  *
@@ -323,42 +324,6 @@ function isRouteTarget(value: unknown): value is RouteTarget {
     typeof value === "object" &&
     typeof Reflect.get(value, "get") === "function"
   );
-}
-
-/**
- * Reads the current Harper user object from a resource instance.
- * @param resource Harper resource exposing `getCurrentUser`.
- * @returns Current user object or null.
- */
-function currentUser(resource: CurrentUserResource): unknown {
-  return resource.getCurrentUser?.() ?? null;
-}
-
-/**
- * Checks whether a signed-in user can perform analyst review actions.
- * @param user Current Harper user object.
- * @returns True when the user role is analyst or elevated.
- */
-function hasAnalystRole(user: unknown): boolean {
-  return ANALYST_ROLES.includes(
-    roleValue(user) as (typeof ANALYST_ROLES)[number]
-  );
-}
-
-/**
- * Extracts a role string from Harper's flat or nested role shapes.
- * @param value Current user object.
- * @returns Role name or empty string.
- */
-function roleValue(value: unknown): string {
-  if (!value || typeof value !== "object") return "";
-  const role = Reflect.get(value, "role");
-  if (typeof role === "string") return role;
-  if (role && typeof role === "object") {
-    const nested = Reflect.get(role, "role");
-    return typeof nested === "string" ? nested : "";
-  }
-  return "";
 }
 
 /**

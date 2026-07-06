@@ -48,6 +48,9 @@ interface SessionShape {
 class StatusError extends Error {
   readonly status: number;
 
+  /** Harper's thrown-error response writer reads `statusCode`, not `status`. */
+  readonly statusCode: number;
+
   /**
    * Constructs a `StatusError` with a message and an HTTP-ish status code.
    * @param message - Human-readable error message returned to the client.
@@ -56,6 +59,7 @@ class StatusError extends Error {
   constructor(message: string, status: number) {
     super(message);
     this.status = status;
+    this.statusCode = status;
   }
 }
 
@@ -103,12 +107,20 @@ export class Logout extends Resource {
 
   /**
    * Clears session state while tolerating the lighter local Harper shim.
-   * @returns Logout status after best-effort session cleanup.
+   * Absent session helpers (local shim) are skipped via optional calls,
+   * but a helper that exists and THROWS is a real logout failure — the
+   * server-side session may survive — so it surfaces as a 500 instead
+   * of a false `{ ok: true }`.
+   * @returns Logout status after session cleanup.
    */
   async post(): Promise<LogoutResponse> {
     const session = asSession(readSession(this.getContext()));
-    await maybeCall(() => session?.update?.({}));
-    await maybeCall(() => session?.delete?.(session.id));
+    try {
+      await session?.update?.({});
+      await session?.delete?.(session.id);
+    } catch (error) {
+      throwStatus(`Logout failed: ${String(error)}`, 500);
+    }
     return { ok: true };
   }
 }
@@ -191,21 +203,6 @@ function pickString(value: unknown): string | undefined {
  */
 function throwStatus(message: string, status: number): never {
   throw new StatusError(message, status);
-}
-
-/**
- * Invokes optional session helpers without failing local shim-backed tests.
- * Harper's full session interface is not present in the local Resource shim
- * used by `bun test`, so individual helpers may be undefined or throw.
- * @param operation - Deferred Harper session operation.
- * @returns Resolves after the helper succeeds or is intentionally skipped.
- */
-async function maybeCall(operation: () => unknown): Promise<void> {
-  try {
-    await operation();
-  } catch (_error) {
-    // Some Harper shims omit session helpers during local resource tests.
-  }
 }
 
 /**

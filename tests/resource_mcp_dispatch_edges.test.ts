@@ -34,6 +34,29 @@ describe("MCP JSON-RPC dispatch edges", () => {
     ).resolves.toBeNull();
   });
 
+  it("rejects oversized batches instead of amplifying anonymous work", async () => {
+    const oversized = Array.from({ length: 21 }, (_unused, index) => ({
+      id: index,
+      jsonrpc: "2.0",
+      method: "tools/list",
+    }));
+
+    await expect(handleMcpRequest(oversized)).resolves.toMatchObject({
+      error: { code: -32600, message: "Batch too large: max 20 requests" },
+      id: null,
+      jsonrpc: "2.0",
+    });
+
+    const atLimit = Array.from({ length: 20 }, (_unused, index) => ({
+      id: index,
+      jsonrpc: "2.0",
+      method: "tools/list",
+    }));
+    const responses = await handleMcpRequest(atLimit);
+    expect(Array.isArray(responses)).toBe(true);
+    expect((responses as readonly unknown[]).length).toBe(20);
+  });
+
   it("preserves valid ids on invalid requests", async () => {
     await expect(
       handleMcpRequest({ id: 7, jsonrpc: "2.0" })

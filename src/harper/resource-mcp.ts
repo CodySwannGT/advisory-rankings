@@ -21,6 +21,8 @@ const SERVER_INFO = {
 const JSON_RPC_VERSION = "2.0";
 const PARSE_ERROR = -32700;
 const INVALID_REQUEST = -32600;
+/** Upper bound on anonymous JSON-RPC batch size to prevent amplification. */
+const MAX_BATCH_REQUESTS = 20;
 const INVALID_PARAMS = -32602;
 const METHOD_NOT_FOUND = -32601;
 const INTERNAL_ERROR = -32603;
@@ -147,7 +149,8 @@ export async function handleMcpRequest(
 }
 
 /**
- * Handles a JSON-RPC batch request.
+ * Handles a JSON-RPC batch request. Batch size is capped so an anonymous
+ * client cannot amplify one HTTP request into unbounded parallel work.
  * @param batch - Request array.
  * @returns Batch response array, error response, or null when all were notifications.
  */
@@ -156,6 +159,12 @@ async function handleBatch(
 ): Promise<JsonRpcDispatchResult> {
   if (batch.length === 0)
     return errorResponse(null, INVALID_REQUEST, "Invalid Request");
+  if (batch.length > MAX_BATCH_REQUESTS)
+    return errorResponse(
+      null,
+      INVALID_REQUEST,
+      `Batch too large: max ${MAX_BATCH_REQUESTS} requests`
+    );
   const responses = (
     await Promise.all(batch.map(request => handleSingle(request)))
   ).filter((response): response is JsonRpcResponse => response !== null);

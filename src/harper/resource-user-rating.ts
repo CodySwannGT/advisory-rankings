@@ -371,6 +371,8 @@ function userRatingTable(): UserRatingTable {
  */
 function throwStatus(message: string, status: number): never {
   const error = new Error(message);
-  Object.assign(error, { status });
+  // Harper's thrown-error response writer reads `statusCode` (falling back to
+  // 500); `status` is kept for returned-response symmetry and callers/tests.
+  Object.assign(error, { status, statusCode: status });
   throw error;
 }

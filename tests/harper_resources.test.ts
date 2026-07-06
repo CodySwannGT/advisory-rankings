@@ -1832,7 +1832,10 @@ describe("Harper feed and profile builders", () => {
 
   it("returns authenticated regulatory discrepancy queue rows with source evidence", async () => {
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
-    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
+    endpoint.getCurrentUser = () => ({
+      role: "analyst",
+      username: ANALYST_EMAIL,
+    });
 
     const payload = await endpoint.get();
 
@@ -1894,9 +1897,25 @@ describe("Harper feed and profile builders", () => {
     });
   });
 
+  it("returns the authenticated empty envelope to signed-in non-analysts", async () => {
+    const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
+    endpoint.getCurrentUser = () => ({ id: "user-1", role: "app_user" });
+
+    const payload = await endpoint.get();
+
+    expect(payload).toMatchObject({
+      authenticated: true,
+      summary: { totalOpen: 0, highSeverity: 0, severities: {} },
+      items: [],
+    });
+  });
+
   it("raises an explicit discrepancy queue load error for authenticated analysts", async () => {
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
-    endpoint.getCurrentUser = () => ({ username: ANALYST_EMAIL });
+    endpoint.getCurrentUser = () => ({
+      role: "analyst",
+      username: ANALYST_EMAIL,
+    });
     vi.spyOn(resourceData, "loadAll").mockRejectedValueOnce(
       new Error("fixture load failed")
     );
@@ -1961,7 +1980,10 @@ describe("Harper feed and profile builders", () => {
       },
     ]);
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
-    endpoint.getCurrentUser = () => ({ email: ANALYST_EMAIL });
+    endpoint.getCurrentUser = () => ({
+      email: ANALYST_EMAIL,
+      role: { role: "super_user" },
+    });
 
     const payload = await endpoint.get();
 
@@ -3656,7 +3678,7 @@ describe("Harper resource endpoints", () => {
         ?.find(row => row.id === REGULATORY_DISCREPANCY_A_ID)
     );
     const endpoint = new (resources as any).RegulatoryDiscrepancyReview();
-    endpoint.getCurrentUser = () => ({ id: "analyst-a" });
+    endpoint.getCurrentUser = () => ({ id: "analyst-a", role: "analyst" });
 
     const response = await endpoint.post(
       routeTarget(REGULATORY_DISCREPANCY_A_ID),
@@ -3727,7 +3749,7 @@ describe("Harper resource endpoints", () => {
       },
     };
     const endpoint = new (resources as any).RegulatoryDiscrepancyReview();
-    endpoint.getCurrentUser = () => ({ id: "analyst-a" });
+    endpoint.getCurrentUser = () => ({ id: "analyst-a", role: "analyst" });
 
     try {
       const response = await endpoint.post(

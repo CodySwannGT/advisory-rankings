@@ -209,14 +209,16 @@ describe("Harper auth and team helpers", () => {
       usernameLogin.post("ignored", { username: "admin", password: "pw" })
     ).resolves.toEqual({ ok: true, username: "admin" });
 
+    // Harper's thrown-error response writer reads `statusCode` (not
+    // `status`), so both properties must ride on every thrown auth error.
     await expect(login.post({ email: "", password: "" })).rejects.toMatchObject(
-      { status: 400 }
+      { status: 400, statusCode: 400 }
     );
     const rejected = new authResources.Login() as any;
     rejected.context = { login: vi.fn().mockRejectedValue(new Error("no")) };
     await expect(
       rejected.post({ email: USER_EMAIL, password: "bad" })
-    ).rejects.toMatchObject({ status: 401 });
+    ).rejects.toMatchObject({ status: 401, statusCode: 401 });
 
     const logout = new authResources.Logout() as any;
     logout.context = {
@@ -231,6 +233,21 @@ describe("Harper auth and team helpers", () => {
     const missingSession = new authResources.Logout() as any;
     missingSession.context = {};
     await expect(missingSession.post()).resolves.toEqual({ ok: true });
+
+    // A session helper that exists but throws is a real logout failure —
+    // the server-side session may survive — so it must not report ok.
+    const failingLogout = new authResources.Logout() as any;
+    failingLogout.context = {
+      session: {
+        delete: vi.fn().mockRejectedValue(new Error("delete refused")),
+        id: "session-b",
+        update: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+    await expect(failingLogout.post()).rejects.toMatchObject({
+      status: 500,
+      statusCode: 500,
+    });
 
     const me = new authResources.Me() as any;
     me.user = { username: "admin", role: { role: "super" } };
