@@ -156,8 +156,12 @@ export function requestHeadersFromContext(
       String((getter as (n: string) => unknown).call(bag, name) ?? "");
     return {
       accept: read("accept"),
+      host: read("host"),
+      origin: read("origin"),
+      referer: read("referer"),
       "sec-fetch-dest": read("sec-fetch-dest"),
       "sec-fetch-mode": read("sec-fetch-mode"),
+      "x-forwarded-host": read("x-forwarded-host"),
       "x-requested-with": read("x-requested-with"),
     };
   }

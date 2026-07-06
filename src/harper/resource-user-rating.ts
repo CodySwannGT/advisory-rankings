@@ -2,6 +2,7 @@ import type { Resource as HarperResource } from "harperdb";
 import type { UserRatingRow } from "../types/harper-schema.js";
 import type { JsonBody, RouteTarget } from "../types/harper-resource.js";
 import { normalizeId } from "./resource-routing.js";
+import { requireSameOrigin } from "./resource-request-origin.js";
 
 const RATING_FIELDS = [
   "ratingInt",
@@ -141,6 +142,7 @@ export class AdvisorRating extends Resource {
    * @returns Saved rating state.
    */
   async post(...args: readonly unknown[]): Promise<RatingState> {
+    requireSameOrigin(this.getContext?.());
     const body = args.find(isBody) || {};
     const advisorId = normalizeAdvisorId(args.find(isTarget) || body);
     if (!advisorId) throwStatus("advisor id required", 400);

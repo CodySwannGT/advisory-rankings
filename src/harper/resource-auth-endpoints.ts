@@ -4,6 +4,13 @@ import type {
   RouteTarget,
 } from "../types/harper-resource.js";
 
+import {
+  assertLoginAllowed,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "./resource-login-throttle.js";
+import { requireSameOrigin } from "./resource-request-origin.js";
+
 /** Response from `Login.post` describing the authentication result. */
 interface LoginResponse {
   readonly ok: true;
@@ -81,16 +88,20 @@ export class Login extends Resource {
    * @returns Login status and normalized username.
    */
   async post(...args: readonly unknown[]): Promise<LoginResponse> {
+    requireSameOrigin(this.getContext?.());
     const body = findLoginBody(args);
     const login = asLoginFn(this.getContext());
     const username = pickString(body.email) ?? pickString(body.username);
     const password = pickString(body.password);
     if (!username || !password) throwStatus("email and password required", 400);
+    assertLoginAllowed(username);
     try {
       await login(username, password);
     } catch (_error) {
+      recordLoginFailure(username);
       throwStatus("Invalid credentials", 401);
     }
+    recordLoginSuccess(username);
     return { ok: true, username };
   }
 }
@@ -114,6 +125,7 @@ export class Logout extends Resource {
    * @returns Logout status after session cleanup.
    */
   async post(): Promise<LogoutResponse> {
+    requireSameOrigin(this.getContext?.());
     const session = asSession(readSession(this.getContext()));
     try {
       await session?.update?.({});

@@ -7,6 +7,7 @@ import {
   type AdvisorCorrectionRequestQueueResponse,
 } from "./resource-advisor-correction-queue.js";
 import { normalizeId } from "./resource-routing.js";
+import { requireSameOrigin } from "./resource-request-origin.js";
 import {
   currentUser,
   currentUserId,
@@ -26,6 +27,8 @@ const MAX_VALUE_LENGTH = 2_000;
 const MAX_NOTE_LENGTH = 2_000;
 const MAX_SOURCE_LENGTH = 500;
 const MAX_CONTEXT_LENGTH = 4_000;
+/** Per-user cap on open submissions; ids are random UUIDs, so inserts are unbounded without it. */
+const MAX_PENDING_PER_USER = 25;
 
 /**
  *
@@ -103,6 +106,7 @@ export class AdvisorCorrectionRequest extends Resource {
    * @returns The created or updated correction request row.
    */
   async post(...args: readonly unknown[]): Promise<CorrectionRequestResponse> {
+    requireSameOrigin(this.getContext?.());
     const resource = this as CurrentUserResource;
     const userId = currentUserId(resource);
     if (!userId) throwStatus("Sign in required", 401);
@@ -185,6 +189,14 @@ async function createRequest(
   body: CorrectionRequestBody,
   userId: string
 ): Promise<AdvisorCorrectionRequestRow> {
+  const mine = await rowsFor(correctionRequestTable(), "submitterId", userId);
+  const pending = mine.filter(row => row.status === "pending");
+  if (pending.length >= MAX_PENDING_PER_USER) {
+    throwStatus(
+      `pending correction limit reached (${MAX_PENDING_PER_USER})`,
+      400
+    );
+  }
   const advisorId = requiredText(body.advisorId, "advisor id required", 200);
   const fieldName = requiredText(
     body.fieldName,

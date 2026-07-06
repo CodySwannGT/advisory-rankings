@@ -13,6 +13,7 @@ import {
   type SearchableTable,
 } from "./resource-user-watchlists-store.js";
 import { normalizeId } from "./resource-routing.js";
+import { requireSameOrigin } from "./resource-request-origin.js";
 
 const REVIEW_STATUSES = [
   "accepted_brokercheck",
@@ -78,6 +79,7 @@ export class RegulatoryDiscrepancyReview extends Resource {
    * @returns The updated discrepancy row.
    */
   async post(...args: readonly unknown[]): Promise<DiscrepancyReviewResponse> {
+    requireSameOrigin(this.getContext?.());
     const userId = requireAnalyst(this as CurrentUserResource);
 
     const body = findBody(args);
