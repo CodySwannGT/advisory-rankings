@@ -158,15 +158,11 @@ const buildIndividualRows = async (
       buildEmploymentRow(emp, resolver, advisorUuid, snapshotId)
     )
   );
-  const disclosureResults = await Promise.all(
-    parsed.disclosures.map(block =>
-      buildDisclosureRows(
-        narrowParsed<DisclosureBlock>(block),
-        resolver,
-        advisorUuid,
-        snapshotId
-      )
-    )
+  const disclosureResults = await buildIndividualDisclosureRows(
+    parsed,
+    resolver,
+    advisorUuid,
+    snapshotId
   );
   return {
     advisorRow: { ...parsed.advisor, id: advisorUuid },
@@ -186,6 +182,23 @@ const buildIndividualRows = async (
     ),
   };
 };
+
+const buildIndividualDisclosureRows = async (
+  parsed: ParsedIndividual,
+  resolver: Resolver,
+  advisorUuid: string,
+  snapshotId: string
+) =>
+  Promise.all(
+    parsed.disclosures.map(block =>
+      buildDisclosureRows(
+        narrowParsed<DisclosureBlock>(block),
+        resolver,
+        advisorUuid,
+        snapshotId
+      )
+    )
+  );
 
 const brokerFirmRow = (
   firm: BrokerRow,

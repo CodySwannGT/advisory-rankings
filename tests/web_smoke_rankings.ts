@@ -442,14 +442,7 @@ function loadedRankingsChecks(loaded, sortChange) {
       loaded.hasHumanImportedDate,
       "rankings: source dates are human readable"
     ),
-    check(
-      loaded.rawDateLabels.length === 0,
-      "rankings: raw date strings are hidden",
-      loaded.rawDateLabels.join(", ")
-    ),
-    check(loaded.rowCount > 0, "rankings: public ranking rows render"),
-    check(loaded.hasResolved, "rankings: resolved status is visible"),
-    check(loaded.hasSourceBacked, "rankings: source status is visible"),
+    ...loadedRankingRowChecks(loaded),
     scoreSignalCheck(loaded),
     check(
       loaded.rawLabels.length === 0,
@@ -467,6 +460,19 @@ function loadedRankingsChecks(loaded, sortChange) {
       "rankings: desktop table stays inside the content column",
       JSON.stringify(loaded.tableLayout)
     ),
+  ];
+}
+
+function loadedRankingRowChecks(loaded) {
+  return [
+    check(
+      loaded.rawDateLabels.length === 0,
+      "rankings: raw date strings are hidden",
+      loaded.rawDateLabels.join(", ")
+    ),
+    check(loaded.rowCount > 0, "rankings: public ranking rows render"),
+    check(loaded.hasResolved, "rankings: resolved status is visible"),
+    check(loaded.hasSourceBacked, "rankings: source status is visible"),
   ];
 }
 

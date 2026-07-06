@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
@@ -87,7 +87,34 @@ export async function smokeAdvisorDirectoryFilters(
   await shot(page, "06-advisors-filter-empty");
 
   const desktopLayout = await sweepAdvisorFilterLayouts(page, filteredUrl);
+  const mobileLayout = await captureAdvisorMobileFilterLayouts(
+    page,
+    rows,
+    filterForm,
+    filteredUrl
+  );
+  const mobileSearch = await captureMobileAdvisorSearchAt375(page);
+  if (viewport) await page.setViewportSize(viewport);
 
+  return filterChecks({
+    emptyFacts,
+    expectedFirm: firm,
+    desktopLayout,
+    filteredFacts,
+    liveFacts,
+    mobile320: mobileLayout.mobile320,
+    mobile390: mobileLayout.mobile390,
+    mobileSearch,
+    restoredFacts,
+  });
+}
+
+async function captureAdvisorMobileFilterLayouts(
+  page: Page,
+  rows: Locator,
+  filterForm: Locator,
+  filteredUrl: string
+) {
   await page.setViewportSize({ width: 390, height: 844 });
   await smokeGoto(page, filteredUrl);
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
@@ -100,20 +127,7 @@ export async function smokeAdvisorDirectoryFilters(
   await filterForm.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const mobile320 = await viewportOverflow(page);
   await shot(page, "06-advisors-filtered-mobile-320");
-  const mobileSearch = await captureMobileAdvisorSearchAt375(page);
-  if (viewport) await page.setViewportSize(viewport);
-
-  return filterChecks({
-    emptyFacts,
-    expectedFirm: firm,
-    desktopLayout,
-    filteredFacts,
-    liveFacts,
-    mobile320,
-    mobile390,
-    mobileSearch,
-    restoredFacts,
-  });
+  return { mobile320, mobile390 };
 }
 
 async function captureMobileAdvisorSearchAt375(page: Page) {
