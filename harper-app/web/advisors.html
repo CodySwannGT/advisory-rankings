@@ -514,25 +514,32 @@
       function readinessBadges(readiness) {
         if (!readiness) return [];
         return [
-          readinessBadge(
-            readiness.contact === "ready"
-              ? "Contact ready"
-              : "Missing contact data",
-            readiness.contact === "ready" ? "ready" : "missing"
-          ),
-          readinessBadge(
-            readiness.profileSubstance === "present"
-              ? "Profile substance"
-              : "Missing profile substance",
-            readiness.profileSubstance === "present" ? "ready" : "missing"
-          ),
-          readinessBadge(
-            readiness.crd === "present" ? "CRD present" : "CRD absent",
-            readiness.crd === "present" ? "ready" : "missing"
-          ),
-          readinessBadge(
-            `Freshness ${readinessFreshnessLabel(readiness.freshness)}`,
-            readiness.freshness === "current" ? "ready" : "neutral"
+          el(
+            "div",
+            {
+              class: "advisor-readiness-badges",
+              "aria-label": "Advisor status signals",
+            },
+            readinessBadge(
+              readiness.contact === "ready"
+                ? "Contact ready"
+                : "Missing contact data",
+              readiness.contact === "ready" ? "ready" : "missing"
+            ),
+            readinessBadge(
+              readiness.profileSubstance === "present"
+                ? "Profile substance"
+                : "Missing profile substance",
+              readiness.profileSubstance === "present" ? "ready" : "missing"
+            ),
+            readinessBadge(
+              readiness.crd === "present" ? "CRD present" : "CRD absent",
+              readiness.crd === "present" ? "ready" : "missing"
+            ),
+            readinessBadge(
+              `Freshness ${readinessFreshnessLabel(readiness.freshness)}`,
+              readiness.freshness === "current" ? "ready" : "neutral"
+            )
           ),
         ];
       }

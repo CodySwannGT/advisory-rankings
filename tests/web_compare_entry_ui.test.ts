@@ -291,6 +291,21 @@ async function expectFinderState(
     .locator(READINESS_BADGE_SELECTOR, { hasText: "Freshness unknown" })
     .first()
     .waitFor({ timeout: QUICK_TIMEOUT });
+  await expectDirectoryStatusSignalsReadable(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: CONTACT_READY_LABEL })
+    .first()
+    .waitFor({ timeout: QUICK_TIMEOUT });
+  await expectDirectoryStatusSignalsReadable(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page
+    .locator(READINESS_BADGE_SELECTOR, { hasText: CONTACT_READY_LABEL })
+    .first()
+    .waitFor({ timeout: QUICK_TIMEOUT });
+  await expectDirectoryStatusSignalsReadable(page);
   await page.getByText("Freshness null").waitFor({
     state: "detached",
     timeout: QUICK_TIMEOUT,
@@ -306,6 +321,60 @@ async function expectFinderState(
       );
     })
   ).toBe(true);
+}
+
+/**
+ * Asserts directory status chips have visible gaps and stay inside the row.
+ * @param page - Browser page rendering the advisor directory.
+ */
+async function expectDirectoryStatusSignalsReadable(page: Page): Promise<void> {
+  const metrics = await page
+    .locator(ADVISOR_DIRECTORY_ROW_SELECTOR)
+    .first()
+    .evaluate(row => {
+      const group = row.querySelector<HTMLElement>(".advisor-readiness-badges");
+      const badges = Array.from(
+        row.querySelectorAll<HTMLElement>(".advisor-readiness-badge")
+      );
+      const rowRect = row.getBoundingClientRect();
+      const groupRect = group?.getBoundingClientRect();
+      const badgeRects = badges.map(badge => badge.getBoundingClientRect());
+      const sorted = badgeRects
+        .map(rect => ({
+          top: Math.round(rect.top),
+          right: rect.right,
+          left: rect.left,
+          bottom: rect.bottom,
+        }))
+        .sort((a, b) => a.top - b.top || a.left - b.left);
+      const sameLineGaps = sorted
+        .slice(1)
+        .filter((rect, index) => Math.abs(rect.top - sorted[index].top) <= 1)
+        .map((rect, index) => rect.left - sorted[index].right);
+      const lineBreakGaps = sorted
+        .slice(1)
+        .filter((rect, index) => Math.abs(rect.top - sorted[index].top) > 1)
+        .map((rect, index) => rect.top - sorted[index].bottom);
+      return {
+        groupDisplay: group ? getComputedStyle(group).display : "",
+        badgeCount: badges.length,
+        rowRight: rowRect.right,
+        groupRight: groupRect?.right ?? 0,
+        maxBadgeRight: Math.max(...badgeRects.map(rect => rect.right)),
+        sameLineGaps,
+        lineBreakGaps,
+        text: group?.textContent ?? "",
+      };
+    });
+  expect(metrics.groupDisplay).toBe("flex");
+  expect(metrics.badgeCount).toBe(4);
+  expect(metrics.text).not.toContain(
+    "Contact readyProfile substanceCRD absentFreshness unknown"
+  );
+  expect(metrics.maxBadgeRight).toBeLessThanOrEqual(metrics.rowRight + 1);
+  expect(metrics.groupRight).toBeLessThanOrEqual(metrics.rowRight + 1);
+  expect(metrics.sameLineGaps.every(gap => gap >= 5)).toBe(true);
+  expect(metrics.lineBreakGaps.every(gap => gap >= 5)).toBe(true);
 }
 
 /**

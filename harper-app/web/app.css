@@ -3117,12 +3117,18 @@ body.drawer-open .nav .nav-scrim {
 .advisor-directory-row {
   align-items: center;
 }
+.advisor-readiness-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+  margin-top: 8px;
+}
 .advisor-readiness-badge {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
   min-height: 24px;
-  margin: 6px 6px 0 0;
   padding: 3px 8px;
   border: 1px solid var(--border);
   border-radius: 999px;
