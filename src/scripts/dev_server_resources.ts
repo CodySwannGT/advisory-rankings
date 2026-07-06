@@ -344,9 +344,15 @@ interface GlobalWithTables {
   readonly tables: TableShimMap;
 }
 
-/** Narrow view of `globalThis` exposing only the `Resource` slot we install. */
+/**
+ * Narrow view of `globalThis` exposing only the `Resource` slot we install.
+ * Typed as the bare construct signature the shim actually needs (a
+ * no-arg constructible base) rather than `typeof DevResource` — the latter
+ * drags in the class's mutable static side and reads as `ReadonlyShallow`,
+ * while the construct signature is a deep-readonly function-typed leaf.
+ */
 interface GlobalWithResource {
-  readonly Resource: typeof DevResource;
+  readonly Resource: new () => DevResource;
 }
 
 /**

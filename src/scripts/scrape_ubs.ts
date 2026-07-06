@@ -19,7 +19,7 @@ import { loadCreds, StudioSession } from "./_auth.js";
 /** Fabric operation response returned by the Studio cluster API. */
 type FabricResponse = Readonly<Record<"status" | "body", unknown>>;
 /** Harper row records grouped by UBS table merge helpers. */
-type FirmSourceRecords = ReadonlyArray<Record<string, unknown>>;
+type FirmSourceRecords = ReadonlyArray<Readonly<Record<string, unknown>>>;
 /** Runtime CLI options after flags and defaults are parsed. */
 interface ResolvedFirmSourceRunOptions extends Omit<
   FirmSourceRunOptions,

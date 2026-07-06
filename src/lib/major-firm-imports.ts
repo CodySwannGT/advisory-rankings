@@ -3,121 +3,21 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import {
+  FIRM_SOURCE_TABLES,
+  type AdapterArtifact,
+  type AdapterArtifactPath,
+  type AdapterModeArtifact,
+  type AdapterStatus,
+  type CommandFailure,
+  type CommandRunner,
+  type FirmSourceTable,
+  type MajorFirmAdapter,
+  type MajorFirmImportOptions,
+  type MajorFirmImportSummary,
+} from "./major-firm-imports-types.js";
+
 const execFileAsync = promisify(execFile);
-const FIRM_SOURCE_TABLES = [
-  "Firm",
-  "FirmAlias",
-  "Branch",
-  "Advisor",
-  "EmploymentHistory",
-  "Designation",
-  "Team",
-  "TeamMembership",
-  "AdvisorResearchCheck",
-] as const;
-
-/**
- *
- */
-type FirmSourceTable = (typeof FIRM_SOURCE_TABLES)[number];
-/**
- *
- */
-type AdapterStatus =
-  | "written"
-  | "mapped"
-  | "write-blocked"
-  | "source-limited"
-  | "blocked";
-
-/** Major firm-source adapter metadata used by the bounded import runner. */
-interface MajorFirmAdapter {
-  readonly slug: string;
-  readonly displayName: string;
-  readonly script: string;
-  readonly queries: ReadonlyArray<string>;
-}
-
-/** Runtime options for a major firm-source import run. */
-interface MajorFirmImportOptions {
-  readonly checkedAt: string;
-  readonly maxAdvisors: number;
-  readonly outputDir: string;
-  readonly sampleLimit: number;
-  readonly write: boolean;
-}
-
-/** Captured output from one adapter command in dry-run or write mode. */
-interface AdapterModeArtifact {
-  readonly mode: "dry-run" | "write";
-  readonly command: ReadonlyArray<string>;
-  readonly ok: boolean;
-  readonly stdout: string;
-  readonly stderr: string;
-  readonly counts: Record<string, number>;
-  readonly touchedCounts: Record<string, number>;
-  readonly totalRows: number;
-  readonly totalTouched: number;
-  readonly sampleRows: Partial<
-    Record<FirmSourceTable, ReadonlyArray<Record<string, unknown>>>
-  >;
-  readonly error?: string;
-}
-
-/** Full audit artifact for one major firm-source adapter. */
-interface AdapterArtifact {
-  readonly slug: string;
-  readonly displayName: string;
-  readonly queries: ReadonlyArray<string>;
-  readonly status: AdapterStatus;
-  readonly dryRun: AdapterModeArtifact;
-  readonly writeRun?: AdapterModeArtifact;
-}
-
-/** Summary written next to the per-adapter artifacts. */
-interface MajorFirmSummaryAdapter {
-  readonly slug: string;
-  readonly displayName: string;
-  readonly status: AdapterStatus;
-  readonly dryRunRows: number;
-  readonly writeTouched?: number;
-  readonly artifactPath: string;
-}
-
-/** Command output captured from one adapter subprocess. */
-interface CommandResult {
-  readonly stdout: string;
-  readonly stderr: string;
-}
-/**
- *
- */
-interface AdapterArtifactPath {
-  readonly artifact: AdapterArtifact;
-  readonly artifactPath: string;
-}
-/**
- *
- */
-interface CommandFailure extends Partial<CommandResult> {
-  readonly message?: string;
-}
-
-/** Summary written next to the per-adapter artifacts. */
-interface MajorFirmImportSummary {
-  readonly generatedAt: string;
-  readonly checkedAt: string;
-  readonly maxAdvisors: number;
-  readonly write: boolean;
-  readonly outputDir: string;
-  readonly adapters: ReadonlyArray<MajorFirmSummaryAdapter>;
-}
-
-/** Injectable command runner for tests. */
-type CommandRunner = (
-  command: string,
-  args: ReadonlyArray<string>
-) => Promise<CommandResult>;
 
 /** Production-ready major firm adapters covered by PRD #234 DATA-2. */
 const MAJOR_FIRM_ADAPTERS: ReadonlyArray<MajorFirmAdapter> = [
