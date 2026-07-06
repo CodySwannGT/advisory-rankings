@@ -18,4 +18,17 @@ describe("isFreshnessCheckableDirectDeployFailure", () => {
       })
     ).toBe(false);
   });
+
+  it("accepts raw deploy response text", () => {
+    expect(
+      isFreshnessCheckableDirectDeployFailure(
+        500,
+        "Component 'advisor-app' was deployed on the origin node but failed to replicate to 1 of 1 peer node(s)"
+      )
+    ).toBe(true);
+  });
+
+  it("ignores missing deploy response bodies", () => {
+    expect(isFreshnessCheckableDirectDeployFailure(500, undefined)).toBe(false);
+  });
 });
