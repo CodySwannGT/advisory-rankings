@@ -776,8 +776,16 @@ cluster with edge rate-limiting for a hard guarantee.
 (`harper-app/seo_shell.js`, `harper-app/static-web/index.js`) sends
 `X-Content-Type-Options: nosniff` on every response and, on HTML documents,
 `Content-Security-Policy: frame-ancestors 'none'`, `X-Frame-Options: DENY`,
-HSTS, `Referrer-Policy`, and a minimal `Permissions-Policy`. The ZAP baseline
-(`.zap/baseline.conf`) fails the build if any of these regress on HTML.
+HSTS, `Referrer-Policy`, and a minimal `Permissions-Policy`. These are emitted
+by the **fastify serving layer, which serves the pages on the deployed Fabric
+node**. The ZAP baseline (`.zap/baseline.conf`) reports these header rules at
+WARN, not FAIL: its scan runs against a **local `harperdb` build**, where
+Harper's built-in `static` extension serves `web/**` and bypasses the fastify
+header layer, so the headers are absent under local scan even though they ship
+on Fabric. Making local serving header-consistent (so the rules can be
+promoted to FAIL and actually enforce) is an open follow-up — until then, FAIL
+would be a permanent false-red. Verify the headers on the deployed node with a
+`curl -I` against a page route, not the local scan.
 
 **MQTT/WS broker.** The Fabric topology exposes only `:9925` (ops) and
 `:9926` (REST); no MQTT (1883/8883) or resource-WebSocket port is reachable,
