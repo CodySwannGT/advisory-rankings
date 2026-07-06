@@ -78,6 +78,18 @@ export class PublicFirms extends Resource {
 
   /**
    * Lists firms after alias merges have removed duplicate public rows.
+   *
+   * Deliberately reads the Firm table in full (a bounded scan of one
+   * small dimension table — hundreds of rows — plus the tiny FirmAlias
+   * overlay) rather than a `searchPageAndCount` indexed query: the
+   * alias-merge canonicalization must see every Firm row to fold
+   * duplicates, `total` counts the post-merge set, the `q` filter is a
+   * case-insensitive substring over name/legalName (not expressible as
+   * an indexed Harper condition), and the legacy (sortKey, id)
+   * key-cursor sorts by lowercased name, which Harper's raw btree
+   * collation cannot reproduce. The #721 full-scan concern was the
+   * 13k-row Advisor / 90k-row EmploymentHistory tables — this endpoint
+   * touches neither.
    * @param target - Request target carrying optional cursor and limit.
    * @returns Firm page, next cursor, and total row count.
    */
@@ -145,6 +157,16 @@ export class PublicTeams extends Resource {
 
   /**
    * Enriches teams with current firm names for directory cards.
+   *
+   * Deliberately reads the small Team and Firm dimension tables in full
+   * (bounded scans, hundreds of rows each) rather than a
+   * `searchPageAndCount` indexed query: canonicalization needs every
+   * Firm row for alias merges and every Team row for public-name
+   * cleanup + identity dedupe (`total` counts the deduped set), the `q`
+   * filter is a case-insensitive substring, and the legacy (sortKey,
+   * id) key-cursor sorts by lowercased cleaned name. See the
+   * `PublicFirms.get` note — the #721 concern was the large
+   * Advisor/EmploymentHistory tables, which this endpoint never reads.
    * @param target - Request target carrying optional cursor and limit.
    * @returns Team page, next cursor, and total row count.
    */
@@ -191,6 +213,15 @@ export class PublicBranches extends Resource {
 
   /**
    * Lists public branch rows with firm context and source-backed counts.
+   *
+   * Deliberately reads the Branch, Firm, and BranchCoverage tables in
+   * full (bounded scans of three dimension tables) rather than a
+   * `searchPageAndCount` indexed query: gap-group and coverage-status
+   * filters are derived per row from the coverage read-model (not
+   * stored columns), the legacy (sortKey, id) key-cursor sorts by a
+   * composite lowercased firm/level/city key, and the employment
+   * fallback below already goes through indexed per-branch lookups.
+   * See the `PublicFirms.get` note for the shared rationale.
    * @param target - Request target carrying optional filters and pagination.
    * @returns Branch page, next cursor, and total row count.
    */

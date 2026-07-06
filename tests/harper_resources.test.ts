@@ -1916,7 +1916,7 @@ describe("Harper feed and profile builders", () => {
       role: "analyst",
       username: ANALYST_EMAIL,
     });
-    vi.spyOn(resourceData, "loadAll").mockRejectedValueOnce(
+    vi.spyOn(resourceData, "loadTables").mockRejectedValueOnce(
       new Error("fixture load failed")
     );
 

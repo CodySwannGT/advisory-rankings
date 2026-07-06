@@ -1,4 +1,4 @@
-import { loadAll } from "./resource-data.js";
+import { loadTables } from "./resource-data.js";
 import {
   facets,
   filteredEntries,
@@ -34,7 +34,18 @@ export class RankingsExplorer extends Resource {
    * @returns Source-backed rankings explorer payload.
    */
   async get(target?: RouteTarget): Promise<Readonly<Record<string, unknown>>> {
-    const db = await loadAll();
+    // Aggregates across every RankingEntry by design (facets, coverage,
+    // top firms), so the read is scoped to the tables the entry builder
+    // and firm-filter resolution actually consume — not `loadAll()`.
+    const db = await loadTables([
+      "rankings",
+      "rankingEntries",
+      "advisors",
+      "teams",
+      "firms",
+      "firmAliases",
+      "employments",
+    ]);
     const filters = parseFilters(target, db);
     const allEntries = rankingEntries(db);
     const entries: readonly RankingExplorerEntry[] = filteredEntries(
