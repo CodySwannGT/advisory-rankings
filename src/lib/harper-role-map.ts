@@ -79,11 +79,20 @@ export function loadCommittedAppUserRole(
 export function normalizeLiveAppUserRole(
   roles: unknown
 ): NormalizedRolePermission {
-  if (!Array.isArray(roles))
-    throw new Error("list_roles response is not an array");
-  const appUser = roles.find(role => isAppUserRole(role));
+  const appUser = findLiveAppUserRole(roles);
   if (!appUser) throw new Error("list_roles response did not include app_user");
   return normalizeRolePermission(appUser.permission);
+}
+
+/**
+ * Finds `app_user` in a live Harper `list_roles` response.
+ * @param roles - Response body returned by `list_roles`.
+ * @returns The matching live role row when present.
+ */
+export function findLiveAppUserRole(roles: unknown): LiveRole | undefined {
+  if (!Array.isArray(roles))
+    throw new Error("list_roles response is not an array");
+  return roles.find(role => isAppUserRole(role));
 }
 
 /**
@@ -125,13 +134,15 @@ export function roleDrift(
  * `attribute_permissions` arrays even when table-wide CRUD flags are the only
  * permissions in use.
  * @param role - Normalized role map.
+ * @param id - Existing live role id for `alter_role`, or `app_user` for add.
  * @returns Payload for `add_role` or `alter_role`.
  */
 export function appUserRoleOperationPayload(
-  role: NormalizedRolePermission = loadCommittedAppUserRole()
+  role: NormalizedRolePermission = loadCommittedAppUserRole(),
+  id = "app_user"
 ): HarperRoleOperationPayload {
   return {
-    id: "app_user",
+    id,
     role: "app_user",
     permission: {
       super_user: role.super_user,

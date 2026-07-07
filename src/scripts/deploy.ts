@@ -29,6 +29,7 @@ import { isFreshnessCheckableDirectDeployFailure } from "../lib/deploy-result.js
 import { recoverPublicRuntime } from "../lib/deploy-runtime-recovery.js";
 import {
   appUserRoleOperationPayload,
+  findLiveAppUserRole,
   loadCommittedAppUserRole,
   normalizeLiveAppUserRole,
   roleDrift,
@@ -790,37 +791,80 @@ async function verifyFeed(clusterUrl: string): Promise<void> {
  */
 async function syncAppUserRole(studio: StudioSession): Promise<boolean> {
   const expected = loadCommittedAppUserRole();
-  const before = await studio.clusterOp(creds.clusterId, "list_roles");
-  if (before.status !== 200) {
-    console.error(
-      `list_roles failed before role sync: ${before.status} ${JSON.stringify(before.body).slice(0, 200)}`
-    );
-    return false;
-  }
+  const before = await listRolesForSync(studio, "before");
+  if (before === undefined) return false;
 
-  const operation = roleExists(before.body) ? "alter_role" : "add_role";
+  const liveRole = findLiveAppUserRole(before.body);
+  if (!(await applyAppUserRole(studio, expected, liveRole))) return false;
+
+  const after = await listRolesForSync(studio, "after");
+  if (after === undefined) return false;
+
+  return verifyAppUserRoleSync(expected, after.body);
+}
+
+/**
+ * Reads live Harper roles for the deploy role-sync step.
+ * @param studio - Authenticated Studio session.
+ * @param phase - Log label for the read.
+ * @returns The `list_roles` response when successful.
+ */
+async function listRolesForSync(
+  studio: StudioSession,
+  phase: "before" | "after"
+): Promise<Readonly<{ body: unknown }> | undefined> {
+  const response = await studio.clusterOp(
+    creds.clusterId,
+    "list_roles",
+    {},
+    { timeoutMs: DEPLOY_TIMEOUT_MS }
+  );
+  if (response.status === 200) return response;
+  console.error(
+    `list_roles failed ${phase} role sync: ${response.status} ${JSON.stringify(response.body).slice(0, 200)}`
+  );
+  return undefined;
+}
+
+/**
+ * Applies the committed app-user role to Harper.
+ * @param studio - Authenticated Studio session.
+ * @param expected - Committed role map.
+ * @param liveRole - Existing live role row when present.
+ * @returns True when the mutation succeeds.
+ */
+async function applyAppUserRole(
+  studio: StudioSession,
+  expected: ReturnType<typeof loadCommittedAppUserRole>,
+  liveRole: ReturnType<typeof findLiveAppUserRole>
+): Promise<boolean> {
+  const operation = liveRole ? "alter_role" : "add_role";
+  const roleId = typeof liveRole?.id === "string" ? liveRole.id : "app_user";
   console.log(`▶ ${operation} app_user role from harper-app/roles.yaml`);
   const mutation = await studio.clusterOp(
     creds.clusterId,
     operation,
-    appUserRoleOperationPayload(expected)
+    appUserRoleOperationPayload(expected, roleId),
+    { timeoutMs: DEPLOY_TIMEOUT_MS }
   );
-  if (mutation.status !== 200) {
-    console.error(
-      `${operation} failed: ${mutation.status} ${JSON.stringify(mutation.body).slice(0, 300)}`
-    );
-    return false;
-  }
+  if (mutation.status === 200) return true;
+  console.error(
+    `${operation} failed: ${mutation.status} ${JSON.stringify(mutation.body).slice(0, 300)}`
+  );
+  return false;
+}
 
-  const after = await studio.clusterOp(creds.clusterId, "list_roles");
-  if (after.status !== 200) {
-    console.error(
-      `list_roles failed after role sync: ${after.status} ${JSON.stringify(after.body).slice(0, 200)}`
-    );
-    return false;
-  }
-
-  const drift = roleDrift(expected, normalizeLiveAppUserRole(after.body));
+/**
+ * Verifies that the live role now matches the committed role.
+ * @param expected - Committed role map.
+ * @param roles - Raw `list_roles` response body.
+ * @returns True when no drift remains.
+ */
+function verifyAppUserRoleSync(
+  expected: ReturnType<typeof loadCommittedAppUserRole>,
+  roles: unknown
+): boolean {
+  const drift = roleDrift(expected, normalizeLiveAppUserRole(roles));
   if (drift.length > 0) {
     console.error("app_user role still drifts after sync:");
     for (const line of drift) console.error(`  - ${line}`);
@@ -830,24 +874,6 @@ async function syncAppUserRole(studio: StudioSession): Promise<boolean> {
     `  app_user role synced (${Object.keys(expected.data.tables).length} tables)`
   );
   return true;
-}
-
-/**
- * Checks whether `list_roles` returned the app role.
- * @param roles - Raw `list_roles` body.
- * @returns True when `app_user` exists.
- */
-function roleExists(roles: unknown): boolean {
-  return (
-    Array.isArray(roles) &&
-    roles.some(
-      role =>
-        role !== null &&
-        typeof role === "object" &&
-        (Reflect.get(role, "role") === "app_user" ||
-          Reflect.get(role, "id") === "app_user")
-    )
-  );
 }
 
 /**

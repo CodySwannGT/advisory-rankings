@@ -92,6 +92,28 @@ describe("Harper app_user role map", () => {
     });
   });
 
+  it("uses the live role id when building an alter_role payload", () => {
+    const payload = appUserRoleOperationPayload(
+      {
+        super_user: false,
+        data: {
+          tables: {
+            BranchCoverage: {
+              read: true,
+              insert: false,
+              update: false,
+              delete: false,
+            },
+          },
+        },
+      },
+      "live-role-uuid"
+    );
+
+    expect(payload.id).toBe("live-role-uuid");
+    expect(payload.role).toBe("app_user");
+  });
+
   it("keeps roles configured with every deploy-required extension", () => {
     const config = parse(
       readFileSync("harper-app/config.yaml", "utf8")
