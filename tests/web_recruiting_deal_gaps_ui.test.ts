@@ -123,12 +123,10 @@ describe("recruiting deal gaps route", () => {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 900 },
     });
-    const resourceQueries: string[] = [];
     try {
       await routeAuth(page, false);
       await page.route(RESOURCE_ROUTE, async route => {
         const search = new URL(route.request().url()).search;
-        resourceQueries.push(search);
         await route.fulfill({ json: dealGapPayloadForQuery(search) });
       });
 
@@ -141,14 +139,21 @@ describe("recruiting deal gaps route", () => {
       await page.locator('select[name="direction"]').selectOption("inbound");
       await page.locator('select[name="gapType"]').selectOption(MISSING_SOURCE);
 
-      await Promise.all([
+      const [, filteredResponse] = await Promise.all([
         page.waitForURL(
           `${baseUrl}${DEAL_GAPS_PATH}?firm=Example+Wealth&state=GA&year=&direction=inbound&gapType=${MISSING_SOURCE}&unresolved=include&limit=2`
         ),
+        page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return (
+            url.pathname.includes("RecruitingDealDataGaps") &&
+            url.searchParams.get("firm") === EXAMPLE_WEALTH
+          );
+        }),
         page.getByRole("button", { name: "Apply" }).click(),
       ]);
 
-      const lastQuery = new URLSearchParams(resourceQueries.at(-1) ?? "");
+      const lastQuery = new URL(filteredResponse.url()).searchParams;
       expect(lastQuery.get("firm")).toBe(EXAMPLE_WEALTH);
       expect(lastQuery.get("state")).toBe(STATE_GA);
       expect(lastQuery.get("direction")).toBe("inbound");
