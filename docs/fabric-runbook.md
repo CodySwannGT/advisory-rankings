@@ -431,11 +431,11 @@ Additive changes (new tables, new columns) preserve existing rows;
 breaking changes need a forward-compatible migration (add new shape,
 dual-write, backfill from `FieldAssertion`, then drop the old).
 `@sealed` is a write-time behavior change even when the field list is
-unchanged: Harper rejects undeclared columns on sealed tables. The current
-sealed rollout is limited to `AdvisorSearchIndex`, the five
-`Article*Mention` junction tables, and `FieldAssertion`; verify loader and
-backfill payloads still emit only declared fields before deploying schema
-changes that add `@sealed` elsewhere.
+unchanged: Harper ignores undeclared properties on sealed tables instead of
+persisting undeclared columns. The current sealed rollout is limited to
+`AdvisorSearchIndex`, the five `Article*Mention` junction tables, and
+`FieldAssertion`; verify loader and backfill payloads still emit only declared
+fields before deploying schema changes that add `@sealed` elsewhere.
 
 ### Static UI (`web/`)
 ```bash
