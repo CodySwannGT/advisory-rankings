@@ -148,9 +148,9 @@ export class UserWatchlists extends Resource {
    * @returns The response variant matching the executed action.
    */
   async post(...args: readonly unknown[]): Promise<WatchlistMutationResponse> {
-    requireSameOrigin(this.getContext?.());
     const body = findBody(args);
     const userId = currentUserId(this);
+    requireSameOrigin(this.getContext?.());
     if (!userId) throwStatus("Sign in required", 401);
 
     switch (String(body.action || "create")) {

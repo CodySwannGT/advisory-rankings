@@ -41,10 +41,14 @@ export async function runMajorFirmImports(
   options: MajorFirmImportOptions,
   runner: CommandRunner = runCommand
 ): Promise<MajorFirmImportSummary> {
-  await mkdir(options.outputDir, { recursive: true });
-  const artifacts = await Promise.all(
-    MAJOR_FIRM_ADAPTERS.map(firm =>
-      runAdapter(firm, options, runner).then(async artifact => {
+  // Capture mkdir as a definition (not a leading bare await) so this scope
+  // opens with definitions per statement-order, while still creating the
+  // output dir before the artifacts below are written into it.
+  const ready = mkdir(options.outputDir, { recursive: true });
+  const artifacts = await ready.then(() =>
+    Promise.all(
+      MAJOR_FIRM_ADAPTERS.map(async firm => {
+        const artifact = await runAdapter(firm, options, runner);
         const artifactPath = path.join(options.outputDir, `${firm.slug}.json`);
         await writeJson(artifactPath, artifact);
         return { artifact, artifactPath };

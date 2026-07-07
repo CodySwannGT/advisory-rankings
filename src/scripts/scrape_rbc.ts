@@ -136,11 +136,14 @@ const collectRows = async (
   checkedAt: string
 ): Promise<RbcRows> => {
   const nonce = await fetchNonce();
-  return await inputs.reduce<Promise<RbcRows>>(async (previous, input) => {
+  const logAndFetch = (input: string): ReturnType<typeof fetchAdvisors> => {
     console.error(
       `[rbc] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
     );
-    const advisors = await fetchAdvisors(input, maxAdvisors, nonce);
+    return fetchAdvisors(input, maxAdvisors, nonce);
+  };
+  return await inputs.reduce<Promise<RbcRows>>(async (previous, input) => {
+    const advisors = await logAndFetch(input);
     return mergeRows(
       await previous,
       RBC_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

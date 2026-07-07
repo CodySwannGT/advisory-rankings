@@ -145,6 +145,17 @@ const runOptions = (): FirmSourceRunOptions => ({
   queries: queryInputs(),
 });
 
+const logAndFetchAdvisors = (
+  input: string,
+  maxAdvisors: number,
+  pageSize: number
+): ReturnType<typeof fetchAdvisors> => {
+  console.error(
+    `[stifel] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchAdvisors(input, maxAdvisors, pageSize);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
@@ -152,10 +163,7 @@ const collectRows = async (
   checkedAt: string
 ): Promise<StifelRows> => {
   return await inputs.reduce<Promise<StifelRows>>(async (previous, input) => {
-    console.error(
-      `[stifel] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-    );
-    const advisors = await fetchAdvisors(input, maxAdvisors, pageSize);
+    const advisors = await logAndFetchAdvisors(input, maxAdvisors, pageSize);
     return mergeRows(
       await previous,
       STIFEL_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

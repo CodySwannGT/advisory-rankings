@@ -195,6 +195,17 @@ const runOptions = (): FirmSourceRunOptions => ({
   queries: queryInputs(),
 });
 
+const logAndFetchLocations = (
+  input: string,
+  maxAdvisors: number,
+  pageSize: number
+): ReturnType<typeof fetchLocations> => {
+  console.error(
+    `[morgan-stanley] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchLocations(input, maxAdvisors, pageSize);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
@@ -203,10 +214,11 @@ const collectRows = async (
 ): Promise<MorganStanleyRows> => {
   return await inputs.reduce<Promise<MorganStanleyRows>>(
     async (previous, input) => {
-      console.error(
-        `[morgan-stanley] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+      const locations = await logAndFetchLocations(
+        input,
+        maxAdvisors,
+        pageSize
       );
-      const locations = await fetchLocations(input, maxAdvisors, pageSize);
       return mergeMorganStanleyRows(
         await previous,
         mapMorganStanleyLocations(locations, checkedAt)

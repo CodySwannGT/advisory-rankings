@@ -79,24 +79,64 @@ export const runSelectedPhases = async (
     : {}),
 });
 
+/**
+ * Logs the phase-1 banner, then loads every Firm row from Harper.
+ * Bundling the banner log with the fetch keeps the awaited firm rows out of a
+ * scope where the log side effect would precede their definition.
+ * @param rest - Harper REST client.
+ * @param log - Crawl logger.
+ * @returns All Firm rows.
+ */
+const fetchFirmsForLookup = async (
+  rest: HarperREST,
+  log: CrawlLogger
+): Promise<ReadonlyArray<BrokerRecord>> => {
+  await log("phase 1: firm CRD lookup");
+  return rowsFrom(await rest.get("/Firm/"));
+};
+
+/**
+ * Logs the missing-CRD count, then folds each target into a lookup summary.
+ * Kept separate from {@link lookupFirmCrds} so the count log does not sit
+ * between that function's definitions.
+ * @param rest - Harper REST client.
+ * @param client - BrokerCheck HTTP client.
+ * @param targets - Firm rows still missing a FINRA CRD.
+ * @param totalFirms - Total firm count, for the progress log.
+ * @param log - Crawl logger.
+ * @returns Aggregated firm-lookup counters.
+ */
+const reduceFirmLookups = async (
+  rest: HarperREST,
+  client: BrokerCheckClient,
+  targets: ReadonlyArray<BrokerRecord>,
+  totalFirms: number,
+  log: CrawlLogger
+): Promise<FirmLookupSummary> => {
+  await log(`  ${targets.length}/${totalFirms} firms missing finraCrd`);
+  return targets.reduce<Promise<FirmLookupSummary>>(
+    async (previous, firm) =>
+      addFirmLookupSummaries(
+        await previous,
+        await lookupFirmCrd(rest, client, firm, log)
+      ),
+    Promise.resolve(emptyFirmLookupSummary())
+  );
+};
+
 const lookupFirmCrds = async (
   rest: HarperREST,
   client: BrokerCheckClient,
   log: CrawlLogger
 ): Promise<FirmLookupSummary> => {
-  await log("phase 1: firm CRD lookup");
-  const firms = rowsFrom(await rest.get("/Firm/"));
+  const firms = await fetchFirmsForLookup(rest, log);
   const targets = firms.filter(firm => !firm.finraCrd);
-  await log(`  ${targets.length}/${firms.length} firms missing finraCrd`);
-
-  const summary = await targets.reduce<Promise<FirmLookupSummary>>(
-    async (previous, firm) => {
-      return addFirmLookupSummaries(
-        await previous,
-        await lookupFirmCrd(rest, client, firm, log)
-      );
-    },
-    Promise.resolve(emptyFirmLookupSummary())
+  const summary = await reduceFirmLookups(
+    rest,
+    client,
+    targets,
+    firms.length,
+    log
   );
   await log(`phase 1 summary: ${JSON.stringify(summary)}`);
   return summary;

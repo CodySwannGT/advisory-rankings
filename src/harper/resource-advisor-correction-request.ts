@@ -106,27 +106,46 @@ export class AdvisorCorrectionRequest extends Resource {
    * @returns The created or updated correction request row.
    */
   async post(...args: readonly unknown[]): Promise<CorrectionRequestResponse> {
-    requireSameOrigin(this.getContext?.());
     const resource = this as CurrentUserResource;
     const userId = currentUserId(resource);
-    if (!userId) throwStatus("Sign in required", 401);
-
     const body = findBody(args);
     const id = normalizeId(args.find(isRouteTarget)) || stringValue(body.id);
-    const status = correctionStatus(body.status);
-    if (id || status !== "pending") {
-      return {
-        authenticated: true,
-        request: await reviewRequest(
-          id,
-          body,
-          userId,
-          hasAnalystRole(currentUser(resource))
-        ),
-      };
-    }
-    return { authenticated: true, request: await createRequest(body, userId) };
+    requireSameOrigin(this.getContext?.());
+    if (!userId) throwStatus("Sign in required", 401);
+    return submitCorrectionRequest(resource, body, id, userId);
   }
+}
+
+/**
+ * Validates the requested status and routes to review or creation.
+ * Split out of {@link AdvisorCorrectionRequest.post} so the pure argument
+ * parsing precedes the origin/auth guards while the throwing status
+ * validation stays after them — preserving the 403 → 401 → 400 error order.
+ * @param resource Current Harper resource instance.
+ * @param body Parsed correction request body.
+ * @param id Correction request id, or empty for a new submission.
+ * @param userId Authenticated submitter id.
+ * @returns The created or updated correction request row.
+ */
+async function submitCorrectionRequest(
+  resource: CurrentUserResource,
+  body: CorrectionRequestBody,
+  id: string,
+  userId: string
+): Promise<CorrectionRequestResponse> {
+  const status = correctionStatus(body.status);
+  if (id || status !== "pending") {
+    return {
+      authenticated: true,
+      request: await reviewRequest(
+        id,
+        body,
+        userId,
+        hasAnalystRole(currentUser(resource))
+      ),
+    };
+  }
+  return { authenticated: true, request: await createRequest(body, userId) };
 }
 
 /**

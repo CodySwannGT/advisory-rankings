@@ -70,11 +70,23 @@ export class HarperREST {
     path: string,
     params?: Readonly<Record<string, unknown>>
   ): Promise<unknown> {
-    Object.assign(this.state, { readCount: this.state.readCount + 1 });
     const url = new URL(`${this.base}${path}`);
+    Object.assign(this.state, { readCount: this.state.readCount + 1 });
     for (const [key, value] of Object.entries(params ?? {})) {
       url.searchParams.set(key, String(value));
     }
+    return this.getJson(url, path);
+  }
+
+  /**
+   * Issues the timed GET request and parses the JSON response body.
+   * Split out of {@link get} so the request-building side effects and the
+   * awaited network call live in separate scopes, satisfying statement-order.
+   * @param url - Fully-resolved request URL with query parameters applied.
+   * @param path - Original request path, retained for error logging.
+   * @returns Parsed JSON payload, or null on a non-OK response or empty body.
+   */
+  async getJson(url: URL, path: string): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -106,18 +118,32 @@ export class HarperREST {
     const id = record.id;
     if (!id) throw new Error(`PUT requires id; got ${JSON.stringify(record)}`);
     Object.assign(this.state, { writeCount: this.state.writeCount + 1 });
-    const res = await fetch(
-      `${this.base}/${table}/${encodeURIComponent(String(id))}`,
-      {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: this.auth,
-        },
-        body: JSON.stringify(dropUnderscored(record)),
-      }
-    );
+    return this.putRow(table, String(id), record);
+  }
+
+  /**
+   * Sends the PUT request and reports success from the response status.
+   * Split out of {@link put} so the id validation and write-count side
+   * effects and the awaited network call live in separate scopes.
+   * @param table - Harper table name.
+   * @param id - Stringified primary key value.
+   * @param record - Row payload to persist.
+   * @returns True when Harper accepts the write (200/201/204).
+   */
+  async putRow(
+    table: string,
+    id: string,
+    record: Record<string, unknown>
+  ): Promise<boolean> {
+    const res = await fetch(`${this.base}/${table}/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: this.auth,
+      },
+      body: JSON.stringify(dropUnderscored(record)),
+    });
     if (![200, 201, 204].includes(res.status)) {
       console.error(
         `  ! PUT /${table}/${id} -> ${res.status}: ${(await res.text()).slice(0, 200)}`
@@ -135,6 +161,18 @@ export class HarperREST {
    */
   async delete(table: string, id: string): Promise<boolean> {
     Object.assign(this.state, { writeCount: this.state.writeCount + 1 });
+    return this.deleteRow(table, id);
+  }
+
+  /**
+   * Sends the timed DELETE request and reports success from the status.
+   * Split out of {@link delete} so the write-count side effect and the
+   * awaited network call live in separate scopes.
+   * @param table - Harper table name.
+   * @param id - Primary key value to delete.
+   * @returns True when the row was deleted or already absent (404).
+   */
+  async deleteRow(table: string, id: string): Promise<boolean> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {

@@ -41,6 +41,22 @@ async function log(...parts: ReadonlyArray<unknown>): Promise<void> {
 }
 
 /**
+ * Logs the run banner, then executes the selected crawl phases. Bundling the
+ * announce-and-run pair keeps the awaited phase summaries out of a scope where
+ * the banner's logging side effect would precede a definition.
+ * @param banner - Start banner describing the run's bounds.
+ * @param phaseArgs - Arguments forwarded verbatim to {@link runSelectedPhases}.
+ * @returns Per-phase summary payload.
+ */
+async function announceAndRunPhases(
+  banner: string,
+  ...phaseArgs: Parameters<typeof runSelectedPhases>
+): Promise<Readonly<Record<string, unknown>>> {
+  await log(banner);
+  return runSelectedPhases(...phaseArgs);
+}
+
+/**
  * Runs the multi-phase BrokerCheck firm crawler from command-line flags.
  * @returns Resolves after selected phases finish and state is saved.
  */
@@ -58,11 +74,8 @@ async function main(): Promise<void> {
   const resolver = new Resolver(rest);
   const client = new BrokerCheckClient({ rateSeconds, verbose: false });
   const state = await loadState();
-
-  await log(
-    `==== brokercheck_crawl_all START max-per-firm=${maxPerFirm || "unlimited"} max-runtime=${maxRuntimeSeconds}s force=${force} ====`
-  );
-  const summaries = await runSelectedPhases(
+  const summaries = await announceAndRunPhases(
+    `==== brokercheck_crawl_all START max-per-firm=${maxPerFirm || "unlimited"} max-runtime=${maxRuntimeSeconds}s force=${force} ====`,
     rest,
     client,
     resolver,
@@ -82,9 +95,8 @@ async function main(): Promise<void> {
   );
 
   await saveState(state);
-  const elapsed = Math.round((Date.now() - start) / 1000);
   await log(
-    `==== DONE in ${elapsed}s (${client.requestCount} HTTP, ${rest.readCount} REST reads, ${rest.writeCount} REST writes) ====`
+    `==== DONE in ${Math.round((Date.now() - start) / 1000)}s (${client.requestCount} HTTP, ${rest.readCount} REST reads, ${rest.writeCount} REST writes) ====`
   );
   await log(`summaries: ${JSON.stringify(summaries)}`);
   await log(`resolver stats: ${JSON.stringify(resolver.stats)}`);
