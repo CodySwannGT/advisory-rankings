@@ -66,13 +66,10 @@ export function summarizeRecruitingResourcePayload(
   const missingFieldTags = sourceStatusTags.filter(tag =>
     tag.startsWith("missing-")
   );
-  const fallbackSourceBackedCount = recentMoves.filter(move =>
-    hasStatus(move, "source-backed")
-  ).length;
   const moveCount = numericValue(sourceCoverage.moveCount, recentMoves.length);
   const sourceBackedCount = numericValue(
     sourceCoverage.sourceBackedCount,
-    fallbackSourceBackedCount
+    countMovesWithStatus(recentMoves, "source-backed")
   );
   const missingAumCount = numericValue(
     sourceCoverage.missingAumCount,

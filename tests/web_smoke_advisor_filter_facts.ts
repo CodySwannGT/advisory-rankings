@@ -91,10 +91,7 @@ function readAdvisorFilterFactsInPage(
     contactReadiness: valueOf("contactReadiness"),
     freshness: valueOf("freshness"),
     firm: valueOf("firm"),
-    firstHref:
-      firstRow?.closest("a")?.getAttribute("href") ||
-      firstRow?.querySelector("a")?.getAttribute("href") ||
-      "",
+    firstHref: rowHref(firstRow),
     hasCrd: valueOf("hasCrd"),
     loaded: countFrom(loaded?.nextElementSibling?.textContent ?? ""),
     profileSubstance: valueOf("profileSubstance"),
@@ -107,4 +104,17 @@ function readAdvisorFilterFactsInPage(
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: countFrom(total?.nextElementSibling?.textContent ?? ""),
   };
+}
+
+/**
+ * Reads the canonical link href from a directory row.
+ * @param row - First rendered directory row, when present.
+ * @returns Link href or an empty string.
+ */
+function rowHref(row: Element | undefined): string {
+  return (
+    row?.closest("a")?.getAttribute("href") ||
+    row?.querySelector("a")?.getAttribute("href") ||
+    ""
+  );
 }

@@ -61,15 +61,7 @@ export async function captureFeedFilterUrlStateEvidence(
 
   await page.locator(FEED_MODE_SELECT).selectOption("event");
   await page.locator(FEED_CATEGORY_SELECT).selectOption(category);
-  await page.waitForURL(
-    url => {
-      const params = new URL(url).searchParams;
-      return (
-        params.get("mode") === "event" && params.get("category") === category
-      );
-    },
-    { timeout: QUICK_UI_TIMEOUT }
-  );
+  await waitForFeedFilterUrl(page, category);
   const shareUrl = page.url();
   await shot(page, "04-evidence-feed-filter-url-source");
 
@@ -95,6 +87,26 @@ export async function captureFeedFilterUrlStateEvidence(
     reloadMode,
     reloadCategory,
     restored
+  );
+}
+
+/**
+ * Waits for feed filter controls to serialize into the current URL.
+ * @param page - Browser page with feed filters.
+ * @param category - Selected category value.
+ */
+async function waitForFeedFilterUrl(
+  page: Page,
+  category: string
+): Promise<void> {
+  await page.waitForURL(
+    url => {
+      const params = new URL(url).searchParams;
+      return (
+        params.get("mode") === "event" && params.get("category") === category
+      );
+    },
+    { timeout: QUICK_UI_TIMEOUT }
   );
 }
 

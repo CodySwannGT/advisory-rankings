@@ -158,12 +158,24 @@ function renderFeed(
         );
       },
     });
-    renderLeft(layout.left, visibleItems);
-    renderRight(layout.right, visibleItems);
+    renderFeedSidebars(layout, visibleItems);
   };
 
   renderCurrentState(items, page);
   installFeedPopstateReload(reloadFeed);
+}
+
+/**
+ * Renders sidebars from the currently visible feed rows.
+ * @param layout - Page columns used by the feed.
+ * @param items - Visible feed items.
+ */
+function renderFeedSidebars(
+  layout: ThreeColumnLayout,
+  items: readonly FeedItem[]
+): void {
+  renderLeft(layout.left, items);
+  renderRight(layout.right, items);
 }
 
 /**

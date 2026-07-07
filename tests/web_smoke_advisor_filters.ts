@@ -234,25 +234,7 @@ interface FilterCheckFacts {
 function filterChecks(facts: FilterCheckFacts): readonly Check[] {
   return [
     advisorUrlControlCheck(facts),
-    check(
-      facts.filteredFacts.accessibleLabels,
-      "advisors filters: controls are reachable by visible labels"
-    ),
-    check(
-      facts.filteredFacts.total > 0 && facts.filteredFacts.rowCount > 0,
-      "advisors filters: matching rows render",
-      `${facts.filteredFacts.rowCount} of ${facts.filteredFacts.total}`
-    ),
-    check(
-      facts.filteredFacts.loaded === facts.filteredFacts.rowCount &&
-        facts.filteredFacts.loaded > 0,
-      "advisors filters: showing count tracks rendered rows",
-      `${facts.filteredFacts.loaded}/${facts.filteredFacts.rowCount}`
-    ),
-    check(
-      facts.filteredFacts.rawMetricsHidden,
-      "advisors filters: developer metrics are hidden"
-    ),
+    ...advisorFilteredResultChecks(facts.filteredFacts),
     ...advisorLiveFilterChecks(facts.liveFacts),
     check(
       /^\/advisors\/[a-z0-9-]+-[0-9a-f-]{36}$/i.test(
@@ -278,6 +260,36 @@ function filterChecks(facts: FilterCheckFacts): readonly Check[] {
     advisorMobileOverflowCheck(facts),
     ...mobileAdvisorSearchChecks(facts.mobileSearch),
     advisorDesktopLayoutCheck(facts.desktopLayout),
+  ];
+}
+
+/**
+ * Builds checks for the filtered advisor result payload.
+ * @param facts - Filtered advisor directory facts.
+ * @returns Advisor result checks.
+ */
+function advisorFilteredResultChecks(
+  facts: AdvisorFilterFacts
+): readonly Check[] {
+  return [
+    check(
+      facts.accessibleLabels,
+      "advisors filters: controls are reachable by visible labels"
+    ),
+    check(
+      facts.total > 0 && facts.rowCount > 0,
+      "advisors filters: matching rows render",
+      `${facts.rowCount} of ${facts.total}`
+    ),
+    check(
+      facts.loaded === facts.rowCount && facts.loaded > 0,
+      "advisors filters: showing count tracks rendered rows",
+      `${facts.loaded}/${facts.rowCount}`
+    ),
+    check(
+      facts.rawMetricsHidden,
+      "advisors filters: developer metrics are hidden"
+    ),
   ];
 }
 
