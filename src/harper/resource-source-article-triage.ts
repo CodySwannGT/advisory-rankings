@@ -57,7 +57,9 @@ export interface SourceArticleTriageFilterEcho {
 /** Public source-article extraction-gap queue. */
 export class SourceArticleTriage extends Resource {
   /**
-   * Allows anonymous readers to inspect public source-article triage rows.
+   * Keeps extraction-gap triage public: rows derive from public articles,
+   * entity/event counts, and FieldAssertion provenance rather than analyst
+   * notes or reviewer assignments.
    * @returns True because all fields derive from public article resources.
    */
   allowRead(): boolean {

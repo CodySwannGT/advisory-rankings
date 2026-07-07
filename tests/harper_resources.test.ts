@@ -1910,6 +1910,48 @@ describe("Harper feed and profile builders", () => {
     });
   });
 
+  it("keeps selected ops queue resources intentionally public-safe", async () => {
+    const publicResources = [
+      {
+        name: "AdvisorResearchQueue",
+        endpoint: new (resources as any).AdvisorResearchQueue(),
+        target: routeTarget("", { limit: "2" }),
+      },
+      {
+        name: "SourceArticleTriage",
+        endpoint: new (resources as any).SourceArticleTriage(),
+        target: routeTarget("", { limit: "2" }),
+      },
+      {
+        name: "RecruitingDealDataGaps",
+        endpoint: new (resources as any).RecruitingDealDataGaps(),
+        target: routeTarget("", { limit: "2" }),
+      },
+      {
+        name: "DataCoverage",
+        endpoint: new (resources as any).DataCoverage(),
+        target: undefined,
+      },
+    ] as const;
+
+    for (const publicResource of publicResources) {
+      expect(publicResource.endpoint.allowRead(), publicResource.name).toBe(
+        true
+      );
+      const payload = await publicResource.endpoint.get(publicResource.target);
+      const serialized = JSON.stringify(payload);
+
+      expect(serialized, publicResource.name).not.toContain("UserRating");
+      expect(serialized, publicResource.name).not.toContain("UserWatchlist");
+      expect(serialized, publicResource.name).not.toContain(
+        "AdvisorCorrectionRequest"
+      );
+      expect(serialized, publicResource.name).not.toContain(
+        "RegulatoryDiscrepancy"
+      );
+    }
+  });
+
   it("raises an explicit discrepancy queue load error for authenticated analysts", async () => {
     const endpoint = new (resources as any).RegulatoryDiscrepancyQueue() as any;
     endpoint.getCurrentUser = () => ({
