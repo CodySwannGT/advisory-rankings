@@ -296,6 +296,7 @@ export interface AdvisorMetricSnapshotRow {
   readonly householdCount?: number;
   readonly sourceType?: string;
   readonly sourceRef?: string;
+  readonly createdAt?: HarperDate;
 }
 
 // ─── EVENTS ────────────────────────────────────────────────────────

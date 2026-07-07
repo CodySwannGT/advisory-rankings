@@ -1,0 +1,36 @@
+{
+  "issue": "CodySwannGT/advisory-rankings#1562",
+  "status": "pass",
+  "recorded_at": "2026-07-07T11:20:08Z",
+  "criteria": [
+    {
+      "criterion": "Junction and append-only tables are sealed with loaders verified",
+      "status": "pass",
+      "evidence": "bun test tests/schema_hardening.test.ts -> 3 pass, including sealed-table directive checks and seeded/loader-emitted row key audits"
+    },
+    {
+      "criterion": "AdvisorMetricSnapshot declares createdAt: Date @createdTime",
+      "status": "pass",
+      "evidence": "bun test tests/schema_hardening.test.ts -> AdvisorMetricSnapshot and TeamMetricSnapshot both include createdAt: Date @createdTime"
+    },
+    {
+      "criterion": "Schema docs reflect the schema change",
+      "status": "pass",
+      "evidence": "docs/advisor-schema.md and docs/fabric-runbook.md updated in the same change"
+    },
+    {
+      "criterion": "Present-field query change is validated before adoption if included",
+      "status": "pass",
+      "evidence": "No greater_than empty-string query change was included; the data-dependent follow-up remains deferred"
+    }
+  ],
+  "verification": {
+    "quality_gates": [
+      "bun run build",
+      "bun run typecheck",
+      "bun run test",
+      "bun run test:cov"
+    ],
+    "runtime_probe": "BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com SMOKE_SCOPE=core bun run smoke -> PASS (62/62)"
+  }
+}
