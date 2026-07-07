@@ -6,6 +6,7 @@ import {
   detectUnextractedRecruiting,
   type RecruitingGapEntry,
 } from "./data-coverage-recruiting-gap.js";
+import { coverageFreshnessResults } from "./data-coverage-freshness.js";
 import { coverageWarnings } from "./data-coverage-warnings.js";
 
 export type { RecruitingGapEntry } from "./data-coverage-recruiting-gap.js";
@@ -16,14 +17,6 @@ export type { RecruitingGapEntry } from "./data-coverage-recruiting-gap.js";
 interface CountRow {
   readonly [key: string]: unknown;
   readonly n: number;
-}
-
-/**
- *
- */
-interface DateRow {
-  readonly [key: string]: unknown;
-  readonly latest: string | null;
 }
 
 /**
@@ -83,6 +76,11 @@ export interface CoverageReport {
 interface QueryResult<T> {
   readonly rows: ReadonlyArray<T>;
   readonly warnings: ReadonlyArray<string>;
+}
+
+/** Latest-date row returned by freshness queries. */
+interface LatestRow {
+  readonly latest: string | null;
 }
 
 /**
@@ -145,17 +143,8 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
   const recruiting = await recruitingCoverage(query);
   const recruitingGap = await detectUnextractedRecruiting(query);
-  const [articles, transitions, firmSourceChecks] = await Promise.all([
-    latestDate(query, "SELECT MAX(publishedDate) AS latest FROM data.Article"),
-    latestDate(
-      query,
-      "SELECT MAX(moveDate) AS latest FROM data.TransitionEvent"
-    ),
-    latestDate(
-      query,
-      "SELECT MAX(checkedAt) AS latest FROM data.AdvisorResearchCheck"
-    ),
-  ]);
+  const [articles, transitions, firmSourceChecks] =
+    await coverageFreshnessResults(query);
   return {
     generatedAt: new Date().toISOString(),
     counts: counts.counts,
@@ -193,9 +182,9 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
  * @returns Report freshness fields.
  */
 function freshnessReport(
-  articles: QueryResult<DateRow>,
-  transitions: QueryResult<DateRow>,
-  firmSourceChecks: QueryResult<DateRow>
+  articles: QueryResult<LatestRow>,
+  transitions: QueryResult<LatestRow>,
+  firmSourceChecks: QueryResult<LatestRow>
 ): CoverageReport["freshness"] {
   return {
     articles: articles.rows[0]?.latest ?? null,
@@ -375,11 +364,6 @@ const filledSql = (table: string, field: string): string =>
 
 const countValue = (rows: ReadonlyArray<CountRow>): number =>
   Number(rows[0]?.n ?? 0);
-
-const latestDate = (
-  query: CoverageQuery,
-  sqlText: string
-): Promise<QueryResult<DateRow>> => safeRows<DateRow>(query, sqlText);
 
 const pct = (value: number, total: number): number =>
   total === 0 ? 0 : Math.round((value / total) * 1000) / 10;

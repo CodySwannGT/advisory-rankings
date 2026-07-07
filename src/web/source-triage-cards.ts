@@ -17,6 +17,13 @@ const EmptyCardC = EmptyCard as unknown as DesignSystemComponent;
 const SectionCardC = SectionCard as unknown as DesignSystemComponent;
 const ALL_REASONS_LABEL = "All reasons";
 
+const SOURCE_TRIAGE_REASON_OPTIONS: ReadonlyArray<readonly [string, string]> = [
+  ["", ALL_REASONS_LABEL] as const,
+  ...SOURCE_ARTICLE_TRIAGE_REASON_TOKENS.map(
+    token => [token, sourceArticleTriageReasonLabel(token)] as const
+  ),
+];
+
 const CATEGORY_OPTIONS = [
   "",
   "unknown",
@@ -82,12 +89,7 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         "Reason",
         "reason",
         data.filters.reason ?? "",
-        [
-          ["", ALL_REASONS_LABEL],
-          ...SOURCE_ARTICLE_TRIAGE_REASON_TOKENS.map(
-            token => [token, sourceArticleTriageReasonLabel(token)] as const
-          ),
-        ],
+        SOURCE_TRIAGE_REASON_OPTIONS,
         reasonFallbackLabel
       ),
       el("input", {

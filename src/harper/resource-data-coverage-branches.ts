@@ -9,6 +9,55 @@ import type { BranchGapGroup } from "./resource-branch-gap-groups.js";
 
 export const PUBLIC_BRANCHES_RESOURCE = "/PublicBranches";
 
+/** Definition for one branch gap coverage metric. */
+interface BranchGapMetricDefinition {
+  readonly group: BranchGapGroup;
+  readonly id: string;
+  readonly label: string;
+  readonly source: string;
+  readonly limitation: string | null;
+}
+
+const BRANCH_GAP_METRICS: readonly BranchGapMetricDefinition[] = [
+  {
+    group: "loaded",
+    id: "branch-gap-loaded",
+    label: "Loaded branch rows",
+    source: "BranchCoverage.gapGroup",
+    limitation: null,
+  },
+  {
+    group: "partial",
+    id: "branch-gap-partial",
+    label: "Partial branch rows",
+    source: "BranchCoverage.gapGroup",
+    limitation:
+      "Some branch rows need source or advisor linkage before they can be treated as loaded.",
+  },
+  {
+    group: "unavailable",
+    id: "branch-gap-unavailable",
+    label: "Unavailable branch rows",
+    source: "Branch.firmId",
+    limitation: "Some branch rows do not resolve to a public firm.",
+  },
+  {
+    group: "zero-advisor",
+    id: "branch-gap-zero-advisor",
+    label: "Zero-advisor branch rows",
+    source: "BranchCoverage.currentAdvisorCount",
+    limitation: "Some sourced branch rows have no current linked advisors.",
+  },
+  {
+    group: "missing-source",
+    id: "branch-gap-missing-source",
+    label: "Missing-source branch rows",
+    source: "BranchCoverage.sourceTypes",
+    limitation:
+      "Some advisor-linked branch rows are missing public source labels.",
+  },
+];
+
 /**
  * Builds public branch coverage metrics from branch and employment rows.
  * @param db Shared Harper resource index.
@@ -109,51 +158,28 @@ function publicBranchCoverageRows(
 function branchGapMetrics(
   gapCounts: Record<BranchGapGroup, number>
 ): ReadonlyArray<DataCoverageMetric> {
-  return [
+  return BRANCH_GAP_METRICS.map(definition =>
     branchMetric(
-      "branch-gap-loaded",
-      "Loaded branch rows",
-      gapCounts.loaded,
-      "BranchCoverage.gapGroup",
-      null
-    ),
-    branchMetric(
-      "branch-gap-partial",
-      "Partial branch rows",
-      gapCounts.partial,
-      "BranchCoverage.gapGroup",
-      gapCounts.partial > 0
-        ? "Some branch rows need source or advisor linkage before they can be treated as loaded."
-        : null
-    ),
-    branchMetric(
-      "branch-gap-unavailable",
-      "Unavailable branch rows",
-      gapCounts.unavailable,
-      "Branch.firmId",
-      gapCounts.unavailable > 0
-        ? "Some branch rows do not resolve to a public firm."
-        : null
-    ),
-    branchMetric(
-      "branch-gap-zero-advisor",
-      "Zero-advisor branch rows",
-      gapCounts["zero-advisor"],
-      "BranchCoverage.currentAdvisorCount",
-      gapCounts["zero-advisor"] > 0
-        ? "Some sourced branch rows have no current linked advisors."
-        : null
-    ),
-    branchMetric(
-      "branch-gap-missing-source",
-      "Missing-source branch rows",
-      gapCounts["missing-source"],
-      "BranchCoverage.sourceTypes",
-      gapCounts["missing-source"] > 0
-        ? "Some advisor-linked branch rows are missing public source labels."
-        : null
-    ),
-  ];
+      definition.id,
+      definition.label,
+      gapCounts[definition.group],
+      definition.source,
+      branchGapLimitation(gapCounts[definition.group], definition.limitation)
+    )
+  );
+}
+
+/**
+ * Shows limitation copy only for non-empty branch gap buckets.
+ * @param count - Gap bucket count.
+ * @param message - Limitation message for non-empty buckets.
+ * @returns Limitation copy or null.
+ */
+function branchGapLimitation(
+  count: number,
+  message: string | null
+): string | null {
+  return count > 0 ? message : null;
 }
 
 /**

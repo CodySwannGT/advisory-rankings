@@ -129,12 +129,6 @@ const buildSearchResponse = async (
     employments: [],
     firmAliases,
   });
-  const counts = {
-    ...input.counts,
-    firms: rows.firms.length,
-    teams: rows.teams.length,
-    total: input.counts.advisors + rows.firms.length + rows.teams.length,
-  };
   const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
   const matches = rankedSearchMatches({
     advisors,
@@ -164,9 +158,27 @@ const buildSearchResponse = async (
           }
         : row
     ),
-    counts,
+    counts: canonicalSearchCounts(input.counts, rows),
   };
 };
+
+/**
+ * Recomputes counts after firm and team canonicalization collapses aliases.
+ * @param counts - Raw search index counts.
+ * @param rows - Canonicalized firm and team rows.
+ * @returns Search response counts.
+ */
+function canonicalSearchCounts(
+  counts: SearchCounts,
+  rows: Pick<ReturnType<typeof canonicalizeForSearch>, "firms" | "teams">
+): SearchCounts {
+  return {
+    ...counts,
+    firms: rows.firms.length,
+    teams: rows.teams.length,
+    total: counts.advisors + rows.firms.length + rows.teams.length,
+  };
+}
 
 /**
  * Resolves the display subtitle for a displayed advisor search row.

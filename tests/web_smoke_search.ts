@@ -355,18 +355,14 @@ async function smokeSearchEmptyAndDismissChecks(
   await input.fill("wells");
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await input.press("ArrowDown");
-  const activeBeforeEscape = await page
-    .locator(ACTIVE_SEARCH_RESULT_SELECTOR)
-    .count();
+  const activeBeforeEscape = await activeSearchRowCount(page);
   await input.press("Escape");
   await page.waitForFunction(
     selector => document.querySelector(selector)?.hasAttribute("hidden"),
     SEARCH_RESULTS_SELECTOR,
     { timeout: DEPLOYED_DATA_TIMEOUT }
   );
-  const activeAfterEscape = await page
-    .locator(ACTIVE_SEARCH_RESULT_SELECTOR)
-    .count();
+  const activeAfterEscape = await activeSearchRowCount(page);
   const dropdownHidden = await dropdown.evaluate(node =>
     node.hasAttribute("hidden")
   );
@@ -378,6 +374,15 @@ async function smokeSearchEmptyAndDismissChecks(
     emptyStateRows,
     emptyStateText,
   });
+}
+
+/**
+ * Counts active global-search suggestion rows.
+ * @param page - Browser page used for the search scenario.
+ * @returns Active suggestion row count.
+ */
+async function activeSearchRowCount(page: Page): Promise<number> {
+  return await page.locator(ACTIVE_SEARCH_RESULT_SELECTOR).count();
 }
 
 function searchEmptyDismissChecks(

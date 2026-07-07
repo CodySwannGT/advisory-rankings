@@ -76,11 +76,7 @@ export async function smokeDiscrepancyQueue(
   await reviewDiscrepancy(page, item.id);
   await smokeGoto(page, `${BASE}/advisors/${item.advisorId}`);
   await smokeWaitForSelector(page, ".profile-head h1");
-  await page
-    .locator(".card")
-    .filter({ hasText: "Reviewed discrepancy notes" })
-    .first()
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await waitForReviewedNotes(page);
   await shot(page, "11-discrepancy-reviewed-profile");
 
   const checks = [
@@ -90,6 +86,18 @@ export async function smokeDiscrepancyQueue(
   ];
   await clearAnalystSession(page);
   return checks;
+}
+
+/**
+ * Waits for reviewed discrepancy notes to render on the public profile.
+ * @param page - Browser page used for the profile assertion.
+ */
+async function waitForReviewedNotes(page: Page): Promise<void> {
+  await page
+    .locator(".card")
+    .filter({ hasText: "Reviewed discrepancy notes" })
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
 }
 
 /**
