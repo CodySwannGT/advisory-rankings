@@ -134,6 +134,15 @@ jobs:
         # Studio proxy fallback. See fabric-runbook §5.
         run: bun run deploy
 
+      - name: Verify deployed RBAC role drift
+        run: bun run check:roles
+
+      - name: Smoke-test app_user write denial
+        env:
+          APP_USER_USERNAME: ${{ secrets.APP_USER_USERNAME }}
+          APP_USER_PASSWORD: ${{ secrets.APP_USER_PASSWORD }}
+        run: bun run smoke:rbac
+
       - name: Seed public smoke fixture
         env:
           HDB_TARGET_URL: ${{ env.HARPER_CLUSTER_URL }}

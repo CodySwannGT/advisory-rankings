@@ -1,0 +1,38 @@
+{
+  "issue": "CodySwannGT/advisory-rankings#1560",
+  "status": "pass_pending_post_deploy_role_convergence",
+  "recorded_at": "2026-07-07T09:20:45Z",
+  "summary": "Committed harper-app/roles.yaml as the app_user source of truth, enabled the Harper roles extension, added a deploy-time live drift check, and verified current non-admin app_user writes are denied.",
+  "criteria": [
+    {
+      "criterion": "Role map is committed at the component root",
+      "status": "pass",
+      "evidence": "harper-app/roles.yaml plus tests/harper_role_map.test.ts assert read-only grants for every exported public table and no grants for private user tables"
+    },
+    {
+      "criterion": "A non-admin app_user cannot write an @export table",
+      "status": "pass",
+      "evidence": "bun run smoke:rbac -> PUT /Advisor/rbac-denied-fa77f5c9-95f0-47ed-921d-071a7aa9b2a9 returned 403"
+    },
+    {
+      "criterion": "CI fails when deployed role drifts from committed map",
+      "status": "pass_with_pre_deploy_drift",
+      "evidence": "deploy.yml runs bun run check:roles after deploy; local pre-deploy run failed with missing live table grant: BranchCoverage"
+    },
+    {
+      "criterion": "Enabling roles preserves existing extensions",
+      "status": "pass",
+      "evidence": "harper-app/config.yaml keeps graphqlSchema, rest, jsResource, fastifyRoutes, static, and roles; unit test asserts all keys"
+    }
+  ],
+  "verification": {
+    "quality_gates": [
+      "bun test tests/harper_role_map.test.ts",
+      "bun run build",
+      "bun run typecheck",
+      "bun run test",
+      "bun run test:cov"
+    ],
+    "runtime_probe": "bun run smoke:rbac -> PASS; bun run check:roles -> expected pre-deploy drift missing BranchCoverage"
+  }
+}

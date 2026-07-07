@@ -1,0 +1,188 @@
+app_user:
+  super_user: false
+  data:
+    Advisor:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    AdvisorMetricSnapshot:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    AdvisorResearchCheck:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    AdvisorSearchIndex:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Article:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    ArticleAdvisorMention:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    ArticleDisclosureMention:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    ArticleFirmMention:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    ArticleTeamMention:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    ArticleTransitionEventMention:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Branch:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    BranchAssignment:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    BranchCoverage:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    BrokerCheckSnapshot:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Designation:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Disclosure:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    DisclosureCluster:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Education:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    EmployerConcentration:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    EmploymentHistory:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    FieldAssertion:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Firm:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    FirmAlias:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    FirmMergeAudit:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    FirmSuccession:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    License:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    OutsideBusinessActivity:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Ranking:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    RankingEntry:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    RecruitingDealQuote:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    RegistrationApplication:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    RegulatoryDiscrepancy:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Sanction:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    Team:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    TeamMembership:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    TeamMetricSnapshot:
+      read: true
+      insert: false
+      update: false
+      delete: false
+    TransitionEvent:
+      read: true
+      insert: false
+      update: false
+      delete: false

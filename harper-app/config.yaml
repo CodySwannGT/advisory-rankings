@@ -5,6 +5,11 @@
 graphqlSchema:
   files: '*.graphql'
 
+# Declarative RBAC role map. Keep this enabled with every other extension
+# because component config does not merge with Harper defaults.
+roles:
+  files: 'roles.yaml'
+
 # HTTP REST interface (port 9926 by default) for every @export-ed table
 # and for the custom resources below.
 rest: true

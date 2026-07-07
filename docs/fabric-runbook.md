@@ -130,6 +130,8 @@ The app component declares its URL surface in `config.yaml` at the
 ```yaml
 graphqlSchema:
   files: '*.graphql'
+roles:
+  files: 'roles.yaml'
 rest: true
 jsResource:
   files: 'resources.js'
@@ -816,7 +818,8 @@ sections) without using the `super_user` admin login.
 |---|---|
 | Username / email | `advisorbook-test@advisory-rankings.dev` |
 | Role | `app_user` — non-`super_user`; **`read` on the public `data` content tables only, and NO direct access to the user-private tables** (`User`, `UserRating`, `AdvisorCorrectionRequest`, `UserWatchlist`, `UserWatchlistEntry`). Private data is reached exclusively through the scoped resources (`/AdvisorRating`, `/AdvisorCorrectionRequest`, `/UserWatchlists`), which run with elevated context and enforce per-user ownership/workflow rules in code. Granting a regular role table-level access to the user-private tables would otherwise be a privacy hole — Harper RBAC is table-level, not row-scoped. None of the user-private tables are `@export`ed, so no raw table routes exist for them. |
-| Password storage | macOS Keychain services `advisory-rankings-testuser-username` / `advisory-rankings-testuser-password`. Never stored in a tracked file. |
+| Role source of truth | `harper-app/roles.yaml`, loaded by the `roles` extension in `harper-app/config.yaml`. Deploy CI runs `bun run check:roles` after deploy so out-of-band `app_user` grants fail the release. |
+| Password storage | macOS Keychain services `advisory-rankings-testuser-username` / `advisory-rankings-testuser-password`; CI secrets `APP_USER_USERNAME` / `APP_USER_PASSWORD`. Never stored in a tracked file. |
 | Seeded data | Owns a `UserWatchlist` named "Smoke Test Watchlist" with one `UserWatchlistEntry` note, plus one `UserRating`, both on advisor `0005c389-42b5-55ee-aa4b-be86d586d5d5`. |
 
 Resolve the credentials at runtime, never by printing them:
@@ -826,12 +829,12 @@ security find-generic-password -s advisory-rankings-testuser-username -w
 security find-generic-password -s advisory-rankings-testuser-password -w
 ```
 
-The `app_user` role and the user were created through the Studio
-control-plane proxy (`add_role` / `add_user` via `StudioSession.clusterOp`
-in `src/scripts/_auth.ts`), the same path deploys use. To re-create on a
-fresh cluster, run those two ops with the role permission map covering the
-`data` tables, then store a freshly generated password in the keychain
-services above.
+The `app_user` role is deployed from `harper-app/roles.yaml`. The test user
+was created through the Studio control-plane proxy (`add_user` via
+`StudioSession.clusterOp` in `src/scripts/_auth.ts`). To re-create on a fresh
+cluster, deploy the component so the `roles` extension applies the committed
+role map, then create the user with role `app_user` and store a freshly
+generated password in the keychain services and CI secrets above.
 
 > **Watchlist resource binding (#999 / #1020):** if `/UserWatchlists` returns
 > `503 "UserWatchlist table is unavailable"` while `/AdvisorRating` still
@@ -1004,6 +1007,8 @@ calls. Every other script in this repo routes through it:
 | Caller | Plane | Auth |
 |---|---|---|
 | `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/`, `/app.css`, `/compare.js`, and `/AdvisorComparison` with bounded public route retries |
+| `src/scripts/check_roles.ts` | control | Studio session cookie for read-only `list_roles`; compares the live `app_user` role to `harper-app/roles.yaml` |
+| `src/scripts/smoke_app_user_write_denied.ts` | data | Basic auth as the non-admin `app_user`; verifies exported-table writes return 403 |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
 
@@ -1130,7 +1135,8 @@ fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
 `.github/workflows/deploy.yml` follows Lisa's release-and-deploy shape:
 determine the target environment, bump `package.json`, commit/tag the
 release with `[skip ci]`, then check out the released branch and run
-`bun install` -> `bun run deploy` -> `HDB_TARGET_URL=$HARPER_CLUSTER_URL bun run seed:rest`
+`bun install` -> `bun run deploy` -> `bun run check:roles` ->
+`bun run smoke:rbac` -> `HDB_TARGET_URL=$HARPER_CLUSTER_URL bun run seed:rest`
 -> `bunx playwright install --with-deps chromium` -> Playwright smoke
 (`SMOKE_SCOPE=core bun run smoke`, backed by `tests/web_smoke.ts`) against
 the live cluster URL. The REST seed step keeps the public smoke fixture
@@ -1145,6 +1151,8 @@ secrets:
 | `DEPLOY_KEY` | GitHub deploy key used by Lisa's release workflow to push version bumps. |
 | `HARPER_ADMIN_USERNAME` | `<FABRIC_LOGIN_EMAIL>` |
 | `HARPER_ADMIN_PASSWORD` | GitHub Actions secret, matching the local Keychain value |
+| `APP_USER_USERNAME` | Non-admin `app_user` smoke username. |
+| `APP_USER_PASSWORD` | Non-admin `app_user` smoke password. |
 
 If the smoke fails, CI uploads `tests/screenshots/` as a
 build artifact. The workflow also runs on `workflow_dispatch` for
@@ -1855,7 +1863,13 @@ compromised; rotate before anything sensitive lives on it.**
 
 3. **Fabric account password.** Profile → Change password.
 
-4. **Use a secret manager.** Local scripts read env first, then macOS
+4. **Non-admin app user.** Rotate the `advisorbook-test@advisory-rankings.dev`
+   password with Fabric Studio or `alter_user`, then update local Keychain
+   services `advisory-rankings-testuser-username` /
+   `advisory-rankings-testuser-password` and CI secrets `APP_USER_USERNAME` /
+   `APP_USER_PASSWORD`.
+
+5. **Use a secret manager.** Local scripts read env first, then macOS
    Keychain, then the flat-file fallback. CI uses GitHub Actions
    secrets. For production, prefer Keychain / 1Password CLI / Doppler
    / AWS Secrets Manager over `<LOCAL_CREDENTIALS_FILE>`.
