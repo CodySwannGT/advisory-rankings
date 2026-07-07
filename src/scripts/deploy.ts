@@ -27,6 +27,12 @@ import { join } from "node:path";
 import { loadCreds, StudioSession } from "./_auth.js";
 import { isFreshnessCheckableDirectDeployFailure } from "../lib/deploy-result.js";
 import { recoverPublicRuntime } from "../lib/deploy-runtime-recovery.js";
+import {
+  appUserRoleOperationPayload,
+  loadCommittedAppUserRole,
+  normalizeLiveAppUserRole,
+  roleDrift,
+} from "../lib/harper-role-map.js";
 
 const TAR_PATH = "/usr/bin/tar";
 const PROJECT = process.env.PROJECT || "advisor-app";
@@ -773,6 +779,78 @@ async function verifyFeed(clusterUrl: string): Promise<void> {
 }
 
 /**
+ * Explicitly applies the committed `app_user` role after component deploy.
+ *
+ * The component roles extension loads the initial role file, but a live deploy
+ * showed it did not update an existing role with a newly exported table grant.
+ * Keep the committed map authoritative by upserting the role, then re-reading
+ * the live role with the same drift logic CI uses.
+ * @param studio - Authenticated Studio session.
+ * @returns True when live RBAC matches the committed map after sync.
+ */
+async function syncAppUserRole(studio: StudioSession): Promise<boolean> {
+  const expected = loadCommittedAppUserRole();
+  const before = await studio.clusterOp(creds.clusterId, "list_roles");
+  if (before.status !== 200) {
+    console.error(
+      `list_roles failed before role sync: ${before.status} ${JSON.stringify(before.body).slice(0, 200)}`
+    );
+    return false;
+  }
+
+  const operation = roleExists(before.body) ? "alter_role" : "add_role";
+  console.log(`▶ ${operation} app_user role from harper-app/roles.yaml`);
+  const mutation = await studio.clusterOp(
+    creds.clusterId,
+    operation,
+    appUserRoleOperationPayload(expected)
+  );
+  if (mutation.status !== 200) {
+    console.error(
+      `${operation} failed: ${mutation.status} ${JSON.stringify(mutation.body).slice(0, 300)}`
+    );
+    return false;
+  }
+
+  const after = await studio.clusterOp(creds.clusterId, "list_roles");
+  if (after.status !== 200) {
+    console.error(
+      `list_roles failed after role sync: ${after.status} ${JSON.stringify(after.body).slice(0, 200)}`
+    );
+    return false;
+  }
+
+  const drift = roleDrift(expected, normalizeLiveAppUserRole(after.body));
+  if (drift.length > 0) {
+    console.error("app_user role still drifts after sync:");
+    for (const line of drift) console.error(`  - ${line}`);
+    return false;
+  }
+  console.log(
+    `  app_user role synced (${Object.keys(expected.data.tables).length} tables)`
+  );
+  return true;
+}
+
+/**
+ * Checks whether `list_roles` returned the app role.
+ * @param roles - Raw `list_roles` body.
+ * @returns True when `app_user` exists.
+ */
+function roleExists(roles: unknown): boolean {
+  return (
+    Array.isArray(roles) &&
+    roles.some(
+      role =>
+        role !== null &&
+        typeof role === "object" &&
+        (Reflect.get(role, "role") === "app_user" ||
+          Reflect.get(role, "id") === "app_user")
+    )
+  );
+}
+
+/**
  * Runs credential validation, component upload, and post-deploy health check.
  */
 async function main(): Promise<void> {
@@ -788,6 +866,10 @@ async function main(): Promise<void> {
   console.log(`▶ Studio login as ${creds.username}`);
 
   if (!(await deployAndRestart(studio))) {
+    process.exitCode = 1;
+    return;
+  }
+  if (!(await syncAppUserRole(studio))) {
     process.exitCode = 1;
     return;
   }

@@ -1006,8 +1006,8 @@ calls. Every other script in this repo routes through it:
 
 | Caller | Plane | Auth |
 |---|---|---|
-| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component` and `restart`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/`, `/app.css`, `/compare.js`, and `/AdvisorComparison` with bounded public route retries |
-| `src/scripts/check_roles.ts` | control | Studio session cookie for read-only `list_roles`; compares the live `app_user` role to `harper-app/roles.yaml` |
+| `src/scripts/deploy.ts` | control + data | session cookie for Studio `deploy_component`, `restart`, and explicit `app_user` `alter_role`/`add_role` sync from `harper-app/roles.yaml`; Basic auth for stale-runtime recovery against the public node's `:9925` Operations API; then data-plane checks for `/Feed`, `/version.js`, `/`, `/app.css`, `/compare.js`, and `/AdvisorComparison` with bounded public route retries |
+| `src/scripts/check_roles.ts` | control | Studio session cookie for read-only `list_roles`; compares the live `app_user` role to `harper-app/roles.yaml` after deploy sync |
 | `src/scripts/smoke_app_user_write_denied.ts` | data | Basic auth as the non-admin `app_user`; verifies exported-table writes return 403 |
 | `src/scripts/get_token.ts` | — | mints + prints a JWT for use with `curl -H "Authorization: Bearer …"` |
 | `tests/web_smoke.ts` | data | JWT in `extraHTTPHeaders` against the deployed cluster |
@@ -1135,14 +1135,17 @@ fetch('https://fabric.harper.fast/Cluster/<HARPER_CLUSTER_ID>/operation/', {
 `.github/workflows/deploy.yml` follows Lisa's release-and-deploy shape:
 determine the target environment, bump `package.json`, commit/tag the
 release with `[skip ci]`, then check out the released branch and run
-`bun install` -> `bun run deploy` -> `bun run check:roles` ->
+`bun install` -> `bun run deploy` (including explicit `app_user` role sync
+from `harper-app/roles.yaml`) -> `bun run check:roles` ->
 `bun run smoke:rbac` -> `HDB_TARGET_URL=$HARPER_CLUSTER_URL bun run seed:rest`
 -> `bunx playwright install --with-deps chromium` -> Playwright smoke
 (`SMOKE_SCOPE=core bun run smoke`, backed by `tests/web_smoke.ts`) against
-the live cluster URL. The REST seed step keeps the public smoke fixture
-present on the served node when Fabric clustering replication is
-disconnected. Release deploys use the core scope so the workflow verifies
-the live app/feed/search path without depending on longer evidence
+the live cluster URL. The explicit role sync is required because the component
+deploy can leave an existing `app_user` role unchanged; the following drift
+check is the read-back gate. The REST seed step keeps the public smoke fixture
+present on the served node when Fabric clustering replication is disconnected.
+Release deploys use the core scope so the workflow verifies the live
+app/feed/search path without depending on longer evidence
 journeys whose assertions vary with live dataset shape. Required repo
 secrets:
 

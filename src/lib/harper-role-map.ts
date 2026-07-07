@@ -13,6 +13,11 @@ interface TablePermission {
   readonly delete: boolean;
 }
 
+/** Harper Operations API table permission payload. */
+interface HarperRoleTablePermission extends TablePermission {
+  readonly attribute_permissions: ReadonlyArray<unknown>;
+}
+
 /** Normalized `permission` payload for one Harper role. */
 interface NormalizedRolePermission {
   readonly super_user: boolean;
@@ -22,6 +27,24 @@ interface NormalizedRolePermission {
 /** Normalized table grants under a Harper role's `data` permission. */
 interface RoleDataPermission {
   readonly tables: Readonly<Record<string, TablePermission>>;
+}
+
+/** Harper role operation permission wrapper. */
+interface HarperRoleOperationPermission {
+  readonly super_user: boolean;
+  readonly data: Readonly<HarperRoleOperationData>;
+}
+
+/** Harper role operation data grants. */
+interface HarperRoleOperationData {
+  readonly tables: Readonly<Record<string, HarperRoleTablePermission>>;
+}
+
+/** Payload accepted by Harper's `add_role` / `alter_role` operations. */
+interface HarperRoleOperationPayload extends Readonly<Record<string, unknown>> {
+  readonly id: string;
+  readonly role: string;
+  readonly permission: Readonly<HarperRoleOperationPermission>;
 }
 
 /** Parsed top-level shape of `harper-app/roles.yaml`. */
@@ -93,6 +116,35 @@ export function roleDrift(
       )
     ),
   ];
+}
+
+/**
+ * Converts the committed `app_user` map into Harper's role mutation payload.
+ *
+ * Harper's Operations API requires the role id plus explicit
+ * `attribute_permissions` arrays even when table-wide CRUD flags are the only
+ * permissions in use.
+ * @param role - Normalized role map.
+ * @returns Payload for `add_role` or `alter_role`.
+ */
+export function appUserRoleOperationPayload(
+  role: NormalizedRolePermission = loadCommittedAppUserRole()
+): HarperRoleOperationPayload {
+  return {
+    id: "app_user",
+    role: "app_user",
+    permission: {
+      super_user: role.super_user,
+      data: {
+        tables: Object.fromEntries(
+          Object.entries(role.data.tables).map(([table, permission]) => [
+            table,
+            { ...permission, attribute_permissions: [] },
+          ])
+        ),
+      },
+    },
+  };
 }
 
 /**

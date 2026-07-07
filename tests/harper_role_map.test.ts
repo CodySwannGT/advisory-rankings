@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 
 import {
+  appUserRoleOperationPayload,
   loadCommittedAppUserRole,
   normalizeLiveAppUserRole,
   roleDrift,
@@ -54,6 +55,41 @@ describe("Harper app_user role map", () => {
     const tables = loadCommittedAppUserRole().data.tables;
 
     for (const table of PRIVATE_TABLES) expect(tables[table]).toBeUndefined();
+  });
+
+  it("builds the Harper role mutation payload required by deploy sync", () => {
+    const payload = appUserRoleOperationPayload({
+      super_user: false,
+      data: {
+        tables: {
+          BranchCoverage: {
+            read: true,
+            insert: false,
+            update: false,
+            delete: false,
+          },
+        },
+      },
+    });
+
+    expect(payload).toEqual({
+      id: "app_user",
+      role: "app_user",
+      permission: {
+        super_user: false,
+        data: {
+          tables: {
+            BranchCoverage: {
+              read: true,
+              insert: false,
+              update: false,
+              delete: false,
+              attribute_permissions: [],
+            },
+          },
+        },
+      },
+    });
   });
 
   it("keeps roles configured with every deploy-required extension", () => {
