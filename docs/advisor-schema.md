@@ -238,8 +238,8 @@ uuidv5 of `ASI:advisorId:kind:token` so reindexing the same advisor row
 produces the same id (idempotent upsert).
 
 `AdvisorSearchIndex` is sealed in Harper: loader writes must contain only
-the fields below, so token-index drift or typoed writer fields fail at write
-time instead of creating undeclared columns.
+the fields below. Harper ignores undeclared properties on sealed tables, so
+token-index drift or typoed writer fields do not create undeclared columns.
 
 | Field | Type |
 |---|---|
@@ -755,8 +755,8 @@ source-of-record table; any fact discovered still needs a
 
 `FieldAssertion` is sealed in Harper because it is an append-only
 provenance log: loader and enrichment writers must emit only the declared
-assertion fields, so undeclared evidence payload keys fail at write time
-instead of drifting the table shape.
+assertion fields. Harper ignores undeclared properties on sealed tables, so
+extra evidence payload keys do not drift the table shape.
 
 | Field | Type | Notes |
 |---|---|---|
