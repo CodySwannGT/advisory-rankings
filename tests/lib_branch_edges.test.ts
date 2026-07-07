@@ -20,6 +20,7 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
   globalThis.fetch = ORIGINAL_FETCH;
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("library branch edge coverage", () => {
@@ -247,6 +248,30 @@ describe("library branch edge coverage", () => {
     Object.assign(client.state, { consecutiveRateLimits: 4 });
     await expect(client.handleRateLimit(429)).rejects.toBeInstanceOf(
       BrokerCheckBlocked
+    );
+  });
+
+  it("retries transient BrokerCheck failures and waits before non-terminal rate limits", async () => {
+    const client = new BrokerCheckClient({ verbose: true });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const getOnceSpy = vi
+      .spyOn(client, "getOnce")
+      .mockRejectedValueOnce(new Error("socket hang up"))
+      .mockResolvedValueOnce({ ok: true });
+
+    await expect(
+      client.getWithRetries("https://api.example.test/retry", [0, 0])
+    ).resolves.toEqual({ ok: true });
+    expect(getOnceSpy).toHaveBeenCalledTimes(2);
+
+    vi.useFakeTimers();
+    const rateLimitPromise = client.handleRateLimit(403);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await expect(rateLimitPromise).resolves.toBeUndefined();
+
+    expect(client.consecutiveRateLimits).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "  [bc] HTTP 403 (rate-limited) — long backoff 60s (1 consecutive)"
     );
   });
 
