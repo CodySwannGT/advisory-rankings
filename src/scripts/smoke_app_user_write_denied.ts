@@ -8,6 +8,7 @@ import { loadCreds } from "./_auth.js";
 const USERNAME_SERVICE = "advisory-rankings-testuser-username";
 const PASSWORD_SERVICE = ["advisory-rankings-testuser", "password"].join("-");
 const TARGET_TABLE = "Advisor";
+const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * Reads a secret from env, then macOS Keychain. Values are never logged.
@@ -47,6 +48,17 @@ function stripTrailingSlashes(value: string): string {
   return value.endsWith("/") ? stripTrailingSlashes(value.slice(0, -1)) : value;
 }
 
+/**
+ * Requires an admin credential for cleanup paths.
+ * @param value - Optional credential value.
+ * @param name - Credential name for diagnostics.
+ * @returns Present credential value.
+ */
+function required(value: string | undefined, name: string): string {
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
 const creds = loadCreds();
 const base = stripTrailingSlashes(
   process.env.BASE_URL ?? process.env.HDB_TARGET_URL ?? creds.clusterUrl
@@ -58,6 +70,7 @@ const id = `rbac-denied-${randomUUID()}`;
 
 const response = await fetch(`${base}/${TARGET_TABLE}/${id}`, {
   method: "PUT",
+  signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -73,8 +86,40 @@ const response = await fetch(`${base}/${TARGET_TABLE}/${id}`, {
 console.error(`[smoke_app_user_write_denied] PUT /${TARGET_TABLE}/${id}`);
 if (response.status !== 403) {
   const body = await response.text();
+  if (response.ok) await cleanupUnexpectedWrite(id, response.status, body);
   throw new Error(
     `expected 403 for app_user write denial, got ${response.status}: ${body.slice(0, 200)}`
   );
 }
 console.log("app_user write-denial smoke passed");
+
+/**
+ * Removes a row that should not have been writable by app_user.
+ * @param rowId - Disposable Advisor id to delete.
+ * @param writeStatus - Unexpected write response status.
+ * @param writeBody - Unexpected write response body.
+ */
+async function cleanupUnexpectedWrite(
+  rowId: string,
+  writeStatus: number,
+  writeBody: string
+): Promise<void> {
+  const adminAuth = basicAuth(
+    required(creds.username, "HARPER_ADMIN_USERNAME"),
+    required(creds.password, "HARPER_ADMIN_PASSWORD")
+  );
+  const cleanup = await fetch(`${base}/${TARGET_TABLE}/${rowId}`, {
+    method: "DELETE",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    headers: {
+      Accept: "application/json",
+      Authorization: adminAuth,
+    },
+  });
+  if (![200, 204, 404].includes(cleanup.status)) {
+    const cleanupBody = await cleanup.text();
+    throw new Error(
+      `expected 403 for app_user write denial, got ${writeStatus}: ${writeBody.slice(0, 200)}; cleanup DELETE returned ${cleanup.status}: ${cleanupBody.slice(0, 200)}`
+    );
+  }
+}

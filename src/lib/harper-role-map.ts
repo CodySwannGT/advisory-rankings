@@ -182,28 +182,7 @@ function tableDrift(
  * @returns Sorted unique values.
  */
 function sortedUnique(values: ReadonlyArray<string>): ReadonlyArray<string> {
-  return values.reduce(
-    (acc, value) =>
-      acc.includes(value) ? acc : sortedInsert(acc, value, compareStrings),
-    [] as ReadonlyArray<string>
-  );
-}
-
-/**
- * Inserts an item into an already sorted readonly array.
- * @param values - Existing sorted values.
- * @param value - Value to insert.
- * @param compare - Sort comparison function.
- * @returns New sorted array.
- */
-function sortedInsert<T>(
-  values: ReadonlyArray<T>,
-  value: T,
-  compare: (left: T, right: T) => number
-): ReadonlyArray<T> {
-  const index = values.findIndex(existing => compare(value, existing) < 0);
-  if (index === -1) return [...values, value];
-  return [...values.slice(0, index), value, ...values.slice(index)];
+  return [...new Set(values)].sort(compareStrings);
 }
 
 /**

@@ -9,7 +9,6 @@
     "@eslint/js": "^9.39.0",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "yaml": "^2.9.0",
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -119,7 +118,8 @@
   "dependencies": {
     "cheerio": "^1.1.2",
     "domhandler": "^5.0.3",
-    "harperdb": "^4.7.29"
+    "harperdb": "^4.7.29",
+    "yaml": "^2.9.0"
   },
   "resolutions": {
     "@isaacs/brace-expansion": "^5.0.1",

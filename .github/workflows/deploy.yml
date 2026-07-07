@@ -137,6 +137,16 @@ jobs:
       - name: Verify deployed RBAC role drift
         run: bun run check:roles
 
+      - name: Verify RBAC smoke-test secrets are wired
+        env:
+          APP_USER_USERNAME: ${{ secrets.APP_USER_USERNAME }}
+          APP_USER_PASSWORD: ${{ secrets.APP_USER_PASSWORD }}
+        run: |
+          if [ -z "${APP_USER_USERNAME}" ] || [ -z "${APP_USER_PASSWORD}" ]; then
+            echo "::error::APP_USER_USERNAME / APP_USER_PASSWORD secrets are not set on the repo." >&2
+            exit 1
+          fi
+
       - name: Smoke-test app_user write denial
         env:
           APP_USER_USERNAME: ${{ secrets.APP_USER_USERNAME }}

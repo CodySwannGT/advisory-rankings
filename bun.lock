@@ -8,6 +8,7 @@
         "cheerio": "^1.1.2",
         "domhandler": "^5.0.3",
         "harperdb": "^4.7.29",
+        "yaml": "^2.9.0",
       },
       "devDependencies": {
         "@ast-grep/cli": "^0.40.4",
@@ -39,7 +40,6 @@
         "typescript": "^6.0.3",
         "uuid": "^13.0.0",
         "vitest": "^4.1.0",
-        "yaml": "^2.9.0",
       },
     },
   },
