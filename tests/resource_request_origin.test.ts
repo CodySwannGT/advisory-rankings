@@ -14,7 +14,7 @@ beforeAll(async () => {
  * @returns Context-like object with a `headers` field.
  */
 function contextWith(
-  headers: Readonly<Record<string, string>>
+  headers: Readonly<Record<string, readonly string[] | string>>
 ): Readonly<Record<string, unknown>> {
   return { headers };
 }
@@ -42,6 +42,29 @@ describe("requireSameOrigin", () => {
         contextWith({
           host: "internal-node.local",
           "x-forwarded-host": appHost,
+          origin: `https://${appHost}`,
+        })
+      )
+    ).not.toThrow();
+  });
+
+  it("reads header names case-insensitively", () => {
+    expect(() =>
+      requireSameOrigin(
+        contextWith({
+          Host: appHost,
+          Origin: `https://${appHost}`,
+        })
+      )
+    ).not.toThrow();
+  });
+
+  it("matches array-valued forwarded hosts from normalized header bags", () => {
+    expect(() =>
+      requireSameOrigin(
+        contextWith({
+          host: "internal-node.local",
+          "x-forwarded-host": [appHost],
           origin: `https://${appHost}`,
         })
       )
