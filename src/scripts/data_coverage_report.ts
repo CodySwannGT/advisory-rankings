@@ -67,8 +67,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const strict = process.argv.includes("--strict");
   await buildDataCoverageReport(runtimeQuery())
     .then(report => {
-      console.log(renderDataCoverageReport(report, describeTarget()));
       const gap = report.unextractedRecruitingArticles;
+      console.log(renderDataCoverageReport(report, describeTarget()));
       if (strict && gap.length > 0) {
         console.error(
           `[data-coverage] --strict: ${gap.length} recruiting-shaped article(s) have no linked move`

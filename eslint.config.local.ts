@@ -202,17 +202,25 @@ export default [
       "jsdoc/require-jsdoc": "off",
       "sonarjs/assertions-in-tests": "off",
       "sonarjs/publicly-writable-directories": "off",
+      // Statement-order is a production-code discipline; smoke/integration
+      // tests interleave arrange-act-assert with sequential awaited UI
+      // interactions where the await ORDER is the test logic — reordering
+      // would change behavior. Exempt tests, consistent with the
+      // immutable-data/no-let/max-lines test relaxations above.
+      "code-organization/enforce-statement-order": "off",
     },
   },
   {
+    files: ["src/**/*.ts"],
     rules: {
-      // Pre-existing awaited and nested-function side effects predate Lisa
-      // 2.189.18's tightened statement-order checks. Keep the published rule
-      // stricter by default while this repo carries that cleanup as separate
-      // follow-up work (mirrors the Lisa repo's own opt-out).
+      // Enforce the published rule strict on production source: declarations
+      // must precede side-effecting/awaited statements within a scope. Tests
+      // are exempted above. Previously deferred (commit 7e8c2d9) with
+      // checkAllFunctionBodies/checkAwaitedCalls disabled; that cleanup is now
+      // done and the rule runs at full strength.
       "code-organization/enforce-statement-order": [
         "error",
-        { checkAllFunctionBodies: false, checkAwaitedCalls: false },
+        { checkAllFunctionBodies: true, checkAwaitedCalls: true },
       ],
     },
   },

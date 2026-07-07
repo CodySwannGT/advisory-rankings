@@ -88,22 +88,40 @@ export class Login extends Resource {
    * @returns Login status and normalized username.
    */
   async post(...args: readonly unknown[]): Promise<LoginResponse> {
-    requireSameOrigin(this.getContext?.());
     const body = findLoginBody(args);
-    const login = asLoginFn(this.getContext());
     const username = pickString(body.email) ?? pickString(body.username);
     const password = pickString(body.password);
-    if (!username || !password) throwStatus("email and password required", 400);
-    assertLoginAllowed(username);
-    try {
-      await login(username, password);
-    } catch (_error) {
-      recordLoginFailure(username);
-      throwStatus("Invalid credentials", 401);
-    }
-    recordLoginSuccess(username);
-    return { ok: true, username };
+    requireSameOrigin(this.getContext?.());
+    return runLogin(this.getContext(), username, password);
   }
+}
+
+/**
+ * Resolves the login helper and authenticates the supplied credentials.
+ * Split out of {@link Login.post} so the pure body parsing precedes the
+ * origin guard while the throwing `asLoginFn` resolution stays after it —
+ * preserving the original 403 → 500 → 400 → 401 error ordering.
+ * @param ctx - Raw resource context carrying Harper's `login` helper.
+ * @param username - Normalized username from the request body.
+ * @param password - Normalized password from the request body.
+ * @returns Login status and normalized username.
+ */
+async function runLogin(
+  ctx: unknown,
+  username: string | undefined,
+  password: string | undefined
+): Promise<LoginResponse> {
+  const login = asLoginFn(ctx);
+  if (!username || !password) throwStatus("email and password required", 400);
+  assertLoginAllowed(username);
+  try {
+    await login(username, password);
+  } catch (_error) {
+    recordLoginFailure(username);
+    throwStatus("Invalid credentials", 401);
+  }
+  recordLoginSuccess(username);
+  return { ok: true, username };
 }
 
 /** Browser session logout resource. */
@@ -125,8 +143,8 @@ export class Logout extends Resource {
    * @returns Logout status after session cleanup.
    */
   async post(): Promise<LogoutResponse> {
-    requireSameOrigin(this.getContext?.());
     const session = asSession(readSession(this.getContext()));
+    requireSameOrigin(this.getContext?.());
     try {
       await session?.update?.({});
       await session?.delete?.(session.id);

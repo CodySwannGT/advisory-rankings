@@ -142,22 +142,40 @@ export class AdvisorRating extends Resource {
    * @returns Saved rating state.
    */
   async post(...args: readonly unknown[]): Promise<RatingState> {
-    requireSameOrigin(this.getContext?.());
     const body = args.find(isBody) || {};
     const advisorId = normalizeAdvisorId(args.find(isTarget) || body);
-    if (!advisorId) throwStatus("advisor id required", 400);
     const userId = currentUserId(this);
+    requireSameOrigin(this.getContext?.());
+    if (!advisorId) throwStatus("advisor id required", 400);
     if (!userId) throwStatus("Sign in required", 401);
-    const row: UserRatingWritableRow = {
-      ...(await findRating(userId, advisorId)),
-      ...ratingPayload(body),
-      id: ratingId(userId, advisorId),
-      advisorId,
-      userId,
-    };
-    await writeRow(row);
-    return { authenticated: true, rating: sanitizeRating(row) };
+    return saveRating(userId, advisorId, body);
   }
+}
+
+/**
+ * Merges the request payload over any existing rating and persists it.
+ * Split out of {@link UserRating.post} so the pure argument parsing precedes
+ * the origin/validation guards while the awaited read-modify-write stays
+ * after them — preserving the 403 → 400 → 401 error ordering.
+ * @param userId Authenticated rater id.
+ * @param advisorId Advisor being rated.
+ * @param body Parsed rating payload from the request.
+ * @returns Saved rating state.
+ */
+async function saveRating(
+  userId: string,
+  advisorId: string,
+  body: RatingBody
+): Promise<RatingState> {
+  const row: UserRatingWritableRow = {
+    ...(await findRating(userId, advisorId)),
+    ...ratingPayload(body),
+    id: ratingId(userId, advisorId),
+    advisorId,
+    userId,
+  };
+  await writeRow(row);
+  return { authenticated: true, rating: sanitizeRating(row) };
 }
 
 /**

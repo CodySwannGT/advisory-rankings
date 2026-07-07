@@ -79,27 +79,60 @@ export class RegulatoryDiscrepancyReview extends Resource {
    * @returns The updated discrepancy row.
    */
   async post(...args: readonly unknown[]): Promise<DiscrepancyReviewResponse> {
-    requireSameOrigin(this.getContext?.());
-    const userId = requireAnalyst(this as CurrentUserResource);
-
     const body = findBody(args);
     const id = normalizeId(args.find(isRouteTarget)) || stringValue(body.id);
-    const existing = await requireDiscrepancy(id);
-    const status = reviewStatus(body.status);
-    const updated: RegulatoryDiscrepancyRow = {
-      ...existing,
-      status,
-      reviewerId: userId,
-      reviewerNote: textValue(
-        body.reviewerNote ?? body.note,
-        MAX_REVIEWER_NOTE_LENGTH
-      ),
-      reviewedAt: new Date().toISOString(),
-    };
-
-    await writeDiscrepancy(updated);
-    return { authenticated: true, discrepancy: updated };
+    requireSameOrigin(this.getContext?.());
+    return reviewDiscrepancy(id, body, this as CurrentUserResource);
   }
+}
+
+/**
+ * Verifies the analyst session and loads the target discrepancy.
+ * Split out of {@link RegulatoryDiscrepancyReview.post} so the pure argument
+ * parsing precedes the origin guard, and so the analyst check (401/403) and
+ * the awaited row load (404) keep their original ordering.
+ * @param id Discrepancy id parsed from the route or body.
+ * @param body Parsed review body.
+ * @param resource Current Harper resource instance.
+ * @returns The updated discrepancy row.
+ */
+async function reviewDiscrepancy(
+  id: string,
+  body: DiscrepancyReviewBody,
+  resource: CurrentUserResource
+): Promise<DiscrepancyReviewResponse> {
+  const userId = requireAnalyst(resource);
+  const existing = await requireDiscrepancy(id);
+  return persistDiscrepancyReview(existing, body, userId);
+}
+
+/**
+ * Validates the requested status and writes the reviewed discrepancy.
+ * Kept separate from {@link reviewDiscrepancy} so the status validation (400)
+ * runs after the awaited row load (404), matching the original error order.
+ * @param existing Persisted discrepancy row loaded from Harper.
+ * @param body Parsed review body.
+ * @param userId Verified analyst id stamped onto the review.
+ * @returns The updated discrepancy row.
+ */
+async function persistDiscrepancyReview(
+  existing: RegulatoryDiscrepancyRow,
+  body: DiscrepancyReviewBody,
+  userId: string
+): Promise<DiscrepancyReviewResponse> {
+  const status = reviewStatus(body.status);
+  const updated: RegulatoryDiscrepancyRow = {
+    ...existing,
+    status,
+    reviewerId: userId,
+    reviewerNote: textValue(
+      body.reviewerNote ?? body.note,
+      MAX_REVIEWER_NOTE_LENGTH
+    ),
+    reviewedAt: new Date().toISOString(),
+  };
+  await writeDiscrepancy(updated);
+  return { authenticated: true, discrepancy: updated };
 }
 
 /**

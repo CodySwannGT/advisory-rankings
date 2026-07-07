@@ -377,6 +377,21 @@ export async function createAuthTokens(
 ): Promise<HarperAuthTokens> {
   const studio = new StudioSession(creds);
   await studio.login();
+  return mintClusterAuthTokens(studio, creds);
+}
+
+/**
+ * Requests a Harper auth-token pair over an already-logged-in Studio session.
+ * Split out of {@link createAuthTokens} so the awaited login side effect and
+ * the awaited token request live in separate scopes.
+ * @param studio - Authenticated Studio session.
+ * @param creds - Credentials identifying the target cluster.
+ * @returns The minted operation/refresh token pair.
+ */
+async function mintClusterAuthTokens(
+  studio: StudioSession,
+  creds: HarperCreds
+): Promise<HarperAuthTokens> {
   const r = await studio.clusterOp(
     creds.clusterId,
     "create_authentication_tokens",

@@ -161,16 +161,23 @@ const runOptions = (): ResolvedFirmSourceRunOptions => ({
   queries: queryInputs(),
 });
 
+const logAndFetchAdvisors = (
+  input: string,
+  maxAdvisors: number
+): ReturnType<typeof fetchAdvisors> => {
+  console.error(
+    `[ubs] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchAdvisors(input, maxAdvisors);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
   checkedAt: string
 ): Promise<UbsRows> => {
   return await inputs.reduce<Promise<UbsRows>>(async (previous, input) => {
-    console.error(
-      `[ubs] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-    );
-    const advisors = await fetchAdvisors(input, maxAdvisors);
+    const advisors = await logAndFetchAdvisors(input, maxAdvisors);
     return mergeRows(
       await previous,
       UBS_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

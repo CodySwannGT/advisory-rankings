@@ -9,7 +9,7 @@
  * as `unknown` and narrowed locally.
  */
 
-import { request as httpRequest } from "node:http";
+import { request as httpRequest, type IncomingMessage } from "node:http";
 
 import {
   DEV_SERVER_SOCKET,
@@ -36,19 +36,36 @@ export function opsCall(body: unknown): Promise<unknown> {
       },
       async res => {
         res.setEncoding("utf8");
-        const chunks = await Array.fromAsync(res, chunk => chunk as string);
-        const buf = chunks.join("");
-        try {
-          resolveP(JSON.parse(buf) as unknown);
-        } catch (_error) {
-          reject(new Error(`bad json from ops API: ${buf.slice(0, 200)}`));
-        }
+        await readOpsResponse(res, resolveP, reject);
       }
     );
     req.on("error", reject);
     req.write(JSON.stringify(body));
     req.end();
   });
+}
+
+/**
+ * Reads and parses the ops-API JSON response body, settling the caller's
+ * promise. Split out of the response callback so the awaited stream read is
+ * defined at the top of its own scope rather than after `res.setEncoding`.
+ * @param res - Incoming ops-API response stream (utf8 encoding already set).
+ * @param resolveP - Resolver for the parsed JSON value.
+ * @param reject - Rejector invoked when the body is not valid JSON.
+ * @returns Resolves once the response has been parsed and delivered.
+ */
+async function readOpsResponse(
+  res: IncomingMessage,
+  resolveP: (value: unknown) => void,
+  reject: (reason?: unknown) => void
+): Promise<void> {
+  const chunks = await Array.fromAsync(res, chunk => chunk as string);
+  const buf = chunks.join("");
+  try {
+    resolveP(JSON.parse(buf) as unknown);
+  } catch (_error) {
+    reject(new Error(`bad json from ops API: ${buf.slice(0, 200)}`));
+  }
 }
 
 /**

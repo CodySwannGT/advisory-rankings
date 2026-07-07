@@ -151,6 +151,16 @@ const runOptions = (): RaymondJamesRunOptions => ({
   queries: queryInputs(),
 });
 
+const logAndFetchAdvisors = (
+  input: string,
+  maxAdvisors: number
+): ReturnType<typeof fetchAdvisors> => {
+  console.error(
+    `[raymond-james] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchAdvisors(input, maxAdvisors);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
@@ -158,10 +168,7 @@ const collectRows = async (
 ): Promise<RaymondJamesRows> => {
   return await inputs.reduce<Promise<RaymondJamesRows>>(
     async (previous, input) => {
-      console.error(
-        `[raymond-james] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-      );
-      const advisors = await fetchAdvisors(input, maxAdvisors);
+      const advisors = await logAndFetchAdvisors(input, maxAdvisors);
       return mergeRows(
         await previous,
         RAYMOND_JAMES_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

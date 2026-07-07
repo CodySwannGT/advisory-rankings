@@ -147,6 +147,17 @@ const runOptions = (): FirmSourceRunOptions => ({
   queries: queryInputs(),
 });
 
+const logAndFetchAdvisors = (
+  input: string,
+  maxAdvisors: number,
+  pageSize: number
+): ReturnType<typeof fetchAdvisors> => {
+  console.error(
+    `[edward-jones] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchAdvisors(input, maxAdvisors, pageSize);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
@@ -155,10 +166,7 @@ const collectRows = async (
 ): Promise<EdwardJonesRows> => {
   return await inputs.reduce<Promise<EdwardJonesRows>>(
     async (previous, input) => {
-      console.error(
-        `[edward-jones] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-      );
-      const advisors = await fetchAdvisors(input, maxAdvisors, pageSize);
+      const advisors = await logAndFetchAdvisors(input, maxAdvisors, pageSize);
       return mergeRows(
         await previous,
         EDWARD_JONES_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

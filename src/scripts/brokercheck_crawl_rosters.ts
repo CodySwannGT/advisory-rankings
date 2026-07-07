@@ -18,6 +18,22 @@ interface RosterSummary extends CrawlSummary {
   readonly blocked: number;
 }
 
+/**
+ * Logs the phase-3 banner, then loads the ordered roster firm rows.
+ * Bundling the banner log with the fetch keeps the awaited firm rows out of a
+ * scope where the log side effect would precede their definition.
+ * @param rest - Harper REST client.
+ * @param opts - Roster crawl options (logger and optional firm filter).
+ * @returns Ordered firm rows to walk.
+ */
+const fetchRosterFirms = async (
+  rest: HarperREST,
+  opts: WalkFirmRostersOptions
+): Promise<ReadonlyArray<BrokerRecord>> => {
+  await opts.log("phase 3: roster walks");
+  return rosterFirmRows(rest, opts.onlyFirmId);
+};
+
 export const walkFirmRosters = async (
   rest: HarperREST,
   client: BrokerCheckClient,
@@ -25,8 +41,7 @@ export const walkFirmRosters = async (
   state: CrawlState,
   opts: WalkFirmRostersOptions
 ): Promise<RosterSummary> => {
-  await opts.log("phase 3: roster walks");
-  const firms = await rosterFirmRows(rest, opts.onlyFirmId);
+  const firms = await fetchRosterFirms(rest, opts);
   const total = await walkFirmRosterRows(
     client,
     rest,
@@ -98,10 +113,10 @@ const walkFirmRosterRows = async (
   opts: WalkFirmRostersOptions,
   total: RosterSummary
 ): Promise<RosterSummary> => {
+  const [firm, ...remaining] = firms;
   await opts.log(
     `  walking ${firms.length} firms, cap ${opts.maxPerFirm || "unlimited"} advisors/firm`
   );
-  const [firm, ...remaining] = firms;
   if (!firm) return total;
   if (Date.now() > opts.deadline) {
     await opts.log(
@@ -109,6 +124,42 @@ const walkFirmRosterRows = async (
     );
     return total;
   }
+  return walkRemainingRosters(
+    client,
+    rest,
+    resolver,
+    state,
+    firm,
+    remaining,
+    opts,
+    total
+  );
+};
+
+/**
+ * Walks one firm's roster, then recurses over the remaining firms.
+ * Split out of {@link walkFirmRosterRows} so the awaited single-firm result
+ * is defined at the top of its own scope rather than after the deadline guard.
+ * @param client - BrokerCheck HTTP client.
+ * @param rest - Harper REST client.
+ * @param resolver - Entity resolver.
+ * @param state - Mutable crawl checkpoint state.
+ * @param firm - The firm to walk now.
+ * @param remaining - Firms still queued after this one.
+ * @param opts - Roster crawl options.
+ * @param total - Running roster summary before this firm.
+ * @returns Roster summary after this firm (and any recursion).
+ */
+const walkRemainingRosters = async (
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  firm: BrokerRecord,
+  remaining: ReadonlyArray<BrokerRecord>,
+  opts: WalkFirmRostersOptions,
+  total: RosterSummary
+): Promise<RosterSummary> => {
   const result = await walkOneFirmRoster(
     client,
     rest,
@@ -119,7 +170,7 @@ const walkFirmRosterRows = async (
   );
   return result.blocked
     ? result
-    : await walkFirmRosterRows(
+    : walkFirmRosterRows(
         client,
         rest,
         resolver,

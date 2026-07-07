@@ -46,8 +46,8 @@ class CoverageRequestState {
    * @returns The next request id.
    */
   nextRequestId(): number {
-    this.stopLoadingFeedback();
     const requestId = this.get("requestId") + 1;
+    this.stopLoadingFeedback();
     this.set("requestId", requestId);
     return requestId;
   }

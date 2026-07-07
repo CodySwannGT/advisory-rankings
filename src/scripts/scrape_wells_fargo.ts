@@ -166,12 +166,15 @@ const collectRows = async (
   pageSize: number,
   checkedAt: string
 ): Promise<WellsFargoRows> => {
+  const logAndFetch = (input: string): ReturnType<typeof fetchAdvisors> => {
+    console.error(
+      `[wells-fargo] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+    );
+    return fetchAdvisors(input, maxAdvisors, pageSize);
+  };
   return await inputs.reduce<Promise<WellsFargoRows>>(
     async (previous, input) => {
-      console.error(
-        `[wells-fargo] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-      );
-      const advisors = await fetchAdvisors(input, maxAdvisors, pageSize);
+      const advisors = await logAndFetch(input);
       return mergeRows(
         await previous,
         WELLS_FARGO_SOURCE_ADAPTER.mapRows(advisors, checkedAt)

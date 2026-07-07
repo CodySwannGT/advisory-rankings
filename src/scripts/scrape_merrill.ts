@@ -170,6 +170,17 @@ const runOptions = () => ({
   queries: queryInputs(),
 });
 
+const logAndFetchAdvisors = (
+  input: string,
+  maxAdvisors: number,
+  pageSize: number
+): ReturnType<typeof fetchAdvisors> => {
+  console.error(
+    `[merrill] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
+  );
+  return fetchAdvisors(input, maxAdvisors, pageSize);
+};
+
 const collectRows = async (
   inputs: ReadonlyArray<string>,
   maxAdvisors: number,
@@ -177,10 +188,7 @@ const collectRows = async (
   checkedAt: string
 ): Promise<MerrillRows> => {
   return await inputs.reduce<Promise<MerrillRows>>(async (previous, input) => {
-    console.error(
-      `[merrill] fetching input=${JSON.stringify(input)} max=${maxAdvisors}`
-    );
-    const advisors = await fetchAdvisors(input, maxAdvisors, pageSize);
+    const advisors = await logAndFetchAdvisors(input, maxAdvisors, pageSize);
     return mergeRows(
       await previous,
       MERRILL_SOURCE_ADAPTER.mapRows(advisors, checkedAt)
