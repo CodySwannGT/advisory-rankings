@@ -56,7 +56,8 @@ const ADVISOR_RESEARCH_QUEUE_RESOURCE = "/AdvisorResearchQueue";
 /** Read-only public data coverage resource. */
 export class DataCoverage extends Resource {
   /**
-   * Allows anonymous readers to inspect public coverage rollups.
+   * Keeps coverage public so readers can audit aggregate entity, source, and
+   * freshness gaps without exposing private user or analyst workflow data.
    * @returns True because the payload excludes private user/workflow rows.
    */
   allowRead(): boolean {

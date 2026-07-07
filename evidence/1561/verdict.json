@@ -1,0 +1,44 @@
+{
+  "issue": 1561,
+  "verdict": "pass_with_smoke_limitation",
+  "runTime": "2026-07-07T12:42:19Z",
+  "summary": "All four target ops queue endpoints are deliberately public, with source and runbook rationale plus regression coverage that exercises the resources and checks private workflow table names are absent.",
+  "checks": [
+    {
+      "command": "bunx vitest run tests/harper_resources.test.ts -t \"keeps selected ops queue resources intentionally public-safe\"",
+      "status": "passed"
+    },
+    {
+      "command": "bun run build",
+      "status": "passed"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "bun run test",
+      "status": "passed"
+    },
+    {
+      "command": "bun run test:cov",
+      "status": "passed",
+      "coverage": {
+        "statements": "96.35%",
+        "branches": "90%",
+        "functions": "97.32%",
+        "lines": "97.74%"
+      }
+    },
+    {
+      "command": "bun run smoke",
+      "status": "failed",
+      "reason": "No local Harper server was listening on 127.0.0.1:9926."
+    },
+    {
+      "command": "BASE_URL=https://advisory-rankings-de.cody-swann-org.harperfabric.com bun run smoke",
+      "status": "inconclusive",
+      "reason": "Cluster stability precheck passed, then the first browser attempt hung and failed with Request context disposed before the manually interrupted retry."
+    }
+  ]
+}

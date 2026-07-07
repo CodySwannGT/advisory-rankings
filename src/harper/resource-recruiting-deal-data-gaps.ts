@@ -120,7 +120,8 @@ export interface DealGapResponse {
 /** Public data-gap endpoint for recruiting move follow-up. */
 export class RecruitingDealDataGaps extends Resource {
   /**
-   * Allows anonymous readers to inspect public recruiting data gaps.
+   * Keeps recruiting deal gaps public so readers can follow source-backed move
+   * coverage gaps through public article, firm, advisor, team, and market links.
    * @returns True because the rows are derived from public recruiting data.
    */
   allowRead(): boolean {

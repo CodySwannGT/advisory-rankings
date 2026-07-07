@@ -62,8 +62,9 @@ export interface AdvisorResearchQueueResponse {
 /** Harper resource exposing the public-safe advisor research due queue. */
 export class AdvisorResearchQueue extends Resource {
   /**
-   * The queue is read-only and public-safe; no private user tables are loaded.
-   * @returns True because resource rows are filtered in `get`.
+   * Keeps research freshness public: rows expose public advisor identity,
+   * source-check status, and missing public profile fields only.
+   * @returns True because no private user or analyst workflow rows are loaded.
    */
   allowRead(): boolean {
     return true;
