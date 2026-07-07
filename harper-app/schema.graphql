@@ -158,7 +158,7 @@ type Advisor @table @export {
 # primary key is materialized as a uuid5 of `ASI:advisorId:kind:token`
 # so re-indexing the same advisor produces the same row id (idempotent
 # upsert; no orphan tokens after a write-path diff).
-type AdvisorSearchIndex @table @export {
+type AdvisorSearchIndex @table @export @sealed {
   id: ID @primaryKey
   advisorId: ID! @indexed
   token: String! @indexed
@@ -272,6 +272,7 @@ type AdvisorMetricSnapshot @table @export {
   householdCount: Int
   sourceType: String
   sourceRef: String
+  createdAt: Date @createdTime
 }
 
 # ─── EVENTS ────────────────────────────────────────────────────────
@@ -474,31 +475,31 @@ type Article @table @export {
 }
 
 # Per-target mention tables (clean indexes, real shape)
-type ArticleAdvisorMention @table @export {
+type ArticleAdvisorMention @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   advisorId: ID! @indexed
 }
 
-type ArticleFirmMention @table @export {
+type ArticleFirmMention @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   firmId: ID! @indexed
 }
 
-type ArticleTeamMention @table @export {
+type ArticleTeamMention @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   teamId: ID! @indexed
 }
 
-type ArticleTransitionEventMention @table @export {
+type ArticleTransitionEventMention @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   transitionEventId: ID! @indexed
 }
 
-type ArticleDisclosureMention @table @export {
+type ArticleDisclosureMention @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   disclosureId: ID! @indexed
@@ -529,7 +530,7 @@ type BrokerCheckSnapshot @table @export {
 }
 
 # Append-only provenance log: one row per fact asserted by an article.
-type FieldAssertion @table @export {
+type FieldAssertion @table @export @sealed {
   id: ID @primaryKey
   articleId: ID! @indexed
   targetTable: String! @indexed

@@ -237,6 +237,10 @@ and a one-time backfill (`bun run backfill:search-index`); the row id is a
 uuidv5 of `ASI:advisorId:kind:token` so reindexing the same advisor row
 produces the same id (idempotent upsert).
 
+`AdvisorSearchIndex` is sealed in Harper: loader writes must contain only
+the fields below, so token-index drift or typoed writer fields fail at write
+time instead of creating undeclared columns.
+
 | Field | Type |
 |---|---|
 | `id` | uuidv5 of `ASI:advisor_id:kind:token` |
@@ -488,8 +492,10 @@ Time-series version of the metric fields on `Team`. One row per assertion.
 | `team_size?` | int | |
 | `source_type` | enum (`advisorhub_article`, `barrons_profile`, `firm_press_release`, `form_adv`, `internal_estimate`) | |
 | `source_ref` | str (URL or citation) | |
+| `created_at` | date | Harper-managed insert timestamp (`@createdTime`) |
 
-`AdvisorMetricSnapshot` mirrors this for solo metrics.
+`AdvisorMetricSnapshot` mirrors this for solo metrics, including
+`created_at` parity with `TeamMetricSnapshot`.
 
 ### 4.12 `TransitionEvent`
 
@@ -509,6 +515,13 @@ Time-series version of the metric fields on `Team`. One row per assertion.
 | `is_breakaway` | bool | Move into RIA channel |
 | `is_return` | bool | Boomerang ("third time at Morgan Stanley") |
 | `notes?` | text | |
+
+Article mention junction tables are deliberately minimal and sealed:
+`ArticleAdvisorMention`, `ArticleFirmMention`, `ArticleTeamMention`,
+`ArticleTransitionEventMention`, and `ArticleDisclosureMention` accept only
+`id`, `article_id`, and their target id column. The loader audit for the
+sealed rollout confirmed active mention writers emit only those declared
+fields.
 
 ### 4.13 `RecruitingDealQuote`
 
@@ -739,6 +752,11 @@ public-web enrichment job for firm bios, team pages, ranking pages,
 press releases, and search-snippet-only LinkedIn URLs. It is not a
 source-of-record table; any fact discovered still needs a
 `FieldAssertion` row with source-backed text.
+
+`FieldAssertion` is sealed in Harper because it is an append-only
+provenance log: loader and enrichment writers must emit only the declared
+assertion fields, so undeclared evidence payload keys fail at write time
+instead of drifting the table shape.
 
 | Field | Type | Notes |
 |---|---|---|
