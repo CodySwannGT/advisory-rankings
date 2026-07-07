@@ -105,7 +105,7 @@
     "node": ">= 22.21.1"
   },
   "name": "advisory-rankings",
-  "version": "0.1.595",
+  "version": "0.1.596",
   "description": "Advisor data schema (sourced from AdvisorHub) running on Harper.",
   "private": true,
   "type": "module",
