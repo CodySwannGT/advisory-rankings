@@ -40,11 +40,13 @@
     "deploy": "bun run build && node dist/scripts/deploy.js",
     "seed:rest": "bun run build && node dist/scripts/seed_via_rest.js",
     "verify:rest": "bun run build && node dist/scripts/verify_via_rest.js",
+    "check:roles": "bun run build && node dist/scripts/check_roles.js",
     "baseline:data-depth": "bun run build && node dist/scripts/capture_data_depth_baseline.js",
     "verify:recruiting-market": "bun run build && node dist/scripts/verify_recruiting_market.js",
     "preview": "bun run build && node dist/scripts/preview_feed.js",
     "smoke": "bun run build && bun run smoke:run",
     "smoke:brokercheck": "bun run build && bun tests/brokercheck_web_smoke.ts",
+    "smoke:rbac": "bun run build && node dist/scripts/smoke_app_user_write_denied.js",
     "token": "bun run build && node dist/scripts/get_token.js",
     "crawl:wpjson": "bun run build && node dist/scripts/crawl_via_wpjson.js",
     "crawl:html": "bun run build && node dist/scripts/crawl_html.js",
@@ -116,7 +118,8 @@
   "dependencies": {
     "cheerio": "^1.1.2",
     "domhandler": "^5.0.3",
-    "harperdb": "^4.7.29"
+    "harperdb": "^4.7.29",
+    "yaml": "^2.9.0"
   },
   "resolutions": {
     "@isaacs/brace-expansion": "^5.0.1",

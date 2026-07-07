@@ -19,3 +19,6 @@ This repository is operated through its Lisa LLM Wiki.
   `/AdvisorResearchQueue?sourceType=web_research&staleDays=30&limit=25`.
   The route keeps queue filters in the URL, exposes priority-group shortcuts,
   and renders compact advisor rows for deployed-data replay.
+- RBAC drift check: `bun run check:roles` compares `harper-app/roles.yaml`
+  with deployed `list_roles`; `bun run smoke:rbac` verifies the non-admin
+  `app_user` cannot write an exported table.

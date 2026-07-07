@@ -857,6 +857,11 @@ binding works without `@export`.) The legacy `UserList` / `UserListEntry`
 tables from a reverted rename were dropped from the dev cluster and removed
 from the schema.
 
+The deployable `app_user` RBAC map is tracked in `harper-app/roles.yaml` and
+loaded by the Harper `roles` extension. It grants read-only access to exported
+public data tables and no direct grants to `User`, `UserRating`,
+`AdvisorCorrectionRequest`, `UserWatchlist`, or `UserWatchlistEntry`.
+
 ```
 UserRating(advisor_id, user_id, rating_int, dimensions: {responsiveness, transparency, performance, planning_depth}, review_text, created_at)
 AdvisorCorrectionRequest(advisor_id, field_name, displayed_value, proposed_value, submitter_id, submitter_note, source_type, source_ref, source_context, status, reviewer_id, reviewer_note, reviewed_at)
