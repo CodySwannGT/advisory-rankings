@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appUserRoleOperationPayload,
+  findLiveAppUserRole,
   loadCommittedAppUserRole,
   normalizeLiveAppUserRole,
   roleDrift,
@@ -26,6 +27,8 @@ const REQUIRED_CONFIG_EXTENSIONS = [
   "roles",
   "static",
 ] as const;
+
+const LIVE_APP_USER_ID = "live-app-user-uuid";
 
 function exportedTables(): readonly string[] {
   const schema = readFileSync("harper-app/schema.graphql", "utf8");
@@ -197,6 +200,41 @@ describe("Harper app_user role map", () => {
         },
       },
     });
+  });
+
+  it("finds app_user by role name while preserving the live role id", () => {
+    const liveRole = findLiveAppUserRole([
+      {
+        id: "unrelated-role-uuid",
+        role: "admin",
+        permission: {},
+      },
+      {
+        id: LIVE_APP_USER_ID,
+        role: "app_user",
+        permission: {
+          super_user: false,
+          data: {
+            tables: {
+              BranchCoverage: {
+                read: true,
+                insert: false,
+                update: false,
+                delete: false,
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(liveRole?.id).toBe(LIVE_APP_USER_ID);
+    expect(
+      appUserRoleOperationPayload(
+        normalizeLiveAppUserRole([liveRole]),
+        typeof liveRole?.id === "string" ? liveRole.id : "app_user"
+      ).id
+    ).toBe(LIVE_APP_USER_ID);
   });
 
   it("reports missing, unexpected, and super-user drift", () => {
