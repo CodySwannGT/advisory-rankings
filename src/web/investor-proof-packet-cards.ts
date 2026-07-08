@@ -140,20 +140,7 @@ function freshnessCard(packet: InvestorProofPacketResponse): HTMLElement {
     title: "Freshness pressure",
     attrs: { class: "investor-proof-freshness" },
     body: [
-      el(
-        "div",
-        { class: "investor-proof-stat-grid" },
-        stat("Due profiles", fmtNumber(packet.freshness.totalDue)),
-        stat("Shown", fmtNumber(packet.freshness.returned)),
-        stat(
-          "Priority groups",
-          fmtNumber(packet.freshness.priorityGroups.length)
-        ),
-        stat(
-          "Advisor links",
-          fmtNumber(packet.freshness.representativeAdvisors.length)
-        )
-      ),
+      freshnessStats(packet),
       packet.freshness.priorityGroups.length > 0
         ? el(
             "div",
@@ -182,6 +169,25 @@ function freshnessCard(packet: InvestorProofPacketResponse): HTMLElement {
         : null,
     ],
   });
+}
+
+/**
+ * Builds the freshness metric stat grid.
+ * @param packet - Public packet payload.
+ * @returns Freshness stat grid.
+ */
+function freshnessStats(packet: InvestorProofPacketResponse): HTMLElement {
+  return el(
+    "div",
+    { class: "investor-proof-stat-grid" },
+    stat("Due profiles", fmtNumber(packet.freshness.totalDue)),
+    stat("Shown", fmtNumber(packet.freshness.returned)),
+    stat("Priority groups", fmtNumber(packet.freshness.priorityGroups.length)),
+    stat(
+      "Advisor links",
+      fmtNumber(packet.freshness.representativeAdvisors.length)
+    )
+  );
 }
 
 /**

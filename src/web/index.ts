@@ -54,6 +54,19 @@ import type {
 
 const FEED_PAGE_SIZE = 20;
 
+/** Current state needed to reveal or fetch more feed items. */
+interface LoadMoreFeedItemsOptions {
+  readonly cursor: FeedCursor;
+  readonly loadedItems: readonly FeedItem[];
+  readonly moreLoadedToReveal: boolean;
+  readonly renderCurrentState: (
+    loadedItems: readonly FeedItem[],
+    cursor: FeedCursor,
+    visibleLimit?: number
+  ) => void;
+  readonly visibleLimit: number;
+}
+
 MountThreeColumnPage({
   active: "home",
   refreshMe,
@@ -139,30 +152,55 @@ function renderFeed(
         writeFeedFilters(nextFilters);
         reloadFeed();
       },
-      onLoadMore: () => {
-        const nextLimit = visibleLimit + FEED_PAGE_SIZE;
-        if (moreLoadedToReveal || !cursor.hasMore || !cursor.cursor) {
-          renderCurrentState(loadedItems, cursor, nextLimit);
-          return;
-        }
-        fetchNextFeedPage(
-          cursor.cursor,
-          (more, next) =>
-            renderCurrentState([...loadedItems, ...more], next, nextLimit),
-          (error: unknown) => {
-            // Keep the loaded set and "Load more" control so the user can
-            // retry a transient page fetch instead of dead-ending the feed.
-            console.error("Feed: load-more page fetch failed", error);
-            renderCurrentState(loadedItems, cursor, visibleLimit);
-          }
-        );
-      },
+      onLoadMore: () =>
+        loadMoreFeedItems({
+          cursor,
+          loadedItems,
+          moreLoadedToReveal,
+          renderCurrentState,
+          visibleLimit,
+        }),
     });
     renderFeedSidebars(layout, visibleItems);
   };
 
   renderCurrentState(items, page);
   installFeedPopstateReload(reloadFeed);
+}
+
+/**
+ * Reveals loaded feed rows or fetches the next cursor page.
+ * @param options - Current feed pagination state.
+ */
+function loadMoreFeedItems(options: LoadMoreFeedItemsOptions): void {
+  const nextLimit = options.visibleLimit + FEED_PAGE_SIZE;
+  if (
+    options.moreLoadedToReveal ||
+    !options.cursor.hasMore ||
+    !options.cursor.cursor
+  ) {
+    options.renderCurrentState(options.loadedItems, options.cursor, nextLimit);
+    return;
+  }
+  fetchNextFeedPage(
+    options.cursor.cursor,
+    (more, next) =>
+      options.renderCurrentState(
+        [...options.loadedItems, ...more],
+        next,
+        nextLimit
+      ),
+    (error: unknown) => {
+      // Keep the loaded set and "Load more" control so the user can
+      // retry a transient page fetch instead of dead-ending the feed.
+      console.error("Feed: load-more page fetch failed", error);
+      options.renderCurrentState(
+        options.loadedItems,
+        options.cursor,
+        options.visibleLimit
+      );
+    }
+  );
 }
 
 /**

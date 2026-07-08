@@ -144,14 +144,7 @@ function renderCorrectionForm(
 ): void {
   const status = el("p", { class: "advisor-correction-status" });
   if (!fields.length) {
-    clear(body);
-    body.appendChild(
-      el(
-        "p",
-        { class: NOTE_CLASS },
-        "No source-backed profile values are available for correction."
-      )
-    );
+    renderNoCorrectionFields(body);
     return;
   }
 
@@ -184,6 +177,21 @@ function renderCorrectionForm(
       "Requests queue for analyst review. Public facts do not change from this form."
     ),
     form
+  );
+}
+
+/**
+ * Renders the empty correction-field state.
+ * @param body - Card body element.
+ */
+function renderNoCorrectionFields(body: HTMLElement): void {
+  clear(body);
+  body.appendChild(
+    el(
+      "p",
+      { class: NOTE_CLASS },
+      "No source-backed profile values are available for correction."
+    )
   );
 }
 

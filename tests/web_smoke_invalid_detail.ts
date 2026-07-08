@@ -51,6 +51,13 @@ type InvalidDetailRouteCheck = Readonly<
   >
 >;
 
+/** Captured JSON response facts for invalid detail routes. */
+type InvalidDetailJsonFacts = Readonly<{
+  jsonBodyText: string;
+  jsonContentType: string;
+  routeCheck: InvalidDetailRouteCheck;
+}>;
+
 const INVALID_DETAIL_ROUTE_CHECKS: readonly InvalidDetailRouteCheck[] = [
   {
     kind: "advisor",
@@ -234,9 +241,18 @@ async function invalidDetailChecks(facts: {
         .count()) >= 1,
       `invalid-detail ${facts.routeCheck.kind}: recovery destination is interactive`
     ),
-    // JSON contract parity — Accept: application/json must NOT receive the
-    // shell. The negotiation honors the explicit JSON Accept and the resource
-    // returns its normal not-found JSON payload (or any non-HTML body).
+    ...jsonContractChecks(facts),
+  ];
+}
+
+/**
+ * Builds API content-negotiation assertions for invalid detail routes.
+ * @param facts - Captured route evidence.
+ * @returns JSON contract checks.
+ */
+function jsonContractChecks(facts: InvalidDetailJsonFacts): readonly Check[] {
+  // Accept: application/json must not receive the shell.
+  return [
     check(
       !/text\/html/i.test(facts.jsonContentType),
       `invalid-detail ${facts.routeCheck.kind}: api() Accept=json still receives JSON, not HTML shell`,
