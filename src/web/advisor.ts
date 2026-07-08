@@ -41,7 +41,6 @@ import {
   outsideActivitiesSection,
   teamsSection,
   identityCard,
-  registrationApplicationsSection,
 } from "./advisor-sections.js";
 import { publicReadinessCard } from "./advisor-readiness-card.js";
 import { reviewedDiscrepancyNotesSection } from "./advisor-discrepancy-notes-section.js";
@@ -52,13 +51,13 @@ import {
 import { advisorTrustChecklistCard } from "./advisor-trust-checklist.js";
 import { advisorCoverageSection } from "./advisor-coverage-section.js";
 import { isErrorPayload } from "./advisor-error-payload.js";
+import { appendRegistrationApplications } from "./advisor-registration-applications.js";
 import {
   isAdvisorTeamRow,
   isDesignationStub,
   isEducationStub,
   isLicenseStub,
   isOutsideBusinessActivityRow,
-  isRegistrationApplicationRow,
   narrowRows,
 } from "./advisor-row-predicates.js";
 
@@ -184,15 +183,7 @@ function render(
     sections: evidenceSections,
   });
   mobileEvidenceRoot.appendChild(publicReadinessCard(d));
-  appendSections(right, [
-    registrationApplicationsSection(
-      narrowRows(
-        resourceRows(d.registrationApplications),
-        isRegistrationApplicationRow
-      )
-    ),
-    PartialFailureCard("Registration applications", d.registrationApplications),
-  ]);
+  appendRegistrationApplications(right, d);
 }
 
 /**

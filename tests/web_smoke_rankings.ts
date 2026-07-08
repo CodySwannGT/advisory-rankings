@@ -108,7 +108,20 @@ async function waitForRankingsText(
  * @returns Loaded rankings DOM facts.
  */
 async function readLoadedRankings(page: Page) {
-  const evidence = await page.evaluate(args => {
+  const evidence = await readRankingsMainEvidence(page);
+  return {
+    ...evidence,
+    ...(await readRankingsEvidenceDetails(page)),
+  };
+}
+
+/**
+ * Reads top-level rankings page copy and summary evidence.
+ * @param page - Browser page to inspect.
+ * @returns Rankings page evidence.
+ */
+async function readRankingsMainEvidence(page: Page) {
+  return await page.evaluate(args => {
     const pageText = document.body.innerText;
     const pageTextLower = pageText.toLowerCase();
     return {
@@ -150,10 +163,6 @@ async function readLoadedRankings(page: Page) {
       ),
     };
   }, RANKINGS_EVIDENCE_ARGS);
-  return {
-    ...evidence,
-    ...(await readRankingsEvidenceDetails(page)),
-  };
 }
 
 async function readRankingsEvidenceDetails(page: Page) {

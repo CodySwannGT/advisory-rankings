@@ -1,4 +1,4 @@
-import type { Browser, Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
@@ -94,25 +94,7 @@ export async function smokeAuthenticatedWatchlists(
   const name = `${QA_PREFIX}${Date.now()}`;
 
   try {
-    await cleanupQaWatchlists(page);
-    const created = await createWatchlistThroughUi(page, name);
-    const advisorId = await addAdvisorThroughUi(page, created);
-    const populatedChecks = await verifyPopulatedWatchlist(
-      page,
-      created,
-      advisorId
-    );
-    const cleanupChecks = await removeEntryAndList(page, created, advisorId);
-
-    await shot(page, "06-watchlists-authenticated");
-    return await closeWithChecks(context, [
-      check(Boolean(created.id), "watchlists-authenticated: QA list created"),
-      ...populatedChecks,
-      ...cleanupChecks,
-      pass(
-        "[EVIDENCE: authenticated-watchlist-smoke] watchlists-authenticated: created list, added advisor, verified saved entry, cleaned up"
-      ),
-    ]);
+    return await smokeAuthenticatedWatchlistsJourney(context, page, name);
   } catch (error) {
     // Best-effort sweep so a mid-journey failure never strands QA residue.
     await cleanupQaWatchlists(page).catch(() => undefined);
@@ -124,6 +106,39 @@ export async function smokeAuthenticatedWatchlists(
       ),
     ]);
   }
+}
+
+/**
+ * Runs the authenticated watchlist browser journey.
+ * @param context - Browser context to close with final checks.
+ * @param page - Authenticated page.
+ * @param name - Disposable QA watchlist name.
+ * @returns Smoke assertions for the completed journey.
+ */
+async function smokeAuthenticatedWatchlistsJourney(
+  context: BrowserContext,
+  page: Page,
+  name: string
+): Promise<readonly Check[]> {
+  await cleanupQaWatchlists(page);
+  const created = await createWatchlistThroughUi(page, name);
+  const advisorId = await addAdvisorThroughUi(page, created);
+  const populatedChecks = await verifyPopulatedWatchlist(
+    page,
+    created,
+    advisorId
+  );
+  const cleanupChecks = await removeEntryAndList(page, created, advisorId);
+
+  await shot(page, "06-watchlists-authenticated");
+  return await closeWithChecks(context, [
+    check(Boolean(created.id), "watchlists-authenticated: QA list created"),
+    ...populatedChecks,
+    ...cleanupChecks,
+    pass(
+      "[EVIDENCE: authenticated-watchlist-smoke] watchlists-authenticated: created list, added advisor, verified saved entry, cleaned up"
+    ),
+  ]);
 }
 
 /**

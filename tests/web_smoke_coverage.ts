@@ -234,13 +234,7 @@ function coverageChecks(
       `${label}: required sections render`,
       evidence.sectionIds.join(", ")
     ),
-    check(
-      REQUIRED_METRIC_LABELS.every(required =>
-        evidence.metricLabels.some(labelText => labelText.includes(required))
-      ),
-      `${label}: required metrics render`,
-      evidence.metricLabels.join(", ")
-    ),
+    requiredMetricsCheck(label, evidence),
     ...REQUIRED_LINKS.map(([linkLabel, href]) =>
       check(
         evidence.linkHrefs[linkLabel] === href,
@@ -264,4 +258,23 @@ function coverageChecks(
       `${evidence.scrollWidth}/${evidence.viewportWidth}`
     ),
   ];
+}
+
+/**
+ * Builds the required metrics smoke assertion.
+ * @param label - Prefix for smoke check labels.
+ * @param evidence - DOM evidence to assert.
+ * @returns Required metric check.
+ */
+function requiredMetricsCheck(
+  label: string,
+  evidence: CoverageDashboardEvidence
+): Check {
+  return check(
+    REQUIRED_METRIC_LABELS.every(required =>
+      evidence.metricLabels.some(labelText => labelText.includes(required))
+    ),
+    `${label}: required metrics render`,
+    evidence.metricLabels.join(", ")
+  );
 }
