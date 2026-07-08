@@ -8,6 +8,8 @@ import {
   resolveTeam,
 } from "../src/harper/resource-routing.js";
 
+(globalThis as { Resource?: new () => unknown }).Resource = class {};
+
 const emptyDb = {
   articles: [],
   firms: [],
@@ -75,5 +77,17 @@ describe("resource routing edge resolvers", () => {
     expect(resolveAdvisor(db, "Jane Advisor")).toBe(advisor);
     expect(resolveTeam(db, "alpha-team")).toBe(team);
     expect(resolveTeam(db, "")).toBeNull();
+  });
+
+  it("serves the team profile shell for clean team detail routes", async () => {
+    const { teams } =
+      await import("../src/harper/resource-clean-web-routes.js");
+
+    await expect(new teams().get({ id: "stone-group" })).resolves.toEqual(
+      expect.objectContaining({
+        contentType: "text/html; charset=utf-8",
+        data: expect.stringContaining("<title>Team "),
+      })
+    );
   });
 });
