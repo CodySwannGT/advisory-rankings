@@ -96,7 +96,7 @@
     "lint:slow": "eslint . --config eslint.slow.config.ts --quiet",
     "knip": "knip",
     "knip:fix": "knip --fix",
-    "sg:scan": "ast-grep scan",
+    "sg:scan": "sg scan",
     "prepare": "husky install || true"
   },
   "engines": {

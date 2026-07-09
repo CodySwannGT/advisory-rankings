@@ -264,30 +264,7 @@ function sourceDisclosure(data: RecruitingMarketResponse): HTMLElement {
         kind: data.sourceCoverage.missingSourceCount > 0 ? "warn" : "ok",
         children: `${fmtNumber(data.sourceCoverage.sourceBackedCount)}/${fmtNumber(data.sourceCoverage.moveCount)} source-backed`,
       }),
-      data.sourceCoverage.missingSourceCount > 0
-        ? Tag({
-            kind: "warn",
-            children: `${fmtNumber(data.sourceCoverage.missingSourceCount)} missing source`,
-          })
-        : null,
-      data.sourceCoverage.missingLocationCount > 0
-        ? Tag({
-            kind: "warn",
-            children: `${fmtNumber(data.sourceCoverage.missingLocationCount)} missing location`,
-          })
-        : null,
-      data.sourceCoverage.missingAumCount > 0
-        ? Tag({
-            kind: "warn",
-            children: `${fmtNumber(data.sourceCoverage.missingAumCount)} missing AUM`,
-          })
-        : null,
-      data.sourceCoverage.missingT12Count > 0
-        ? Tag({
-            kind: "warn",
-            children: `${fmtNumber(data.sourceCoverage.missingT12Count)} missing T12`,
-          })
-        : null,
+      ...sourceCoverageGapTags(data),
       ...data.sourceCoverage.statusCounts.map(row =>
         el(
           "span",
@@ -298,6 +275,37 @@ function sourceDisclosure(data: RecruitingMarketResponse): HTMLElement {
       )
     )
   );
+}
+
+/**
+ * Builds warning tags for source coverage gaps.
+ * @param data - RecruitingMarket response.
+ * @returns Gap tags, preserving nulls for omitted gaps.
+ */
+function sourceCoverageGapTags(
+  data: RecruitingMarketResponse
+): readonly (HTMLElement | null)[] {
+  return [
+    sourceCoverageGapTag(data.sourceCoverage.missingSourceCount, "source"),
+    sourceCoverageGapTag(data.sourceCoverage.missingLocationCount, "location"),
+    sourceCoverageGapTag(data.sourceCoverage.missingAumCount, "AUM"),
+    sourceCoverageGapTag(data.sourceCoverage.missingT12Count, "T12"),
+  ];
+}
+
+/**
+ * Builds one source coverage gap tag.
+ * @param count - Missing row count.
+ * @param label - Reader-facing gap label.
+ * @returns Warning tag or null when there is no gap.
+ */
+function sourceCoverageGapTag(
+  count: number,
+  label: string
+): HTMLElement | null {
+  return count > 0
+    ? Tag({ kind: "warn", children: `${fmtNumber(count)} missing ${label}` })
+    : null;
 }
 
 /**

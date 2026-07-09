@@ -113,20 +113,7 @@ function firmDirectoryChecks(facts: {
   readonly wide390: boolean;
 }): readonly Check[] {
   return [
-    check(
-      !facts.fixture.channel ||
-        facts.filtered.channelValue?.toLowerCase() === facts.fixture.channel,
-      "firms filters: channel restores from URL",
-      facts.filtered.channelValue
-    ),
-    check(
-      facts.filtered.activeValue === "true",
-      "firms filters: active status restores"
-    ),
-    check(
-      facts.filtered.accessibleLabels,
-      "firms filters: controls are reachable by visible labels"
-    ),
+    ...firmFilterStateChecks(facts),
     check(facts.filtered.rowCount >= 1, "firms filters: filtered rows render"),
     check(
       facts.filtered.loaded === facts.filtered.rowCount &&
@@ -148,6 +135,28 @@ function firmDirectoryChecks(facts: {
     check(
       facts.emptyControlsAvailable,
       "firms filters: empty state keeps controls available"
+    ),
+  ];
+}
+
+function firmFilterStateChecks(facts: {
+  readonly filtered: Awaited<ReturnType<typeof captureFilteredState>>;
+  readonly fixture: FirmFixture;
+}): readonly Check[] {
+  return [
+    check(
+      !facts.fixture.channel ||
+        facts.filtered.channelValue?.toLowerCase() === facts.fixture.channel,
+      "firms filters: channel restores from URL",
+      facts.filtered.channelValue
+    ),
+    check(
+      facts.filtered.activeValue === "true",
+      "firms filters: active status restores"
+    ),
+    check(
+      facts.filtered.accessibleLabels,
+      "firms filters: controls are reachable by visible labels"
     ),
   ];
 }

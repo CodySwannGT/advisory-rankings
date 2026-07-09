@@ -193,25 +193,49 @@ const crawlRosterPage = async (
   (opts.log ?? console.error)(
     `[roster ${firmId}] page ${page}: ${hits.length} hits`
   );
-  if (
-    hits.length < PAGE_SIZE ||
-    reachedLimit(opts.max ?? 0, seen + crds.length)
-  )
+  if (rosterPageComplete(hits.length, opts.max ?? 0, seen + crds.length))
     return summary;
   return addCrawlSummaries(
     summary,
-    await crawlRosterPage(
+    await crawlNextRosterPage(
       client,
       rest,
       resolver,
       state,
       firmId,
       opts,
-      page + 1,
+      page,
       seen + crds.length
     )
   );
 };
+
+const crawlNextRosterPage = async (
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  firmId: string,
+  opts: CrawlOptions,
+  page: number,
+  seen: number
+): Promise<CrawlSummary> =>
+  await crawlRosterPage(
+    client,
+    rest,
+    resolver,
+    state,
+    firmId,
+    opts,
+    page + 1,
+    seen
+  );
+
+const rosterPageComplete = (
+  hitCount: number,
+  max: number,
+  seen: number
+): boolean => hitCount < PAGE_SIZE || reachedLimit(max, seen);
 
 const fetchCrds = async (
   crds: ReadonlyArray<string>,

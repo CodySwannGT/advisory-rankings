@@ -98,24 +98,7 @@ function feedFilterChecks(
   return [
     semanticModeCheck(semanticMode),
     unsupportedModeCheck(unsupportedMode),
-    check(
-      eventFilter.url.includes("mode=event"),
-      "/ feed filters: event-backed mode persists in URL",
-      eventFilter.url
-    ),
-    check(
-      eventFilter.applyButtonCount === 0,
-      "/ feed filters: auto-applied controls omit redundant Apply button",
-      String(eventFilter.applyButtonCount)
-    ),
-    check(
-      eventFilter.cardCount >= 1,
-      "/ feed filters: event-backed mode keeps matching posts visible"
-    ),
-    check(
-      eventFilter.allHaveCards,
-      "/ feed filters: event-backed rows all include event cards"
-    ),
+    ...eventFilterModeChecks(eventFilter),
     check(
       eventFilter.afterLoadUrl === eventFilter.url,
       "/ feed filters: Load more preserves URL filter state",
@@ -133,6 +116,29 @@ function feedFilterChecks(
     check(
       emptyVisible,
       "/ feed filters: zero-result combinations show explicit empty state"
+    ),
+  ];
+}
+
+function eventFilterModeChecks(eventFilter: EventFilterResult) {
+  return [
+    check(
+      eventFilter.url.includes("mode=event"),
+      "/ feed filters: event-backed mode persists in URL",
+      eventFilter.url
+    ),
+    check(
+      eventFilter.applyButtonCount === 0,
+      "/ feed filters: auto-applied controls omit redundant Apply button",
+      String(eventFilter.applyButtonCount)
+    ),
+    check(
+      eventFilter.cardCount >= 1,
+      "/ feed filters: event-backed mode keeps matching posts visible"
+    ),
+    check(
+      eventFilter.allHaveCards,
+      "/ feed filters: event-backed rows all include event cards"
     ),
   ];
 }

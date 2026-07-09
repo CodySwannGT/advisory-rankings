@@ -148,14 +148,7 @@ async function captureTransientErrorRecoveryEvidence(
     extraHTTPHeaders
   );
   const page = await context.newPage();
-  const oneShotFailure = async (route: Route): Promise<void> => {
-    await route.fulfill({
-      status: 503,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "transient-evidence" }),
-    });
-  };
-  await page.route("**/Feed", oneShotFailure, { times: 1 });
+  await page.route("**/Feed", oneShotFeedFailure, { times: 1 });
 
   await smokeGoto(page, `${BASE}/`);
   await page.waitForSelector(FEED_ERROR_SELECTOR, {
@@ -186,4 +179,12 @@ async function captureTransientErrorRecoveryEvidence(
       `cards=${recoveredCards}`
     ),
   ]);
+}
+
+async function oneShotFeedFailure(route: Route): Promise<void> {
+  await route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ error: "transient-evidence" }),
+  });
 }

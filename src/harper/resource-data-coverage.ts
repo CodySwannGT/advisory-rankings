@@ -95,34 +95,42 @@ export function dataCoverageResponse(db: ResourceIndex): DataCoverageResponse {
         metric.limitation ? [metric.limitation] : []
       )
     ),
-    provenance: {
-      sourceTables: [
-        "Advisor",
-        "Firm",
-        "Team",
-        "Article",
-        "Branch",
-        "EmploymentHistory",
-        "Ranking",
-        "RankingEntry",
-        "TransitionEvent",
-        ARTICLE_TRANSITION_MENTION_SOURCE,
-        "FieldAssertion",
-        "FirmAlias",
-        ADVISOR_RESEARCH_CHECK_SOURCE,
-      ],
-      publicResources: [
-        "/PublicAdvisors",
-        "/PublicFirms",
-        "/PublicTeams",
-        PUBLIC_BRANCHES_RESOURCE,
-        FEED_RESOURCE,
-        SEARCH_RESOURCE,
-        RANKINGS_EXPLORER_RESOURCE,
-        RECRUITING_MARKET_RESOURCE,
-        ADVISOR_RESEARCH_QUEUE_RESOURCE,
-      ],
-    },
+    provenance: dataCoverageProvenance(),
+  };
+}
+
+/**
+ * Lists the public resources and source tables represented by coverage metrics.
+ * @returns Coverage provenance.
+ */
+function dataCoverageProvenance(): DataCoverageProvenance {
+  return {
+    sourceTables: [
+      "Advisor",
+      "Firm",
+      "Team",
+      "Article",
+      "Branch",
+      "EmploymentHistory",
+      "Ranking",
+      "RankingEntry",
+      "TransitionEvent",
+      ARTICLE_TRANSITION_MENTION_SOURCE,
+      "FieldAssertion",
+      "FirmAlias",
+      ADVISOR_RESEARCH_CHECK_SOURCE,
+    ],
+    publicResources: [
+      "/PublicAdvisors",
+      "/PublicFirms",
+      "/PublicTeams",
+      PUBLIC_BRANCHES_RESOURCE,
+      FEED_RESOURCE,
+      SEARCH_RESOURCE,
+      RANKINGS_EXPLORER_RESOURCE,
+      RECRUITING_MARKET_RESOURCE,
+      ADVISOR_RESEARCH_QUEUE_RESOURCE,
+    ],
   };
 }
 

@@ -178,12 +178,10 @@ async function readCoverageDashboardEvidence(
         hiddenPrivateCopy: privatePatterns.filter(textMatches),
         linkHrefs: Object.fromEntries(
           links.map(([label]) => {
-            const anchors = [
-              ...document.querySelectorAll<HTMLAnchorElement>("a"),
-            ];
             const href =
-              anchors.find(link => link.textContent?.trim() === label)?.href ??
-              null;
+              [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
+                link => link.textContent?.trim() === label
+              )?.href ?? null;
             if (!href) return [label, null];
             const url = new URL(href);
             return [label, `${url.pathname}${url.search}`];

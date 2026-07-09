@@ -54,13 +54,7 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
         ranking: { name: "AdvisorBook 100" },
       },
     ],
-    articles: [
-      {
-        title: "Advisor profile coverage",
-        publishedDate: "2026-04-15T00:00:00.000Z",
-        sourceLabel: "AdvisorHub",
-      },
-    ],
+    articles: featuredComparisonArticles(),
     confidenceSummary: {
       hasData: true,
       asserted: 1,
@@ -83,6 +77,16 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
     ],
     researchSources: brokerCheckResearchSources(),
   };
+}
+
+function featuredComparisonArticles(): readonly Record<string, unknown>[] {
+  return [
+    {
+      title: "Advisor profile coverage",
+      publishedDate: "2026-04-15T00:00:00.000Z",
+      sourceLabel: "AdvisorHub",
+    },
+  ];
 }
 
 function brokerCheckResearchSources(): readonly Record<string, unknown>[] {

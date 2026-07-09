@@ -1,6 +1,7 @@
 import type {
   DisclosureEventCard,
   FeedEventCard,
+  FeedItem,
   TransitionEventCard,
 } from "../harper/resource-feed-types.js";
 
@@ -24,4 +25,15 @@ export function isDisclosureCard(
   card: FeedEventCard
 ): card is DisclosureEventCard {
   return card.kind === "disclosure";
+}
+
+/**
+ * Finds the most recent disclosure event cards for feed sidebars.
+ * @param items - Feed items.
+ * @returns Disclosure cards in feed order.
+ */
+export function recentDisclosures(
+  items: readonly FeedItem[]
+): readonly DisclosureEventCard[] {
+  return items.flatMap(i => i.eventCards.filter(isDisclosureCard)).slice(0, 4);
 }

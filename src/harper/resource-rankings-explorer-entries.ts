@@ -157,18 +157,37 @@ export function rankingEntries(
         sourceIds: [row.id],
         rankingId: row.rankingId,
       },
-      _sort: {
-        category: ranking?.name || "",
-        firm: row.firmText || firm?.name || "",
-        location: location.label || "",
-        name: subject.displayName || row.rawDisplayName || "",
-        rank: numericSort(row.rank),
-        scale: numericSort(row.scoreScale),
-        growth: numericSort(row.scoreGrowth),
-        year: ranking?.year || 0,
-      },
+      _sort: rankingSortFields(row, ranking, subject, firm, location),
     };
   });
+}
+
+/**
+ * Builds private sort keys for one explorer entry.
+ * @param row - Stored ranking entry row.
+ * @param ranking - Joined ranking metadata.
+ * @param subject - Resolved ranking subject.
+ * @param firm - Joined firm card.
+ * @param location - Normalized location payload.
+ * @returns Private sort fields stripped before public delivery.
+ */
+function rankingSortFields(
+  row: RankingEntryRow,
+  ranking: RankingRow | null,
+  subject: RankingSubject,
+  firm: RankingFirmCard | null,
+  location: RankingLocation
+): RankingSortFields {
+  return {
+    category: ranking?.name || "",
+    firm: row.firmText || firm?.name || "",
+    growth: numericSort(row.scoreGrowth),
+    location: location.label || "",
+    name: subject.displayName || row.rawDisplayName || "",
+    rank: numericSort(row.rank),
+    scale: numericSort(row.scoreScale),
+    year: ranking?.year || 0,
+  };
 }
 
 /**
