@@ -31,9 +31,11 @@ const RANKING_LIMITATION =
 const FRESHNESS_LIMITATION =
   "Research freshness proof has no check rows loaded.";
 const FEED_LIMITATION = "No public feed article is available.";
+const INVESTOR_PROOF_HEADING = "Investor proof packet";
 const RESOURCE_ADVISOR_RESEARCH_QUEUE = "/AdvisorResearchQueue";
 const RESOURCE_DATA_COVERAGE = "/DataCoverage";
 const RESOURCE_FEED = "/Feed";
+const RESOURCE_INVESTOR_PROOF_PACKET = "/InvestorProofPacket";
 const RESOURCE_PUBLIC_FIRMS = "/PublicFirms";
 const SOURCE_FIRM = "Firm";
 const SOURCE_ADVISOR_RESEARCH_CHECK = "AdvisorResearchCheck";
@@ -62,7 +64,7 @@ browserDescribe("investor proof packet route (#1369)", () => {
     try {
       const privateRequests: string[] = [];
       await routeAuth(page, false);
-      await page.route("**/InvestorProofPacket", async route => {
+      await page.route(`**${RESOURCE_INVESTOR_PROOF_PACKET}`, async route => {
         await route.fulfill({ json: packetPayload() });
       });
       for (const routePath of [
@@ -82,7 +84,7 @@ browserDescribe("investor proof packet route (#1369)", () => {
       });
 
       await page
-        .getByRole("heading", { name: "Investor proof packet", exact: true })
+        .getByRole("heading", { name: INVESTOR_PROOF_HEADING, exact: true })
         .waitFor({ timeout: QUICK_TIMEOUT });
       await page.getByText("Public investor proof").waitFor({
         timeout: QUICK_TIMEOUT,
@@ -144,6 +146,42 @@ browserDescribe("investor proof packet route (#1369)", () => {
     }
   });
 
+  it("renders an empty public packet without private resource probes", async () => {
+    const page = await browser.newPage();
+    try {
+      const privateRequests: string[] = [];
+      await routeAuth(page, false);
+      await page.route(`**${RESOURCE_INVESTOR_PROOF_PACKET}`, async route => {
+        await route.fulfill({ json: emptyPacketPayload() });
+      });
+      await routeBlockedPrivateResources(page, privateRequests);
+
+      await page.goto(`${baseUrl}/investor-proof`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("heading", { name: INVESTOR_PROOF_HEADING, exact: true })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      await page.getByText("Coverage metrics are unavailable.").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("No unavailable states were reported").waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      expect(await page.locator("[data-investor-proof-link]").count()).toBe(0);
+      expect(await page.locator(".investor-proof-freshness a").count()).toBe(0);
+      expect(privateRequests).toEqual([]);
+      const visiblePacketText = await page.locator("body").textContent();
+      expect(visiblePacketText).not.toMatch(
+        /FieldAssertion|AdvisorResearchCheck|advisor research check\.checked|Stable public route|: null/u
+      );
+    } finally {
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+      await page.close();
+    }
+  });
+
   it("replays deployed public resources and packet links", async () => {
     const snapshots = await deployedSnapshots();
     const page = await browser.newPage({
@@ -160,7 +198,7 @@ browserDescribe("investor proof packet route (#1369)", () => {
       });
 
       await page
-        .getByRole("heading", { name: "Investor proof packet", exact: true })
+        .getByRole("heading", { name: INVESTOR_PROOF_HEADING, exact: true })
         .waitFor({ timeout: QUICK_TIMEOUT });
       const desktopFacts = await packetFacts(page);
       expectMetricParity(snapshots.packet, snapshots.coverage, desktopFacts);
@@ -233,6 +271,7 @@ browserDescribe("investor proof packet route (#1369)", () => {
         JSON.stringify(evidence)
       );
     } finally {
+      await page.unrouteAll({ behavior: "ignoreErrors" });
       await page.close();
     }
   });
@@ -260,7 +299,7 @@ interface PacketFacts {
 async function deployedSnapshots(): Promise<DeployedSnapshots> {
   const [packet, coverage, researchQueue, feed, publicFirms] =
     await Promise.all([
-      fetchJson<InvestorProofPacketResponse>("/InvestorProofPacket"),
+      fetchJson<InvestorProofPacketResponse>(RESOURCE_INVESTOR_PROOF_PACKET),
       fetchJson<DataCoverageResponse>(RESOURCE_DATA_COVERAGE),
       fetchJson<AdvisorResearchQueueResponse>(
         `${RESOURCE_ADVISOR_RESEARCH_QUEUE}?limit=25`
@@ -285,7 +324,7 @@ async function routeDeployedPublicResources(
 ): Promise<void> {
   await page.route("**/*", async route => {
     const url = new URL(route.request().url());
-    if (url.pathname === "/InvestorProofPacket") {
+    if (url.pathname === RESOURCE_INVESTOR_PROOF_PACKET) {
       await route.fulfill({ json: packet });
       return;
     }
@@ -441,7 +480,6 @@ async function openPacketLink(page: Page, href: string): Promise<void> {
   await page.goto(`${baseUrlOfPage(page)}${href}`, {
     waitUntil: "domcontentloaded",
   });
-  await page.waitForLoadState("networkidle", { timeout: QUICK_TIMEOUT });
 }
 
 function baseUrlOfPage(page: Page): string {
@@ -599,6 +637,35 @@ function packetPayload(): InvestorProofPacketResponse {
         "Article",
         SOURCE_ADVISOR_RESEARCH_CHECK,
       ],
+    },
+  };
+}
+
+/**
+ * Builds the smallest public packet the route accepts.
+ * @returns Empty investor proof packet payload.
+ */
+function emptyPacketPayload(): InvestorProofPacketResponse {
+  return {
+    generatedAt: "2026-06-23T12:30:00.000Z",
+    unavailable: [],
+    coverage: {
+      sections: [],
+      keyMetrics: [],
+      limitations: [],
+    },
+    freshness: {
+      totalDue: 0,
+      returned: 0,
+      statusCounts: {},
+      priorityGroups: [],
+      representativeAdvisors: [],
+      limitation: null,
+    },
+    proofLinks: [],
+    provenance: {
+      publicResources: [],
+      sourceTables: [],
     },
   };
 }
