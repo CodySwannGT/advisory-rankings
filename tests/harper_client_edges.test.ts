@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   describeTarget,
@@ -57,6 +61,40 @@ describe("Harper client edge behavior", () => {
     globalThis.fetch = vi.fn(async () => new Response("{}", { status: 200 }));
 
     await expect(upsert("Firm", [{ id: "firm-1" }])).resolves.toBe(0);
+  });
+
+  it("posts operations through the configured local socket", async () => {
+    const hdbRoot = await mkdtemp(join(tmpdir(), "advisorbook-harper-"));
+    const socketPath = join(hdbRoot, "operations-server");
+    const receivedBodies: string[] = [];
+    const server = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", chunk => chunks.push(Buffer.from(chunk)));
+      req.on("end", () => {
+        receivedBodies.push(Buffer.concat(chunks).toString("utf8"));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    });
+
+    try {
+      await new Promise<void>((resolveListen, rejectListen) => {
+        server.once("error", rejectListen);
+        server.listen(socketPath, resolveListen);
+      });
+      process.env.HDB_TARGET_URL = "";
+      process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+      process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+      process.env.HDB_ROOT = hdbRoot;
+
+      await expect(op({ operation: "status" })).resolves.toEqual({ ok: true });
+      expect(receivedBodies).toEqual([JSON.stringify({ operation: "status" })]);
+    } finally {
+      await new Promise<void>((resolveClose, rejectClose) => {
+        server.close(error => (error ? rejectClose(error) : resolveClose()));
+      });
+      await rm(hdbRoot, { force: true, recursive: true });
+    }
   });
 
   it("falls back to REST upsert when hosted operations upsert is unavailable", async () => {
