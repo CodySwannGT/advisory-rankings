@@ -140,7 +140,13 @@ async function readLoadedRecruiting(
 ): Promise<LoadedRecruitingState> {
   await smokeGoto(page, `${BASE}/recruiting`);
   await smokeWaitForSelector(page, RECRUITING_TABLE_SELECTOR, QUICK_UI_TIMEOUT);
-  const loaded: LoadedRecruitingState = await page.evaluate(
+  const loaded = await readLoadedRecruitingState(page);
+  await shot(page, "10-recruiting-desktop");
+  return loaded;
+}
+
+function readLoadedRecruitingState(page: Page): Promise<LoadedRecruitingState> {
+  return page.evaluate(
     ({ rawRecruitingLabels, tableSelector }) => ({
       addFirmLabel: document
         .querySelector(".watchlist-add-button")
@@ -179,8 +185,6 @@ async function readLoadedRecruiting(
       tableSelector: RECRUITING_TABLE_SELECTOR,
     }
   );
-  await shot(page, "10-recruiting-desktop");
-  return loaded;
 }
 
 /**

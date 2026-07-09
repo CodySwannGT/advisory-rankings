@@ -201,11 +201,7 @@ function complianceChecks(facts: {
 export async function smokeWatchlists(
   browser: Browser
 ): Promise<readonly Check[]> {
-  const context = await newContext(
-    browser,
-    { width: 1280, height: 900 },
-    undefined
-  );
+  const context = await newAnonymousWatchlistContext(browser);
   const page = await context.newPage();
   await smokeGoto(page, `${BASE}/watchlists`);
   await smokeWaitForSelector(page, WATCHLIST_SIGN_IN_LINK_SELECTOR);
@@ -245,6 +241,10 @@ export async function smokeWatchlists(
       })
     )
   );
+}
+
+function newAnonymousWatchlistContext(browser: Browser) {
+  return newContext(browser, { width: 1280, height: 900 }, undefined);
 }
 
 async function readLoginAccessEvidence(page: Page) {

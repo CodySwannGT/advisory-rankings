@@ -97,14 +97,34 @@ function limitationItems(
         "Mentioned advisors could not load; advisor evidence is omitted until the public resource is available.",
     }),
     provenanceLimitation(options.provenance, options.provenanceRows),
-    options.provenanceRows.length && !options.evidenceRows.length
-      ? "Extracted facts are present but lack public quote context, so they are not shown as source-backed facts."
-      : null,
-    hasHighConfidenceFact(options.provenanceRows)
-      ? null
-      : "No high-confidence source-backed facts are available; candidate extraction may be incomplete.",
+    quoteContextLimitation(options),
+    highConfidenceFactLimitation(options.provenanceRows),
   ].filter((item): item is string => Boolean(item));
   return gaps.length ? [...gaps, PUBLIC_BOUNDARY_LIMITATION] : gaps;
+}
+
+/**
+ * Describes present facts that are missing public quote context.
+ * @param options - Article limitation inputs.
+ * @returns Quote-context limitation or null.
+ */
+function quoteContextLimitation(options: ArticleLimitationResources) {
+  return options.provenanceRows.length && !options.evidenceRows.length
+    ? "Extracted facts are present but lack public quote context, so they are not shown as source-backed facts."
+    : null;
+}
+
+/**
+ * Describes whether source-backed facts are still low-confidence only.
+ * @param rows - Article provenance rows.
+ * @returns High-confidence limitation or null.
+ */
+function highConfidenceFactLimitation(
+  rows: readonly ArticleProvenancePayload[]
+): string | null {
+  return hasHighConfidenceFact(rows)
+    ? null
+    : "No high-confidence source-backed facts are available; candidate extraction may be incomplete.";
 }
 
 const PUBLIC_BOUNDARY_LIMITATION =

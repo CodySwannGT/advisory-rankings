@@ -51,10 +51,7 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
     body: el(
       "form",
       { class: "rankings-filters", method: "get", action: "/rankings" },
-      selectField("Ranking list", "category", data.filters.category, [
-        ["", "All ranking lists"],
-        ...data.facets.categories.map((value): SelectOption => [value, value]),
-      ]),
+      rankingCategoryField(data),
       selectField(
         "Year",
         "year",
@@ -91,6 +88,18 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
       el("button", { class: "filter-button", type: "submit" }, "Apply")
     ),
   });
+}
+
+/**
+ * Renders the category facet control.
+ * @param data - Rankings filter payload.
+ * @returns Category select node.
+ */
+function rankingCategoryField(data: RankingsFilterPayload): HTMLElement {
+  return selectField("Ranking list", "category", data.filters.category, [
+    ["", "All ranking lists"],
+    ...data.facets.categories.map((value): SelectOption => [value, value]),
+  ]);
 }
 
 /**

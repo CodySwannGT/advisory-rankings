@@ -24,7 +24,7 @@ import {
   readFeedFilters,
   writeFeedFilters,
 } from "./feed-filters.js";
-import { isDisclosureCard, isTransitionCard } from "./feed-event-guards.js";
+import { isTransitionCard, recentDisclosures } from "./feed-event-guards.js";
 import {
   feedApiPath,
   feedCursorFrom,
@@ -265,7 +265,6 @@ function transitionSubjectName(subject: TransitionSubject | null): string {
  * @param items - Items to render.
  */
 function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
-  // Trending firms = firms most often mentioned across the feed.
   const topFirms = trendingFirms(items);
   const firmCard = SectionCardC({
     body: [
@@ -291,10 +290,7 @@ function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
       }),
     ],
   });
-  // Recent disclosures — flagged in red.
-  const recentDisc = items
-    .flatMap(i => i.eventCards.filter(isDisclosureCard))
-    .slice(0, 4);
+  const recentDisc = recentDisclosures(items);
   const complianceCard = recentDisc.length
     ? SectionCardC({
         body: [

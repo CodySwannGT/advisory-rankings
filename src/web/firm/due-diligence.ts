@@ -151,19 +151,25 @@ export function dueDiligenceFilters(
     "div",
     { class: "firm-dd-filters", "aria-label": "Due diligence module filter" },
     el("div", { class: "firm-dd-filter-buttons" }, ...buttons),
-    el(
-      "div",
-      { class: "firm-dd-filter-help" },
-      helpText(
-        COPY_SOURCE_BACKED,
-        "Source-backed means a due-diligence module has public sources that support the summary shown here."
-      ),
-      helpText(
-        COPY_NEEDS_DATA,
-        "Needs data means the module is intentionally visible, but AdvisorBook does not yet have enough public source coverage to support it."
-      )
-    )
+    el("div", { class: "firm-dd-filter-help" }, ...dueDiligenceFilterHelp())
   );
+}
+
+/**
+ * Builds the persistent filter help copy.
+ * @returns Filter helper text nodes.
+ */
+function dueDiligenceFilterHelp(): readonly HTMLElement[] {
+  return [
+    helpText(
+      COPY_SOURCE_BACKED,
+      "Source-backed means a due-diligence module has public sources that support the summary shown here."
+    ),
+    helpText(
+      COPY_NEEDS_DATA,
+      "Needs data means the module is intentionally visible, but AdvisorBook does not yet have enough public source coverage to support it."
+    ),
+  ];
 }
 
 /**

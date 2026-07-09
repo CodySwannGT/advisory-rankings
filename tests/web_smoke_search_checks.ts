@@ -32,22 +32,7 @@ export function globalSearchChecks(
   options: GlobalSearchCheckOptions
 ): readonly Check[] {
   return [
-    check(
-      options.namedInputCount === 1,
-      "global search: combobox exposes accessible name"
-    ),
-    check(
-      options.dropdownExpanded,
-      "global search: suggestions dropdown opens"
-    ),
-    check(
-      options.resultCount >= 1,
-      "global search: selectable suggestions render"
-    ),
-    check(
-      options.supportedKinds >= 1,
-      "global search: advisor, firm, or team result renders"
-    ),
+    ...globalSearchBaseChecks(options),
     ...options.multiWordFirmChecks,
     check(
       options.kindMode.firmModePressed === "true",
@@ -73,5 +58,28 @@ export function globalSearchChecks(
       options.navigation.enteredUrl
     ),
     ...options.emptySearchChecks,
+  ];
+}
+
+function globalSearchBaseChecks(
+  options: GlobalSearchCheckOptions
+): readonly Check[] {
+  return [
+    check(
+      options.namedInputCount === 1,
+      "global search: combobox exposes accessible name"
+    ),
+    check(
+      options.dropdownExpanded,
+      "global search: suggestions dropdown opens"
+    ),
+    check(
+      options.resultCount >= 1,
+      "global search: selectable suggestions render"
+    ),
+    check(
+      options.supportedKinds >= 1,
+      "global search: advisor, firm, or team result renders"
+    ),
   ];
 }

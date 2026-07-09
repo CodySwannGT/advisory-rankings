@@ -80,8 +80,7 @@ const runSelectedMode = async (
   max: number,
   log: LogFn
 ): Promise<unknown> => {
-  const force = has("--force");
-  const opts = { write, max, force, log };
+  const opts = { write, max, force: has("--force"), log };
   const crd = arg("--crd");
   if (crd) return await fetchOneCrd(client, rest, resolver, state, crd, opts);
   const firmId = arg("--firm-id");

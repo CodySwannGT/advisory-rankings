@@ -61,8 +61,7 @@ export function priorityGroups(
   const profileItems = items.filter(item =>
     hasAnyMissingField(item, PROFILE_SUBSTANCE_FIELDS)
   );
-  const staleCheckedItems = items.filter(item => item.status !== null);
-  const neverCheckedItems = items.filter(item => item.status === null);
+  const checkedItemsByStatus = splitItemsByCheckStatus(items);
 
   return [
     priorityGroup(
@@ -84,20 +83,34 @@ export function priorityGroups(
     priorityGroup(
       "stale_checked_profiles",
       "Stale checked profiles",
-      staleCheckedItems,
+      checkedItemsByStatus.stale,
       filters,
       null,
-      primaryStatus(staleCheckedItems)
+      primaryStatus(checkedItemsByStatus.stale)
     ),
     priorityGroup(
       "never_checked_profiles",
       "Never-checked profiles",
-      neverCheckedItems,
+      checkedItemsByStatus.never,
       filters,
       null,
       NEVER_CHECKED_STATUS
     ),
   ];
+}
+
+/**
+ * Splits queued items into checked and never-checked slices for priority summaries.
+ * @param items - Queue items.
+ * @returns Items keyed by check-status bucket.
+ */
+function splitItemsByCheckStatus(
+  items: ReadonlyArray<AdvisorResearchQueueItem>
+) {
+  return {
+    stale: items.filter(item => item.status !== null),
+    never: items.filter(item => item.status === null),
+  };
 }
 
 /**

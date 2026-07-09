@@ -530,22 +530,7 @@ async function captureMobileAdvisorSearchState(
     .locator("#global-search-results .gs-item")
     .first()
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const separatedFacts = await page.evaluate(() => {
-    const directoryTitle =
-      Array.from(document.querySelectorAll(".center h2.card-title"))
-        .map(title => title.textContent?.trim() ?? "")
-        .find(title => /\b(advisors)\b/i.test(title) && title !== "Filters") ??
-      "";
-    return {
-      directoryTitle,
-      dropdownLabel:
-        document
-          .querySelector("#global-search-results .gs-heading")
-          ?.textContent?.trim() ?? "",
-      globalRows: document.querySelectorAll("#global-search-results .gs-item")
-        .length,
-    };
-  });
+  const separatedFacts = await readMobileGlobalSearchFacts(page);
 
   await page.keyboard.press("Escape");
   await page.locator('[name="q"]').fill("Morgan");
@@ -562,6 +547,25 @@ async function captureMobileAdvisorSearchState(
     filteredRows,
     filterUrlUpdated: new URL(page.url()).searchParams.get("q") === "Morgan",
   };
+}
+
+function readMobileGlobalSearchFacts(page: Page) {
+  return page.evaluate(() => {
+    const directoryTitle =
+      Array.from(document.querySelectorAll(".center h2.card-title"))
+        .map(title => title.textContent?.trim() ?? "")
+        .find(title => /\b(advisors)\b/i.test(title) && title !== "Filters") ??
+      "";
+    return {
+      directoryTitle,
+      dropdownLabel:
+        document
+          .querySelector("#global-search-results .gs-heading")
+          ?.textContent?.trim() ?? "",
+      globalRows: document.querySelectorAll("#global-search-results .gs-item")
+        .length,
+    };
+  });
 }
 
 async function liveAdvisorQuery(page: Page): Promise<string> {
