@@ -45,6 +45,14 @@ export async function smokeAuth(page: Page): Promise<readonly Check[]> {
   if (!username || !password)
     return [pass("navbar: deployed sign-in flow skipped without admin creds")];
 
+  return await deployedSignInSmokeCheck(page, username, password);
+}
+
+async function deployedSignInSmokeCheck(
+  page: Page,
+  username: string,
+  password: string
+): Promise<readonly Check[]> {
   await page.locator('.me-spot a:has-text("Sign in")').first().click();
   await page.waitForSelector('input[name="email"]', {
     timeout: QUICK_UI_TIMEOUT,

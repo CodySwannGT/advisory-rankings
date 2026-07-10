@@ -702,14 +702,13 @@ async function smokeRankingsMobileViewport(
 async function readMobileRankings(page: Page) {
   return await page.evaluate(rankingsTableSelector => {
     const pageText = document.body.innerText;
-    const table = document.querySelector(rankingsTableSelector);
-    const tableText = table?.textContent || "";
-    const statusTags = [
+    const tableText =
+      document.querySelector(rankingsTableSelector)?.textContent || "";
+    const clippedStatusLabels = [
       ...document.querySelectorAll<HTMLElement>(
         `${rankingsTableSelector} .tag`
       ),
-    ];
-    const clippedStatusLabels = statusTags
+    ]
       .filter(tag => {
         const rect = tag.getBoundingClientRect();
         return (
