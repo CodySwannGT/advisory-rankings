@@ -17,6 +17,7 @@ import { parseFirm, parseIndividual } from "../lib/brokercheck-parse.js";
 import {
   type BrokerRecord,
   type Counts,
+  type CrawlOptions,
   type CrawlState,
   type LogFn,
 } from "./brokercheck_fetch_helpers.js";
@@ -87,6 +88,26 @@ const runSelectedMode = async (
   if (firmId)
     return await fetchOneFirm(client, rest, resolver, state, firmId, opts);
   const crawls = await import("./fetch_brokercheck_crawls.js");
+  const crawlResult = await runSelectedCrawlMode(
+    crawls,
+    client,
+    rest,
+    resolver,
+    state,
+    opts
+  );
+  if (crawlResult !== null) return crawlResult;
+  throw new Error(MODE_REQUIRED_ERROR);
+};
+
+const runSelectedCrawlMode = async (
+  crawls: typeof import("./fetch_brokercheck_crawls.js"),
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  opts: CrawlOptions
+): Promise<unknown | null> => {
   if (has("--enrich"))
     return await crawls.enrichExistingAdvisors(
       client,
@@ -106,16 +127,16 @@ const runSelectedMode = async (
       opts
     );
   const firmRoster = arg("--firm-roster");
-  if (firmRoster)
-    return await crawls.crawlFirmRoster(
-      client,
-      rest,
-      resolver,
-      state,
-      firmRoster,
-      opts
-    );
-  throw new Error(MODE_REQUIRED_ERROR);
+  return firmRoster
+    ? await crawls.crawlFirmRoster(
+        client,
+        rest,
+        resolver,
+        state,
+        firmRoster,
+        opts
+      )
+    : null;
 };
 
 const main = async (): Promise<void> => {

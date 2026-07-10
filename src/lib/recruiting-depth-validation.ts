@@ -63,32 +63,17 @@ export function summarizeRecruitingResourcePayload(
   const sourceStatusTags = uniqueStrings(
     recentMoves.flatMap(move => arrayValue(recordValue(move).sourceStatus))
   );
-  const missingFieldTags = sourceStatusTags.filter(tag =>
-    tag.startsWith("missing-")
-  );
-  const moveCount = numericValue(sourceCoverage.moveCount, recentMoves.length);
-  const sourceBackedCount = numericValue(
-    sourceCoverage.sourceBackedCount,
-    countMovesWithStatus(recentMoves, "source-backed")
-  );
-  const missingAumCount = numericValue(
-    sourceCoverage.missingAumCount,
-    countMovesWithStatus(recentMoves, "missing-aum")
-  );
-  const missingDealEconomicsStatusCount = dealEconomicsStatusCount(
-    sourceCoverage,
-    recentMoves
-  );
+  const counts = recruitingCoverageCounts(sourceCoverage, recentMoves);
   const facts = buildRecruitingCompactSummaryFacts({
     filterSlices: recruitingFilterSlices(recentMoves),
     firmMomentum,
     marketActivity,
-    missingAumCount,
-    missingDealEconomicsStatusCount,
-    missingFieldTags,
-    moveCount,
+    missingAumCount: counts.missingAumCount,
+    missingDealEconomicsStatusCount: counts.missingDealEconomicsStatusCount,
+    missingFieldTags: missingFieldTags(sourceStatusTags),
+    moveCount: counts.moveCount,
     recentMoves,
-    sourceBackedCount,
+    sourceBackedCount: counts.sourceBackedCount,
     sourceStatusTags,
     summary,
   });
@@ -97,6 +82,44 @@ export function summarizeRecruitingResourcePayload(
     ...compactSummary,
     validationReport: recruitingResourceValidationReport(facts),
   };
+}
+
+/**
+ * Resolves source coverage counters with body values preferred over derived counts.
+ * @param sourceCoverage - Resource-provided source coverage object.
+ * @param recentMoves - Recent recruiting move rows.
+ * @returns Compact source coverage counters.
+ */
+function recruitingCoverageCounts(
+  sourceCoverage: JsonRecord,
+  recentMoves: ReadonlyArray<unknown>
+) {
+  return {
+    missingAumCount: numericValue(
+      sourceCoverage.missingAumCount,
+      countMovesWithStatus(recentMoves, "missing-aum")
+    ),
+    missingDealEconomicsStatusCount: dealEconomicsStatusCount(
+      sourceCoverage,
+      recentMoves
+    ),
+    moveCount: numericValue(sourceCoverage.moveCount, recentMoves.length),
+    sourceBackedCount: numericValue(
+      sourceCoverage.sourceBackedCount,
+      countMovesWithStatus(recentMoves, "source-backed")
+    ),
+  };
+}
+
+/**
+ * Filters source-status tags down to missing-field markers.
+ * @param sourceStatusTags - Unique source status tags.
+ * @returns Tags that identify missing source-backed fields.
+ */
+function missingFieldTags(
+  sourceStatusTags: ReadonlyArray<string>
+): ReadonlyArray<string> {
+  return sourceStatusTags.filter(tag => tag.startsWith("missing-"));
 }
 
 /**

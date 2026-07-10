@@ -26,23 +26,7 @@ export async function feedInitialChecks(
       Boolean(await options.taylorCard.locator(".post-headline").textContent()),
       "/ feed: Taylor article headline present"
     ),
-    check(
-      /UBS|Morgan Stanley/.test(options.transitionText) &&
-        /Wells Fargo|Rockefeller/.test(options.transitionText),
-      "/ feed: transition shows source and destination firms"
-    ),
-    check(
-      /(?:^|[^\d.])(?:\$1\.60?B|1\.60?B?|\$2B|2B|\$5\.94B|5\.94B?)(?=$|[^\d.])/.test(
-        options.transitionText
-      ),
-      "/ feed: transition shows seeded AUM"
-    ),
-    check(
-      /T-12 production|advisors moved|breakaway|275%|2\.75/.test(
-        options.transitionText
-      ),
-      "/ feed: transition shows transition detail context"
-    ),
+    ...transitionTextChecks(options.transitionText),
     check(
       options.actualSanctionPillCount >= options.sanctionPillExpectation,
       `/ feed: sanction pills rendered (expected≥${options.sanctionPillExpectation}, got ${options.actualSanctionPillCount})`
@@ -59,6 +43,28 @@ export async function feedInitialChecks(
         .filter({ hasText: "Trending firms" })
         .count()) >= 1,
       "/ feed: right rail shows Trending firms"
+    ),
+  ];
+}
+
+function transitionTextChecks(transitionText: string): readonly Check[] {
+  return [
+    check(
+      /UBS|Morgan Stanley/.test(transitionText) &&
+        /Wells Fargo|Rockefeller/.test(transitionText),
+      "/ feed: transition shows source and destination firms"
+    ),
+    check(
+      /(?:^|[^\d.])(?:\$1\.60?B|1\.60?B?|\$2B|2B|\$5\.94B|5\.94B?)(?=$|[^\d.])/.test(
+        transitionText
+      ),
+      "/ feed: transition shows seeded AUM"
+    ),
+    check(
+      /T-12 production|advisors moved|breakaway|275%|2\.75/.test(
+        transitionText
+      ),
+      "/ feed: transition shows transition detail context"
     ),
   ];
 }

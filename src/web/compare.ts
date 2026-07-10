@@ -104,18 +104,6 @@ function renderComparison(
   center: HTMLElement,
   payload: AdvisorComparisonPayload
 ): void {
-  const recoveryCard =
-    payload.selection.status === "under_limit"
-      ? [
-          compareStartCard(
-            underLimitStartCopy(payload.items.length),
-            payload.ids.length
-              ? payload.ids
-              : payload.items.map(item => item.id)
-          ),
-        ]
-      : [];
-
   clear(center);
 
   if (!payload.items.length) {
@@ -126,7 +114,7 @@ function renderComparison(
   center.append(
     comparisonHero(payload),
     selectionNotice(payload),
-    ...recoveryCard,
+    ...comparisonRecoveryCards(payload),
     SectionCardComponent({
       title: "Due diligence evidence",
       body: comparisonTable(payload.items, {
@@ -148,6 +136,21 @@ function renderComparison(
     }),
     privateOverlayMount(payload.items)
   );
+}
+
+/**
+ * Builds the under-limit recovery card when the route could accept more ids.
+ * @param payload - Advisor comparison response.
+ * @returns Optional comparison start card.
+ */
+function comparisonRecoveryCards(
+  payload: AdvisorComparisonPayload
+): ReadonlyArray<HTMLElement> {
+  if (payload.selection.status !== "under_limit") return [];
+  const ids = payload.ids.length
+    ? payload.ids
+    : payload.items.map(item => item.id);
+  return [compareStartCard(underLimitStartCopy(payload.items.length), ids)];
 }
 
 /**

@@ -90,22 +90,8 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
   const bi = payload.basicInformation ?? {};
   const firm = parsedFirmRow(payload);
   const otherNames = [...(bi.otherNames ?? [])];
-  const successions = otherNames
-    .filter(
-      name =>
-        name && name.toUpperCase() !== String(bi.firmName ?? "").toUpperCase()
-    )
-    .map(name => ({
-      _priorName: name,
-      _currentName: bi.firmName,
-      type: "name_change",
-    }));
-  const owners = (payload.directOwners ?? []).map(owner => ({
-    name: owner.legalName,
-    position: owner.position,
-    crd: owner.crdNumber ?? null,
-    scope: owner.bcScope ?? null,
-  }));
+  const successions = successionRows(otherNames, bi.firmName);
+  const owners = ownerRows(payload);
   const discCounts: Readonly<Record<string, number | null | undefined>> =
     Object.fromEntries(
       (payload.disclosures ?? []).map(disclosure => [
@@ -129,6 +115,42 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
       stateRegistrationCount: regs.approvedStateRegistrationCount ?? 0,
     },
   };
+}
+
+/**
+ * Builds prior-name succession rows while excluding the current legal name.
+ * @param otherNames - BrokerCheck alternate names.
+ * @param firmName - Current firm name.
+ * @returns Name-change succession rows.
+ */
+function successionRows(
+  otherNames: ReadonlyArray<string>,
+  firmName: string | null | undefined
+) {
+  return otherNames
+    .filter(
+      name =>
+        name && name.toUpperCase() !== String(firmName ?? "").toUpperCase()
+    )
+    .map(name => ({
+      _priorName: name,
+      _currentName: firmName,
+      type: "name_change",
+    }));
+}
+
+/**
+ * Normalizes BrokerCheck direct owners into loader rows.
+ * @param payload - BrokerCheck firm payload.
+ * @returns Owner rows with nullable CRD and scope fields.
+ */
+function ownerRows(payload: BrokerCheckFirmPayload) {
+  return (payload.directOwners ?? []).map(owner => ({
+    name: owner.legalName,
+    position: owner.position,
+    crd: owner.crdNumber ?? null,
+    scope: owner.bcScope ?? null,
+  }));
 }
 
 /**

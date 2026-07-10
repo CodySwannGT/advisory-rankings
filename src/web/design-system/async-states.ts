@@ -243,27 +243,69 @@ export function AsyncStateNotice({
 
   return SectionCardComponent({
     title: fallback.title,
-    attrs: {
-      ...attrs,
-      class: className,
-      dataset: {
-        ...attrDatasetMap(attrs),
-        asyncState: fallback.kind,
-        retryRule: fallback.retryRule,
-      },
+    attrs: asyncStateAttrs(attrs, className, fallback),
+    body: asyncStateBody(fallback, details, onAction),
+  });
+}
+
+/**
+ * Builds async-state card attributes while preserving caller-provided attrs.
+ * @param attrs - Caller-provided DOM attrs.
+ * @param className - Resolved async-state class list.
+ * @param fallback - Resolved async fallback contract.
+ * @returns Section card attrs with async-state dataset values.
+ */
+function asyncStateAttrs(
+  attrs: DOMAttrs,
+  className: string,
+  fallback: ResolvedAsyncStateFallback
+): DOMAttrs {
+  return {
+    ...attrs,
+    class: className,
+    dataset: {
+      ...attrDatasetMap(attrs),
+      asyncState: fallback.kind,
+      retryRule: fallback.retryRule,
     },
-    body: [
-      EmptyText({ children: fallback.messageIntent }),
-      details ? el("p", { class: "ab-async-state__details" }, details) : null,
-      fallback.actionLabel && onAction
-        ? Button({
-            variant: fallback.kind === "error" ? "primary" : "neutral",
-            onClick: onAction,
-            children: fallback.actionLabel,
-            attrs: { class: "ab-async-state__action" },
-          })
-        : null,
-    ],
+  };
+}
+
+/**
+ * Builds async-state body rows from fallback copy and optional action details.
+ * @param fallback - Resolved async fallback contract.
+ * @param details - Optional non-sensitive detail copy.
+ * @param onAction - Optional action listener.
+ * @returns Async-state card body nodes.
+ */
+function asyncStateBody(
+  fallback: ResolvedAsyncStateFallback,
+  details: string | undefined,
+  onAction: EventListener | undefined
+): ReadonlyArray<HTMLElement | null> {
+  return [
+    EmptyText({ children: fallback.messageIntent }),
+    details ? el("p", { class: "ab-async-state__details" }, details) : null,
+    asyncStateAction(fallback, onAction),
+  ];
+}
+
+/**
+ * Builds the optional async-state action button.
+ * @param fallback - Resolved async fallback contract.
+ * @param onAction - Optional action listener.
+ * @returns Action button or null when no action is configured.
+ */
+function asyncStateAction(
+  fallback: ResolvedAsyncStateFallback,
+  onAction: EventListener | undefined
+): HTMLElement | null {
+  if (!fallback.actionLabel || !onAction) return null;
+  return Button({
+    variant: fallback.kind === "error" ? "primary" : "neutral",
+    onClick: onAction,
+    children: fallback.actionLabel,
+    attrs: { class: "ab-async-state__action" },
   });
 }
 

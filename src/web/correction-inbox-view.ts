@@ -204,17 +204,7 @@ function dispositionForm(
   status: HTMLElement,
   actions: InboxActions
 ): HTMLElement {
-  const decision = el(
-    "select",
-    { name: "status", required: true },
-    el(
-      "option",
-      { value: "", selected: true, disabled: true },
-      "Choose decision..."
-    ),
-    el("option", { value: "accepted" }, "Accept"),
-    el("option", { value: "rejected" }, "Reject")
-  ) as HTMLSelectElement;
+  const decision = dispositionDecisionSelect();
   const note = el("textarea", {
     name: "reviewerNote",
     rows: 3,
@@ -244,6 +234,24 @@ function dispositionForm(
     label("Reviewer note", note),
     submit
   );
+}
+
+/**
+ * Builds the analyst disposition decision select control.
+ * @returns Required decision select element.
+ */
+function dispositionDecisionSelect(): HTMLSelectElement {
+  return el(
+    "select",
+    { name: "status", required: true },
+    el(
+      "option",
+      { value: "", selected: true, disabled: true },
+      "Choose decision..."
+    ),
+    el("option", { value: "accepted" }, "Accept"),
+    el("option", { value: "rejected" }, "Reject")
+  ) as HTMLSelectElement;
 }
 
 /** Context shared by the disposition submit handler. */
