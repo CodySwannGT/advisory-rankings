@@ -91,6 +91,8 @@ const REPRESENTATIVE_RECRUITING_LINK = "representative-recruiting";
 const RANKING_ENTRIES_METRIC = "ranking-entries";
 const LATEST_RESEARCH_CHECK_METRIC = "latest-research-check";
 const FIELD_ASSERTIONS_METRIC = "field-assertions";
+const ARTICLE_MENTIONS_METRIC = "article-mentions";
+const FIRM_ALIASES_METRIC = "firm-aliases";
 const RESEARCH_FRESHNESS_UNAVAILABLE = "Research freshness is unavailable.";
 const COBALT_CAPITAL_FIRM_CURSOR = "Y29iYWx0IGNhcGl0YWwAZmlybS1j";
 const EMPLOYMENT_A_ID = "employment-a";
@@ -2326,6 +2328,18 @@ describe("Harper feed and profile builders", () => {
       publicResource: null,
       limitation: DATA_COVERAGE_FIELD_ASSERTIONS_AGGREGATE,
     });
+    expect(metricById(payload, ARTICLE_MENTIONS_METRIC)).toMatchObject({
+      value: 4,
+      source: "Article*Mention",
+      publicResource: FEED_RESOURCE,
+      limitation: null,
+    });
+    expect(metricById(payload, FIRM_ALIASES_METRIC)).toMatchObject({
+      value: 2,
+      source: "FirmAlias",
+      publicResource: SEARCH_RESOURCE,
+      limitation: null,
+    });
     expect(payload.limitations).toEqual(
       expect.arrayContaining([
         "Some ranking entries still need resolution or source fields.",
@@ -2345,6 +2359,10 @@ describe("Harper feed and profile builders", () => {
     setRows("Branch", []);
     setRows("AdvisorResearchCheck", []);
     setRows("FieldAssertion", []);
+    setRows("ArticleAdvisorMention", []);
+    setRows("ArticleFirmMention", []);
+    setRows("ArticleTeamMention", []);
+    setRows("ArticleTransitionEventMention", []);
 
     const payload = await new (resources as any).DataCoverage().get();
 
@@ -2373,6 +2391,14 @@ describe("Harper feed and profile builders", () => {
     expect(metricById(payload, FIELD_ASSERTIONS_METRIC)).toMatchObject({
       value: 0,
       limitation: "No field-level source assertions are loaded.",
+    });
+    expect(metricById(payload, ARTICLE_MENTIONS_METRIC)).toMatchObject({
+      value: 0,
+      limitation: "No article-to-entity mention rows are loaded.",
+    });
+    expect(metricById(payload, FIRM_ALIASES_METRIC)).toMatchObject({
+      value: 2,
+      limitation: null,
     });
   });
 
