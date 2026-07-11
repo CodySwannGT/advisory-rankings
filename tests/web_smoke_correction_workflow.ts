@@ -1,4 +1,10 @@
-import type { Browser, BrowserContext, Locator, Page } from "playwright";
+import type {
+  Browser,
+  BrowserContext,
+  Locator,
+  Page,
+  ViewportSize,
+} from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
@@ -100,26 +106,19 @@ async function runAuthenticatedCorrectionWorkflow(
   const submitterNote = `${SUBMITTER_NOTE_PREFIX} ${stamp}`;
   const reviewerNote = `${REVIEWER_NOTE_PREFIX} ${stamp}`;
   const viewport = { width: 1280, height: 900 };
-  const submitterContext = await newContext(
+  const workflow = await correctionWorkflowRuntime(
     browser,
     viewport,
     extraHTTPHeaders
   );
-  const analystContext = await newContext(browser, viewport, extraHTTPHeaders);
-  const publicContext = await newContext(browser, viewport, undefined);
-  const contexts = [submitterContext, analystContext, publicContext] as const;
-
-  const submitterPage = await submitterContext.newPage();
-  const analystPage = await analystContext.newPage();
-  const publicPage = await publicContext.newPage();
 
   try {
     const workflowChecks = await correctionWorkflowChecks(
       browser,
       {
-        analystPage,
-        publicPage,
-        submitterPage,
+        analystPage: workflow.analystPage,
+        publicPage: workflow.publicPage,
+        submitterPage: workflow.submitterPage,
       },
       {
         proposedValue,
@@ -129,9 +128,9 @@ async function runAuthenticatedCorrectionWorkflow(
       extraHTTPHeaders
     );
 
-    return await closeWorkflowContexts(contexts, workflowChecks);
+    return await closeWorkflowContexts(workflow.contexts, workflowChecks);
   } catch (error) {
-    return await closeWorkflowContexts(contexts, [
+    return await closeWorkflowContexts(workflow.contexts, [
       check(
         false,
         "corrections: browser workflow completed",
@@ -139,6 +138,26 @@ async function runAuthenticatedCorrectionWorkflow(
       ),
     ]);
   }
+}
+
+async function correctionWorkflowRuntime(
+  browser: Browser,
+  viewport: ViewportSize,
+  extraHTTPHeaders: Record<string, string>
+) {
+  const submitterContext = await newContext(
+    browser,
+    viewport,
+    extraHTTPHeaders
+  );
+  const analystContext = await newContext(browser, viewport, extraHTTPHeaders);
+  const publicContext = await newContext(browser, viewport, undefined);
+  return {
+    analystPage: await analystContext.newPage(),
+    contexts: [submitterContext, analystContext, publicContext] as const,
+    publicPage: await publicContext.newPage(),
+    submitterPage: await submitterContext.newPage(),
+  };
 }
 
 interface CorrectionWorkflowPages {

@@ -143,16 +143,7 @@ const buildIndividualRows = async (
   resolver: Resolver
 ): Promise<IndividualRows> => {
   const snapshotId = uid(`bcsnap:individual:${crd}`);
-  const lastEmployment = parsed.employments.at(-1);
-  const advisorUuid = await resolver.advisor(
-    crd,
-    stringValue(parsed.advisor.legalName),
-    {
-      firstEmployer: stringValue(lastEmployment?._firmName),
-      firstName: stringValue(parsed.advisor.firstName),
-      lastName: stringValue(parsed.advisor.lastName),
-    }
-  );
+  const advisorUuid = await resolveParsedAdvisorUuid(parsed, resolver, crd);
   const employmentResults = await Promise.all(
     parsed.employments.map(emp =>
       buildEmploymentRow(emp, resolver, advisorUuid, snapshotId)
@@ -181,6 +172,19 @@ const buildIndividualRows = async (
       snapshotId
     ),
   };
+};
+
+const resolveParsedAdvisorUuid = async (
+  parsed: ParsedIndividual,
+  resolver: Resolver,
+  crd: string
+): Promise<string> => {
+  const lastEmployment = parsed.employments.at(-1);
+  return await resolver.advisor(crd, stringValue(parsed.advisor.legalName), {
+    firstEmployer: stringValue(lastEmployment?._firmName),
+    firstName: stringValue(parsed.advisor.firstName),
+    lastName: stringValue(parsed.advisor.lastName),
+  });
 };
 
 const buildIndividualDisclosureRows = async (

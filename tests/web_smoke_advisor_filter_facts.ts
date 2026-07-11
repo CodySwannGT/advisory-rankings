@@ -75,23 +75,22 @@ function readAdvisorFilterFactsInPage(
   const countFrom = (value: string) =>
     Number(/\d+/.exec(value.replace(/,/g, ""))?.[0] ?? NaN);
   const rows = Array.from(document.querySelectorAll(rowSelector));
-  const firstRow = rows[0];
   return {
-    accessibleLabels: expectedLabels.every(
-      ([labelText, id, name]) =>
+    accessibleLabels: expectedLabels.every(([labelText, id, name]) => {
+      const control = document.getElementById(id);
+      return (
         document.querySelector(`label[for="${id}"]`)?.textContent?.trim() ===
           labelText &&
-        ["INPUT", "SELECT"].includes(
-          document.getElementById(id)?.tagName ?? ""
-        ) &&
-        document.getElementById(id)?.getAttribute("name") === name
-    ),
+        ["INPUT", "SELECT"].includes(control?.tagName ?? "") &&
+        control?.getAttribute("name") === name
+      );
+    }),
     bodyText: document.body.textContent || "",
     careerStatus: valueOf("careerStatus"),
     contactReadiness: valueOf("contactReadiness"),
     freshness: valueOf("freshness"),
     firm: valueOf("firm"),
-    firstHref: rowHref(firstRow),
+    firstHref: rowHref(rows[0]),
     hasCrd: valueOf("hasCrd"),
     loaded: countFrom(loaded?.nextElementSibling?.textContent ?? ""),
     profileSubstance: valueOf("profileSubstance"),

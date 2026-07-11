@@ -14,6 +14,7 @@ import {
   correctionFields,
   type CorrectionField,
 } from "./advisor-correction-fields.js";
+import { correctionRequestPayload } from "./advisor-correction-payload.js";
 
 const NOTE_CLASS = "advisor-correction-note";
 
@@ -272,20 +273,10 @@ async function submitCorrection(
   setCorrectionControlsDisabled(controls, true);
   status.replaceChildren("Submitting...");
   try {
-    const response = await postJson("/AdvisorCorrectionRequest", {
-      advisorId,
-      fieldName: field.name,
-      displayedValue: field.value,
-      proposedValue: controls.proposed.value,
-      submitterNote: controls.note.value,
-      sourceType: "advisor_profile",
-      sourceContext: JSON.stringify({
-        advisorId,
-        fieldName: field.name,
-        label: field.label,
-        displayedValue: field.value,
-      }),
-    });
+    const response = await postJson(
+      "/AdvisorCorrectionRequest",
+      correctionRequestPayload(advisorId, field, controls)
+    );
     const id = correctionRequestId(response);
     Object.assign(controls.proposed, { value: "" });
     Object.assign(controls.note, { value: "" });

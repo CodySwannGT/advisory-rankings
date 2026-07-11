@@ -63,6 +63,28 @@ export function priorityGroups(
   );
   const checkedItemsByStatus = splitItemsByCheckStatus(items);
 
+  return buildPriorityGroups(
+    checkedItemsByStatus,
+    contactItems,
+    filters,
+    profileItems
+  );
+}
+
+/**
+ * Builds the fixed priority group order from pre-filtered queue slices.
+ * @param checkedItemsByStatus - Stale and never-checked queue slices.
+ * @param contactItems - Queue items missing contact fields.
+ * @param filters - Active normalized filters.
+ * @param profileItems - Queue items missing profile substance fields.
+ * @returns Fixed-order priority groups.
+ */
+function buildPriorityGroups(
+  checkedItemsByStatus: ReturnType<typeof splitItemsByCheckStatus>,
+  contactItems: ReadonlyArray<AdvisorResearchQueueItem>,
+  filters: AdvisorResearchQueuePriorityInputFilters,
+  profileItems: ReadonlyArray<AdvisorResearchQueueItem>
+): ReadonlyArray<AdvisorResearchQueuePriorityGroup> {
   return [
     priorityGroup(
       "missing_contact_data",

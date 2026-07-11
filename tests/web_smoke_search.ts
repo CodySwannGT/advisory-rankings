@@ -71,42 +71,47 @@ export async function smokeGlobalSearch(page: Page): Promise<readonly Check[]> {
   await input.fill("wells");
   await results.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const kindMode = await selectFirmSearchKind(page, results);
-
-  const firstResult = results.first();
-  const firstKind = normalizeSearchKind(
-    (await firstResult.locator(".gs-kind").textContent()) ?? ""
-  );
-  const firstHref = await firstResult.getAttribute("href");
-  const expectedPath = new URL(firstHref ?? "/", BASE).pathname;
-  const dropdownExpanded = await input.evaluate(
-    element => element.getAttribute("aria-expanded") === "true"
-  );
-  const resultCount = await results.count();
-  const supportedKinds = kindMode.visibleKinds.filter(
-    kind => kind !== null
-  ).length;
-
-  const navigation = await searchNavigationEvidence(
-    page,
-    input,
-    expectedPath,
-    firstKind
-  );
+  const evidence = await searchSmokeEvidence(page, input, results, kindMode);
   const emptySearchChecks = await smokeSearchEmptyAndDismissChecks(
     page,
     "desktop"
   );
 
   return globalSearchChecks({
-    dropdownExpanded,
+    ...evidence,
     emptySearchChecks,
-    kindMode,
     multiWordFirmChecks,
     namedInputCount,
-    navigation,
-    resultCount,
-    supportedKinds,
   });
+}
+
+async function searchSmokeEvidence(
+  page: Page,
+  input: Locator,
+  results: Locator,
+  kindMode: SearchKindModeEvidence
+) {
+  const firstResult = results.first();
+  const firstKind = normalizeSearchKind(
+    (await firstResult.locator(".gs-kind").textContent()) ?? ""
+  );
+  const firstHref = await firstResult.getAttribute("href");
+  const expectedPath = new URL(firstHref ?? "/", BASE).pathname;
+  const resultCount = await results.count();
+  return {
+    dropdownExpanded: await input.evaluate(
+      element => element.getAttribute("aria-expanded") === "true"
+    ),
+    kindMode,
+    navigation: await searchNavigationEvidence(
+      page,
+      input,
+      expectedPath,
+      firstKind
+    ),
+    resultCount,
+    supportedKinds: kindMode.visibleKinds.filter(kind => kind !== null).length,
+  };
 }
 
 async function searchNavigationEvidence(
