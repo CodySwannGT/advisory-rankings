@@ -123,6 +123,7 @@ describe("legacy directory and compliance route retries", () => {
       let requestCount = 0;
 
       try {
+        await page.addInitScript("delete window.IntersectionObserver");
         await page.route("**/Me", async route => {
           await route.fulfill({ json: { authenticated: false } });
         });
@@ -150,11 +151,20 @@ describe("legacy directory and compliance route retries", () => {
           expect(await page.getByText("temporary outage").count()).toBe(0);
         }
 
-        await page
-          .getByRole("button", {
-            name: routeCase.paginated ? "Load more" : "Retry",
-          })
-          .dispatchEvent("click");
+        const retryResponse = page.waitForResponse(
+          response =>
+            response.url().includes(routeCase.resource) &&
+            response.status() === 200,
+          { timeout: QUICK_TIMEOUT }
+        );
+        await Promise.all([
+          retryResponse,
+          page
+            .getByRole("button", {
+              name: routeCase.paginated ? "Load more" : "Retry",
+            })
+            .click(),
+        ]);
         await page.getByText(routeCase.successText).first().waitFor({
           timeout: QUICK_TIMEOUT,
         });
