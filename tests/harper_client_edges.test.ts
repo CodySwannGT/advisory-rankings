@@ -118,6 +118,65 @@ describe("Harper client edge behavior", () => {
     );
   });
 
+  it("strips the operations port when hosted operations upsert falls back to REST", async () => {
+    process.env.HDB_TARGET_URL = `${TARGET_URL}:9925`;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi.fn(async () =>
+      fetchMock.mock.calls.length === 1
+        ? new Response(MISSING_OPERATION, { status: 404 })
+        : new Response("", { status: 201 })
+    );
+    globalThis.fetch = fetchMock;
+
+    await expect(upsert("Firm", [{ id: "firm-1" }])).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${TARGET_URL}/Firm/firm-1`,
+      expect.any(Object)
+    );
+  });
+
+  it("falls back to REST when hosted operations reject skip on upsert", async () => {
+    process.env.HDB_TARGET_URL = `${TARGET_URL}:9925`;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi.fn(async () =>
+      fetchMock.mock.calls.length === 1
+        ? new Response('{"error":"Property skip is not allowed"}', {
+            status: 400,
+          })
+        : new Response("", { status: 201 })
+    );
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      upsert("ArticleFirmMention", [{ id: "mention-1" }])
+    ).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${TARGET_URL}/ArticleFirmMention/mention-1`,
+      expect.objectContaining({ method: "PUT" })
+    );
+  });
+
+  it("falls back to REST when hosted operations upsert times out", async () => {
+    process.env.HDB_TARGET_URL = `${TARGET_URL}:9925`;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi.fn(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        throw new DOMException("This operation was aborted", "AbortError");
+      }
+      return new Response("", { status: 201 });
+    });
+    globalThis.fetch = fetchMock;
+
+    await expect(upsert("Firm", [{ id: "firm-1" }])).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${TARGET_URL}/Firm/firm-1`,
+      expect.any(Object)
+    );
+  });
+
   it("surfaces hosted operation errors that are not REST fallbacks", async () => {
     process.env.HDB_TARGET_URL = TARGET_URL;
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;

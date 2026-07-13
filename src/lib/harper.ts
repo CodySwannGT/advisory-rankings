@@ -144,7 +144,7 @@ async function socketPost(
  */
 export async function op<T = unknown>(
   payload: Readonly<Record<string, unknown>>,
-  timeoutMs = 20_000
+  timeoutMs = 60_000
 ): Promise<T> {
   const { target, socket, auth } = harperConfig();
   const controller = new AbortController();
@@ -229,8 +229,39 @@ export async function upsert(
     return Array.isArray(res?.upserted_hashes) ? res.upserted_hashes.length : 0;
   } catch (error) {
     const { target, auth } = harperConfig();
-    if (!target || !String(error).includes("HTTP 404")) throw error;
+    if (!target || !isRestFallbackError(error)) throw error;
     return await restUpsert(target, auth, table, records);
+  }
+}
+
+/**
+ * Checks whether a hosted operations failure should fall back to public REST writes.
+ * @param error - Error thrown by an operations upsert.
+ * @returns Whether REST fallback should be attempted.
+ */
+function isRestFallbackError(error: unknown): boolean {
+  const message = String(error);
+  return (
+    message.includes("HTTP 404") ||
+    message.includes("Property skip is not allowed") ||
+    message.includes("AbortError")
+  );
+}
+
+/**
+ * Converts an operations target to the public REST base URL.
+ * @param target - Harper operations or REST target URL.
+ * @returns Public REST URL for table writes.
+ */
+function publicRestTarget(target: string): string {
+  try {
+    const parsed = new URL(target);
+    if (parsed.port !== "9925") return stripTrailingSlashes(parsed.toString());
+    return stripTrailingSlashes(
+      `${parsed.protocol}//${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`
+    );
+  } catch {
+    return target;
   }
 }
 
@@ -248,32 +279,30 @@ async function restUpsert(
   table: string,
   records: readonly Readonly<Record<string, unknown>>[]
 ): Promise<number> {
-  return (
-    await Promise.all(
-      records.map(async record => {
-        if (!record.id)
-          throw new Error(`record missing id for REST upsert into ${table}`);
-        const res = await fetch(
-          `${target}/${table}/${encodeURIComponent(String(record.id))}`,
-          {
-            method: "PUT",
-            headers: {
-              Accept: "application/json",
-              Authorization: `Basic ${auth}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(record),
-          }
-        );
-        if (![200, 201, 204].includes(res.status)) {
-          throw new Error(
-            `Harper REST upsert ${table}/${String(record.id)} -> HTTP ${res.status}\n${(
-              await res.text()
-            ).slice(0, 600)}`
-          );
-        }
-        return 1;
-      })
-    )
-  ).reduce((total, touched) => total + touched, 0);
+  const baseUrl = publicRestTarget(target);
+  return await records.reduce(async (totalPromise, record) => {
+    const total = await totalPromise;
+    if (!record.id)
+      throw new Error(`record missing id for REST upsert into ${table}`);
+    const res = await fetch(
+      `${baseUrl}/${table}/${encodeURIComponent(String(record.id))}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(record),
+      }
+    );
+    if (![200, 201, 204].includes(res.status)) {
+      throw new Error(
+        `Harper REST upsert ${table}/${String(record.id)} -> HTTP ${res.status}\n${(
+          await res.text()
+        ).slice(0, 600)}`
+      );
+    }
+    return total + 1;
+  }, Promise.resolve(0));
 }
