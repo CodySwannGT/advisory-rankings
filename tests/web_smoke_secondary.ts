@@ -1,4 +1,4 @@
-import type { Browser, Page } from "playwright";
+import type { Browser, Locator, Page } from "playwright";
 import {
   ARTICLE_CARD_SELECTOR,
   BASE,
@@ -115,18 +115,7 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     hasText: /Could not load compliance events/i,
   });
 
-  await smokeGoto(page, `${BASE}/regulatory`);
-  await retryAsync(
-    async () => {
-      await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-    },
-    2,
-    1500
-  ).catch(async error => {
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-    return error;
-  });
+  await loadCompliancePage(page, complianceCard);
   await disclosureCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const legacyResponse = await page.request.get(`${BASE}/regulatory.html`);
@@ -144,6 +133,24 @@ export async function smokeCompliance(page: Page): Promise<readonly Check[]> {
     loadErrorCount: await loadError.count(),
     pageUrl: page.url(),
     regulatoryDisclosureText: await regulatoryDisclosure.textContent(),
+  });
+}
+
+async function loadCompliancePage(
+  page: Page,
+  complianceCard: Locator
+): Promise<void> {
+  await smokeGoto(page, `${BASE}/regulatory`);
+  await retryAsync(
+    async () => {
+      await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+    },
+    2,
+    1500
+  ).catch(async error => {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await complianceCard.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+    return error;
   });
 }
 

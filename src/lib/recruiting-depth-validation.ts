@@ -236,6 +236,34 @@ function recruitingFilterSlices(recentMoves: readonly unknown[]): JsonRecord {
 function recruitingDepthFailures(summary: JsonRecord): readonly string[] {
   const slices = recordValue(summary.filterSlices);
   return [
+    ...recruitingDepthCountFailures(summary),
+    thresholdFailure(
+      "state filter slices",
+      arrayValue(slices.states).length,
+      RECRUITING_DEPTH_THRESHOLDS.minStateSlices
+    ),
+    thresholdFailure(
+      "firm filter slices",
+      arrayValue(slices.firmIds).length,
+      RECRUITING_DEPTH_THRESHOLDS.minFirmSlices
+    ),
+    thresholdFailure(
+      "direction filter slices",
+      arrayValue(slices.directions).length,
+      RECRUITING_DEPTH_THRESHOLDS.minDirectionSlices
+    ),
+  ].filter((failure): failure is string => Boolean(failure));
+}
+
+/**
+ * Lists non-filter threshold failures for a recruiting summary.
+ * @param summary - Output from `summarizeRecruitingResourcePayload`.
+ * @returns Count and coverage failure fragments.
+ */
+function recruitingDepthCountFailures(
+  summary: JsonRecord
+): readonly (string | null)[] {
+  return [
     thresholdFailure(
       "moves",
       summary.recentMoveCount,
@@ -261,22 +289,7 @@ function recruitingDepthFailures(summary: JsonRecord): readonly string[] {
       arrayValue(summary.missingFieldTags).length,
       RECRUITING_DEPTH_THRESHOLDS.minMissingFieldTags
     ),
-    thresholdFailure(
-      "state filter slices",
-      arrayValue(slices.states).length,
-      RECRUITING_DEPTH_THRESHOLDS.minStateSlices
-    ),
-    thresholdFailure(
-      "firm filter slices",
-      arrayValue(slices.firmIds).length,
-      RECRUITING_DEPTH_THRESHOLDS.minFirmSlices
-    ),
-    thresholdFailure(
-      "direction filter slices",
-      arrayValue(slices.directions).length,
-      RECRUITING_DEPTH_THRESHOLDS.minDirectionSlices
-    ),
-  ].filter((failure): failure is string => Boolean(failure));
+  ];
 }
 
 /**

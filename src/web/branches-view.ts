@@ -107,12 +107,31 @@ const filterCard = (
     writeBranchFilters(emptyBranchFilters());
     reload();
   };
-  const form = el(
-    "form",
-    {
-      class: "branches-filter-grid",
-      onSubmit: submitBranchFilters(reload),
-    },
+  return SectionCard({
+    title: "Filters",
+    attrs: { class: "branches-filter-card" },
+    body: el(
+      "form",
+      {
+        class: "branches-filter-grid",
+        onSubmit: submitBranchFilters(reload),
+      },
+      ...branchFilterControls(filters, clearFilters)
+    ),
+  });
+};
+
+/**
+ * Builds the branch filter controls in display order.
+ * @param filters - Current branch filter values.
+ * @param clearFilters - Handler that resets the filter form.
+ * @returns Form controls for the branch filter card.
+ */
+function branchFilterControls(
+  filters: BranchFilters,
+  clearFilters: () => void
+): readonly HTMLElement[] {
+  return [
     field("Search", "q", filters.q, "Branch, market, address, or firm"),
     field("Firm", "firm", filters.firm, "Firm name or id"),
     selectField(
@@ -131,19 +150,10 @@ const filterCard = (
       "div",
       { class: "branches-filter-actions" },
       Button({ variant: "primary", children: "Apply filters", type: "submit" }),
-      Button({
-        variant: "ghost",
-        children: "Clear",
-        onClick: clearFilters,
-      })
-    )
-  );
-  return SectionCard({
-    title: "Filters",
-    attrs: { class: "branches-filter-card" },
-    body: form,
-  });
-};
+      Button({ variant: "ghost", children: "Clear", onClick: clearFilters })
+    ),
+  ];
+}
 
 const submitBranchFilters =
   (reload: () => void) =>

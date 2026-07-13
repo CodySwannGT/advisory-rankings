@@ -291,48 +291,45 @@ function directoryTitle(pageName: DirectoryPageName): string {
 export function directoryLabelSpecs(
   pageName: DirectoryPageName
 ): readonly DirectoryLabelSpec[] {
-  return pageName === "firms"
-    ? [
-        {
-          controlTag: "INPUT",
-          id: "firm-filter-q",
-          labelText: "Firm",
-          name: "q",
-        },
-        {
-          controlTag: "SELECT",
-          id: "firm-filter-channel",
-          labelText: "Channel",
-          name: "channel",
-        },
-        {
-          controlTag: "SELECT",
-          id: "firm-filter-state",
-          labelText: "HQ state",
-          name: "state",
-        },
-        {
-          controlTag: "SELECT",
-          id: "firm-filter-active",
-          labelText: "Status",
-          name: "active",
-        },
-      ]
-    : [
-        {
-          controlTag: "INPUT",
-          id: "team-filter-firm",
-          labelText: "Current firm",
-          name: "firm",
-        },
-        {
-          controlTag: "SELECT",
-          id: "team-filter-serviceModel",
-          labelText: "Service model",
-          name: "serviceModel",
-        },
-      ];
+  return pageName === "firms" ? FIRM_LABEL_SPECS : TEAM_LABEL_SPECS;
 }
+
+const FIRM_LABEL_SPECS: readonly DirectoryLabelSpec[] = [
+  { controlTag: "INPUT", id: "firm-filter-q", labelText: "Firm", name: "q" },
+  {
+    controlTag: "SELECT",
+    id: "firm-filter-channel",
+    labelText: "Channel",
+    name: "channel",
+  },
+  {
+    controlTag: "SELECT",
+    id: "firm-filter-state",
+    labelText: "HQ state",
+    name: "state",
+  },
+  {
+    controlTag: "SELECT",
+    id: "firm-filter-active",
+    labelText: "Status",
+    name: "active",
+  },
+];
+
+const TEAM_LABEL_SPECS: readonly DirectoryLabelSpec[] = [
+  {
+    controlTag: "INPUT",
+    id: "team-filter-firm",
+    labelText: "Current firm",
+    name: "firm",
+  },
+  {
+    controlTag: "SELECT",
+    id: "team-filter-serviceModel",
+    labelText: "Service model",
+    name: "serviceModel",
+  },
+];
 
 /**
  * Checks rendered directory label/control observations against the route contract.

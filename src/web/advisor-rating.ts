@@ -195,12 +195,7 @@ function renderRatingForm(
     ratingField("Transparency", numberControls.transparency),
     ratingField("Performance", numberControls.performance),
     ratingField("Planning depth", numberControls.planningDepth),
-    el(
-      "label",
-      { class: "private-rating-field private-rating-field--wide" },
-      "Review",
-      review
-    ),
+    ratingReviewField(review),
     Button({
       variant: "primary",
       type: "submit",
@@ -211,6 +206,20 @@ function renderRatingForm(
   );
   clear(body);
   body.appendChild(form);
+}
+
+/**
+ * Builds the wide free-text review field for the private rating form.
+ * @param review - Textarea input managed by the rating controls object.
+ * @returns Label wrapping the review textarea.
+ */
+function ratingReviewField(review: HTMLTextAreaElement): HTMLElement {
+  return el(
+    "label",
+    { class: "private-rating-field private-rating-field--wide" },
+    "Review",
+    review
+  );
 }
 
 /**

@@ -124,10 +124,41 @@ async function runRouteCheck(
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await smokeWaitForSelector(page, routeCheck.destinationSelector);
+  const destinationCount = await page
+    .locator(routeCheck.destinationSelector)
+    .count();
 
+  return notFoundRouteChecks({
+    cardText,
+    destinationCount,
+    pageUrl: page.url(),
+    routeCheck,
+    titleRendered: hasTitle,
+  });
+}
+
+/**
+ * Builds assertions for one not-found route recovery flow.
+ * @param facts - Captured title, card, URL, and destination facts.
+ * @param facts.cardText - Text from the not-found card.
+ * @param facts.destinationCount - Count of rendered recovery destination nodes.
+ * @param facts.pageUrl - Current page URL after recovery navigation.
+ * @param facts.routeCheck - Route scenario metadata.
+ * @param facts.titleRendered - Whether the not-found title matched.
+ * @returns Checks for copy safety and recovery navigation.
+ */
+function notFoundRouteChecks(facts: {
+  readonly cardText: string | undefined;
+  readonly destinationCount: number;
+  readonly pageUrl: string;
+  readonly routeCheck: NotFoundRouteCheck;
+  readonly titleRendered: boolean;
+}): readonly Check[] {
+  const { cardText, destinationCount, pageUrl, routeCheck, titleRendered } =
+    facts;
   return [
     check(
-      hasTitle,
+      titleRendered,
       `not-found ${routeCheck.kind}: entity-specific title rendered`
     ),
     check(
@@ -137,12 +168,12 @@ async function runRouteCheck(
       cardText
     ),
     check(
-      new URL(page.url()).pathname === routeCheck.destinationPath,
+      new URL(pageUrl).pathname === routeCheck.destinationPath,
       `not-found ${routeCheck.kind}: recovery navigates to ${routeCheck.destinationPath}`,
-      page.url()
+      pageUrl
     ),
     check(
-      (await page.locator(routeCheck.destinationSelector).count()) >= 1,
+      destinationCount >= 1,
       `not-found ${routeCheck.kind}: recovery destination is interactive`
     ),
   ];

@@ -266,30 +266,7 @@ function transitionSubjectName(subject: TransitionSubject | null): string {
  */
 function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
   const topFirms = trendingFirms(items);
-  const firmCard = SectionCardC({
-    body: [
-      HeadingC({
-        level: 3,
-        attrs: { class: "card-subtitle" },
-        children: "Trending firms",
-      }),
-      EntityListC({
-        rows: topFirms.map(({ firm, count }) =>
-          EntityRowC({
-            avatar: AvatarC({
-              initials: initials(firm.name),
-              imageUrl: firm.logoUrl,
-              alt: firm.name,
-            }),
-            name: firm.short || firm.name,
-            sub: [humanize(firm.channel), firm.hq].filter(Boolean).join(" · "),
-            tail: `${count} mention${count === 1 ? "" : "s"}`,
-            href: entityPath("firm", firm),
-          })
-        ),
-      }),
-    ],
-  });
+  const firmCard = trendingFirmsCard(topFirms);
   const recentDisc = recentDisclosures(items);
   const complianceCard = recentDisc.length
     ? SectionCardC({
@@ -309,6 +286,46 @@ function renderRight(root: HTMLElement, items: readonly FeedItem[]): void {
   clear(root);
   root.appendChild(firmCard);
   if (complianceCard) root.appendChild(complianceCard);
+}
+
+/**
+ * Builds the trending-firms right-rail card.
+ * @param topFirms - Firms with mention counts from the current feed items.
+ * @returns Rendered card element.
+ */
+function trendingFirmsCard(topFirms: readonly TrendingFirmRow[]): HTMLElement {
+  return SectionCardC({
+    body: [
+      HeadingC({
+        level: 3,
+        attrs: { class: "card-subtitle" },
+        children: "Trending firms",
+      }),
+      EntityListC({ rows: topFirms.map(trendingFirmRow) }),
+    ],
+  });
+}
+
+/**
+ * Builds one trending-firm entity row.
+ * @param row - Firm and current mention count.
+ * @param row.firm - Firm displayed in the row.
+ * @param row.count - Mention count rendered in the row tail.
+ * @returns Rendered entity row.
+ */
+function trendingFirmRow(row: TrendingFirmRow): HTMLElement {
+  const { firm, count } = row;
+  return EntityRowC({
+    avatar: AvatarC({
+      initials: initials(firm.name),
+      imageUrl: firm.logoUrl,
+      alt: firm.name,
+    }),
+    name: firm.short || firm.name,
+    sub: [humanize(firm.channel), firm.hq].filter(Boolean).join(" · "),
+    tail: `${count} mention${count === 1 ? "" : "s"}`,
+    href: entityPath("firm", firm),
+  });
 }
 
 /**

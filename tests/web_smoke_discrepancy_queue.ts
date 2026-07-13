@@ -79,13 +79,23 @@ export async function smokeDiscrepancyQueue(
   await waitForReviewedNotes(page);
   await shot(page, "11-discrepancy-reviewed-profile");
 
-  const checks = [
-    ...queueChecks,
-    ...(await reviewedProfileChecks(page)),
-    pass("discrepancy-browser-smoke: queue review mutation completed"),
-  ];
+  const checks = discrepancyQueueReviewChecks(
+    queueChecks,
+    await reviewedProfileChecks(page)
+  );
   await clearAnalystSession(page);
   return checks;
+}
+
+function discrepancyQueueReviewChecks(
+  queueChecks: readonly Check[],
+  profileChecks: readonly Check[]
+): readonly Check[] {
+  return [
+    ...queueChecks,
+    ...profileChecks,
+    pass("discrepancy-browser-smoke: queue review mutation completed"),
+  ];
 }
 
 /**

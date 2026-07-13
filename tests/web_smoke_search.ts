@@ -345,14 +345,7 @@ async function smokeSearchEmptyAndDismissChecks(
 
   await input.fill("zzzzzzzzzzzz-no-match");
   await empty.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  await page.waitForFunction(
-    selector =>
-      /No matches for/.test(
-        document.querySelector(selector)?.textContent ?? ""
-      ),
-    SEARCH_EMPTY_SELECTOR,
-    { timeout: DEPLOYED_DATA_TIMEOUT }
-  );
+  await waitForSearchEmptyCopy(page);
   await shot(page, `02-${shell}-global-search-empty`);
   const emptyStateText = (await empty.textContent()) ?? "";
   const emptyStateRows = await rows.count();
@@ -379,6 +372,17 @@ async function smokeSearchEmptyAndDismissChecks(
     emptyStateRows,
     emptyStateText,
   });
+}
+
+async function waitForSearchEmptyCopy(page: Page): Promise<void> {
+  await page.waitForFunction(
+    selector =>
+      /No matches for/.test(
+        document.querySelector(selector)?.textContent ?? ""
+      ),
+    SEARCH_EMPTY_SELECTOR,
+    { timeout: DEPLOYED_DATA_TIMEOUT }
+  );
 }
 
 /**

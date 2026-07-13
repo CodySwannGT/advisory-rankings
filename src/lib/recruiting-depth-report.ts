@@ -56,7 +56,7 @@ function recruitingValidationChecks(
   input: RecruitingValidationReportInput,
   knownAumCount: number
 ): readonly ValidationCheck[] {
-  const checks = [
+  return [
     validationCheck(
       "move-depth",
       "Move depth",
@@ -95,7 +95,6 @@ function recruitingValidationChecks(
       1
     ),
   ];
-  return checks;
 }
 
 /**
