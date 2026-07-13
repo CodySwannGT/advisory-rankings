@@ -24,6 +24,8 @@ import { SearchState } from "./organisms-search-state.js";
 
 export { formatInlineLabel } from "./search-labels.js";
 
+const GLOBAL_SEARCH_LABEL = "Search advisors, firms, teams";
+
 /** Envelope shape produced by the `/Search` adapter. */
 interface SearchResponse {
   readonly items?: readonly SearchItem[];
@@ -41,6 +43,12 @@ interface SearchContext {
   readonly view: SearchView;
   readonly state: SearchState;
   readonly search?: SearchAdapter;
+}
+
+/** DOM nodes for the search-kind segmented control. */
+interface SearchKindControls {
+  readonly controls: HTMLElement;
+  readonly kindButtons: ReadonlyArray<HTMLElement>;
 }
 
 /** Options accepted by {@link GlobalSearch}. */
@@ -90,11 +98,11 @@ export function GlobalSearch({
 function createSearchView(): SearchView {
   const input = el("input", {
     type: "search",
-    placeholder: "Search advisors, firms, teams",
+    placeholder: GLOBAL_SEARCH_LABEL,
     id: "global-search",
     autocomplete: "off",
     role: "combobox",
-    "aria-label": "Search advisors, firms, teams",
+    "aria-label": GLOBAL_SEARCH_LABEL,
     "aria-autocomplete": "list",
     [EXPANDED_ATTR]: "false",
     "aria-controls": "global-search-results",
@@ -107,6 +115,21 @@ function createSearchView(): SearchView {
     role: "listbox",
     [HIDDEN_ATTR]: "",
   });
+  const { controls, kindButtons } = createKindControls();
+  return {
+    controls,
+    input,
+    dropdown,
+    kindButtons,
+    wrap: el("div", { class: "search gs-wrap" }, input, controls, dropdown),
+  };
+}
+
+/**
+ * Builds the search-kind segmented control.
+ * @returns Controls container and button elements.
+ */
+function createKindControls(): SearchKindControls {
   const kindButtons = SEARCH_KINDS.map(([kind, label]) =>
     el(
       "button",
@@ -119,17 +142,13 @@ function createSearchView(): SearchView {
       label
     )
   );
-  const controls = el(
-    "div",
-    { class: "gs-kind-controls", role: "group", "aria-label": "Search kind" },
-    ...kindButtons
-  );
   return {
-    controls,
-    input,
-    dropdown,
+    controls: el(
+      "div",
+      { class: "gs-kind-controls", role: "group", "aria-label": "Search kind" },
+      ...kindButtons
+    ),
     kindButtons,
-    wrap: el("div", { class: "search gs-wrap" }, input, controls, dropdown),
   };
 }
 

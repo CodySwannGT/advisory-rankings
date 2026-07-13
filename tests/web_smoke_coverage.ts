@@ -165,48 +165,54 @@ async function waitForCoverageDashboard(page: Page): Promise<void> {
 async function readCoverageDashboardEvidence(
   page: Page
 ): Promise<CoverageDashboardEvidence> {
-  return await page.evaluate(
-    ({ links, privatePatterns, privateResourcePattern }) => {
-      const bodyText = document.body.innerText;
-      const textMatches = (pattern: string) =>
-        new RegExp(pattern, "i").test(bodyText);
-      const privateResource = new RegExp(privateResourcePattern);
+  return await page.evaluate(readCoverageDashboardEvidenceInPage, {
+    links: REQUIRED_LINKS,
+    privatePatterns: PRIVATE_TEXT_PATTERNS.map(pattern => pattern.source),
+    privateResourcePattern: PRIVATE_RESOURCE_PATTERN.source,
+  });
+}
 
-      return {
-        bodyText,
-        h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
-        hiddenPrivateCopy: privatePatterns.filter(textMatches),
-        linkHrefs: Object.fromEntries(
-          links.map(([label]) => {
-            const href =
-              [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
-                link => link.textContent?.trim() === label
-              )?.href ?? null;
-            if (!href) return [label, null];
-            const url = new URL(href);
-            return [label, `${url.pathname}${url.search}`];
-          })
-        ),
-        metricLabels: [
-          ...document.querySelectorAll<HTMLElement>(".coverage-metric-label"),
-        ].map(metric => metric.textContent?.trim() ?? ""),
-        privateRequests: performance
-          .getEntriesByType("resource")
-          .map(entry => entry.name)
-          .filter(name => privateResource.test(new URL(name).pathname)),
-        scrollWidth: document.documentElement.scrollWidth,
-        sectionIds: [
-          ...document.querySelectorAll<HTMLElement>("[data-coverage-section]"),
-        ].map(section => section.dataset.coverageSection ?? ""),
-        viewportWidth: document.documentElement.clientWidth,
-      };
-    },
-    {
-      links: REQUIRED_LINKS,
-      privatePatterns: PRIVATE_TEXT_PATTERNS.map(pattern => pattern.source),
-      privateResourcePattern: PRIVATE_RESOURCE_PATTERN.source,
-    }
-  );
+function readCoverageDashboardEvidenceInPage({
+  links,
+  privatePatterns,
+  privateResourcePattern,
+}: {
+  readonly links: typeof REQUIRED_LINKS;
+  readonly privatePatterns: readonly string[];
+  readonly privateResourcePattern: string;
+}): CoverageDashboardEvidence {
+  const bodyText = document.body.innerText;
+  const textMatches = (pattern: string) =>
+    new RegExp(pattern, "i").test(bodyText);
+  const privateResource = new RegExp(privateResourcePattern);
+  const linkHrefEntry = ([label]: readonly [string, string]) => {
+    const href =
+      [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
+        link => link.textContent?.trim() === label
+      )?.href ?? null;
+    if (!href) return [label, null];
+    const url = new URL(href);
+    return [label, `${url.pathname}${url.search}`];
+  };
+
+  return {
+    bodyText,
+    h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
+    hiddenPrivateCopy: privatePatterns.filter(textMatches),
+    linkHrefs: Object.fromEntries(links.map(linkHrefEntry)),
+    metricLabels: [
+      ...document.querySelectorAll<HTMLElement>(".coverage-metric-label"),
+    ].map(metric => metric.textContent?.trim() ?? ""),
+    privateRequests: performance
+      .getEntriesByType("resource")
+      .map(entry => entry.name)
+      .filter(name => privateResource.test(new URL(name).pathname)),
+    scrollWidth: document.documentElement.scrollWidth,
+    sectionIds: [
+      ...document.querySelectorAll<HTMLElement>("[data-coverage-section]"),
+    ].map(section => section.dataset.coverageSection ?? ""),
+    viewportWidth: document.documentElement.clientWidth,
+  };
 }
 
 /**

@@ -173,6 +173,8 @@ interface ResourceTableSpec {
 type RawRow = Readonly<Record<string, unknown>>;
 /** Untyped rows-by-key map before per-spec narrowing into `ResourceTableRows`. */
 type RawRowsByKey = Readonly<Record<string, readonly RawRow[]>>;
+/** Generic accessor that narrows one resource table to its row type. */
+type ResourceRowAccessor = <T>(key: keyof ResourceTableRows) => readonly T[];
 
 /**
  * Loads all tables needed by public resources and builds join indexes.
@@ -262,6 +264,36 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
     return [];
   };
   return {
+    ...narrowCoreResourceRows(at),
+    ...narrowExtensionResourceRows(at),
+  };
+}
+
+/**
+ * Narrows the original public resource tables.
+ * @param at - Typed row accessor for one table key.
+ * @returns Core resource rows.
+ */
+function narrowCoreResourceRows(
+  at: ResourceRowAccessor
+): Pick<
+  ResourceTableRows,
+  | "articles"
+  | "advisors"
+  | "firms"
+  | "teams"
+  | "branches"
+  | "employments"
+  | "memberships"
+  | "teamSnaps"
+  | "advisorSnaps"
+  | "transitions"
+  | "deals"
+  | "disclosures"
+  | "regulatoryDiscrepancies"
+  | "correctionRequests"
+> {
+  return {
     articles: at<ArticleRow>("articles"),
     advisors: at<AdvisorRow>("advisors"),
     firms: at<FirmRow>("firms"),
@@ -278,6 +310,23 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
       "regulatoryDiscrepancies"
     ),
     correctionRequests: at<AdvisorCorrectionRequestRow>("correctionRequests"),
+  };
+}
+
+/** Row group for optional tables added after the initial resource payload. */
+type ExtensionResourceRows = Omit<ResourceTableRows, keyof CoreResourceRows>;
+/** Row group for the original public resource payload tables. */
+type CoreResourceRows = ReturnType<typeof narrowCoreResourceRows>;
+
+/**
+ * Narrows optional resource tables added after the initial public payload.
+ * @param at - Typed row accessor for one table key.
+ * @returns Extension resource rows.
+ */
+function narrowExtensionResourceRows(
+  at: ResourceRowAccessor
+): ExtensionResourceRows {
+  return {
     sanctions: at<SanctionRow>("sanctions"),
     obas: at<OutsideBusinessActivityRow>("obas"),
     clusters: at<DisclosureClusterRow>("clusters"),

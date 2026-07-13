@@ -86,14 +86,13 @@ export async function smokeAdvisorDirectoryFilters(
   const emptyFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   await shot(page, "06-advisors-filter-empty");
 
-  const desktopLayout = await sweepAdvisorFilterLayouts(page, filteredUrl);
-  const mobileLayout = await captureAdvisorMobileFilterLayouts(
-    page,
-    rows,
-    filterForm,
-    filteredUrl
-  );
-  const mobileSearch = await captureMobileAdvisorSearchAt375(page);
+  const { desktopLayout, mobileLayout, mobileSearch } =
+    await captureAdvisorResponsiveFilterFacts(
+      page,
+      rows,
+      filterForm,
+      filteredUrl
+    );
   if (viewport) await page.setViewportSize(viewport);
 
   return filterChecks({
@@ -107,6 +106,31 @@ export async function smokeAdvisorDirectoryFilters(
     mobileSearch,
     restoredFacts,
   });
+}
+
+async function captureAdvisorResponsiveFilterFacts(
+  page: Page,
+  rows: Locator,
+  filterForm: Locator,
+  filteredUrl: string
+): Promise<{
+  readonly desktopLayout: readonly FilterLayoutSweep[];
+  readonly mobileLayout: {
+    readonly mobile320: ViewportOverflow;
+    readonly mobile390: ViewportOverflow;
+  };
+  readonly mobileSearch: MobileAdvisorSearchFacts;
+}> {
+  return {
+    desktopLayout: await sweepAdvisorFilterLayouts(page, filteredUrl),
+    mobileLayout: await captureAdvisorMobileFilterLayouts(
+      page,
+      rows,
+      filterForm,
+      filteredUrl
+    ),
+    mobileSearch: await captureMobileAdvisorSearchAt375(page),
+  };
 }
 
 async function captureAdvisorMobileFilterLayouts(

@@ -294,7 +294,6 @@ function advisorCenterSections(
   d: AdvisorProfilePayload,
   mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
-  const transitions = resourceRows(d.transitions);
   const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [],
     reviewedCorrections = d.reviewedCorrectionRequests ?? [];
   const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
@@ -321,7 +320,7 @@ function advisorCenterSections(
       reviewedCorrections,
       d.brokerCheckSnapshot
     ),
-    PartialFailureCard("Reviewed discrepancy notes", reviewedRows),
+    reviewedNotesFailureCard(reviewedRows),
     outsideActivitiesSection(
       narrowRows(
         resourceRows(d.outsideBusinessActivities),
@@ -329,11 +328,22 @@ function advisorCenterSections(
       )
     ),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
-    advisorTransitionsSection(transitions),
+    advisorTransitionsSection(resourceRows(d.transitions)),
     PartialFailureCard("Transitions involving this advisor", d.transitions),
     advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
   ];
+}
+
+/**
+ * Builds the partial-failure card for reviewed discrepancy/correction rows.
+ * @param reviewedRows - Combined reviewed discrepancy and correction rows.
+ * @returns Failure card, or null when no failure metadata exists.
+ */
+function reviewedNotesFailureCard(
+  reviewedRows: readonly unknown[]
+): HTMLElement | null {
+  return PartialFailureCard("Reviewed discrepancy notes", reviewedRows);
 }
 
 /**

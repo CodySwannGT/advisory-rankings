@@ -701,6 +701,7 @@ async function smokeRankingsMobileViewport(
  */
 async function readMobileRankings(page: Page) {
   return await page.evaluate(rankingsTableSelector => {
+    const documentElement = document.documentElement;
     const pageText = document.body.innerText;
     const tableText =
       document.querySelector(rankingsTableSelector)?.textContent || "";
@@ -719,7 +720,7 @@ async function readMobileRankings(page: Page) {
       })
       .map(tag => tag.textContent?.trim() || "empty status");
     return {
-      clientWidth: document.documentElement.clientWidth,
+      clientWidth: documentElement.clientWidth,
       hasCounts: /Ranked profiles|Linked profiles|Profiles to link/i.test(
         pageText
       ),
@@ -733,12 +734,10 @@ async function readMobileRankings(page: Page) {
       hasReadableRowStatus:
         tableText.toLowerCase().includes("linked advisorbook profile") &&
         tableText.toLowerCase().includes("verified source"),
-      noOverflow:
-        document.documentElement.scrollWidth <=
-        document.documentElement.clientWidth,
+      noOverflow: documentElement.scrollWidth <= documentElement.clientWidth,
       statusTagsFit: clippedStatusLabels.length === 0,
       clippedStatusLabels,
-      scrollWidth: document.documentElement.scrollWidth,
+      scrollWidth: documentElement.scrollWidth,
       tableText,
       text: pageText,
     };

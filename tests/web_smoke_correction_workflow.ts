@@ -375,16 +375,8 @@ async function reviewCorrection(
     ];
   }
 
-  await smokeWaitForSelector(page, INBOX_CARD_SELECTOR);
-  const card = page
-    .locator(INBOX_CARD_SELECTOR)
-    .filter({ hasText: proposedValue })
-    .filter({ hasText: item.id });
-  await card.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const rendersSubmitterNote =
-    (await page.getByText(submitterNote).count()) >= 1;
-  const rendersProposedValue =
-    (await page.getByText(proposedValue).count()) >= 1;
+  const { card, rendersProposedValue, rendersSubmitterNote } =
+    await submittedCorrectionFacts(page, item.id, proposedValue, submitterNote);
   await submitCorrectionReview(page, card, item.id, reviewerNote);
   await shot(page, "14-corrections-reviewed");
 
@@ -393,6 +385,29 @@ async function reviewCorrection(
     check(rendersSubmitterNote, "corrections: inbox renders submitter note"),
     check(rendersProposedValue, "corrections: inbox renders proposed value"),
   ];
+}
+
+async function submittedCorrectionFacts(
+  page: Page,
+  itemId: string,
+  proposedValue: string,
+  submitterNote: string
+): Promise<{
+  readonly card: Locator;
+  readonly rendersProposedValue: boolean;
+  readonly rendersSubmitterNote: boolean;
+}> {
+  await smokeWaitForSelector(page, INBOX_CARD_SELECTOR);
+  const card = page
+    .locator(INBOX_CARD_SELECTOR)
+    .filter({ hasText: proposedValue })
+    .filter({ hasText: itemId });
+  await card.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  return {
+    card,
+    rendersProposedValue: (await page.getByText(proposedValue).count()) >= 1,
+    rendersSubmitterNote: (await page.getByText(submitterNote).count()) >= 1,
+  };
 }
 
 /**
