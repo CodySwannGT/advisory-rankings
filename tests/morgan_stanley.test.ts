@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MORGAN_STANLEY_SOURCE_ADAPTER,
   buildMorganStanleySearchUrl,
   mapMorganStanleyLocations,
 } from "../src/lib/morgan-stanley.js";
@@ -18,6 +19,18 @@ describe("Morgan Stanley scraper mapping", () => {
     expect(url.searchParams.get("input")).toBe("10022");
     expect(url.searchParams.get("limit")).toBe("10");
     expect(url.searchParams.get("offset")).toBe("20");
+  });
+
+  it("builds source adapter search URLs from the shared locator builder", () => {
+    const directUrl = buildMorganStanleySearchUrl({
+      input: "Boston",
+      limit: 25,
+      offset: 50,
+    });
+
+    expect(MORGAN_STANLEY_SOURCE_ADAPTER.buildSearchUrl("Boston", 25, 50)).toBe(
+      directUrl
+    );
   });
 
   it("maps advisor, media, branch, team, designation, and research rows", () => {
