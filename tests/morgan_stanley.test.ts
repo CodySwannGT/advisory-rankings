@@ -21,6 +21,14 @@ describe("Morgan Stanley scraper mapping", () => {
     expect(url.searchParams.get("offset")).toBe("20");
   });
 
+  it("keeps bounded locator URLs valid when no search input is provided", () => {
+    const url = new URL(buildMorganStanleySearchUrl({ limit: 5, offset: 0 }));
+
+    expect(url.searchParams.get("input")).toBe("");
+    expect(url.searchParams.get("limit")).toBe("5");
+    expect(url.searchParams.get("offset")).toBe("0");
+  });
+
   it("builds source adapter search URLs from the shared locator builder", () => {
     const directUrl = buildMorganStanleySearchUrl({
       input: "Boston",
