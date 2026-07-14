@@ -133,33 +133,32 @@ async function readRankingsMainEvidence(page: Page) {
       browseLinks: [
         ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
       ].map(link => link.textContent?.trim() ?? ""),
-      hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
-      hasPurposeLede: document.body.innerText.includes(
+      hasHeader: pageText.includes("Advisor Rankings Browser"),
+      hasPurposeLede: pageText.includes(
         "Browse public advisor and team ranking appearances"
       ),
-      hasNextGen: document.body.innerText.includes("Next Gen"),
-      hasPublicRankingsOnly: !document.body.innerText.includes(
-        "Ranking data quality"
-      ),
-      hasSummaryMetricLabels:
-        document.body.innerText.includes("Ranked profiles") &&
-        document.body.innerText.includes("Linked profiles") &&
-        document.body.innerText.includes("Profiles to link") &&
-        document.body.innerText.includes("Markets"),
+      hasNextGen: pageText.includes("Next Gen"),
+      hasPublicRankingsOnly: !pageText.includes("Ranking data quality"),
+      hasSummaryMetricLabels: [
+        "Ranked profiles",
+        "Linked profiles",
+        "Profiles to link",
+        "Markets",
+      ].every(label => pageText.includes(label)),
       hasResolved: pageTextLower.includes("linked advisorbook profile"),
       hasSourceBacked: pageTextLower.includes("verified source"),
       hasTopFirmCountLabels:
-        document.body.innerText.includes("Wells Fargo Advisors") &&
-        /\b\d+ rankings?\b/.test(document.body.innerText) &&
-        document.body.innerText.includes("Matched AdvisorBook firm"),
+        pageText.includes("Wells Fargo Advisors") &&
+        /\b\d+ rankings?\b/.test(pageText) &&
+        pageText.includes("Matched AdvisorBook firm"),
       hasScoreSignal:
         pageTextLower.includes("missing score") ||
         /\b\d{2,3}\.\d\b/.test(pageText),
       placeholderNames: args.placeholderNames.filter(name =>
-        document.body.innerText.includes(name)
+        pageText.includes(name)
       ),
       rawLabels: args.rawRankingsLabels.filter(label =>
-        document.body.innerText.includes(label)
+        pageText.includes(label)
       ),
     };
   }, RANKINGS_EVIDENCE_ARGS);
@@ -700,25 +699,12 @@ async function smokeRankingsMobileViewport(
  * @returns Mobile rankings facts.
  */
 async function readMobileRankings(page: Page) {
-  return await page.evaluate(rankingsTableSelector => {
+  const clippedStatusLabels = await clippedMobileRankingStatusLabels(page);
+  const evidence = await page.evaluate(rankingsTableSelector => {
     const documentElement = document.documentElement;
     const pageText = document.body.innerText;
-    const tableText =
-      document.querySelector(rankingsTableSelector)?.textContent || "";
-    const clippedStatusLabels = [
-      ...document.querySelectorAll<HTMLElement>(
-        `${rankingsTableSelector} .tag`
-      ),
-    ]
-      .filter(tag => {
-        const rect = tag.getBoundingClientRect();
-        return (
-          tag.scrollWidth > tag.clientWidth + 1 ||
-          rect.left < 0 ||
-          rect.right > document.documentElement.clientWidth + 1
-        );
-      })
-      .map(tag => tag.textContent?.trim() || "empty status");
+    const table = document.querySelector(rankingsTableSelector);
+    const tableText = table?.textContent || "";
     return {
       clientWidth: documentElement.clientWidth,
       hasCounts: /Ranked profiles|Linked profiles|Profiles to link/i.test(
@@ -735,13 +721,38 @@ async function readMobileRankings(page: Page) {
         tableText.toLowerCase().includes("linked advisorbook profile") &&
         tableText.toLowerCase().includes("verified source"),
       noOverflow: documentElement.scrollWidth <= documentElement.clientWidth,
-      statusTagsFit: clippedStatusLabels.length === 0,
-      clippedStatusLabels,
       scrollWidth: documentElement.scrollWidth,
       tableText,
       text: pageText,
     };
   }, RANKINGS_TABLE_SELECTOR);
+  return {
+    ...evidence,
+    statusTagsFit: clippedStatusLabels.length === 0,
+    clippedStatusLabels,
+  };
+}
+
+/**
+ * Reads mobile ranking status tags whose boxes overflow their card bounds.
+ * @param page - Browser page to inspect.
+ * @returns Text labels for clipped status tags.
+ */
+async function clippedMobileRankingStatusLabels(page: Page) {
+  return await page
+    .locator(`${RANKINGS_TABLE_SELECTOR} .tag`)
+    .evaluateAll(tags =>
+      tags
+        .filter(tag => {
+          const rect = tag.getBoundingClientRect();
+          return (
+            tag.scrollWidth > tag.clientWidth + 1 ||
+            rect.left < 0 ||
+            rect.right > document.documentElement.clientWidth + 1
+          );
+        })
+        .map(tag => tag.textContent?.trim() || "empty status")
+    );
 }
 
 /**

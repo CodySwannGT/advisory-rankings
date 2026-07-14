@@ -90,19 +90,7 @@ export function watchlistCard(
     title: "Recruiting watchlist",
     attrs: { class: "recruiting-watchlist" },
     body: [
-      el(
-        "div",
-        { class: "watchlist-summary" },
-        metricBlock("Inbound", summaryValue(watchlist.summary.inbound)),
-        metricBlock("Outbound", summaryValue(watchlist.summary.outbound)),
-        metricBlock(
-          "Net",
-          netValue(
-            watchlist.summary.netKnownAum,
-            watchlist.summary.netMoveCount
-          )
-        )
-      ),
+      watchlistSummary(watchlist),
       el(
         "p",
         { class: "watchlist-generated" },
@@ -122,6 +110,24 @@ export function watchlistCard(
       ),
     ],
   });
+}
+
+/**
+ * Builds selected watchlist inbound/outbound/net metrics.
+ * @param watchlist - Recruiting watchlist payload.
+ * @returns Watchlist summary row.
+ */
+function watchlistSummary(watchlist: WatchlistPayload): HTMLElement {
+  return el(
+    "div",
+    { class: "watchlist-summary" },
+    metricBlock("Inbound", summaryValue(watchlist.summary.inbound)),
+    metricBlock("Outbound", summaryValue(watchlist.summary.outbound)),
+    metricBlock(
+      "Net",
+      netValue(watchlist.summary.netKnownAum, watchlist.summary.netMoveCount)
+    )
+  );
 }
 
 /**

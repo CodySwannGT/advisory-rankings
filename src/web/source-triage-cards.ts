@@ -78,13 +78,7 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         method: "get",
         action: "/source-triage",
       },
-      selectField(
-        "Category",
-        "category",
-        data.filters.category,
-        CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const),
-        filterLabel
-      ),
+      categoryField(data),
       selectField(
         "Reason",
         "reason",
@@ -110,6 +104,21 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
       })
     ),
   });
+}
+
+/**
+ * Renders the triage category select.
+ * @param data - Current source triage response.
+ * @returns Category select field.
+ */
+function categoryField(data: SourceArticleTriageResponse): HTMLElement {
+  return selectField(
+    "Category",
+    "category",
+    data.filters.category,
+    CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const),
+    filterLabel
+  );
 }
 
 /**

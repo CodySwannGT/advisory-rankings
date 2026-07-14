@@ -69,10 +69,7 @@ function readAdvisorFilterFactsInPage(
     card => card.textContent?.includes(title)
   );
   const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-  const total = labels.find(label => label.textContent === "Matches");
-  const loaded = labels.find(label => label.textContent === "Showing");
-  const countFrom = (value: string) =>
-    Number(/\d+/.exec(value.replace(/,/g, ""))?.[0] ?? NaN);
+  const counts = advisorFilterCounts(labels);
   const rows = Array.from(document.querySelectorAll(rowSelector));
   return {
     accessibleLabels: expectedLabels.every(([labelText, id, name]) => {
@@ -91,7 +88,7 @@ function readAdvisorFilterFactsInPage(
     firm: valueOf("firm"),
     firstHref: rows[0]?.closest("a")?.getAttribute("href") || "",
     hasCrd: valueOf("hasCrd"),
-    loaded: countFrom(loaded?.nextElementSibling?.textContent ?? ""),
+    loaded: counts.loaded,
     profileSubstance: valueOf("profileSubstance"),
     rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
       label => !labels.some(item => item.textContent?.trim() === label)
@@ -100,6 +97,17 @@ function readAdvisorFilterFactsInPage(
     rowTexts: rows
       .slice(0, 5)
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
+    total: counts.total,
+  };
+}
+
+function advisorFilterCounts(labels: readonly HTMLElement[]) {
+  const countFrom = (value: string) =>
+    Number(/\d+/.exec(value.replace(/,/g, ""))?.[0] ?? NaN);
+  const total = labels.find(label => label.textContent === "Matches");
+  const loaded = labels.find(label => label.textContent === "Showing");
+  return {
+    loaded: countFrom(loaded?.nextElementSibling?.textContent ?? ""),
     total: countFrom(total?.nextElementSibling?.textContent ?? ""),
   };
 }

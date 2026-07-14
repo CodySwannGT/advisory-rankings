@@ -190,9 +190,7 @@ const crawlRosterPage = async (
     opts,
     `roster ${firmId}`
   );
-  (opts.log ?? console.error)(
-    `[roster ${firmId}] page ${page}: ${hits.length} hits`
-  );
+  logRosterPage(opts, firmId, page, hits.length);
   if (rosterPageComplete(hits.length, opts.max ?? 0, seen + crds.length))
     return summary;
   return addCrawlSummaries(
@@ -207,6 +205,17 @@ const crawlRosterPage = async (
       page,
       seen + crds.length
     )
+  );
+};
+
+const logRosterPage = (
+  opts: CrawlOptions,
+  firmId: string,
+  page: number,
+  hitCount: number
+): void => {
+  (opts.log ?? console.error)(
+    `[roster ${firmId}] page ${page}: ${hitCount} hits`
   );
 };
 

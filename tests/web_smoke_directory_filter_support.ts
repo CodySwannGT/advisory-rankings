@@ -65,12 +65,38 @@ export async function captureFilteredState(
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await waitForDirectoryStats(page, directoryTitle(pageName));
-  const state = {
+  const state = await readFilteredDirectoryState(page, pageName);
+  await shot(page, `06-${pageName}-filtered-url-state`);
+  return state;
+}
+
+async function readFilteredDirectoryState(
+  page: Page,
+  pageName: DirectoryPageName
+): Promise<FilteredDirectoryState> {
+  return {
+    ...(await readPageSpecificFilterValues(page, pageName)),
+    accessibleLabels: await controlsHaveAccessibleLabels(page, pageName),
+    firstHref: await firstRowHref(page),
+    loaded: await readDirectoryStat(page, directoryTitle(pageName), "Showing"),
+    rawMetricsHidden: await rawDirectoryMetricsHidden(
+      page,
+      directoryTitle(pageName)
+    ),
+    rowCount: await page.locator(DIRECTORY_ROW_SELECTOR).count(),
+    total: await readDirectoryStat(page, directoryTitle(pageName), "Matches"),
+  };
+}
+
+async function readPageSpecificFilterValues(
+  page: Page,
+  pageName: DirectoryPageName
+) {
+  return {
     activeValue:
       pageName === "firms"
         ? await page.locator('[name="active"]').inputValue()
         : undefined,
-    accessibleLabels: await controlsHaveAccessibleLabels(page, pageName),
     channelValue:
       pageName === "firms"
         ? await page.locator('[name="channel"]').inputValue()
@@ -79,21 +105,11 @@ export async function captureFilteredState(
       pageName === "teams"
         ? await page.locator('[name="firm"]').inputValue()
         : undefined,
-    firstHref: await firstRowHref(page),
-    loaded: await readDirectoryStat(page, directoryTitle(pageName), "Showing"),
-    rawMetricsHidden: await rawDirectoryMetricsHidden(
-      page,
-      directoryTitle(pageName)
-    ),
-    rowCount: await page.locator(DIRECTORY_ROW_SELECTOR).count(),
     serviceModelValue:
       pageName === "teams"
         ? await page.locator('[name="serviceModel"]').inputValue()
         : undefined,
-    total: await readDirectoryStat(page, directoryTitle(pageName), "Matches"),
   };
-  await shot(page, `06-${pageName}-filtered-url-state`);
-  return state;
 }
 
 /**
