@@ -14,6 +14,7 @@ import {
 const ORIGINAL_ENV = { ...process.env };
 const ORIGINAL_FETCH = globalThis.fetch;
 const TARGET_URL = "https://cluster.example.com";
+const OPERATIONS_TARGET_URL = `${TARGET_URL}:9925`;
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "secret";
 const MISSING_OPERATION = "missing operation";
@@ -98,7 +99,7 @@ describe("Harper client edge behavior", () => {
   });
 
   it("falls back to REST upsert when hosted operations upsert is unavailable", async () => {
-    process.env.HDB_TARGET_URL = TARGET_URL;
+    process.env.HDB_TARGET_URL = OPERATIONS_TARGET_URL;
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
     process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
     const fetchMock = vi.fn(async () =>
@@ -114,6 +115,31 @@ describe("Harper client edge behavior", () => {
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify({ id: "firm-1" }),
+      })
+    );
+  });
+
+  it("falls back to REST upsert when hosted operations rejects skip", async () => {
+    process.env.HDB_TARGET_URL = OPERATIONS_TARGET_URL;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi.fn(async () =>
+      fetchMock.mock.calls.length === 1
+        ? new Response('{"error":"Property skip is not allowed"}', {
+            status: 400,
+          })
+        : new Response(null, { status: 204 })
+    );
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      upsert("ArticleFirmMention", [{ id: "mention-1" }])
+    ).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${TARGET_URL}/ArticleFirmMention/mention-1`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ id: "mention-1" }),
       })
     );
   });
