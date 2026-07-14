@@ -51,6 +51,7 @@ import {
 import { advisorTrustChecklistCard } from "./advisor-trust-checklist.js";
 import { advisorCoverageSection } from "./advisor-coverage-section.js";
 import { isErrorPayload } from "./advisor-error-payload.js";
+import { reviewedNoteRows } from "./advisor-reviewed-note-rows.js";
 import { appendRegistrationApplications } from "./advisor-registration-applications.js";
 import {
   isAdvisorTeamRow,
@@ -294,9 +295,7 @@ function advisorCenterSections(
   d: AdvisorProfilePayload,
   mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
-  const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [],
-    reviewedCorrections = d.reviewedCorrectionRequests ?? [];
-  const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
+  const reviewed = reviewedNoteRows(d);
   return [
     ...advisorPrimaryCards(d, mobileEvidenceRoot),
     careerSection(d),
@@ -316,11 +315,11 @@ function advisorCenterSections(
     disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
     PartialFailureCard("Disclosures", d.disclosures),
     reviewedDiscrepancyNotesSection(
-      reviewedDiscrepancies,
-      reviewedCorrections,
+      reviewed.discrepancies,
+      reviewed.corrections,
       d.brokerCheckSnapshot
     ),
-    reviewedNotesFailureCard(reviewedRows),
+    reviewedNotesFailureCard(reviewed.all),
     outsideActivitiesSection(
       narrowRows(
         resourceRows(d.outsideBusinessActivities),

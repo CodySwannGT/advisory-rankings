@@ -101,27 +101,7 @@ async function smokePublicPageHeading(
   await smokeGoto(page, `${BASE}${route.path}`);
   await smokeWaitForSelector(page, route.readySelector, QUICK_UI_TIMEOUT);
 
-  const heading = await page.evaluate(() => {
-    const h1s = [...document.querySelectorAll("h1")];
-    const firstH1 = h1s[0];
-    const lowerHeadingsAfterTitle = [...document.querySelectorAll("h2, h3")]
-      .filter(node =>
-        firstH1
-          ? Boolean(
-              firstH1.compareDocumentPosition(node) &
-              Node.DOCUMENT_POSITION_FOLLOWING
-            )
-          : false
-      )
-      .map(node => node.textContent?.trim())
-      .filter(Boolean);
-
-    return {
-      h1Count: h1s.length,
-      h1Text: firstH1?.textContent?.trim() ?? "",
-      lowerHeadingCount: lowerHeadingsAfterTitle.length,
-    };
-  });
+  const heading = await page.evaluate(readHeadingEvidence);
 
   return [
     check(
@@ -140,6 +120,27 @@ async function smokePublicPageHeading(
       `found ${heading.lowerHeadingCount}`
     ),
   ];
+}
+
+function readHeadingEvidence() {
+  const h1s = [...document.querySelectorAll("h1")];
+  const firstH1 = h1s[0];
+  const lowerHeadingsAfterTitle = [...document.querySelectorAll("h2, h3")]
+    .filter(node =>
+      firstH1
+        ? Boolean(
+            firstH1.compareDocumentPosition(node) &
+            Node.DOCUMENT_POSITION_FOLLOWING
+          )
+        : false
+    )
+    .map(node => node.textContent?.trim())
+    .filter(Boolean);
+  return {
+    h1Count: h1s.length,
+    h1Text: firstH1?.textContent?.trim() ?? "",
+    lowerHeadingCount: lowerHeadingsAfterTitle.length,
+  };
 }
 
 /**

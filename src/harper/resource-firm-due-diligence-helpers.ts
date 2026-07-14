@@ -52,22 +52,7 @@ export function recruitingMomentumModule(
     outbound,
     netMoveCount: inbound.count - outbound.count,
     netAumMoved: inbound.knownAum - outbound.knownAum,
-    recentMoves: all
-      .slice()
-      .sort(dateDesc("moveDate"))
-      .slice(0, 5)
-      .map(
-        (move): RecentTransitionMove => ({
-          id: move.id,
-          direction:
-            transitionFirmId(move.toFirm) === firmId ? "inbound" : "outbound",
-          subject: move.subject,
-          fromFirm: move.fromFirm,
-          toFirm: move.toFirm,
-          moveDate: move.moveDate ?? null,
-          aumMoved: move.aumMoved ?? null,
-        })
-      ),
+    recentMoves: recentTransitionMoves(all, firmId),
     provenance: {
       sourceTable: "TransitionEvent",
       sourceIds: all.map(row => row.id),
@@ -77,6 +62,32 @@ export function recruitingMomentumModule(
       "No transition move date is loaded for this firm."
     ),
   };
+}
+
+/**
+ * Selects the latest transition moves and labels direction relative to a firm.
+ * @param rows - Candidate transition rows.
+ * @param firmId - Firm id used to classify inbound and outbound moves.
+ * @returns Recent transition movement summaries.
+ */
+function recentTransitionMoves(
+  rows: readonly FirmTransitionRowView[],
+  firmId: string
+): readonly RecentTransitionMove[] {
+  return rows
+    .slice()
+    .sort(dateDesc("moveDate"))
+    .slice(0, 5)
+    .map(move => ({
+      id: move.id,
+      direction:
+        transitionFirmId(move.toFirm) === firmId ? "inbound" : "outbound",
+      subject: move.subject,
+      fromFirm: move.fromFirm,
+      toFirm: move.toFirm,
+      moveDate: move.moveDate ?? null,
+      aumMoved: move.aumMoved ?? null,
+    }));
 }
 
 /**

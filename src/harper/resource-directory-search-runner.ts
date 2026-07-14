@@ -86,12 +86,6 @@ export async function runGlobalSearch(
   // scored-matches array would undercount the advisor side when more
   // than `cap` advisors matched the query (because only the first
   // `cap` get hydrated and scored).
-  const counts = {
-    advisors: advisorIds.length,
-    firms: firmMatches.length,
-    teams: teamMatches.length,
-    total: advisorIds.length + firmMatches.length + teamMatches.length,
-  };
   return buildSearchResponse({
     norm,
     kind,
@@ -100,8 +94,28 @@ export async function runGlobalSearch(
     firmMatches,
     teamMatches,
     firmAliases,
-    counts,
+    counts: buildSearchCounts(advisorIds, firmMatches, teamMatches),
   });
+}
+
+/**
+ * Counts hydrated search result groups for the response summary.
+ * @param advisorIds - Matching advisor ids before hydration.
+ * @param firmMatches - Matching firm rows.
+ * @param teamMatches - Matching team rows.
+ * @returns Search result count summary.
+ */
+function buildSearchCounts(
+  advisorIds: readonly string[],
+  firmMatches: readonly FirmRow[],
+  teamMatches: readonly TeamRow[]
+) {
+  return {
+    advisors: advisorIds.length,
+    firms: firmMatches.length,
+    teams: teamMatches.length,
+    total: advisorIds.length + firmMatches.length + teamMatches.length,
+  };
 }
 
 /**

@@ -88,13 +88,24 @@ function recruitingValidationChecks(
       input.missingAumCount,
       1
     ),
-    validationCheck(
-      "missing-deal-economics-statuses",
-      "Missing deal-economics statuses",
-      input.missingDealEconomicsStatusCount,
-      1
-    ),
+    missingDealEconomicsStatusCheck(input),
   ];
+}
+
+/**
+ * Builds the validation check for missing deal-economics status coverage.
+ * @param input - Recruiting validation report input.
+ * @returns Validation check for deal-economics statuses.
+ */
+function missingDealEconomicsStatusCheck(
+  input: RecruitingValidationReportInput
+): ValidationCheck {
+  return validationCheck(
+    "missing-deal-economics-statuses",
+    "Missing deal-economics statuses",
+    input.missingDealEconomicsStatusCount,
+    1
+  );
 }
 
 /**

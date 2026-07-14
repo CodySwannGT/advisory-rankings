@@ -59,8 +59,7 @@ export async function smokeAdvisorDirectoryFilters(
   page: Page
 ): Promise<readonly Check[]> {
   const viewport = page.viewportSize();
-  const rows = page.locator(DIRECTORY_ROW_SELECTOR);
-  const filterForm = page.locator(FILTER_FORM_SELECTOR);
+  const pageControls = advisorFilterPageControls(page);
 
   // Derive the firm filter from live data rather than hardcoding a firm. This
   // keeps the firm+careerStatus assertion satisfiable against whatever data is
@@ -69,11 +68,11 @@ export async function smokeAdvisorDirectoryFilters(
   const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(firm)}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown`;
 
   await smokeGoto(page, filteredUrl);
-  await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await waitForDirectoryTotalCount(page);
   const filteredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   await page.reload();
-  await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   const restoredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
   const liveFacts = await captureLiveAdvisorFilterFacts(page);
   await shot(page, "06-advisors-filtered");
@@ -89,8 +88,8 @@ export async function smokeAdvisorDirectoryFilters(
   const { desktopLayout, mobileLayout, mobileSearch } =
     await captureAdvisorResponsiveFilterFacts(
       page,
-      rows,
-      filterForm,
+      pageControls.rows,
+      pageControls.filterForm,
       filteredUrl
     );
   if (viewport) await page.setViewportSize(viewport);
@@ -106,6 +105,13 @@ export async function smokeAdvisorDirectoryFilters(
     mobileSearch,
     restoredFacts,
   });
+}
+
+function advisorFilterPageControls(page: Page) {
+  return {
+    rows: page.locator(DIRECTORY_ROW_SELECTOR),
+    filterForm: page.locator(FILTER_FORM_SELECTOR),
+  };
 }
 
 async function captureAdvisorResponsiveFilterFacts(

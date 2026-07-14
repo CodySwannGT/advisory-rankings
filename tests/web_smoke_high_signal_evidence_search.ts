@@ -132,9 +132,19 @@ async function observeSearchKind(
   });
   await shot(page, `04-evidence-search-kind-${kindCase.kind}`);
 
-  const visibleKinds = await page
-    .locator(`${SEARCH_RESULT_ROWS} .gs-kind`)
-    .allTextContents();
+  const observed = await readSearchKindState(page, kindCase);
+
+  return {
+    kindCase,
+    responseUrl: response.url(),
+    responseStatus: response.status(),
+    visibleKinds: observed.visibleKinds,
+    countHint: observed.countHint,
+    buttonPressed: observed.buttonPressed,
+  };
+}
+
+async function readSearchKindState(page: Page, kindCase: SearchKindCase) {
   const countHint =
     (await page
       .locator(SEARCH_COUNT_HINT)
@@ -143,16 +153,14 @@ async function observeSearchKind(
       .catch(() => "")) ||
     (await page.locator("#global-search-results").first().textContent()) ||
     "";
-  const buttonPressed = await page
-    .getByRole("button", { name: kindCase.buttonName })
-    .getAttribute("aria-pressed");
-
   return {
-    kindCase,
-    responseUrl: response.url(),
-    responseStatus: response.status(),
-    visibleKinds,
+    buttonPressed:
+      (await page
+        .getByRole("button", { name: kindCase.buttonName })
+        .getAttribute("aria-pressed")) ?? "",
     countHint: countHint.trim(),
-    buttonPressed: buttonPressed ?? "",
+    visibleKinds: await page
+      .locator(`${SEARCH_RESULT_ROWS} .gs-kind`)
+      .allTextContents(),
   };
 }
