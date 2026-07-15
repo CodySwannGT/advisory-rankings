@@ -121,18 +121,11 @@ async function readLoadedRankings(page: Page) {
  * @returns Rankings page evidence.
  */
 async function readRankingsMainEvidence(page: Page) {
-  return await page.evaluate(args => {
+  const browseEvidence = await readRankingsBrowseEvidence(page);
+  const textEvidence = await page.evaluate(args => {
     const pageText = document.body.innerText;
     const pageTextLower = pageText.toLowerCase();
     return {
-      browseCardTitles: [
-        ...document.querySelectorAll<HTMLElement>(
-          ".left .card-title, .left .subtitle"
-        ),
-      ].map(title => title.textContent?.trim() ?? ""),
-      browseLinks: [
-        ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
-      ].map(link => link.textContent?.trim() ?? ""),
       hasHeader: pageText.includes("Advisor Rankings Browser"),
       hasPurposeLede: pageText.includes(
         "Browse public advisor and team ranking appearances"
@@ -162,6 +155,25 @@ async function readRankingsMainEvidence(page: Page) {
       ),
     };
   }, RANKINGS_EVIDENCE_ARGS);
+  return { ...browseEvidence, ...textEvidence };
+}
+
+/**
+ * Reads rankings browse-navigation labels from the left rail.
+ * @param page - Browser page to inspect.
+ * @returns Browse card titles and links.
+ */
+async function readRankingsBrowseEvidence(page: Page) {
+  return await page.evaluate(() => ({
+    browseCardTitles: [
+      ...document.querySelectorAll<HTMLElement>(
+        ".left .card-title, .left .subtitle"
+      ),
+    ].map(title => title.textContent?.trim() ?? ""),
+    browseLinks: [
+      ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
+    ].map(link => link.textContent?.trim() ?? ""),
+  }));
 }
 
 async function readRankingsEvidenceDetails(page: Page) {
@@ -441,6 +453,21 @@ function loadedRankingsChecks(loaded, sortChange) {
       "rankings: public page hides analyst data-quality workbench"
     ),
     ...lowInformationPanelChecks(loaded),
+    ...loadedRankingsMetadataChecks(loaded),
+    ...loadedRankingRowChecks(loaded),
+    scoreSignalCheck(loaded),
+    ...loadedRankingsRawLabelChecks(loaded),
+    profileLinkCheck(loaded),
+    check(
+      loaded.tableLayout.isContained,
+      "rankings: desktop table stays inside the content column",
+      JSON.stringify(loaded.tableLayout)
+    ),
+  ];
+}
+
+function loadedRankingsMetadataChecks(loaded) {
+  return [
     check(
       loaded.hasDataVolumeState,
       "rankings: public data volume state explains visible rankings"
@@ -450,8 +477,11 @@ function loadedRankingsChecks(loaded, sortChange) {
       loaded.hasHumanImportedDate,
       "rankings: source dates are human readable"
     ),
-    ...loadedRankingRowChecks(loaded),
-    scoreSignalCheck(loaded),
+  ];
+}
+
+function loadedRankingsRawLabelChecks(loaded) {
+  return [
     check(
       loaded.rawLabels.length === 0,
       "rankings: pipeline and raw enum labels are hidden",
@@ -461,12 +491,6 @@ function loadedRankingsChecks(loaded, sortChange) {
       loaded.placeholderNames.length === 0,
       "rankings: placeholder entities are hidden",
       loaded.placeholderNames.join(", ")
-    ),
-    profileLinkCheck(loaded),
-    check(
-      loaded.tableLayout.isContained,
-      "rankings: desktop table stays inside the content column",
-      JSON.stringify(loaded.tableLayout)
     ),
   ];
 }
@@ -794,12 +818,7 @@ async function smokeRankingsNoRows(
 function noRankingRowsPayload() {
   return {
     items: [],
-    summary: {
-      totalEntries: 0,
-      resolvedEntries: 0,
-      unresolvedEntries: 0,
-      representedStates: 0,
-    },
+    summary: emptyRankingsSummary(),
     filters: {
       category: "",
       year: "",
@@ -809,19 +828,8 @@ function noRankingRowsPayload() {
       resolved: "",
       sort: "rank",
     },
-    facets: {
-      categories: [],
-      cities: [],
-      firms: [],
-      years: [],
-      states: [],
-    },
-    coverage: {
-      totalEntries: 0,
-      buckets: [],
-      gapBuckets: [],
-      emptyState: "No rankings are loaded for this coverage view.",
-    },
+    facets: emptyRankingsFacets(),
+    coverage: emptyRankingsCoverage(),
     topFirms: [],
     source: {
       label: "AdvisorHub rankings",
@@ -832,5 +840,33 @@ function noRankingRowsPayload() {
       sourceIds: [],
     },
     emptyState: "No matching public rankings are available.",
+  };
+}
+
+function emptyRankingsSummary() {
+  return {
+    totalEntries: 0,
+    resolvedEntries: 0,
+    unresolvedEntries: 0,
+    representedStates: 0,
+  };
+}
+
+function emptyRankingsFacets() {
+  return {
+    categories: [],
+    cities: [],
+    firms: [],
+    years: [],
+    states: [],
+  };
+}
+
+function emptyRankingsCoverage() {
+  return {
+    totalEntries: 0,
+    buckets: [],
+    gapBuckets: [],
+    emptyState: "No rankings are loaded for this coverage view.",
   };
 }

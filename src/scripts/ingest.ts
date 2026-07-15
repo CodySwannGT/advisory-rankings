@@ -176,19 +176,32 @@ function rowsForPost(post: RawWpPost): PostIngestRows {
       return { id: uid(`afm:${aid}:${fid}`), articleId: aid, firmId: fid };
     }
   );
-  const fieldAssertions: ReadonlyArray<FieldAssertionRow> = Array.from(
-    body.matchAll(/\$([\d,.]+)\s*(billion|million)?/gi)
-  ).map(match => ({
-    id: uid(`fa:${aid}:money:${match.index}`),
-    articleId: aid,
-    targetTable: "Article",
-    targetId: aid,
-    fieldName: "moneyMention",
-    assertedValue: match[0],
-    quotePhrase: match[0],
-    confidence: "candidate",
-  }));
+  const fieldAssertions = moneyAssertionsForArticle(aid, body);
   return { article, firms, firmMentions, fieldAssertions };
+}
+
+/**
+ * Extracts candidate money mentions from article prose.
+ * @param articleIdValue - Article row id used for assertion ownership.
+ * @param body - Plain-text article body.
+ * @returns Candidate field assertions for money mentions.
+ */
+function moneyAssertionsForArticle(
+  articleIdValue: string,
+  body: string
+): ReadonlyArray<FieldAssertionRow> {
+  return Array.from(body.matchAll(/\$([\d,.]+)\s*(billion|million)?/gi)).map(
+    match => ({
+      id: uid(`fa:${articleIdValue}:money:${match.index}`),
+      articleId: articleIdValue,
+      targetTable: "Article",
+      targetId: articleIdValue,
+      fieldName: "moneyMention",
+      assertedValue: match[0],
+      quotePhrase: match[0],
+      confidence: "candidate",
+    })
+  );
 }
 
 /**

@@ -39,6 +39,15 @@ interface InitialFeedCopy {
   readonly uncategorizedBylines: number;
 }
 
+interface FeedCategoryCopy {
+  readonly optionLabel: string | null;
+  readonly summary: string | null;
+  readonly unknownOptionLabel: string | null;
+  readonly unknownSummary: string | null;
+  readonly unknownUrlCategory: string | null;
+  readonly urlCategory: string | null;
+}
+
 /**
  * Checks feed copy and browse labels on the public home route.
  * @param page - Browser page rendering the feed.
@@ -354,29 +363,12 @@ async function visibleFeedMetadata(page: Page): Promise<readonly string[]> {
  * @param page - Browser page rendering the feed.
  * @returns Category option label, summary, and URL category param.
  */
-async function visibleFeedCategoryCopy(page: Page): Promise<{
-  readonly optionLabel: string | null;
-  readonly summary: string | null;
-  readonly urlCategory: string | null;
-  readonly unknownOptionLabel: string | null;
-  readonly unknownSummary: string | null;
-  readonly unknownUrlCategory: string | null;
-}> {
+async function visibleFeedCategoryCopy(page: Page): Promise<FeedCategoryCopy> {
   const categorySelect = page.locator(FEED_CATEGORY_SELECT);
-  const option = categorySelect.locator('option[value="public_web_research"]');
-  const categoryCopy = {
-    optionLabel: null,
-    summary: null,
-    urlCategory: null,
-  } as const;
-  const publicWebResearchCopy =
-    (await option.count()) > 0
-      ? {
-          optionLabel: (await option.textContent())?.trim() || "",
-          summary: await page.locator(FEED_FILTER_SUMMARY).textContent(),
-          urlCategory: new URL(page.url()).searchParams.get("category"),
-        }
-      : categoryCopy;
+  const publicWebResearchCopy = await readPublicWebResearchCopy(
+    page,
+    categorySelect
+  );
   const unknownOption = categorySelect.locator('option[value="unknown"]');
   if ((await unknownOption.count()) === 0) {
     return {
@@ -387,13 +379,46 @@ async function visibleFeedCategoryCopy(page: Page): Promise<{
     };
   }
 
+  return {
+    ...publicWebResearchCopy,
+    ...(await readUnknownCategoryCopy(page, categorySelect, unknownOption)),
+  };
+}
+
+/**
+ * Reads public-web-research category copy when that option is present.
+ * @param page - Browser page rendering the feed.
+ * @param categorySelect - Feed category select locator.
+ * @returns Public web research category copy facts.
+ */
+async function readPublicWebResearchCopy(page: Page, categorySelect: Locator) {
+  const option = categorySelect.locator('option[value="public_web_research"]');
+  return (await option.count()) > 0
+    ? {
+        optionLabel: (await option.textContent())?.trim() || "",
+        summary: await page.locator(FEED_FILTER_SUMMARY).textContent(),
+        urlCategory: new URL(page.url()).searchParams.get("category"),
+      }
+    : { optionLabel: null, summary: null, urlCategory: null };
+}
+
+/**
+ * Selects the uncategorized feed option and reads its copy.
+ * @param page - Browser page rendering the feed.
+ * @param categorySelect - Feed category select locator.
+ * @param unknownOption - Uncategorized option locator.
+ * @returns Uncategorized category copy facts.
+ */
+async function readUnknownCategoryCopy(
+  page: Page,
+  categorySelect: Locator,
+  unknownOption: Locator
+) {
   await categorySelect.selectOption("unknown");
   await page.waitForURL(url => url.searchParams.get("category") === "unknown", {
     timeout: QUICK_UI_TIMEOUT,
   });
-
   return {
-    ...publicWebResearchCopy,
     unknownOptionLabel: (await unknownOption.textContent())?.trim() || "",
     unknownSummary: await page.locator(FEED_FILTER_SUMMARY).textContent(),
     unknownUrlCategory: new URL(page.url()).searchParams.get("category"),

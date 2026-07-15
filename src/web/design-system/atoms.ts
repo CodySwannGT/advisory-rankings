@@ -409,16 +409,40 @@ export function SourceAttribution({
         source || ""
       )
     : source || "";
+  const asOf = sourceDateLabel(fetchedAt);
+  const children = [
+    "Source: ",
+    sourceNode,
+    asOf ? ` (as of ${asOf})` : "",
+    ". ",
+    ...sourceTermsNodes(termsUrl),
+  ];
+  return el("div", { ...attrs, class: cls }, ...children);
+}
+
+/**
+ * Formats the source fetch date when it is parseable.
+ * @param fetchedAt - Source fetch timestamp.
+ * @returns Human-readable date label or null.
+ */
+function sourceDateLabel(fetchedAt: SourceAttributionOptions["fetchedAt"]) {
   const d = fetchedAt ? new Date(fetchedAt) : null;
-  const asOf =
-    d && !Number.isNaN(d.getTime())
-      ? d.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })
-      : null;
-  const termsNodes = termsUrl
+  return d && !Number.isNaN(d.getTime())
+    ? d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+}
+
+/**
+ * Builds optional terms-of-use attribution nodes.
+ * @param termsUrl - Terms URL to link.
+ * @returns Terms link child nodes.
+ */
+function sourceTermsNodes(termsUrl: string | undefined) {
+  return termsUrl
     ? [
         el(
           "a",
@@ -428,14 +452,6 @@ export function SourceAttribution({
         ".",
       ]
     : [];
-  const children = [
-    "Source: ",
-    sourceNode,
-    asOf ? ` (as of ${asOf})` : "",
-    ". ",
-    ...termsNodes,
-  ];
-  return el("div", { ...attrs, class: cls }, ...children);
 }
 
 // ─── Internal helper ──────────────────────────────────────────

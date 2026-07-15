@@ -95,7 +95,34 @@ export async function profileHeadingChecks(
   label: string,
   expectedText: RegExp
 ): Promise<readonly Check[]> {
-  const heading = await page.evaluate(() => {
+  const heading = await readProfileHeadingEvidence(page);
+
+  return [
+    check(
+      heading.h1Count === 1,
+      `${label}: exactly one page-level h1`,
+      `found ${heading.h1Count}`
+    ),
+    check(
+      expectedText.test(heading.h1Text),
+      `${label}: h1 matches profile name`,
+      heading.h1Text
+    ),
+    check(
+      heading.lowerHeadingCount > 0,
+      `${label}: section headings remain below h1`,
+      `found ${heading.lowerHeadingCount}`
+    ),
+  ];
+}
+
+/**
+ * Reads semantic heading evidence from the current profile page.
+ * @param page - Browser page rendering a profile route.
+ * @returns Heading count and text evidence.
+ */
+async function readProfileHeadingEvidence(page: Page) {
+  return await page.evaluate(() => {
     const h1s = [...document.querySelectorAll("h1")];
     const firstH1 = h1s[0];
     const lowerHeadingsAfterTitle = [...document.querySelectorAll("h2, h3")]
@@ -116,24 +143,6 @@ export async function profileHeadingChecks(
       lowerHeadingCount: lowerHeadingsAfterTitle.length,
     };
   });
-
-  return [
-    check(
-      heading.h1Count === 1,
-      `${label}: exactly one page-level h1`,
-      `found ${heading.h1Count}`
-    ),
-    check(
-      expectedText.test(heading.h1Text),
-      `${label}: h1 matches profile name`,
-      heading.h1Text
-    ),
-    check(
-      heading.lowerHeadingCount > 0,
-      `${label}: section headings remain below h1`,
-      `found ${heading.lowerHeadingCount}`
-    ),
-  ];
 }
 
 /**
