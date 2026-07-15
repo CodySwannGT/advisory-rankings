@@ -49,6 +49,27 @@ const feedCategoryState: Readonly<Record<"seen", readonly string[]>> = {
  * @returns Filter card.
  */
 export function feedFilterCard(state: FeedFilterCardState): HTMLElement {
+  const form = feedFilterForm(state);
+  return SectionCard({
+    title: "Feed filters",
+    attrs: { class: "feed-filter-card" },
+    body: [
+      form,
+      el(
+        "div",
+        { class: "feed-filter-summary", "aria-live": "polite" },
+        feedSummaryText(state)
+      ),
+    ],
+  });
+}
+
+/**
+ * Builds the filter form and wires change submission.
+ * @param state - Current filter state and change handler.
+ * @returns Feed filter form element.
+ */
+function feedFilterForm(state: FeedFilterCardState): HTMLElement {
   const form = el(
     "form",
     {
@@ -78,19 +99,7 @@ export function feedFilterCard(state: FeedFilterCardState): HTMLElement {
     })
   );
   form.addEventListener("change", () => state.onChange(readFormFilters(form)));
-
-  return SectionCard({
-    title: "Feed filters",
-    attrs: { class: "feed-filter-card" },
-    body: [
-      form,
-      el(
-        "div",
-        { class: "feed-filter-summary", "aria-live": "polite" },
-        feedSummaryText(state)
-      ),
-    ],
-  });
+  return form;
 }
 
 /**

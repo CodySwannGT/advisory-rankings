@@ -32,6 +32,17 @@ interface FirmRow {
   readonly name?: string;
 }
 
+interface AdvisorFilterPageControls {
+  readonly filterForm: Locator;
+  readonly rows: Locator;
+}
+
+interface FilteredAdvisorFacts {
+  readonly filteredFacts: AdvisorFilterFacts;
+  readonly liveFacts: LiveAdvisorFilterFacts;
+  readonly restoredFacts: AdvisorFilterFacts;
+}
+
 /**
  * Fetches a directory payload, failing fast when the response is not ok
  * instead of parsing an error body as directory JSON.
@@ -66,24 +77,9 @@ export async function smokeAdvisorDirectoryFilters(
   // deployed.
   const firm = await discoverFilterableFirm(page);
   const filteredUrl = `${BASE}/advisors?firm=${encodeURIComponent(firm)}&careerStatus=active&contactReadiness=ready&profileSubstance=present&freshness=unknown`;
-
-  await smokeGoto(page, filteredUrl);
-  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  await waitForDirectoryTotalCount(page);
-  const filteredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
-  await page.reload();
-  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const restoredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
-  const liveFacts = await captureLiveAdvisorFilterFacts(page);
-  await shot(page, "06-advisors-filtered");
-
-  await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
-  await page
-    .locator(".empty")
-    .first()
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
-  const emptyFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
-  await shot(page, "06-advisors-filter-empty");
+  const { filteredFacts, liveFacts, restoredFacts } =
+    await captureFilteredAdvisorFacts(page, pageControls, filteredUrl);
+  const emptyFacts = await readEmptyAdvisorFilterFacts(page);
 
   const { desktopLayout, mobileLayout, mobileSearch } =
     await captureAdvisorResponsiveFilterFacts(
@@ -107,11 +103,53 @@ export async function smokeAdvisorDirectoryFilters(
   });
 }
 
-function advisorFilterPageControls(page: Page) {
+function advisorFilterPageControls(page: Page): AdvisorFilterPageControls {
   return {
     rows: page.locator(DIRECTORY_ROW_SELECTOR),
     filterForm: page.locator(FILTER_FORM_SELECTOR),
   };
+}
+
+/**
+ * Reads filtered and reload-restored advisor directory state.
+ * @param page - Browser page used for the advisor directory scenario.
+ * @param pageControls - Directory row and form locators.
+ * @param filteredUrl - URL containing the selected live filters.
+ * @returns Filtered, restored, and live resource facts.
+ */
+async function captureFilteredAdvisorFacts(
+  page: Page,
+  pageControls: AdvisorFilterPageControls,
+  filteredUrl: string
+): Promise<FilteredAdvisorFacts> {
+  await smokeGoto(page, filteredUrl);
+  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await waitForDirectoryTotalCount(page);
+  const filteredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
+  await page.reload();
+  await pageControls.rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const restoredFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
+  const liveFacts = await captureLiveAdvisorFilterFacts(page);
+  await shot(page, "06-advisors-filtered");
+  return { filteredFacts, liveFacts, restoredFacts };
+}
+
+/**
+ * Reads the empty-state facts for a no-result advisor filter.
+ * @param page - Browser page used for the advisor directory scenario.
+ * @returns Empty-state advisor filter facts.
+ */
+async function readEmptyAdvisorFilterFacts(
+  page: Page
+): Promise<AdvisorFilterFacts> {
+  await smokeGoto(page, `${BASE}/advisors?q=zzznomatch&firm=zzznomatch`);
+  await page
+    .locator(".empty")
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  const emptyFacts = await readAdvisorFilterFacts(page, ADVISOR_FACTS);
+  await shot(page, "06-advisors-filter-empty");
+  return emptyFacts;
 }
 
 async function captureAdvisorResponsiveFilterFacts(

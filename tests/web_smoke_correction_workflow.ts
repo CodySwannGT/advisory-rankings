@@ -188,6 +188,39 @@ async function correctionWorkflowChecks(
 ): Promise<readonly Check[]> {
   const advisor = await firstCorrectionAdvisor(pages.submitterPage);
   const signedOutChecks = await signedOutGuidanceChecks(browser, advisor);
+  const journeyChecks = await correctionJourneyChecks(
+    browser,
+    pages,
+    advisor,
+    values,
+    extraHTTPHeaders
+  );
+
+  return [
+    ...signedOutChecks,
+    ...journeyChecks,
+    pass(
+      "[EVIDENCE: correction-workflow-smoke] corrections: submitted request, reviewed it, saw reviewed note on profile"
+    ),
+  ];
+}
+
+/**
+ * Executes the signed-in correction request, review, and profile checks.
+ * @param browser - Browser used for nested mobile checks.
+ * @param pages - Isolated pages for each role.
+ * @param advisor - Advisor selected for correction.
+ * @param values - Unique correction values for this run.
+ * @param extraHTTPHeaders - JWT headers for mobile authenticated checks.
+ * @returns Correction journey checks.
+ */
+async function correctionJourneyChecks(
+  browser: Browser,
+  pages: CorrectionWorkflowPages,
+  advisor: SmokeAdvisor,
+  values: CorrectionWorkflowValues,
+  extraHTTPHeaders: Record<string, string>
+): Promise<readonly Check[]> {
   const requestId = await submitCorrection(
     pages.submitterPage,
     advisor,
@@ -214,14 +247,10 @@ async function correctionWorkflowChecks(
   );
 
   return [
-    ...signedOutChecks,
     check(Boolean(requestId), "corrections: request id returned"),
     ...inboxChecks,
     ...profileChecks,
     ...mobileChecks,
-    pass(
-      "[EVIDENCE: correction-workflow-smoke] corrections: submitted request, reviewed it, saw reviewed note on profile"
-    ),
   ];
 }
 
