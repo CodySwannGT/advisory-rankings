@@ -144,6 +144,26 @@ describe("Harper client edge behavior", () => {
     );
   });
 
+  it("falls back to REST upsert when hosted operations aborts", async () => {
+    process.env.HDB_TARGET_URL = OPERATIONS_TARGET_URL;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException("timed out", "AbortError"))
+      .mockResolvedValueOnce(new Response("", { status: 201 }));
+    globalThis.fetch = fetchMock;
+
+    await expect(upsert("Firm", [{ id: "firm-abort" }])).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${TARGET_URL}/Firm/firm-abort`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ id: "firm-abort" }),
+      })
+    );
+  });
+
   it("surfaces hosted operation errors that are not REST fallbacks", async () => {
     process.env.HDB_TARGET_URL = TARGET_URL;
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
