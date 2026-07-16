@@ -173,7 +173,7 @@ async function socketPost(
  */
 export async function op<T = unknown>(
   payload: Readonly<Record<string, unknown>>,
-  timeoutMs = 20_000
+  timeoutMs = 60_000
 ): Promise<T> {
   const { target, socket, auth } = harperConfig();
   const controller = new AbortController();
