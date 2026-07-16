@@ -20,7 +20,7 @@
     "eslint-plugin-sonarjs": "^4.0.0",
     "husky": "^8.0.0",
     "jiti": "^2.4.0",
-    "lint-staged": "^16.2.7",
+    "lint-staged": "^17.0.8",
     "oxlint": "^1.62.0",
     "oxlint-tsgolint": "^0.22.1",
     "playwright": "^1.56.1",
