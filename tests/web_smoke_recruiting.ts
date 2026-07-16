@@ -483,6 +483,14 @@ function loadedRecruitingChecks(
       "recruiting: firm filter controls are plainly labeled",
       `add ${loaded.addFirmLabel}, remove ${loaded.removeFirmLabel}`
     ),
+    ...loadedRecruitingDisclosureChecks(loaded),
+  ];
+}
+
+function loadedRecruitingDisclosureChecks(
+  loaded: LoadedRecruitingState
+): readonly Check[] {
+  return [
     check(
       loaded.hasAumUnknownHeader,
       "recruiting: firm momentum uses readable AUM gap header"

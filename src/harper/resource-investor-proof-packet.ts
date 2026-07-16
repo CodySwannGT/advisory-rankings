@@ -115,15 +115,7 @@ export function investorProofPacketResponse(
       keyMetrics: keyMetrics(coverage.sections).map(packetMetric),
       limitations: coverage.limitations,
     },
-    freshness: {
-      totalDue: freshness.summary.totalDue,
-      returned: freshness.summary.returned,
-      statusCounts: freshness.summary.statusCounts,
-      priorityGroups: freshness.summary.priorityGroups,
-      representativeAdvisors: freshness.items.slice(0, 3),
-      limitation:
-        freshness.summary.returned === 0 ? NO_DUE_RESEARCH_LIMITATION : null,
-    },
+    freshness: proofPacketFreshness(freshness),
     proofLinks,
     provenance: {
       publicResources: [
@@ -136,6 +128,25 @@ export function investorProofPacketResponse(
       ],
       sourceTables: coverage.provenance.sourceTables,
     },
+  };
+}
+
+/**
+ * Builds the freshness slice for the proof packet.
+ * @param freshness - Advisor research queue response.
+ * @returns Public freshness summary and representative due advisors.
+ */
+function proofPacketFreshness(
+  freshness: ReturnType<typeof advisorResearchQueueResponse>
+): InvestorProofPacketResponse["freshness"] {
+  return {
+    totalDue: freshness.summary.totalDue,
+    returned: freshness.summary.returned,
+    statusCounts: freshness.summary.statusCounts,
+    priorityGroups: freshness.summary.priorityGroups,
+    representativeAdvisors: freshness.items.slice(0, 3),
+    limitation:
+      freshness.summary.returned === 0 ? NO_DUE_RESEARCH_LIMITATION : null,
   };
 }
 

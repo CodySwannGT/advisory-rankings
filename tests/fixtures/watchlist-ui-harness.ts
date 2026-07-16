@@ -393,12 +393,7 @@ function comparisonItem(id: string): unknown {
       name: isPrimary ? EXAMPLE_WEALTH : "Summit Advisory",
       short: isPrimary ? "Example WM" : "Summit",
     },
-    regulatory: {
-      brokerCheckSnapshot: { subjectCrd: isPrimary ? "12345" : "98765" },
-      disclosures: [],
-      disclosureCount: 0,
-      registrationApplications: [],
-    },
+    regulatory: comparisonRegulatory(isPrimary),
     career: [
       {
         roleTitle: "Advisor",
@@ -414,6 +409,15 @@ function comparisonItem(id: string): unknown {
       assertions: [],
       researchSources: [],
     },
+  };
+}
+
+function comparisonRegulatory(isPrimary: boolean): unknown {
+  return {
+    brokerCheckSnapshot: { subjectCrd: isPrimary ? "12345" : "98765" },
+    disclosures: [],
+    disclosureCount: 0,
+    registrationApplications: [],
   };
 }
 

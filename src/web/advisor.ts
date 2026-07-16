@@ -1,5 +1,8 @@
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
-import type { AdvisorRow } from "../types/harper-schema.js";
+import type {
+  AdvisorRow,
+  OutsideBusinessActivityRow,
+} from "../types/harper-schema.js";
 import {
   api,
   refreshMe,
@@ -115,12 +118,7 @@ mountThreeColumnPage({
         .then(([d, me]) => {
           clear(center);
           clear(right);
-          render(
-            d,
-            center,
-            right,
-            me?.authenticated === true && me.role === "analyst"
-          );
+          render(d, center, right, isAnalystSession(me));
         })
         .catch((err: unknown) => {
           renderRecoverableDetailError({
@@ -320,18 +318,24 @@ function advisorCenterSections(
       d.brokerCheckSnapshot
     ),
     reviewedNotesFailureCard(reviewed.all),
-    outsideActivitiesSection(
-      narrowRows(
-        resourceRows(d.outsideBusinessActivities),
-        isOutsideBusinessActivityRow
-      )
-    ),
+    outsideActivitiesSection(advisorOutsideBusinessActivities(d)),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
     advisorTransitionsSection(resourceRows(d.transitions)),
     PartialFailureCard("Transitions involving this advisor", d.transitions),
     advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
   ];
+}
+
+/**
+ * Checks whether the session can see analyst-only profile details.
+ * @param me - Current session payload, or null when unauthenticated.
+ * @returns True when the user is an authenticated analyst.
+ */
+function isAnalystSession(
+  me: Awaited<ReturnType<typeof refreshMe>> | null
+): boolean {
+  return me?.authenticated === true && me.role === "analyst";
 }
 
 /**
@@ -343,6 +347,20 @@ function reviewedNotesFailureCard(
   reviewedRows: readonly unknown[]
 ): HTMLElement | null {
   return PartialFailureCard("Reviewed discrepancy notes", reviewedRows);
+}
+
+/**
+ * Reads verified outside-business activity rows from the profile payload.
+ * @param d - Advisor profile payload.
+ * @returns Narrowed outside-business activity rows.
+ */
+function advisorOutsideBusinessActivities(
+  d: AdvisorProfilePayload
+): readonly OutsideBusinessActivityRow[] {
+  return narrowRows(
+    resourceRows(d.outsideBusinessActivities),
+    isOutsideBusinessActivityRow
+  );
 }
 
 /**
