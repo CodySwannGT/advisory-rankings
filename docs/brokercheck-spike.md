@@ -254,6 +254,9 @@ The CLI entrypoint keeps mode selection in `src/scripts/fetch_brokercheck.ts`.
 Shared state persistence and single individual/firm fetch handling live in
 `src/scripts/fetch_brokercheck_core.ts`, so orchestrators and the CLI use the
 same recent-fetch and state-update behavior.
+Roster-page CRD selection and next-page recursion stay in
+`src/scripts/fetch_brokercheck_crawls.ts`; those helpers are deliberately
+thin so mode behavior remains visible from the CLI/orchestrator layer.
 
 ### The wave-1 orchestrator
 

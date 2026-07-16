@@ -249,11 +249,7 @@ async function mobileDrawerChecks(facts: {
       await facts.page.locator(DRAWER_SELECTOR).isVisible(),
       "mobile: drawer opens"
     ),
-    check(
-      !facts.escapeResult.closed.open &&
-        facts.escapeResult.closed.expanded === "false",
-      "mobile: Escape closes drawer and resets aria-expanded"
-    ),
+    escapeClosesDrawerCheck(facts.escapeResult),
     ...facts.focusChecks,
     check(
       facts.escapeResult.reopened.open &&
@@ -263,6 +259,15 @@ async function mobileDrawerChecks(facts: {
     drawerLabelsCheck(facts.drawerLinkLabels),
     check(facts.page.url().endsWith("/firms"), "mobile: drawer link navigates"),
   ];
+}
+
+function escapeClosesDrawerCheck(
+  escapeResult: Awaited<ReturnType<typeof exerciseEscapeDismissal>>
+): Check {
+  return check(
+    !escapeResult.closed.open && escapeResult.closed.expanded === "false",
+    "mobile: Escape closes drawer and resets aria-expanded"
+  );
 }
 
 function drawerLabelsCheck(drawerLinkLabels: readonly string[]): Check {

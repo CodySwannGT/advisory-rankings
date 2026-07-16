@@ -105,6 +105,14 @@ function feedCategoryCopyChecks(
       "/ feed copy: category filter keeps machine URL value",
       categoryCopy.urlCategory || PUBLIC_WEB_RESEARCH_OPTION_MISSING
     ),
+    ...unknownCategoryCopyChecks(categoryCopy),
+  ];
+}
+
+function unknownCategoryCopyChecks(
+  categoryCopy: Awaited<ReturnType<typeof visibleFeedCategoryCopy>>
+): readonly Check[] {
+  return [
     check(
       categoryCopy.unknownOptionLabel === null ||
         categoryCopy.unknownOptionLabel === UNCATEGORIZED_LABEL,

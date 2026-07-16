@@ -53,12 +53,16 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
         .count()) >= 9,
       "team.html: current members rendered"
     ),
-    check(
-      (await page.locator(".snap-table tbody tr").count()) >= 2,
-      "team.html: metric snapshot rows rendered"
-    ),
+    await teamSnapshotRowsCheck(page),
     ...mobileChecks,
   ];
+}
+
+async function teamSnapshotRowsCheck(page: Page): Promise<Check> {
+  return check(
+    (await page.locator(".snap-table tbody tr").count()) >= 2,
+    "team.html: metric snapshot rows rendered"
+  );
 }
 
 /**
