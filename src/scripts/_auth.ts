@@ -92,6 +92,10 @@ class StudioError extends Error {
   public constructor(message: string, status: number) {
     super(message);
     this.name = "StudioError";
+    // This is a CLI-side representation of a status code RECEIVED from an
+    // outbound Studio HTTP call; it is never thrown into Harper's response
+    // writer, so statusCode is not needed. Callers branch on `status`.
+    // ast-grep-ignore: harper-require-statuscode-on-thrown-error
     this.status = status;
   }
 }
