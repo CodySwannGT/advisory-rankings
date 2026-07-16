@@ -28,6 +28,16 @@ describe("Edward Jones source adapter", () => {
     expect(EDWARD_JONES_SOURCE_ADAPTER.buildSearchUrl("10022", 16, 16)).toBe(
       "https://www.edwardjones.com/api/v3/financial-advisor/results?q=10022&distance=50&distance_unit=mi&page=2&pageSize=16&matchblock=&searchtype=2"
     );
+    expect(
+      buildEdwardJonesSearchUrl({
+        input: "10022",
+        distance: 50,
+        page: 1,
+        searchType: 2,
+      })
+    ).toBe(
+      "https://www.edwardjones.com/api/v3/financial-advisor/results?q=10022&distance=50&distance_unit=mi&page=1&matchblock=&searchtype=2"
+    );
     expect(EDWARD_JONES_SOURCE_ADAPTER.discover()).toMatchObject({
       locatorUrl:
         "https://www.edwardjones.com/us-en/search/financial-advisor/results",

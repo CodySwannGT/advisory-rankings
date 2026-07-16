@@ -1,5 +1,8 @@
 import type { AdvisorProfilePayload } from "../types/advisor-profile.js";
-import type { AdvisorRow } from "../types/harper-schema.js";
+import type {
+  AdvisorRow,
+  OutsideBusinessActivityRow,
+} from "../types/harper-schema.js";
 import {
   api,
   refreshMe,
@@ -51,6 +54,7 @@ import {
 import { advisorTrustChecklistCard } from "./advisor-trust-checklist.js";
 import { advisorCoverageSection } from "./advisor-coverage-section.js";
 import { isErrorPayload } from "./advisor-error-payload.js";
+import { reviewedNoteRows } from "./advisor-reviewed-note-rows.js";
 import { appendRegistrationApplications } from "./advisor-registration-applications.js";
 import {
   isAdvisorTeamRow,
@@ -114,12 +118,7 @@ mountThreeColumnPage({
         .then(([d, me]) => {
           clear(center);
           clear(right);
-          render(
-            d,
-            center,
-            right,
-            me?.authenticated === true && me.role === "analyst"
-          );
+          render(d, center, right, isAnalystSession(me));
         })
         .catch((err: unknown) => {
           renderRecoverableDetailError({
@@ -294,9 +293,7 @@ function advisorCenterSections(
   d: AdvisorProfilePayload,
   mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
-  const reviewedDiscrepancies = d.reviewedRegulatoryDiscrepancies ?? [],
-    reviewedCorrections = d.reviewedCorrectionRequests ?? [];
-  const reviewedRows = [...reviewedDiscrepancies, ...reviewedCorrections];
+  const reviewed = reviewedNoteRows(d);
   return [
     ...advisorPrimaryCards(d, mobileEvidenceRoot),
     careerSection(d),
@@ -316,23 +313,29 @@ function advisorCenterSections(
     disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
     PartialFailureCard("Disclosures", d.disclosures),
     reviewedDiscrepancyNotesSection(
-      reviewedDiscrepancies,
-      reviewedCorrections,
+      reviewed.discrepancies,
+      reviewed.corrections,
       d.brokerCheckSnapshot
     ),
-    reviewedNotesFailureCard(reviewedRows),
-    outsideActivitiesSection(
-      narrowRows(
-        resourceRows(d.outsideBusinessActivities),
-        isOutsideBusinessActivityRow
-      )
-    ),
+    reviewedNotesFailureCard(reviewed.all),
+    outsideActivitiesSection(advisorOutsideBusinessActivities(d)),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
     advisorTransitionsSection(resourceRows(d.transitions)),
     PartialFailureCard("Transitions involving this advisor", d.transitions),
     advisorCoverageSection(resourceRows(d.articles)),
     PartialFailureCard("Coverage", d.articles),
   ];
+}
+
+/**
+ * Checks whether the session can see analyst-only profile details.
+ * @param me - Current session payload, or null when unauthenticated.
+ * @returns True when the user is an authenticated analyst.
+ */
+function isAnalystSession(
+  me: Awaited<ReturnType<typeof refreshMe>> | null
+): boolean {
+  return me?.authenticated === true && me.role === "analyst";
 }
 
 /**
@@ -344,6 +347,20 @@ function reviewedNotesFailureCard(
   reviewedRows: readonly unknown[]
 ): HTMLElement | null {
   return PartialFailureCard("Reviewed discrepancy notes", reviewedRows);
+}
+
+/**
+ * Reads verified outside-business activity rows from the profile payload.
+ * @param d - Advisor profile payload.
+ * @returns Narrowed outside-business activity rows.
+ */
+function advisorOutsideBusinessActivities(
+  d: AdvisorProfilePayload
+): readonly OutsideBusinessActivityRow[] {
+  return narrowRows(
+    resourceRows(d.outsideBusinessActivities),
+    isOutsideBusinessActivityRow
+  );
 }
 
 /**

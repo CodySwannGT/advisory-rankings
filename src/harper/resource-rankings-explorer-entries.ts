@@ -242,37 +242,47 @@ function entrySubject(
     ? db.byAdvisor.get(row.subjectAdvisorId)
     : undefined;
   if (advisor)
-    return {
-      kind: "advisor",
-      id: advisor.id,
-      displayName: advisorDisplayName(advisor),
-      url: `/advisor.html?id=${encodeURIComponent(advisor.slug || advisor.id)}`,
-    };
+    return resolvedSubject(
+      "advisor",
+      advisor.id,
+      advisorDisplayName(advisor),
+      advisor.slug
+    );
   const team: ResolvableTeam | undefined = row.subjectTeamId
     ? db.byTeam.get(row.subjectTeamId)
     : undefined;
-  if (team)
-    return {
-      kind: "team",
-      id: team.id,
-      displayName: team.name,
-      url: `/team.html?id=${encodeURIComponent(team.slug || team.id)}`,
-    };
+  if (team) return resolvedSubject("team", team.id, team.name, team.slug);
   const firm: ResolvableFirm | undefined = row.subjectFirmId
     ? db.byFirm.get(row.subjectFirmId)
     : undefined;
-  if (firm)
-    return {
-      kind: "firm",
-      id: firm.id,
-      displayName: firm.name,
-      url: `/firm.html?id=${encodeURIComponent(firm.slug || firm.id)}`,
-    };
+  if (firm) return resolvedSubject("firm", firm.id, firm.name, firm.slug);
   return {
     kind: ranking?.subjectType || inferredSubjectType(row),
     id: null,
     displayName: row.rawDisplayName || "Unresolved ranking row",
     url: null,
+  };
+}
+
+/**
+ * Builds a canonical linked ranking subject.
+ * @param kind - Subject entity kind.
+ * @param id - Canonical subject id.
+ * @param displayName - Public subject display name.
+ * @param slug - Optional route slug.
+ * @returns Ranking subject descriptor.
+ */
+function resolvedSubject(
+  kind: "advisor" | "firm" | "team",
+  id: string,
+  displayName: string,
+  slug: string | null | undefined
+): RankingSubject {
+  return {
+    kind,
+    id,
+    displayName,
+    url: `/${kind}.html?id=${encodeURIComponent(slug || id)}`,
   };
 }
 

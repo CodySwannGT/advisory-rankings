@@ -231,21 +231,34 @@ function comparisonTable(
           )
         )
       ),
+      comparisonTableBody(items, sections)
+    )
+  );
+}
+
+/**
+ * Builds comparison evidence rows for each configured section.
+ * @param items - Advisor comparison columns.
+ * @param sections - Comparison sections and values.
+ * @returns Comparison table body.
+ */
+function comparisonTableBody(
+  items: readonly AdvisorComparisonItem[],
+  sections: ReturnType<typeof comparisonSections>
+): HTMLElement {
+  return el(
+    "tbody",
+    {},
+    ...sections.map(section =>
       el(
-        "tbody",
+        "tr",
         {},
-        ...sections.map(section =>
+        el("th", { scope: "row" }, section.label),
+        ...section.values.map((value, index) =>
           el(
-            "tr",
-            {},
-            el("th", { scope: "row" }, section.label),
-            ...section.values.map((value, index) =>
-              el(
-                "td",
-                { "data-advisor-label": items[index].displayName },
-                comparisonCell(section.label, items[index], value)
-              )
-            )
+            "td",
+            { "data-advisor-label": items[index].displayName },
+            comparisonCell(section.label, items[index], value)
           )
         )
       )

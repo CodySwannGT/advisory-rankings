@@ -93,34 +93,8 @@ async function smokeRootBootResilience(page: Page): Promise<readonly Check[]> {
   const results: Check[] = [];
   for (let attempt = 1; attempt <= ROOT_ATTEMPTS; attempt += 1) {
     await smokeGoto(page, `${BASE}/`);
-    await page
-      .waitForFunction(
-        () => {
-          const bodyText = document.body.innerText.trim();
-          return (
-            bodyText.length > 0 &&
-            (document.querySelectorAll("article.card").length > 0 ||
-              document.querySelector("h1")?.textContent?.trim() ===
-                "AdvisorBook feed" ||
-              bodyText.includes("could not finish loading this page"))
-          );
-        },
-        undefined,
-        { timeout: QUICK_UI_TIMEOUT }
-      )
-      .catch(() => undefined);
-
-    const facts = await page.evaluate(
-      (): RootRenderFacts => ({
-        articleCount: document.querySelectorAll("article.card").length,
-        bodyLength: document.body.innerText.trim().length,
-        h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
-        hasRecovery: document.body.innerText.includes(
-          "could not finish loading this page"
-        ),
-      })
-    );
-
+    await waitForRootRender(page);
+    const facts = await readRootRenderFacts(page);
     results.push(
       check(
         facts.bodyLength > 0 &&
@@ -133,6 +107,47 @@ async function smokeRootBootResilience(page: Page): Promise<readonly Check[]> {
     );
   }
   return results;
+}
+
+/**
+ * Waits for the root route to render feed or recovery content.
+ * @param page - Browser page under test.
+ */
+async function waitForRootRender(page: Page): Promise<void> {
+  await page
+    .waitForFunction(
+      () => {
+        const bodyText = document.body.innerText.trim();
+        return (
+          bodyText.length > 0 &&
+          (document.querySelectorAll("article.card").length > 0 ||
+            document.querySelector("h1")?.textContent?.trim() ===
+              "AdvisorBook feed" ||
+            bodyText.includes("could not finish loading this page"))
+        );
+      },
+      undefined,
+      { timeout: QUICK_UI_TIMEOUT }
+    )
+    .catch(() => undefined);
+}
+
+/**
+ * Reads root route render evidence.
+ * @param page - Browser page under test.
+ * @returns Root route render facts.
+ */
+async function readRootRenderFacts(page: Page): Promise<RootRenderFacts> {
+  return await page.evaluate(
+    (): RootRenderFacts => ({
+      articleCount: document.querySelectorAll("article.card").length,
+      bodyLength: document.body.innerText.trim().length,
+      h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
+      hasRecovery: document.body.innerText.includes(
+        "could not finish loading this page"
+      ),
+    })
+  );
 }
 
 /**
@@ -234,11 +249,7 @@ async function mobileDrawerChecks(facts: {
       await facts.page.locator(DRAWER_SELECTOR).isVisible(),
       "mobile: drawer opens"
     ),
-    check(
-      !facts.escapeResult.closed.open &&
-        facts.escapeResult.closed.expanded === "false",
-      "mobile: Escape closes drawer and resets aria-expanded"
-    ),
+    escapeClosesDrawerCheck(facts.escapeResult),
     ...facts.focusChecks,
     check(
       facts.escapeResult.reopened.open &&
@@ -248,6 +259,15 @@ async function mobileDrawerChecks(facts: {
     drawerLabelsCheck(facts.drawerLinkLabels),
     check(facts.page.url().endsWith("/firms"), "mobile: drawer link navigates"),
   ];
+}
+
+function escapeClosesDrawerCheck(
+  escapeResult: Awaited<ReturnType<typeof exerciseEscapeDismissal>>
+): Check {
+  return check(
+    !escapeResult.closed.open && escapeResult.closed.expanded === "false",
+    "mobile: Escape closes drawer and resets aria-expanded"
+  );
 }
 
 function drawerLabelsCheck(drawerLinkLabels: readonly string[]): Check {

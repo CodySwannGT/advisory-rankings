@@ -107,7 +107,7 @@
     "node": ">= 22.21.1"
   },
   "name": "advisory-rankings",
-  "version": "0.1.611",
+  "version": "0.1.621",
   "description": "Advisor data schema (sourced from AdvisorHub) running on Harper.",
   "private": true,
   "type": "module",
@@ -132,7 +132,8 @@
     "lodash": ">=4.18.1",
     "form-data": ">=4.0.6",
     "jsonata": ">=2.2.0",
-    "multer": ">=2.2.0"
+    "multer": ">=2.2.0",
+    "systeminformation": ">=5.27.14"
   },
   "overrides": {
     "@isaacs/brace-expansion": "^5.0.1",
@@ -145,7 +146,8 @@
     "lodash": ">=4.18.1",
     "form-data": ">=4.0.6",
     "jsonata": ">=2.2.0",
-    "multer": ">=2.2.0"
+    "multer": ">=2.2.0",
+    "systeminformation": ">=5.27.14"
   },
   "trustedDependencies": [
     "@ast-grep/cli",

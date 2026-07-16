@@ -10,6 +10,8 @@ import {
 
 (globalThis as { Resource?: new () => unknown }).Resource = class {};
 
+const HTML_RESPONSE = { contentType: "text/html; charset=utf-8" };
+
 const emptyDb = {
   articles: [],
   firms: [],
@@ -85,8 +87,44 @@ describe("resource routing edge resolvers", () => {
 
     await expect(new teams().get({ id: "stone-group" })).resolves.toEqual(
       expect.objectContaining({
-        contentType: "text/html; charset=utf-8",
+        ...HTML_RESPONSE,
         data: expect.stringContaining("<title>Team "),
+      })
+    );
+  });
+
+  it("selects directory, profile, and login shells for clean web routes", async () => {
+    const { advisors, firms, login } =
+      await import("../src/harper/resource-clean-web-routes.js");
+
+    await expect(new advisors().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Advisors "),
+      })
+    );
+    await expect(new advisors().get({ id: "jane-advisor" })).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Advisor "),
+      })
+    );
+    await expect(new firms().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Firms "),
+      })
+    );
+    await expect(new firms().get({ id: "alpha-wealth" })).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Firm "),
+      })
+    );
+    await expect(new login().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Sign in "),
       })
     );
   });

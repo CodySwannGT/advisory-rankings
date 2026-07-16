@@ -35,6 +35,7 @@ const TABLET_ROUTE_PATHS = [
   "/login",
 ] as const;
 const TABLET_ROUTE_WIDTHS = [768, 900, 1280] as const;
+const DRAWER_CHECK_WIDTHS = [1300, 1100, 900, 700, 320] as const;
 
 /**
  * Expected visible shell state at a named responsive breakpoint.
@@ -239,14 +240,7 @@ async function openedDrawerChecks(
   burger: Locator,
   width: number
 ): Promise<readonly Check[]> {
-  if (
-    width !== 1300 &&
-    width !== 1100 &&
-    width !== 900 &&
-    width !== 700 &&
-    width !== 320
-  )
-    return [];
+  if (!isDrawerCheckWidth(width)) return [];
 
   await burger.click();
   await page.waitForFunction(
@@ -278,6 +272,17 @@ async function openedDrawerChecks(
     ),
     ...(await activeDrawerRouteChecks(page, burger, width)),
   ];
+}
+
+/**
+ * Identifies breakpoints that should exercise the opened drawer.
+ * @param width - Viewport width in CSS pixels.
+ * @returns Whether drawer-open assertions should run.
+ */
+function isDrawerCheckWidth(width: number): boolean {
+  return DRAWER_CHECK_WIDTHS.includes(
+    width as (typeof DRAWER_CHECK_WIDTHS)[number]
+  );
 }
 
 /**

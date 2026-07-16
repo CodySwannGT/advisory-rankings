@@ -101,15 +101,9 @@ export function Navbar({
     closeDrawerFromKeyboard({ event, burger, drawer })
   );
 
-  links.addEventListener("click", event => {
-    const target = event.target;
-    if (
-      target instanceof Element &&
-      (target.tagName === "A" || target.closest("a"))
-    ) {
-      toggleDrawer(burger, drawer, false);
-    }
-  });
+  links.addEventListener("click", event =>
+    closeDrawerAfterLinkClick(event, burger, drawer)
+  );
   if (refreshMe) refreshMe().then(me => renderMe({ meSpot, me, logout }));
 
   return el(
@@ -121,6 +115,26 @@ export function Navbar({
     drawer,
     scrim
   );
+}
+
+/**
+ * Closes the mobile drawer after selecting any nested navigation link.
+ * @param event - Link container click event.
+ * @param burger - Drawer toggle button.
+ * @param drawer - Drawer element to close.
+ */
+function closeDrawerAfterLinkClick(
+  event: Event,
+  burger: HTMLElement,
+  drawer: HTMLElement
+): void {
+  const target = event.target;
+  if (
+    target instanceof Element &&
+    (target.tagName === "A" || target.closest("a"))
+  ) {
+    toggleDrawer(burger, drawer, false);
+  }
 }
 
 /**

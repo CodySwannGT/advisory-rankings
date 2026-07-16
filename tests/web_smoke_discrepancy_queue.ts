@@ -73,11 +73,7 @@ export async function smokeDiscrepancyQueue(
   await smokeWaitForSelector(page, QUEUE_CARD_SELECTOR);
   const queueChecks = await authenticatedQueueChecks(page);
   await shot(page, "10-discrepancy-queue");
-  await reviewDiscrepancy(page, item.id);
-  await smokeGoto(page, `${BASE}/advisors/${item.advisorId}`);
-  await smokeWaitForSelector(page, ".profile-head h1");
-  await waitForReviewedNotes(page);
-  await shot(page, "11-discrepancy-reviewed-profile");
+  await openReviewedProfile(page, item);
 
   const checks = discrepancyQueueReviewChecks(
     queueChecks,
@@ -85,6 +81,17 @@ export async function smokeDiscrepancyQueue(
   );
   await clearAnalystSession(page);
   return checks;
+}
+
+async function openReviewedProfile(
+  page: Page,
+  item: { readonly advisorId: string; readonly id: string }
+): Promise<void> {
+  await reviewDiscrepancy(page, item.id);
+  await smokeGoto(page, `${BASE}/advisors/${item.advisorId}`);
+  await smokeWaitForSelector(page, ".profile-head h1");
+  await waitForReviewedNotes(page);
+  await shot(page, "11-discrepancy-reviewed-profile");
 }
 
 function discrepancyQueueReviewChecks(

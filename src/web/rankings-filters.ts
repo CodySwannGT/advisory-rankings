@@ -52,17 +52,7 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
       "form",
       { class: "rankings-filters", method: "get", action: "/rankings" },
       rankingCategoryField(data),
-      selectField(
-        "Year",
-        "year",
-        data.filters.year === null ? null : String(data.filters.year),
-        [
-          ["", "All years"],
-          ...data.facets.years.map(
-            (value): SelectOption => [String(value), String(value)]
-          ),
-        ]
-      ),
+      rankingYearField(data),
       facetInput("Firm", "firm", data.filters.firmQuery || "", {
         name: "firm",
         options: data.facets.firms,
@@ -88,6 +78,25 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
       el("button", { class: "filter-button", type: "submit" }, "Apply")
     ),
   });
+}
+
+/**
+ * Renders the ranking year facet select.
+ * @param data - Current filter payload.
+ * @returns Year select field.
+ */
+function rankingYearField(data: RankingsFilterPayload): HTMLElement {
+  return selectField(
+    "Year",
+    "year",
+    data.filters.year === null ? null : String(data.filters.year),
+    [
+      ["", "All years"],
+      ...data.facets.years.map(
+        (value): SelectOption => [String(value), String(value)]
+      ),
+    ]
+  );
 }
 
 /**

@@ -213,21 +213,7 @@ export async function smokeWatchlists(
   await smokeGoto(page, `${BASE}/watchlists`);
   await smokeWaitForSelector(page, WATCHLIST_SIGN_IN_LINK_SELECTOR);
   await shot(page, "06-watchlists");
-  const overflow = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  const signInHref = await page
-    .locator(WATCHLIST_SIGN_IN_LINK_SELECTOR)
-    .first()
-    .getAttribute("href");
-  const watchlistsPath = new URL(page.url()).pathname;
-  const watchlistsHeadingVisible = await page
-    .getByRole("heading", { level: 1, name: "Watchlists" })
-    .isVisible();
-  const signInGuidanceVisible = await page
-    .getByText(WATCHLIST_SIGN_IN_COPY)
-    .isVisible();
+  const gateEvidence = await readWatchlistGatePageEvidence(page);
   await page.locator(WATCHLIST_SIGN_IN_LINK_SELECTOR).first().click();
   await page
     .getByRole("heading", { name: LOGIN_ACCESS_HEADING })
@@ -239,15 +225,36 @@ export async function smokeWatchlists(
     context,
     watchlistGateChecks(
       watchlistGateEvidence({
+        ...gateEvidence,
         ...loginEvidence,
-        overflow,
-        signInGuidanceVisible,
-        signInHref,
-        watchlistsHeadingVisible,
-        watchlistsPath,
       })
     )
   );
+}
+
+/**
+ * Reads the anonymous Watchlists sign-in gate evidence.
+ * @param page - Browser page on the Watchlists route.
+ * @returns Visible sign-in gate facts.
+ */
+async function readWatchlistGatePageEvidence(page: Page) {
+  return {
+    overflow: await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    })),
+    signInGuidanceVisible: await page
+      .getByText(WATCHLIST_SIGN_IN_COPY)
+      .isVisible(),
+    signInHref: await page
+      .locator(WATCHLIST_SIGN_IN_LINK_SELECTOR)
+      .first()
+      .getAttribute("href"),
+    watchlistsHeadingVisible: await page
+      .getByRole("heading", { level: 1, name: "Watchlists" })
+      .isVisible(),
+    watchlistsPath: new URL(page.url()).pathname,
+  };
 }
 
 function newAnonymousWatchlistContext(browser: Browser) {

@@ -246,6 +246,15 @@ function coverageChecks(
         evidence.linkHrefs[linkLabel] ?? "missing"
       )
     ),
+    ...coveragePrivacyChecks(label, evidence),
+  ];
+}
+
+function coveragePrivacyChecks(
+  label: string,
+  evidence: CoverageDashboardEvidence
+): readonly Check[] {
+  return [
     check(
       evidence.hiddenPrivateCopy.length === 0,
       `${label}: private user copy is absent`,

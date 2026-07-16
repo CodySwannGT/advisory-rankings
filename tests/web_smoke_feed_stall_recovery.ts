@@ -28,7 +28,7 @@
  * meaningful only against a build that carries the timeout (the post-deploy
  * smoke and the local-Harper `test:e2e`), not against an older deployed bundle.
  */
-import type { Browser, Route } from "playwright";
+import type { Browser, Page, Route } from "playwright";
 import {
   BASE,
   FEED_HEADLINE_SELECTOR,
@@ -77,20 +77,7 @@ export async function smokeFeedStallRecovery(
     Object.assign(globalThis, { __AB_REQUEST_TIMEOUT_MS__: timeoutMs });
   }, TEST_REQUEST_TIMEOUT_MS);
 
-  // Hold only the first `/Feed` past the client timeout. The client aborts it;
-  // fulfilling an already-aborted request rejects, which we swallow. The retry
-  // is a fresh request (this one-shot route is spent) and reaches the backend.
-  const stallOnce = async (route: Route): Promise<void> => {
-    await sleep(FEED_STALL_MS);
-    await route
-      .fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ items: [], nextCursor: null, hasMore: false }),
-      })
-      .catch(() => undefined);
-  };
-  await page.route("**/Feed", stallOnce, { times: 1 });
+  await routeOneStalledFeed(page);
 
   await smokeGoto(page, `${BASE}/`);
   // Plain wait — NO reload. Only an in-place client retry can satisfy this.
@@ -113,6 +100,20 @@ export async function smokeFeedStallRecovery(
       `cards=${recoveredCards}`
     ),
   ]);
+}
+
+async function routeOneStalledFeed(page: Page): Promise<void> {
+  const stallOnce = async (route: Route): Promise<void> => {
+    await sleep(FEED_STALL_MS);
+    await route
+      .fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: [], nextCursor: null, hasMore: false }),
+      })
+      .catch(() => undefined);
+  };
+  await page.route("**/Feed", stallOnce, { times: 1 });
 }
 
 /**

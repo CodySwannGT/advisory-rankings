@@ -64,6 +64,23 @@ function limitationItems(
 ): readonly string[] {
   const gaps = [
     bodyLimitation(options.body),
+    ...entityRowLimitations(options),
+    provenanceLimitation(options.provenance, options.provenanceRows),
+    quoteContextLimitation(options),
+    highConfidenceFactLimitation(options.provenanceRows),
+  ].filter((item): item is string => Boolean(item));
+  return gaps.length ? [...gaps, PUBLIC_BOUNDARY_LIMITATION] : gaps;
+}
+
+/**
+ * Builds limitation messages for related article resource rows.
+ * @param options - Public ArticleView resources and derived rows.
+ * @returns Optional related-row limitation messages.
+ */
+function entityRowLimitations(
+  options: ArticleLimitationResources
+): readonly (string | null)[] {
+  return [
     rowLimitation({
       rows: options.events,
       raw: options.eventCards,
@@ -96,11 +113,7 @@ function limitationItems(
       failed:
         "Mentioned advisors could not load; advisor evidence is omitted until the public resource is available.",
     }),
-    provenanceLimitation(options.provenance, options.provenanceRows),
-    quoteContextLimitation(options),
-    highConfidenceFactLimitation(options.provenanceRows),
-  ].filter((item): item is string => Boolean(item));
-  return gaps.length ? [...gaps, PUBLIC_BOUNDARY_LIMITATION] : gaps;
+  ];
 }
 
 /**

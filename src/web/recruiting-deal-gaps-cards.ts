@@ -93,12 +93,7 @@ export function dealGapFilterCard(data: DealGapResponse): HTMLElement {
       textField("Firm", "firm", data.filters.firmQuery ?? "", "Morgan Stanley"),
       textField("State", "state", data.filters.state ?? "", "NY"),
       textField("Year", "year", data.filters.year ?? "", "2026"),
-      selectField(
-        "Direction",
-        "direction",
-        data.filters.direction,
-        DIRECTION_OPTIONS
-      ),
+      directionField(data),
       selectField("Gap", "gapType", data.filters.gapType ?? "", GAP_OPTIONS),
       selectField(
         "Unresolved",
@@ -122,6 +117,20 @@ export function dealGapFilterCard(data: DealGapResponse): HTMLElement {
       })
     ),
   });
+}
+
+/**
+ * Renders the deal direction select.
+ * @param data - Current deal-gap response.
+ * @returns Direction select field.
+ */
+function directionField(data: DealGapResponse): HTMLElement {
+  return selectField(
+    "Direction",
+    "direction",
+    data.filters.direction,
+    DIRECTION_OPTIONS
+  );
 }
 
 /**

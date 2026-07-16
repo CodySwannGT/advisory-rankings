@@ -116,12 +116,7 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "04-evidence-mobile-search-kind-firm");
 
-  const buttonPressed = await page
-    .getByRole("button", { name: "Firms" })
-    .getAttribute("aria-pressed");
-  const visibleKinds = await page
-    .locator(`${SEARCH_RESULT_ROWS} .gs-kind`)
-    .allTextContents();
+  const observed = await readMobileSearchKindState(page);
 
   return [
     check(
@@ -130,17 +125,31 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
       `${response.url()} status=${response.status()}`
     ),
     check(
-      buttonPressed === "true",
+      observed.buttonPressed === "true",
       "[EVIDENCE: mobile-filter-usability] 390px Firms toggle reports aria-pressed",
-      buttonPressed ?? ""
+      observed.buttonPressed
     ),
     check(
-      visibleKinds.length >= 1 &&
-        visibleKinds.every(kind => kind.trim().toLowerCase() === "firm"),
+      observed.visibleKinds.length >= 1 &&
+        observed.visibleKinds.every(
+          kind => kind.trim().toLowerCase() === "firm"
+        ),
       "[EVIDENCE: mobile-filter-usability] 390px firm mode shows firm-only rows",
-      visibleKinds.join(",")
+      observed.visibleKinds.join(",")
     ),
   ];
+}
+
+async function readMobileSearchKindState(page: Page) {
+  return {
+    buttonPressed:
+      (await page
+        .getByRole("button", { name: "Firms" })
+        .getAttribute("aria-pressed")) ?? "",
+    visibleKinds: await page
+      .locator(`${SEARCH_RESULT_ROWS} .gs-kind`)
+      .allTextContents(),
+  };
 }
 
 function isWellsFirmSearchResponse(response: { url(): string }): boolean {

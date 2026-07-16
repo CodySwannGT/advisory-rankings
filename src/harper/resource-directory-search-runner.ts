@@ -18,6 +18,7 @@ import type {
 import type {
   SearchCounts,
   SearchKind,
+  SearchMatch,
   SearchResponse,
 } from "./resource-directory-types.js";
 import { canonicalizeForSearch } from "./resource-firm-canonicalization.js";
@@ -86,12 +87,6 @@ export async function runGlobalSearch(
   // scored-matches array would undercount the advisor side when more
   // than `cap` advisors matched the query (because only the first
   // `cap` get hydrated and scored).
-  const counts = {
-    advisors: advisorIds.length,
-    firms: firmMatches.length,
-    teams: teamMatches.length,
-    total: advisorIds.length + firmMatches.length + teamMatches.length,
-  };
   return buildSearchResponse({
     norm,
     kind,
@@ -100,8 +95,28 @@ export async function runGlobalSearch(
     firmMatches,
     teamMatches,
     firmAliases,
-    counts,
+    counts: buildSearchCounts(advisorIds, firmMatches, teamMatches),
   });
+}
+
+/**
+ * Counts hydrated search result groups for the response summary.
+ * @param advisorIds - Matching advisor ids before hydration.
+ * @param firmMatches - Matching firm rows.
+ * @param teamMatches - Matching team rows.
+ * @returns Search result count summary.
+ */
+function buildSearchCounts(
+  advisorIds: readonly string[],
+  firmMatches: readonly FirmRow[],
+  teamMatches: readonly TeamRow[]
+) {
+  return {
+    advisors: advisorIds.length,
+    firms: firmMatches.length,
+    teams: teamMatches.length,
+    total: advisorIds.length + firmMatches.length + teamMatches.length,
+  };
 }
 
 /**
@@ -150,17 +165,33 @@ const buildSearchResponse = async (
   return {
     q: norm,
     kind,
-    items: displayed.map(({ sortKey, ...row }) =>
-      row.kind === "advisor"
-        ? {
-            ...row,
-            sub: advisorSearchSubtitle(row.id, subtitleByAdvisor, advisorById),
-          }
-        : row
+    items: displayed.map(row =>
+      publicSearchMatch(row, subtitleByAdvisor, advisorById)
     ),
     counts: canonicalSearchCounts(input.counts, rows),
   };
 };
+
+/**
+ * Converts an internal ranked match into the public search payload.
+ * @param match - Ranked match with private sort metadata.
+ * @param subtitleByAdvisor - Resolved advisor subtitles by id.
+ * @param advisorById - Advisor rows keyed by id.
+ * @returns Public search match without private sort metadata.
+ */
+function publicSearchMatch(
+  match: SearchMatch,
+  subtitleByAdvisor: ReadonlyMap<string, string>,
+  advisorById: ReadonlyMap<string, AdvisorRow>
+): Omit<SearchMatch, "sortKey"> {
+  const { sortKey: _sortKey, ...row } = match;
+  return row.kind === "advisor"
+    ? {
+        ...row,
+        sub: advisorSearchSubtitle(row.id, subtitleByAdvisor, advisorById),
+      }
+    : row;
+}
 
 /**
  * Recomputes counts after firm and team canonicalization collapses aliases.

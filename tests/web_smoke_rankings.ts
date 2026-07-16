@@ -121,48 +121,59 @@ async function readLoadedRankings(page: Page) {
  * @returns Rankings page evidence.
  */
 async function readRankingsMainEvidence(page: Page) {
-  return await page.evaluate(args => {
+  const browseEvidence = await readRankingsBrowseEvidence(page);
+  const textEvidence = await page.evaluate(args => {
     const pageText = document.body.innerText;
     const pageTextLower = pageText.toLowerCase();
     return {
-      browseCardTitles: [
-        ...document.querySelectorAll<HTMLElement>(
-          ".left .card-title, .left .subtitle"
-        ),
-      ].map(title => title.textContent?.trim() ?? ""),
-      browseLinks: [
-        ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
-      ].map(link => link.textContent?.trim() ?? ""),
-      hasHeader: document.body.innerText.includes("Advisor Rankings Browser"),
-      hasPurposeLede: document.body.innerText.includes(
+      hasHeader: pageText.includes("Advisor Rankings Browser"),
+      hasPurposeLede: pageText.includes(
         "Browse public advisor and team ranking appearances"
       ),
-      hasNextGen: document.body.innerText.includes("Next Gen"),
-      hasPublicRankingsOnly: !document.body.innerText.includes(
-        "Ranking data quality"
-      ),
-      hasSummaryMetricLabels:
-        document.body.innerText.includes("Ranked profiles") &&
-        document.body.innerText.includes("Linked profiles") &&
-        document.body.innerText.includes("Profiles to link") &&
-        document.body.innerText.includes("Markets"),
+      hasNextGen: pageText.includes("Next Gen"),
+      hasPublicRankingsOnly: !pageText.includes("Ranking data quality"),
+      hasSummaryMetricLabels: [
+        "Ranked profiles",
+        "Linked profiles",
+        "Profiles to link",
+        "Markets",
+      ].every(label => pageText.includes(label)),
       hasResolved: pageTextLower.includes("linked advisorbook profile"),
       hasSourceBacked: pageTextLower.includes("verified source"),
       hasTopFirmCountLabels:
-        document.body.innerText.includes("Wells Fargo Advisors") &&
-        /\b\d+ rankings?\b/.test(document.body.innerText) &&
-        document.body.innerText.includes("Matched AdvisorBook firm"),
+        pageText.includes("Wells Fargo Advisors") &&
+        /\b\d+ rankings?\b/.test(pageText) &&
+        pageText.includes("Matched AdvisorBook firm"),
       hasScoreSignal:
         pageTextLower.includes("missing score") ||
         /\b\d{2,3}\.\d\b/.test(pageText),
       placeholderNames: args.placeholderNames.filter(name =>
-        document.body.innerText.includes(name)
+        pageText.includes(name)
       ),
       rawLabels: args.rawRankingsLabels.filter(label =>
-        document.body.innerText.includes(label)
+        pageText.includes(label)
       ),
     };
   }, RANKINGS_EVIDENCE_ARGS);
+  return { ...browseEvidence, ...textEvidence };
+}
+
+/**
+ * Reads rankings browse-navigation labels from the left rail.
+ * @param page - Browser page to inspect.
+ * @returns Browse card titles and links.
+ */
+async function readRankingsBrowseEvidence(page: Page) {
+  return await page.evaluate(() => ({
+    browseCardTitles: [
+      ...document.querySelectorAll<HTMLElement>(
+        ".left .card-title, .left .subtitle"
+      ),
+    ].map(title => title.textContent?.trim() ?? ""),
+    browseLinks: [
+      ...document.querySelectorAll<HTMLAnchorElement>(".left a"),
+    ].map(link => link.textContent?.trim() ?? ""),
+  }));
 }
 
 async function readRankingsEvidenceDetails(page: Page) {
@@ -442,6 +453,21 @@ function loadedRankingsChecks(loaded, sortChange) {
       "rankings: public page hides analyst data-quality workbench"
     ),
     ...lowInformationPanelChecks(loaded),
+    ...loadedRankingsMetadataChecks(loaded),
+    ...loadedRankingRowChecks(loaded),
+    scoreSignalCheck(loaded),
+    ...loadedRankingsRawLabelChecks(loaded),
+    profileLinkCheck(loaded),
+    check(
+      loaded.tableLayout.isContained,
+      "rankings: desktop table stays inside the content column",
+      JSON.stringify(loaded.tableLayout)
+    ),
+  ];
+}
+
+function loadedRankingsMetadataChecks(loaded) {
+  return [
     check(
       loaded.hasDataVolumeState,
       "rankings: public data volume state explains visible rankings"
@@ -451,8 +477,11 @@ function loadedRankingsChecks(loaded, sortChange) {
       loaded.hasHumanImportedDate,
       "rankings: source dates are human readable"
     ),
-    ...loadedRankingRowChecks(loaded),
-    scoreSignalCheck(loaded),
+  ];
+}
+
+function loadedRankingsRawLabelChecks(loaded) {
+  return [
     check(
       loaded.rawLabels.length === 0,
       "rankings: pipeline and raw enum labels are hidden",
@@ -462,12 +491,6 @@ function loadedRankingsChecks(loaded, sortChange) {
       loaded.placeholderNames.length === 0,
       "rankings: placeholder entities are hidden",
       loaded.placeholderNames.join(", ")
-    ),
-    profileLinkCheck(loaded),
-    check(
-      loaded.tableLayout.isContained,
-      "rankings: desktop table stays inside the content column",
-      JSON.stringify(loaded.tableLayout)
     ),
   ];
 }
@@ -700,25 +723,12 @@ async function smokeRankingsMobileViewport(
  * @returns Mobile rankings facts.
  */
 async function readMobileRankings(page: Page) {
-  return await page.evaluate(rankingsTableSelector => {
+  const clippedStatusLabels = await clippedMobileRankingStatusLabels(page);
+  const evidence = await page.evaluate(rankingsTableSelector => {
     const documentElement = document.documentElement;
     const pageText = document.body.innerText;
-    const tableText =
-      document.querySelector(rankingsTableSelector)?.textContent || "";
-    const clippedStatusLabels = [
-      ...document.querySelectorAll<HTMLElement>(
-        `${rankingsTableSelector} .tag`
-      ),
-    ]
-      .filter(tag => {
-        const rect = tag.getBoundingClientRect();
-        return (
-          tag.scrollWidth > tag.clientWidth + 1 ||
-          rect.left < 0 ||
-          rect.right > document.documentElement.clientWidth + 1
-        );
-      })
-      .map(tag => tag.textContent?.trim() || "empty status");
+    const table = document.querySelector(rankingsTableSelector);
+    const tableText = table?.textContent || "";
     return {
       clientWidth: documentElement.clientWidth,
       hasCounts: /Ranked profiles|Linked profiles|Profiles to link/i.test(
@@ -735,13 +745,38 @@ async function readMobileRankings(page: Page) {
         tableText.toLowerCase().includes("linked advisorbook profile") &&
         tableText.toLowerCase().includes("verified source"),
       noOverflow: documentElement.scrollWidth <= documentElement.clientWidth,
-      statusTagsFit: clippedStatusLabels.length === 0,
-      clippedStatusLabels,
       scrollWidth: documentElement.scrollWidth,
       tableText,
       text: pageText,
     };
   }, RANKINGS_TABLE_SELECTOR);
+  return {
+    ...evidence,
+    statusTagsFit: clippedStatusLabels.length === 0,
+    clippedStatusLabels,
+  };
+}
+
+/**
+ * Reads mobile ranking status tags whose boxes overflow their card bounds.
+ * @param page - Browser page to inspect.
+ * @returns Text labels for clipped status tags.
+ */
+async function clippedMobileRankingStatusLabels(page: Page) {
+  return await page
+    .locator(`${RANKINGS_TABLE_SELECTOR} .tag`)
+    .evaluateAll(tags =>
+      tags
+        .filter(tag => {
+          const rect = tag.getBoundingClientRect();
+          return (
+            tag.scrollWidth > tag.clientWidth + 1 ||
+            rect.left < 0 ||
+            rect.right > document.documentElement.clientWidth + 1
+          );
+        })
+        .map(tag => tag.textContent?.trim() || "empty status")
+    );
 }
 
 /**
@@ -783,12 +818,7 @@ async function smokeRankingsNoRows(
 function noRankingRowsPayload() {
   return {
     items: [],
-    summary: {
-      totalEntries: 0,
-      resolvedEntries: 0,
-      unresolvedEntries: 0,
-      representedStates: 0,
-    },
+    summary: emptyRankingsSummary(),
     filters: {
       category: "",
       year: "",
@@ -798,19 +828,8 @@ function noRankingRowsPayload() {
       resolved: "",
       sort: "rank",
     },
-    facets: {
-      categories: [],
-      cities: [],
-      firms: [],
-      years: [],
-      states: [],
-    },
-    coverage: {
-      totalEntries: 0,
-      buckets: [],
-      gapBuckets: [],
-      emptyState: "No rankings are loaded for this coverage view.",
-    },
+    facets: emptyRankingsFacets(),
+    coverage: emptyRankingsCoverage(),
     topFirms: [],
     source: {
       label: "AdvisorHub rankings",
@@ -821,5 +840,33 @@ function noRankingRowsPayload() {
       sourceIds: [],
     },
     emptyState: "No matching public rankings are available.",
+  };
+}
+
+function emptyRankingsSummary() {
+  return {
+    totalEntries: 0,
+    resolvedEntries: 0,
+    unresolvedEntries: 0,
+    representedStates: 0,
+  };
+}
+
+function emptyRankingsFacets() {
+  return {
+    categories: [],
+    cities: [],
+    firms: [],
+    years: [],
+    states: [],
+  };
+}
+
+function emptyRankingsCoverage() {
+  return {
+    totalEntries: 0,
+    buckets: [],
+    gapBuckets: [],
+    emptyState: "No rankings are loaded for this coverage view.",
   };
 }

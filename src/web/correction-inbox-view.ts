@@ -150,14 +150,7 @@ function requestCard(
     title: item.advisorName,
     attrs: { class: "correction-inbox-card" },
     body: [
-      el(
-        "div",
-        { class: "chip-row" },
-        Tag({ children: humanize(item.status), kind: "warn" }),
-        item.ageDays == null ? null : Tag({ children: `${item.ageDays}d old` }),
-        item.firmName ? Tag({ children: item.firmName }) : null,
-        item.sourceType ? Tag({ children: humanize(item.sourceType) }) : null
-      ),
+      requestChips(item),
       DetailsCard({
         title: "Requested change",
         pairs: [
@@ -181,6 +174,22 @@ function requestCard(
       status,
     ],
   });
+}
+
+/**
+ * Builds status and source chips for one correction request.
+ * @param item Pending correction request.
+ * @returns Chip row.
+ */
+function requestChips(item: AdvisorCorrectionRequestQueueItem): HTMLElement {
+  return el(
+    "div",
+    { class: "chip-row" },
+    Tag({ children: humanize(item.status), kind: "warn" }),
+    item.ageDays == null ? null : Tag({ children: `${item.ageDays}d old` }),
+    item.firmName ? Tag({ children: item.firmName }) : null,
+    item.sourceType ? Tag({ children: humanize(item.sourceType) }) : null
+  );
 }
 
 /**

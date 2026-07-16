@@ -240,18 +240,7 @@ const collectReadinessMatches = async (
   if (scanned >= READINESS_SCAN_LIMIT || matched.length >= targetMatches) {
     return { matched, truncated: true };
   }
-  const query = plan.sortInHarper
-    ? {
-        conditions: plan.conditions,
-        sort: { attribute: "lastName" },
-        limit: READINESS_SEARCH_PAGE_LIMIT,
-        offset: scanned,
-      }
-    : {
-        conditions: plan.conditions,
-        limit: READINESS_SEARCH_PAGE_LIMIT,
-        offset: scanned,
-      };
+  const query = readinessSearchQuery(plan, scanned);
   const batch = await Array.fromAsync(searchable.search(query));
   const nextMatched = [
     ...matched,
@@ -271,6 +260,23 @@ const collectReadinessMatches = async (
         nextMatched
       );
 };
+
+const readinessSearchQuery = (
+  plan: ReadinessSearchPlan,
+  scanned: number
+): Parameters<SearchableAdvisorTable["search"]>[0] =>
+  plan.sortInHarper
+    ? {
+        conditions: plan.conditions,
+        sort: { attribute: "lastName" },
+        limit: READINESS_SEARCH_PAGE_LIMIT,
+        offset: scanned,
+      }
+    : {
+        conditions: plan.conditions,
+        limit: READINESS_SEARCH_PAGE_LIMIT,
+        offset: scanned,
+      };
 
 const finalizePage = (
   items: readonly AdvisorRow[],

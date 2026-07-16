@@ -72,6 +72,15 @@ export async function smokeComparison(
     path
   );
 
+  return [...desktopComparisonChecks(desktop), ...mobileChecks];
+}
+
+/**
+ * Converts desktop comparison metrics into smoke assertions.
+ * @param desktop - Metrics read from the desktop comparison page.
+ * @returns Desktop comparison checks.
+ */
+function desktopComparisonChecks(desktop: ComparisonMetrics): readonly Check[] {
   return [
     check(
       desktop.h1Text === "Advisor comparison",
@@ -93,7 +102,6 @@ export async function smokeComparison(
       "compare: desktop renders BrokerCheck attribution",
       `attributions ${desktop.brokerCheckAttributionCount}`
     ),
-    ...mobileChecks,
   ];
 }
 
