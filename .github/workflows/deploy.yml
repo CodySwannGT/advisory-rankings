@@ -170,7 +170,7 @@ jobs:
 
       - name: Upload smoke screenshots on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-screenshots
           path: tests/screenshots/

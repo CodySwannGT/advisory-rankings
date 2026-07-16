@@ -111,7 +111,7 @@ jobs:
             > "firm-source-${{ matrix.slug }}.json"
 
       - name: Upload importer output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firm-source-${{ matrix.slug }}
           path: firm-source-${{ matrix.slug }}.json
