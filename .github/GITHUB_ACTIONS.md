@@ -123,6 +123,31 @@ Enterprise-grade release management:
 - Sentry release creation
 - Jira release creation
 - Compliance validation (SOC2, ISO27001, HIPAA, PCI-DSS)
+- Optional human-approval gate (`require_approval` + `approval_environment`)
+
+**Human-approval gate**: pass `require_approval: true` and the run pauses at the
+`🚦 Release Approval` job until a required reviewer approves it in the Actions UI.
+The pause is enforced by the GitHub Environment named in `approval_environment`
+(falls back to `environment`, i.e. the branch name):
+
+```yaml
+uses: CodySwannGT/lisa/.github/workflows/release.yml@main
+with:
+  require_approval: true
+  approval_environment: 'production'
+```
+
+Because everything downstream (versioning, GitHub Release, and any deploy job
+that `needs: release`) chains off this gate, approval blocks the whole pipeline.
+The Lisa stack `deploy.yml` templates wire both inputs automatically from the
+optional `github.environments` block in `.lisa.config.json`, mapping the branch
+to its friendly environment name (`main` → `production` via `deploy.branches`).
+The environment itself — required reviewers and a deployment branch policy —
+is provisioned by `/lisa:setup:github-repo`. Provision before enabling the gate:
+GitHub auto-creates unprovisioned environments **without** protection rules, so
+an unprovisioned gate blocks nothing. Not yet wired for rails
+(`release-rails.yml` doesn't thread approval inputs) or harper-fabric (no
+release.yml call).
 
 **Blackout Periods** (configurable):
 - Production: No weekends, no late nights (10 PM - 6 AM)
@@ -149,12 +174,16 @@ AI-powered code assistance that can:
 
 **Triggers**: CI Quality Checks workflow failure (non-environment branches)
 
-Automatically fixes CI failures by having Claude analyze error logs and push fixes. Replaces the previous `create-issue-on-failure` workflow.
+Fixer of last resort for red CI on unattended branches: Claude analyzes error logs and prepares a fix as a pull request into the failing branch.
 
+- Stands down when the branch has an active owner: a fresh `lisa:babysitter-on-duty` lease label on the branch's open PR (stamped by drive-pr-to-merge sessions), or any push during a quiet-period wait (default 20 minutes)
 - Fetches failed job names and error logs from the CI run
 - Runs Claude with full context to diagnose and fix the root cause
-- Commits and pushes the fix to the failing branch
-- Skips environment branches (`main`, `staging`, `dev`) and auto-fix branches (prevents infinite loops)
+- Never pushes to the failing branch — commits land on a `claude-auto-fix-<branch>` side branch and a PR is opened into the failing branch
+- Falls back to a non-frozen dependency install when the lockfile itself is broken, so Claude can repair and commit the lockfile
+- When no fix can be produced, files a deduplicated ticket in the tracker declared in `.lisa.config.json` (`tracker`: jira | github | linear) with a title that says whether Claude ran at all
+- Skips environment branches (`main`, `staging`, `dev`) and auto-fix branches (prevents infinite loops); failing checks on an auto-fix PR escalate to a ticket instead of re-entering
+- Requires the caller to map `JIRA_API_TOKEN` / `LINEAR_API_KEY` (and `PAT`) explicitly in its `secrets:` block so tracker credentials reach the issue dispatcher — least-privilege by design; `secrets: inherit` also works mechanically but hands the chain every repo secret and trips SonarCloud security gates
 
 ### Claude Code Review Response (`claude-code-review-response.yml`)
 
@@ -576,7 +605,11 @@ with:
   approval_environment: 'production'
 ```
 
-**Note**: Create the environment in **Settings** > **Environments** first.
+**Note**: Create the environment in **Settings** > **Environments** first (or
+declare it under `github.environments` in `.lisa.config.json` and run
+`/lisa:setup:github-repo`). Unlike release.yml's environment-enforced gate,
+quality.yml's `approval_gate` job only records an audit artifact — it does not
+pause the run. For an enforced human gate, use release.yml's `require_approval`.
 
 ### Custom Node Version
 

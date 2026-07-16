@@ -224,17 +224,30 @@ expo-env.d.ts
 .track-plan-debug.log
 
 .lisa.config.local.json
+.lisa/jira-cli/
 
-# Generated Codex plugin marketplace — points into node_modules, so a committed
-# copy breaks plugin resolution in git worktrees / fresh checkouts (lisa#1366).
-# Lisa regenerates it on apply; never commit it.
+# Lisa-generated project Codex overlay. Keep host-owned config.toml and
+# hooks.json visible so projects can commit their own merged configuration.
+.codex/.lisa-managed.json
+.codex/agents/lisa/
+.codex/hooks/lisa/
+.codex/lisa-library/
+.codex/lisa-rules/
+.codex/skills/lisa/
 .agents/plugins/marketplace.json
 
 # END: AI GUARDRAILS
 
 # BEGIN: AI GUARDRAILS HARPER-FABRIC
+# Compiled Harper modules are emitted straight into harper-app/ from src/. The
+# root-level `harper-app/*.js` rule covers resources.js, resource-*.js, and any
+# other build output (e.g. detail-shell-negotiation.js) without matching
+# hand-written shims nested one level down (harper-app/<route>/index.js). If you
+# keep a hand-written .js at the harper-app root (e.g. an SEO shell), re-include
+# it with a `!harper-app/<file>.js` line placed BELOW this managed block.
 harper-app/resources.js
 harper-app/resource-*.js
+harper-app/*.js
 harper-app/web/**
 harper-app/lib/**
 .lisabak/

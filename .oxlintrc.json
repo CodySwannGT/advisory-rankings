@@ -4,6 +4,10 @@
     "./node_modules/@codyswann/lisa/oxlint/harper-fabric.json",
     "./node_modules/@codyswann/lisa/oxlint/typescript.json"
   ],
+  "rules": {
+    "jsdoc/empty-tags": "warn",
+    "jsdoc/require-yields": "warn"
+  },
   "ignorePatterns": [
     "build/**",
     "dist/**",
@@ -16,6 +20,7 @@
     "harper-app/resources.js",
     "harper-app/resource-*.js",
     "harper-app/web/**",
-    "harper-app/lib/**"
+    "harper-app/lib/**",
+    "harper-app/*.js"
   ]
 }
