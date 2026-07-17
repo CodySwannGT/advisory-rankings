@@ -428,6 +428,53 @@ describe("issue #721 — AC #1: /PublicAdvisors page is bounded", () => {
       (globalThis as any).tables.Advisor = originalAdvisor;
     }
   });
+
+  it("uses readiness finder cursors without repeating the first page", async () => {
+    const rows = seedAdvisors(20).map(row => ({
+      ...row,
+      bioText: READY_PROFILE_BIO,
+      businessEmail: `${row.id}@example.com`,
+      businessPhone: READY_PROFILE_PHONE,
+      headshotUrl: READY_PROFILE_HEADSHOT,
+      linkedinUrl: READY_PROFILE_LINKEDIN,
+    }));
+    setAdvisorRows(rows);
+    const recorded = recordedTable(rows);
+    const originalAdvisor = (globalThis as any).tables.Advisor;
+    (globalThis as any).tables.Advisor = recorded;
+
+    try {
+      const first = await new (resources as any).PublicAdvisors().get(
+        routeTarget({ contactReadiness: "ready", limit: "3" })
+      );
+      const second = await new (resources as any).PublicAdvisors().get(
+        routeTarget({
+          contactReadiness: "ready",
+          cursor: first.nextCursor,
+          limit: "3",
+        })
+      );
+
+      expect(first.items.map((advisor: any) => advisor.id)).toEqual([
+        "advisor-0000",
+        "advisor-0001",
+        "advisor-0002",
+      ]);
+      expect(second.items.map((advisor: any) => advisor.id)).toEqual([
+        "advisor-0003",
+        "advisor-0004",
+        "advisor-0005",
+      ]);
+      expect(second.nextCursor).not.toBe(first.nextCursor);
+      for (const call of recorded.calls) {
+        expect(call.limit).toBeDefined();
+        expect(call.limit).toBeLessThanOrEqual(MAX_PAGE_LIMIT);
+      }
+      expect(recorded.calls.map(call => call.offset)).toEqual([0, 0]);
+    } finally {
+      (globalThis as any).tables.Advisor = originalAdvisor;
+    }
+  });
 });
 
 describe("issue #721 — AC #2: /Search is token-index-bounded", () => {
