@@ -18,7 +18,6 @@ import type {
   ArticleSourceMetadata,
   ArticleViewErrorPayload,
   ArticleViewPayload,
-  CompactProvenanceAccumulator,
   EntityChipPayload,
   EvidenceTableRow,
 } from "./article-types.js";
@@ -29,7 +28,6 @@ import {
   search,
   fmts,
   fmtDate,
-  humanize,
   getArticleIdParam,
   articleSource,
   canonicalizeArticleRoute,
@@ -57,6 +55,13 @@ import {
   renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
+import { compactProvenance } from "./article-provenance.js";
+
+const OUTBOUND_ARTICLE_ATTRS = {
+  target: "_blank",
+  rel: "noreferrer",
+  class: "ext-link",
+} as const;
 
 mountThreeColumnPage({
   active: "home",
@@ -126,27 +131,45 @@ function render(
   const resources = articleResources(d);
 
   canonicalizeArticleRoute(a);
-  center.appendChild(
+  center.append(
     articleHead({
       article: a,
       events: resources.events,
       firms: resources.firmRows,
       teams: resources.teamRows,
       advisors: resources.advisorRows,
-    })
+    }),
+    articleEvidenceMap(a, resources)
   );
-  center.appendChild(articleEvidenceMap(a, resources));
-  appendIfPresent(center, limitationsSection(resources));
-  appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
-  appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));
-  appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
-  appendIfPresent(center, PartialFailureCard("Mentioned advisors", d.advisors));
-  appendIfPresent(center, articleBodyCard(d.body));
-  appendIfPresent(center, linkOutCard(a, d.body));
-  appendIfPresent(center, PartialFailureCard("Article body", d.body));
-  appendIfPresent(center, evidenceSection(resources.evidenceRows));
-  appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
+  appendArticleSections(center, d, a, resources);
   right.appendChild(metadataSection(a));
+}
+
+/**
+ * Appends optional article sections after the masthead.
+ * @param center - Main content column.
+ * @param d - Successful ArticleView payload.
+ * @param article - Article metadata row.
+ * @param resources - Normalized article resources.
+ */
+function appendArticleSections(
+  center: HTMLElement,
+  d: Exclude<ArticleViewPayload, ArticleViewErrorPayload>,
+  article: ArticleMetadata,
+  resources: ArticleLimitationResources
+): void {
+  [
+    limitationsSection(resources),
+    PartialFailureCard("Article events", d.eventCards),
+    PartialFailureCard("Mentioned firms", d.firms),
+    PartialFailureCard("Mentioned teams", d.teams),
+    PartialFailureCard("Mentioned advisors", d.advisors),
+    articleBodyCard(d.body),
+    linkOutCard(article, d.body),
+    PartialFailureCard("Article body", d.body),
+    evidenceSection(resources.evidenceRows),
+    PartialFailureCard("Extracted facts", d.provenance),
+  ].forEach(section => appendIfPresent(center, section));
 }
 
 /**
@@ -252,12 +275,7 @@ function articleFooter(
     article.url
       ? el(
           "a",
-          {
-            href: article.url,
-            target: "_blank",
-            rel: "noreferrer",
-            class: "ext-link",
-          },
+          { ...OUTBOUND_ARTICLE_ATTRS, href: article.url },
           source.ctaLabel
         )
       : null
@@ -286,21 +304,19 @@ function evidenceSection(
  * @returns Table node wrapped by the evidence section.
  */
 function evidenceTable(rows: readonly EvidenceTableRow[]): HTMLElement {
+  const head = el(
+    "tr",
+    {},
+    ...["Fact", "Source context"].map(label => el("th", {}, label))
+  );
+  const bodyRows = rows.map(row =>
+    el("tr", {}, el("td", {}, row.field), el("td", {}, row.value))
+  );
   return el(
     "table",
     { class: "snap-table" },
-    el(
-      "thead",
-      {},
-      el("tr", {}, el("th", {}, "Fact"), el("th", {}, "Source context"))
-    ),
-    el(
-      "tbody",
-      {},
-      ...rows.map(row =>
-        el("tr", {}, el("td", {}, row.field), el("td", {}, row.value))
-      )
-    )
+    el("thead", {}, head),
+    el("tbody", {}, ...bodyRows)
   );
 }
 
@@ -322,69 +338,4 @@ function isArticleViewError(
   payload: ArticleViewPayload
 ): payload is ArticleViewErrorPayload {
   return "error" in payload && Boolean(payload.error);
-}
-
-/**
- * Deduplicates extracted article facts by normalized field/value pairs.
- * @param rows - Provenance rows returned by ArticleView.
- * @returns Compact provenance rows for display.
- */
-function compactProvenance(
-  rows: readonly ArticleProvenancePayload[]
-): readonly EvidenceTableRow[] {
-  return rows.reduce(
-    (acc: CompactProvenanceAccumulator, row) => {
-      const fact = humanFacingFact(row);
-      const context = sourceContext(row);
-      if (!fact || !context) return acc;
-      const value = `${context}`;
-      const field = fact;
-      const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
-      if (acc.keys.includes(key)) return acc;
-      return {
-        keys: [...acc.keys, key],
-        rows: [...acc.rows, { field, value }],
-      };
-    },
-    { keys: [], rows: [] }
-  ).rows;
-}
-
-/**
- * Builds a public fact label from the asserted value and field.
- * @param row - Provenance row returned by ArticleView.
- * @returns Human-facing fact summary or null when no value exists.
- */
-function humanFacingFact(row: ArticleProvenancePayload): string | null {
-  const value = String(row.assertedValue ?? "").trim();
-  if (!value) return null;
-  const field = publicFactLabel(row.fieldName);
-  return field ? `${value} (${field})` : value;
-}
-
-/**
- * Maps raw extraction fields to public article labels.
- * @param fieldName - Raw provenance field name.
- * @returns Product-language label.
- */
-function publicFactLabel(fieldName: unknown): string | null {
-  const raw = String(fieldName ?? "")
-    .trim()
-    .toLowerCase();
-  if (raw === "money_mention" || raw === "money mention") {
-    return "Reported amount";
-  }
-  return humanize(fieldName) || null;
-}
-
-/**
- * Extracts source context that explains what a fact refers to.
- * @param row - Provenance row returned by ArticleView.
- * @returns Source phrase when it adds context beyond the raw value.
- */
-function sourceContext(row: ArticleProvenancePayload): string | null {
-  const value = String(row.assertedValue ?? "").trim();
-  const quote = String(row.quotePhrase ?? "").trim();
-  if (!quote || quote.toLowerCase() === value.toLowerCase()) return null;
-  return quote;
 }

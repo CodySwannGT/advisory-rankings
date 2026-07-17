@@ -97,6 +97,8 @@ export function firmProfilePayload(
     db,
     firmId
   );
+  const transitionsIn = firmTransitionRows(db, firmId, "toFirmId");
+  const transitionsOut = firmTransitionRows(db, firmId, "fromFirmId");
   const profile: FirmProfileBody = {
     firm: { ...firm, short: firm.name },
     currentAdvisorCount,
@@ -104,14 +106,8 @@ export function firmProfilePayload(
     currentTeams: db.teams
       .filter(team => team.currentFirmId === firmId)
       .map(team => teamChip(team, db) as unknown),
-    transitionsIn: db.transitions
-      .filter(row => row.toFirmId === firmId)
-      .sort(cmpDesc("moveDate"))
-      .map(row => transitionRow(row, db) as unknown as FirmTransitionRowView),
-    transitionsOut: db.transitions
-      .filter(row => row.fromFirmId === firmId)
-      .sort(cmpDesc("moveDate"))
-      .map(row => transitionRow(row, db) as unknown as FirmTransitionRowView),
+    transitionsIn,
+    transitionsOut,
     branches: db.branches.filter(branch => branch.firmId === firmId),
     disclosuresAtThisFirm: db.disclosures
       .filter(row => row.firmIdAtTime === firmId)
@@ -128,6 +124,24 @@ export function firmProfilePayload(
     ...profile,
     dueDiligence: firmDueDiligenceModules(db, firmId, profile),
   };
+}
+
+/**
+ * Builds sorted firm transition rows for one transition side.
+ * @param db - Preloaded tables and lookup maps.
+ * @param firmId - Firm id to match.
+ * @param field - Transition firm id field to compare.
+ * @returns Public transition rows for the selected side.
+ */
+function firmTransitionRows(
+  db: ResourceIndex,
+  firmId: string,
+  field: "fromFirmId" | "toFirmId"
+): readonly FirmTransitionRowView[] {
+  return db.transitions
+    .filter(row => row[field] === firmId)
+    .sort(cmpDesc("moveDate"))
+    .map(row => transitionRow(row, db) as unknown as FirmTransitionRowView);
 }
 
 /**

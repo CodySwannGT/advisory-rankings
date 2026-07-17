@@ -146,44 +146,52 @@ async function readLoadedRecruiting(
 }
 
 function readLoadedRecruitingState(page: Page): Promise<LoadedRecruitingState> {
-  return page.evaluate(
-    ({ rawRecruitingLabels, tableSelector }) => ({
-      addFirmLabel: document
-        .querySelector(".watchlist-add-button")
-        ?.getAttribute("aria-label"),
-      hasAboutDataDisclosure: Array.from(
-        document.querySelectorAll("details summary")
-      ).some(node => node.textContent?.trim() === "About this data"),
-      hasAumUnknownHeader: Array.from(
-        document.querySelectorAll(".firm-momentum-table th")
-      ).some(node => node.textContent?.trim() === "AUM unknown"),
-      hasFirmOneLabel: Array.from(document.querySelectorAll("label span")).some(
-        node => node.textContent?.trim() === "Firm 1"
-      ),
-      hasHeader: document.body.innerText.includes("Recruiting Market Map"),
-      hasMomentum: document.body.innerText.includes("Firm momentum"),
-      hasMissingT12Tile: Array.from(
-        document.querySelectorAll(".recruiting-stat")
-      ).some(tile => tile.textContent?.includes("Missing T12")),
-      hasRecentMoves: document.body.innerText.includes("Recent moves"),
-      hasSourceStatus: document.body.innerText.includes("Source confirmed"),
-      hasTaylorGroup: document.body.innerText.includes("The Taylor Group"),
-      hasUnknownAumTile: Array.from(
-        document.querySelectorAll(".recruiting-stat")
-      ).some(tile => tile.textContent?.includes("Unknown AUM")),
-      hasUnknownMarketLabel: document.body.innerText.includes("Unknown market"),
-      removeFirmLabel: document
-        .querySelector(".watchlist-remove-button")
-        ?.getAttribute("aria-label"),
-      rawLabels: rawRecruitingLabels.filter(label =>
-        document.body.innerText.includes(label)
-      ),
-      rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
-    }),
-    {
-      rawRecruitingLabels: RAW_RECRUITING_LABELS,
-      tableSelector: RECRUITING_TABLE_SELECTOR,
-    }
+  return page.evaluate(readLoadedRecruitingStateInPage, {
+    rawRecruitingLabels: RAW_RECRUITING_LABELS,
+    tableSelector: RECRUITING_TABLE_SELECTOR,
+  });
+}
+
+function readLoadedRecruitingStateInPage({
+  rawRecruitingLabels,
+  tableSelector,
+}: {
+  readonly rawRecruitingLabels: readonly string[];
+  readonly tableSelector: string;
+}): LoadedRecruitingState {
+  const bodyText = document.body.innerText;
+  return {
+    addFirmLabel: document
+      .querySelector(".watchlist-add-button")
+      ?.getAttribute("aria-label"),
+    hasAboutDataDisclosure: textExists("details summary", "About this data"),
+    hasAumUnknownHeader: textExists(".firm-momentum-table th", "AUM unknown"),
+    hasFirmOneLabel: textExists("label span", "Firm 1"),
+    hasHeader: bodyText.includes("Recruiting Market Map"),
+    hasMomentum: bodyText.includes("Firm momentum"),
+    hasMissingT12Tile: textIncludes(".recruiting-stat", "Missing T12"),
+    hasRecentMoves: bodyText.includes("Recent moves"),
+    hasSourceStatus: bodyText.includes("Source confirmed"),
+    hasTaylorGroup: bodyText.includes("The Taylor Group"),
+    hasUnknownAumTile: textIncludes(".recruiting-stat", "Unknown AUM"),
+    hasUnknownMarketLabel: bodyText.includes("Unknown market"),
+    removeFirmLabel: document
+      .querySelector(".watchlist-remove-button")
+      ?.getAttribute("aria-label"),
+    rawLabels: rawRecruitingLabels.filter(label => bodyText.includes(label)),
+    rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
+  };
+}
+
+function textExists(selector: string, text: string): boolean {
+  return Array.from(document.querySelectorAll(selector)).some(
+    node => node.textContent?.trim() === text
+  );
+}
+
+function textIncludes(selector: string, text: string): boolean {
+  return Array.from(document.querySelectorAll(selector)).some(node =>
+    Boolean(node.textContent?.includes(text))
   );
 }
 

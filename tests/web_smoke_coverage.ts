@@ -200,19 +200,27 @@ function readCoverageDashboardEvidenceInPage({
     h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
     hiddenPrivateCopy: privatePatterns.filter(textMatches),
     linkHrefs: Object.fromEntries(links.map(linkHrefEntry)),
-    metricLabels: [
-      ...document.querySelectorAll<HTMLElement>(".coverage-metric-label"),
-    ].map(metric => metric.textContent?.trim() ?? ""),
+    metricLabels: textList(".coverage-metric-label"),
     privateRequests: performance
       .getEntriesByType("resource")
       .map(entry => entry.name)
       .filter(name => privateResource.test(new URL(name).pathname)),
     scrollWidth: document.documentElement.scrollWidth,
-    sectionIds: [
-      ...document.querySelectorAll<HTMLElement>("[data-coverage-section]"),
-    ].map(section => section.dataset.coverageSection ?? ""),
+    sectionIds: coverageSectionIds(),
     viewportWidth: document.documentElement.clientWidth,
   };
+}
+
+function coverageSectionIds(): readonly string[] {
+  return [
+    ...document.querySelectorAll<HTMLElement>("[data-coverage-section]"),
+  ].map(section => section.dataset.coverageSection ?? "");
+}
+
+function textList(selector: string): readonly string[] {
+  return [...document.querySelectorAll<HTMLElement>(selector)].map(
+    item => item.textContent?.trim() ?? ""
+  );
 }
 
 /**

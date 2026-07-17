@@ -72,15 +72,7 @@ function readAdvisorFilterFactsInPage(
   const counts = advisorFilterCounts(labels);
   const rows = Array.from(document.querySelectorAll(rowSelector));
   return {
-    accessibleLabels: expectedLabels.every(([labelText, id, name]) => {
-      const control = document.getElementById(id);
-      return (
-        document.querySelector(`label[for="${id}"]`)?.textContent?.trim() ===
-          labelText &&
-        ["INPUT", "SELECT"].includes(control?.tagName ?? "") &&
-        control?.getAttribute("name") === name
-      );
-    }),
+    accessibleLabels: advisorFilterLabelsAreAccessible(expectedLabels),
     bodyText: document.body.textContent || "",
     careerStatus: valueOf("careerStatus"),
     contactReadiness: valueOf("contactReadiness"),
@@ -90,15 +82,33 @@ function readAdvisorFilterFactsInPage(
     hasCrd: valueOf("hasCrd"),
     loaded: counts.loaded,
     profileSubstance: valueOf("profileSubstance"),
-    rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
-      label => !labels.some(item => item.textContent?.trim() === label)
-    ),
+    rawMetricsHidden: rawAdvisorMetricsHidden(labels),
     rowCount: rows.length,
     rowTexts: rows
       .slice(0, 5)
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: counts.total,
   };
+}
+
+function advisorFilterLabelsAreAccessible(
+  expectedLabels: AdvisorFilterFactPageArgs["expectedLabels"]
+): boolean {
+  return expectedLabels.every(([labelText, id, name]) => {
+    const control = document.getElementById(id);
+    return (
+      document.querySelector(`label[for="${id}"]`)?.textContent?.trim() ===
+        labelText &&
+      ["INPUT", "SELECT"].includes(control?.tagName ?? "") &&
+      control?.getAttribute("name") === name
+    );
+  });
+}
+
+function rawAdvisorMetricsHidden(labels: readonly HTMLElement[]): boolean {
+  return ["Loaded", "Total", "Page size"].every(
+    label => !labels.some(item => item.textContent?.trim() === label)
+  );
 }
 
 function advisorFilterCounts(labels: readonly HTMLElement[]) {

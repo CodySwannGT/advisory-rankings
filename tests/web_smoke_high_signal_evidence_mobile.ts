@@ -101,19 +101,13 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const input = page.locator("#global-search");
   await input.fill("wells");
-  await page
-    .locator(SEARCH_RESULT_ROWS)
-    .first()
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await waitForFirstSearchResult(page);
   const responsePromise = page.waitForResponse(isWellsFirmSearchResponse, {
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await page.getByRole("button", { name: "Firms" }).click();
   const response = await responsePromise;
-  await page
-    .locator(SEARCH_RESULT_ROWS)
-    .first()
-    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
+  await waitForFirstSearchResult(page);
   await shot(page, "04-evidence-mobile-search-kind-firm");
 
   const observed = await readMobileSearchKindState(page);
@@ -138,6 +132,13 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
       observed.visibleKinds.join(",")
     ),
   ];
+}
+
+async function waitForFirstSearchResult(page: Page): Promise<void> {
+  await page
+    .locator(SEARCH_RESULT_ROWS)
+    .first()
+    .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
 }
 
 async function readMobileSearchKindState(page: Page) {

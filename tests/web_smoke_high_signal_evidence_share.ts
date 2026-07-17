@@ -66,12 +66,7 @@ export async function captureFeedFilterUrlStateEvidence(
   await shot(page, "04-evidence-feed-filter-url-source");
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  // Wait for the filter card itself, not feed headlines, so that an empty
-  // filtered set (legitimately possible when a non-event-backed category is
-  // forced into event mode) still proves URL state was restored.
-  await page.waitForSelector(FEED_FILTER_SUMMARY, {
-    timeout: QUICK_UI_TIMEOUT,
-  });
+  await waitForFeedFilterSummary(page);
   const reloadMode = await page.locator(FEED_MODE_SELECT).inputValue();
   const reloadCategory = await page.locator(FEED_CATEGORY_SELECT).inputValue();
 
@@ -88,6 +83,12 @@ export async function captureFeedFilterUrlStateEvidence(
     reloadCategory,
     restored
   );
+}
+
+async function waitForFeedFilterSummary(page: Page): Promise<void> {
+  await page.waitForSelector(FEED_FILTER_SUMMARY, {
+    timeout: QUICK_UI_TIMEOUT,
+  });
 }
 
 /**

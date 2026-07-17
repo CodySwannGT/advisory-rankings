@@ -272,6 +272,7 @@ async function main(): Promise<void> {
   const delayMs = Number(arg("--delay-ms") ?? "1500");
   const write = has("--write");
   const target = targetKind();
+  const options = { baseUrl, token, max, write, delayMs };
 
   const [advisors, firms, employments] = await Promise.all([
     getRows("Advisor", token, baseUrl),
@@ -286,11 +287,7 @@ async function main(): Promise<void> {
       rows: attachCurrentFirmNames(advisors, firms, employments),
       table: "Advisor",
       mode: "advisor",
-      baseUrl,
-      token,
-      max,
-      write,
-      delayMs,
+      ...options,
     });
   }
   if (target === "firms" || target === "all") {
@@ -298,11 +295,7 @@ async function main(): Promise<void> {
       rows: firms,
       table: "Firm",
       mode: "firm",
-      baseUrl,
-      token,
-      max,
-      write,
-      delayMs,
+      ...options,
     });
   }
 }

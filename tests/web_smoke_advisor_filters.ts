@@ -492,44 +492,45 @@ async function readAdvisorFilterLayout(
   page: Page,
   width: number
 ): Promise<FilterLayoutSweep> {
-  return await page.evaluate(
-    ({ selector, viewportWidth }) => {
-      const form = document.querySelector(selector);
-      const card = form?.closest(".card");
-      const cardRect = card?.getBoundingClientRect();
-      if (!form || !cardRect) {
-        return {
-          escapedControls: ["missing filter card"],
-          width: viewportWidth,
-        };
-      }
+  return await page.evaluate(readAdvisorFilterLayoutInPage, {
+    selector: FILTER_FORM_SELECTOR,
+    viewportWidth: width,
+  });
+}
 
-      const controls = Array.from(
-        form.querySelectorAll("input, select, button")
-      );
-      const escapedControls = controls
-        .map(control => {
-          const rect = control.getBoundingClientRect();
-          const label =
-            control.getAttribute("name") ||
-            control.textContent?.trim() ||
-            control.tagName.toLowerCase();
-          const outside =
-            rect.left < cardRect.left ||
-            rect.right > cardRect.right ||
-            rect.top < cardRect.top ||
-            rect.bottom > cardRect.bottom;
-          return outside ? label : "";
-        })
-        .filter(Boolean);
+function readAdvisorFilterLayoutInPage({
+  selector,
+  viewportWidth,
+}: {
+  readonly selector: string;
+  readonly viewportWidth: number;
+}): FilterLayoutSweep {
+  const form = document.querySelector(selector);
+  const card = form?.closest(".card");
+  const cardRect = card?.getBoundingClientRect();
+  if (!form || !cardRect) {
+    return { escapedControls: ["missing filter card"], width: viewportWidth };
+  }
 
-      return {
-        escapedControls,
-        width: viewportWidth,
-      };
-    },
-    { selector: FILTER_FORM_SELECTOR, viewportWidth: width }
-  );
+  const controls = Array.from(form.querySelectorAll("input, select, button"));
+  const escapedControls = controls
+    .map(control => escapedFilterControl(control, cardRect))
+    .filter(Boolean);
+  return { escapedControls, width: viewportWidth };
+}
+
+function escapedFilterControl(control: Element, cardRect: DOMRect): string {
+  const rect = control.getBoundingClientRect();
+  const label =
+    control.getAttribute("name") ||
+    control.textContent?.trim() ||
+    control.tagName.toLowerCase();
+  const outside =
+    rect.left < cardRect.left ||
+    rect.right > cardRect.right ||
+    rect.top < cardRect.top ||
+    rect.bottom > cardRect.bottom;
+  return outside ? label : "";
 }
 
 /**

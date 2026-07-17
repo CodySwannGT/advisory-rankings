@@ -148,7 +148,6 @@ function renderCorrectionForm(
     renderNoCorrectionFields(body);
     return;
   }
-
   const controls = correctionControls(fields);
   const submit = correctionSubmitButton();
   const formControls: CorrectionControls = { ...controls, submit };
@@ -170,6 +169,15 @@ function renderCorrectionForm(
   formControls.field.addEventListener("change", () => {
     syncDisplayedValue(formControls, fields);
   });
+  appendCorrectionForm(body, form);
+}
+
+/**
+ * Replaces the card body with the correction form and queue note.
+ * @param body - Card body element.
+ * @param form - Configured correction form.
+ */
+function appendCorrectionForm(body: HTMLElement, form: HTMLElement): void {
   clear(body);
   body.append(
     el(

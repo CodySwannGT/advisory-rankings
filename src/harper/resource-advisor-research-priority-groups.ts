@@ -73,14 +73,14 @@ export function priorityGroups(
 
 /**
  * Builds the fixed priority group order from pre-filtered queue slices.
- * @param checkedItemsByStatus - Stale and never-checked queue slices.
+ * @param checked - Stale and never-checked queue slices.
  * @param contactItems - Queue items missing contact fields.
  * @param filters - Active normalized filters.
  * @param profileItems - Queue items missing profile substance fields.
  * @returns Fixed-order priority groups.
  */
 function buildPriorityGroups(
-  checkedItemsByStatus: ReturnType<typeof splitItemsByCheckStatus>,
+  checked: ReturnType<typeof splitItemsByCheckStatus>,
   contactItems: ReadonlyArray<AdvisorResearchQueueItem>,
   filters: AdvisorResearchQueuePriorityInputFilters,
   profileItems: ReadonlyArray<AdvisorResearchQueueItem>
@@ -102,23 +102,32 @@ function buildPriorityGroups(
       primaryMissingField(profileItems, PROFILE_SUBSTANCE_FIELDS),
       null
     ),
-    priorityGroup(
-      "stale_checked_profiles",
-      "Stale checked profiles",
-      checkedItemsByStatus.stale,
-      filters,
-      null,
-      primaryStatus(checkedItemsByStatus.stale)
-    ),
-    priorityGroup(
-      "never_checked_profiles",
-      "Never-checked profiles",
-      checkedItemsByStatus.never,
-      filters,
-      null,
-      NEVER_CHECKED_STATUS
-    ),
+    checkedPriorityGroup("stale_checked_profiles", checked.stale, filters),
+    checkedPriorityGroup("never_checked_profiles", checked.never, filters),
   ];
+}
+
+/**
+ * Builds a status-oriented priority group for checked-profile queues.
+ * @param id - Priority group id.
+ * @param items - Queue items in the status slice.
+ * @param filters - Active normalized filters.
+ * @returns Status priority group.
+ */
+function checkedPriorityGroup(
+  id: "never_checked_profiles" | "stale_checked_profiles",
+  items: ReadonlyArray<AdvisorResearchQueueItem>,
+  filters: AdvisorResearchQueuePriorityInputFilters
+): AdvisorResearchQueuePriorityGroup {
+  const neverChecked = id === "never_checked_profiles";
+  return priorityGroup(
+    id,
+    neverChecked ? "Never-checked profiles" : "Stale checked profiles",
+    items,
+    filters,
+    null,
+    neverChecked ? NEVER_CHECKED_STATUS : primaryStatus(items)
+  );
 }
 
 /**

@@ -205,6 +205,9 @@ export function ProfileHead({
   subtitle,
   tags = [],
 }: ProfileHeadOptions = {}): HTMLElement {
+  const meta = tags.map(t =>
+    Tag({ kind: t.kind ?? "default", children: t.label })
+  );
   return Card({
     children: [
       el("div", { class: "profile-cover" }),
@@ -224,15 +227,7 @@ export function ProfileHead({
           { class: "profile-title" },
           Heading({ level: headingLevel, children: title ?? "" }),
           subtitle ? el("div", { class: "subtitle" }, subtitle) : null,
-          tags.length
-            ? el(
-                "div",
-                { class: "profile-meta" },
-                ...tags.map(t =>
-                  Tag({ kind: t.kind ?? "default", children: t.label })
-                )
-              )
-            : null
+          tags.length ? el("div", { class: "profile-meta" }, ...meta) : null
         )
       ),
     ],
