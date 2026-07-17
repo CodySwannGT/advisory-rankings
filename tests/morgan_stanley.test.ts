@@ -41,6 +41,15 @@ describe("Morgan Stanley scraper mapping", () => {
     );
   });
 
+  it("describes the bounded Yext discovery surface", () => {
+    expect(MORGAN_STANLEY_SOURCE_ADAPTER.discover()).toMatchObject({
+      locatorUrl: "https://advisor.morganstanley.com/",
+      feedUrl: expect.stringContaining("prod-cdn.us.yextapis.com"),
+      requestShape: expect.stringContaining("Yext vertical query"),
+      pagination: expect.stringContaining("--max-advisors"),
+    });
+  });
+
   it("maps advisor, media, branch, team, designation, and research rows", () => {
     const rows = mapMorganStanleyLocations(
       [
