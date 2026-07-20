@@ -6,6 +6,7 @@ import {
   searchCounts,
   teamSearchMatches,
 } from "../src/harper/resource-search.js";
+import { runGlobalSearch } from "../src/harper/resource-directory-search-runner.js";
 
 const FIRM_ID = "firm-1";
 const FIRM_NAME = "Alpha Firm";
@@ -139,4 +140,109 @@ describe("resource search edge scoring", () => {
       total: 7,
     });
   });
+
+  it("serializes all-kind indexed reads so firm matches survive Harper concurrency", async () => {
+    const previousTables = (globalThis as any).tables;
+    const activeReads = { count: 0 };
+    (globalThis as any).tables = {
+      AdvisorSearchIndex: serialSearchTable(activeReads, [
+        { advisorId: ADVISOR_ID, token: "alpha" },
+      ]),
+      Advisor: serialSearchTable(activeReads, [
+        {
+          careerStatus: "Active",
+          firstName: "Alpha",
+          id: ADVISOR_ID,
+          lastName: "Advisor",
+          legalName: "Alpha Advisor",
+          preferredName: "",
+        },
+      ]),
+      EmploymentHistory: serialSearchTable(activeReads, []),
+      Firm: serialSearchTable(activeReads, [
+        {
+          channel: "wirehouse",
+          hqCity: "New York",
+          hqState: "NY",
+          id: FIRM_ID,
+          legalName: "",
+          name: FIRM_NAME,
+        },
+      ]),
+      FirmAlias: serialSearchTable(activeReads, []),
+      Team: serialSearchTable(activeReads, []),
+    };
+
+    try {
+      const response = await runGlobalSearch({
+        cap: 5,
+        kind: "all",
+        norm: "alpha",
+      });
+
+      expect(response.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: ADVISOR_ID, kind: "advisor" }),
+          expect.objectContaining({ id: FIRM_ID, kind: "firm" }),
+        ])
+      );
+      expect(response.counts).toMatchObject({ advisors: 1, firms: 1 });
+    } finally {
+      (globalThis as any).tables = previousTables;
+    }
+  });
 });
+
+/**
+ * Builds a Harper-like table that exposes accidental cross-table read fan-out.
+ * @param activeReads - Shared active read counter.
+ * @param activeReads.count - Number of table reads currently in progress.
+ * @param rows - Rows returned by this table.
+ * @returns Minimal table search surface.
+ */
+function serialSearchTable<T extends Record<string, unknown>>(
+  activeReads: { count: number },
+  rows: readonly T[]
+) {
+  return {
+    async *search(query: {
+      readonly conditions?: readonly {
+        readonly attribute: string;
+        readonly comparator?: string;
+        readonly value: unknown;
+      }[];
+      readonly limit?: number;
+    }) {
+      activeReads.count += 1;
+      expect(activeReads.count).toBe(1);
+      await Promise.resolve();
+      try {
+        yield* rows
+          .filter(rowMatches(query.conditions ?? []))
+          .slice(0, query.limit ?? rows.length);
+      } finally {
+        activeReads.count -= 1;
+      }
+    },
+  };
+}
+
+const rowMatches =
+  (
+    conditions: readonly {
+      readonly attribute: string;
+      readonly comparator?: string;
+      readonly value: unknown;
+    }[]
+  ) =>
+  (row: Record<string, unknown>): boolean =>
+    conditions.every(condition => {
+      const candidate = row[condition.attribute];
+      if (condition.comparator === "starts_with") {
+        return (
+          typeof candidate === "string" &&
+          candidate.startsWith(String(condition.value))
+        );
+      }
+      return candidate === condition.value;
+    });
