@@ -40,7 +40,6 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
   if (index !== 0) {
     return emptyComparisonDetails();
   }
-
   const firmName = `Firm ${index + 1}`;
   return {
     brokerCheck: { subjectCrd: 1000, fetchedAt: BROKERCHECK_FETCHED_AT },
@@ -55,13 +54,7 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
       },
     ],
     articles: featuredComparisonArticles(),
-    confidenceSummary: {
-      hasData: true,
-      asserted: 1,
-      inferred: 1,
-      derived: 1,
-      total: 3,
-    },
+    confidenceSummary: featuredConfidenceSummary(),
     evidenceFreshness: {
       hasData: true,
       lastCheckedAt: "2026-05-31T00:00:00.000Z",
@@ -76,6 +69,16 @@ function featuredComparisonDetails(index: number): Record<string, unknown> {
       },
     ],
     researchSources: brokerCheckResearchSources(),
+  };
+}
+
+function featuredConfidenceSummary(): Record<string, unknown> {
+  return {
+    hasData: true,
+    asserted: 1,
+    inferred: 1,
+    derived: 1,
+    total: 3,
   };
 }
 

@@ -205,6 +205,7 @@ export function ProfileHead({
   subtitle,
   tags = [],
 }: ProfileHeadOptions = {}): HTMLElement {
+  const titleContent = profileTitle(title, headingLevel, subtitle, tags);
   return Card({
     children: [
       el("div", { class: "profile-cover" }),
@@ -219,24 +220,41 @@ export function ProfileHead({
           tone: "profile",
           attrs: { class: "profile-avatar" },
         }),
-        el(
-          "div",
-          { class: "profile-title" },
-          Heading({ level: headingLevel, children: title ?? "" }),
-          subtitle ? el("div", { class: "subtitle" }, subtitle) : null,
-          tags.length
-            ? el(
-                "div",
-                { class: "profile-meta" },
-                ...tags.map(t =>
-                  Tag({ kind: t.kind ?? "default", children: t.label })
-                )
-              )
-            : null
-        )
+        titleContent
       ),
     ],
   });
+}
+
+/**
+ * Builds the text and tag stack for a profile masthead.
+ * @param title - Primary display title.
+ * @param headingLevel - Semantic heading level for the title.
+ * @param subtitle - Secondary profile context.
+ * @param tags - Badge labels shown below the title.
+ * @returns Rendered title stack.
+ */
+function profileTitle(
+  title: ProfileHeadOptions["title"],
+  headingLevel: NonNullable<ProfileHeadOptions["headingLevel"]>,
+  subtitle: ProfileHeadOptions["subtitle"],
+  tags: NonNullable<ProfileHeadOptions["tags"]>
+): HTMLElement {
+  return el(
+    "div",
+    { class: "profile-title" },
+    Heading({ level: headingLevel, children: title ?? "" }),
+    subtitle ? el("div", { class: "subtitle" }, subtitle) : null,
+    tags.length
+      ? el(
+          "div",
+          { class: "profile-meta" },
+          ...tags.map(t =>
+            Tag({ kind: t.kind ?? "default", children: t.label })
+          )
+        )
+      : null
+  );
 }
 
 // ─── SiteFooter ───────────────────────────────────────────────

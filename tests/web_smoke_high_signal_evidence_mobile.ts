@@ -115,9 +115,14 @@ async function captureMobileSearchKind(page: Page): Promise<readonly Check[]> {
     .first()
     .waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await shot(page, "04-evidence-mobile-search-kind-firm");
-
   const observed = await readMobileSearchKindState(page);
+  return mobileSearchKindChecks(response, observed);
+}
 
+function mobileSearchKindChecks(
+  response: { status(): number; url(): string },
+  observed: Awaited<ReturnType<typeof readMobileSearchKindState>>
+): readonly Check[] {
   return [
     check(
       response.status() === 200 && response.url().includes("kind=firm"),
