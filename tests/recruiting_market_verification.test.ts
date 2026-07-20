@@ -46,6 +46,55 @@ describe("recruiting market verification", () => {
     });
   });
 
+  it("keeps replay summaries stable for malformed and null payload fields", () => {
+    expect(
+      summarizeRecruitingMarketPayload({
+        firmMomentum: "not an array",
+        marketActivity: [{ market: "" }, null, { market: "Miami, FL" }],
+        recentMoves: [
+          null,
+          {
+            id: "move-with-null-source-status",
+            sourceStatus: null,
+            subject: undefined,
+          },
+          {
+            id: "move-with-null-firm",
+            sourceStatus: [MISSING_TOTAL_PCT_T12, ""],
+            toFirm: null,
+          },
+        ],
+      })
+    ).toEqual({
+      firmMomentumCount: 0,
+      marketActivityCount: 3,
+      missingFieldStatuses: [MISSING_TOTAL_PCT_T12],
+      recentMoveCount: 3,
+      sampleMarkets: ["Miami, FL"],
+      sampleMoves: [
+        {},
+        {
+          id: "move-with-null-source-status",
+          sourceStatus: null,
+          subject: null,
+        },
+        {
+          id: "move-with-null-firm",
+          sourceStatus: [MISSING_TOTAL_PCT_T12, ""],
+          toFirm: null,
+        },
+      ],
+    });
+    expect(summarizeRecruitingMarketPayload(null)).toEqual({
+      firmMomentumCount: 0,
+      marketActivityCount: 0,
+      missingFieldStatuses: [],
+      recentMoveCount: 0,
+      sampleMarkets: [],
+      sampleMoves: [],
+    });
+  });
+
   it("builds filtered resource and route paths from representative rows", () => {
     expect(recruitingMarketFilterPaths(PAYLOAD)).toEqual([
       NY_RESOURCE_PATH,
@@ -54,6 +103,15 @@ describe("recruiting market verification", () => {
     expect(recruitingRoutePath(NY_RESOURCE_PATH)).toBe(
       "/recruiting?state=NY&limit=25"
     );
+  });
+
+  it("omits filtered replay paths when the first move has no usable filters", () => {
+    expect(recruitingMarketFilterPaths({ recentMoves: [] })).toEqual([]);
+    expect(
+      recruitingMarketFilterPaths({
+        recentMoves: [{ location: {}, moveDate: "" }],
+      })
+    ).toEqual([]);
   });
 
   it("requires multiple moves, multiple markets, browser tables, and source statuses", () => {
@@ -67,6 +125,39 @@ describe("recruiting market verification", () => {
       assertRecruitingMarketVerification(evidence({ missingFieldStatuses: [] }))
     ).toThrow(/missing source statuses/);
     expect(() => assertRecruitingMarketVerification(evidence())).not.toThrow();
+  });
+
+  it("reports filter and browser evidence regressions with viewport context", () => {
+    expect(() =>
+      assertRecruitingMarketVerification({
+        ...evidence(),
+        filters: [
+          {
+            label: "New York filter",
+            marketActivityCount: 0,
+            path: NY_RESOURCE_PATH,
+            recentMoveCount: 0,
+          },
+        ],
+      })
+    ).toThrow(/New York filter recent moves 0 < 1/);
+
+    expect(() =>
+      assertRecruitingMarketVerification({
+        ...evidence(),
+        browser: [
+          {
+            screenshot: "tests/screenshots/recruiting-market-verification.png",
+            sourceStatusText: "Source backed",
+            summaryText: "Recruiting activity",
+            tableCount: 0,
+            viewport: "mobile",
+          },
+        ],
+      })
+    ).toThrow(
+      /mobile recruiting tables 0 < 1; mobile summary does not include move count; mobile source statuses missing required labels/
+    );
   });
 });
 
