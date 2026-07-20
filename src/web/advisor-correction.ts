@@ -148,11 +148,39 @@ function renderCorrectionForm(
     renderNoCorrectionFields(body);
     return;
   }
-
   const controls = correctionControls(fields);
   const submit = correctionSubmitButton();
   const formControls: CorrectionControls = { ...controls, submit };
-  const form = el(
+  const form = correctionForm(advisorId, fields, status, formControls);
+  formControls.field.addEventListener("change", () => {
+    syncDisplayedValue(formControls, fields);
+  });
+  clear(body);
+  body.append(
+    el(
+      "p",
+      { class: NOTE_CLASS },
+      "Requests queue for analyst review. Public facts do not change from this form."
+    ),
+    form
+  );
+}
+
+/**
+ * Builds the advisor correction form and submit wiring.
+ * @param advisorId - Advisor id for the correction request.
+ * @param fields - Selectable source-backed fields.
+ * @param status - Status message element updated after submission.
+ * @param formControls - Form controls shared by sync and submit handlers.
+ * @returns Correction form element.
+ */
+function correctionForm(
+  advisorId: string,
+  fields: readonly CorrectionField[],
+  status: HTMLElement,
+  formControls: CorrectionControls
+): HTMLElement {
+  return el(
     "form",
     {
       class: "advisor-correction-form",
@@ -166,18 +194,6 @@ function renderCorrectionForm(
     correctionField("Note", formControls.note),
     formControls.submit,
     status
-  );
-  formControls.field.addEventListener("change", () => {
-    syncDisplayedValue(formControls, fields);
-  });
-  clear(body);
-  body.append(
-    el(
-      "p",
-      { class: NOTE_CLASS },
-      "Requests queue for analyst review. Public facts do not change from this form."
-    ),
-    form
   );
 }
 

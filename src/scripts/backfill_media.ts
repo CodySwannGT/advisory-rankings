@@ -272,7 +272,6 @@ async function main(): Promise<void> {
   const delayMs = Number(arg("--delay-ms") ?? "1500");
   const write = has("--write");
   const target = targetKind();
-
   const [advisors, firms, employments] = await Promise.all([
     getRows("Advisor", token, baseUrl),
     getRows("Firm", token, baseUrl),
@@ -282,10 +281,7 @@ async function main(): Promise<void> {
   ]);
 
   if (target === "advisors" || target === "all") {
-    await processRows({
-      rows: attachCurrentFirmNames(advisors, firms, employments),
-      table: "Advisor",
-      mode: "advisor",
+    await processAdvisorRows(advisors, firms, employments, {
       baseUrl,
       token,
       max,
@@ -294,17 +290,52 @@ async function main(): Promise<void> {
     });
   }
   if (target === "firms" || target === "all") {
-    await processRows({
-      rows: firms,
-      table: "Firm",
-      mode: "firm",
-      baseUrl,
-      token,
-      max,
-      write,
-      delayMs,
-    });
+    await processFirmRows(firms, { baseUrl, token, max, write, delayMs });
   }
+}
+
+/** Shared media backfill runtime options. */
+interface BackfillRunOptions {
+  readonly baseUrl: string;
+  readonly token: string;
+  readonly max: number;
+  readonly write: boolean;
+  readonly delayMs: number;
+}
+
+/**
+ * Processes advisor media rows with current-firm labels attached.
+ * @param advisors - Advisor rows to backfill.
+ * @param firms - Firm rows used for labels.
+ * @param employments - Employment rows used to resolve current firm names.
+ * @param options - Shared backfill runtime options.
+ * @returns Promise that resolves after advisor rows are processed.
+ */
+async function processAdvisorRows(
+  advisors: ReadonlyArray<Row>,
+  firms: ReadonlyArray<Row>,
+  employments: ReadonlyArray<Row>,
+  options: BackfillRunOptions
+): Promise<void> {
+  await processRows({
+    rows: attachCurrentFirmNames(advisors, firms, employments),
+    table: "Advisor",
+    mode: "advisor",
+    ...options,
+  });
+}
+
+/**
+ * Processes firm media rows.
+ * @param firms - Firm rows to backfill.
+ * @param options - Shared backfill runtime options.
+ * @returns Promise that resolves after firm rows are processed.
+ */
+async function processFirmRows(
+  firms: ReadonlyArray<Row>,
+  options: BackfillRunOptions
+): Promise<void> {
+  await processRows({ rows: firms, table: "Firm", mode: "firm", ...options });
 }
 
 main().catch(error => {

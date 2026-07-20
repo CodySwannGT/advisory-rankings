@@ -97,6 +97,33 @@ export function firmProfilePayload(
     db,
     firmId
   );
+  const profile = firmProfileBody(
+    db,
+    firm,
+    currentAdvisorCount,
+    pastAdvisorCount
+  );
+  return {
+    ...profile,
+    dueDiligence: firmDueDiligenceModules(db, firmId, profile),
+  };
+}
+
+/**
+ * Builds the firm profile body before due-diligence modules attach.
+ * @param db - Preloaded tables and lookup maps.
+ * @param firm - Canonical firm row resolved from id, slug, or alias.
+ * @param currentAdvisorCount - Current advisor total.
+ * @param pastAdvisorCount - Former advisor total.
+ * @returns Firm profile body without due-diligence modules.
+ */
+function firmProfileBody(
+  db: ResourceIndex,
+  firm: ResolvableFirm,
+  currentAdvisorCount: number,
+  pastAdvisorCount: number
+): FirmProfileBody {
+  const firmId = firm.id;
   const profile: FirmProfileBody = {
     firm: { ...firm, short: firm.name },
     currentAdvisorCount,
@@ -124,10 +151,7 @@ export function firmProfilePayload(
     ),
     brokerCheckSnapshot: firmBrokerCheckSnapshot(db, firmId),
   };
-  return {
-    ...profile,
-    dueDiligence: firmDueDiligenceModules(db, firmId, profile),
-  };
+  return profile;
 }
 
 /**

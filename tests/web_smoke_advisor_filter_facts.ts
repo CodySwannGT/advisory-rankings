@@ -72,15 +72,7 @@ function readAdvisorFilterFactsInPage(
   const counts = advisorFilterCounts(labels);
   const rows = Array.from(document.querySelectorAll(rowSelector));
   return {
-    accessibleLabels: expectedLabels.every(([labelText, id, name]) => {
-      const control = document.getElementById(id);
-      return (
-        document.querySelector(`label[for="${id}"]`)?.textContent?.trim() ===
-          labelText &&
-        ["INPUT", "SELECT"].includes(control?.tagName ?? "") &&
-        control?.getAttribute("name") === name
-      );
-    }),
+    accessibleLabels: advisorFilterLabelsAreAccessible(expectedLabels),
     bodyText: document.body.textContent || "",
     careerStatus: valueOf("careerStatus"),
     contactReadiness: valueOf("contactReadiness"),
@@ -99,6 +91,20 @@ function readAdvisorFilterFactsInPage(
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: counts.total,
   };
+}
+
+function advisorFilterLabelsAreAccessible(
+  expectedLabels: AdvisorFilterFactPageArgs["expectedLabels"]
+): boolean {
+  return expectedLabels.every(([labelText, id, name]) => {
+    const control = document.getElementById(id);
+    return (
+      document.querySelector(`label[for="${id}"]`)?.textContent?.trim() ===
+        labelText &&
+      ["INPUT", "SELECT"].includes(control?.tagName ?? "") &&
+      control?.getAttribute("name") === name
+    );
+  });
 }
 
 function advisorFilterCounts(labels: readonly HTMLElement[]) {

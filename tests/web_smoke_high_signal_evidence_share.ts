@@ -48,7 +48,6 @@ export async function captureFeedFilterUrlStateEvidence(
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const category = await firstAvailableCategory(page);
-
   if (!category) {
     return [
       check(
@@ -72,9 +71,7 @@ export async function captureFeedFilterUrlStateEvidence(
   await page.waitForSelector(FEED_FILTER_SUMMARY, {
     timeout: QUICK_UI_TIMEOUT,
   });
-  const reloadMode = await page.locator(FEED_MODE_SELECT).inputValue();
-  const reloadCategory = await page.locator(FEED_CATEGORY_SELECT).inputValue();
-
+  const reloaded = await readFeedFilterState(page);
   const restored = await openShareUrlInFreshContext(
     browser,
     extraHTTPHeaders,
@@ -84,10 +81,19 @@ export async function captureFeedFilterUrlStateEvidence(
   return feedFilterUrlStateChecks(
     shareUrl,
     category,
-    reloadMode,
-    reloadCategory,
+    reloaded.mode,
+    reloaded.category,
     restored
   );
+}
+
+async function readFeedFilterState(
+  page: Page
+): Promise<{ readonly mode: string; readonly category: string }> {
+  return {
+    mode: await page.locator(FEED_MODE_SELECT).inputValue(),
+    category: await page.locator(FEED_CATEGORY_SELECT).inputValue(),
+  };
 }
 
 /**

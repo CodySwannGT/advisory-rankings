@@ -185,16 +185,6 @@ function readCoverageDashboardEvidenceInPage({
   const textMatches = (pattern: string) =>
     new RegExp(pattern, "i").test(bodyText);
   const privateResource = new RegExp(privateResourcePattern);
-  const linkHrefEntry = ([label]: readonly [string, string]) => {
-    const href =
-      [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
-        link => link.textContent?.trim() === label
-      )?.href ?? null;
-    if (!href) return [label, null];
-    const url = new URL(href);
-    return [label, `${url.pathname}${url.search}`];
-  };
-
   return {
     bodyText,
     h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
@@ -213,6 +203,16 @@ function readCoverageDashboardEvidenceInPage({
     ].map(section => section.dataset.coverageSection ?? ""),
     viewportWidth: document.documentElement.clientWidth,
   };
+}
+
+function linkHrefEntry([label]: readonly [string, string]) {
+  const href =
+    [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
+      link => link.textContent?.trim() === label
+    )?.href ?? null;
+  if (!href) return [label, null];
+  const url = new URL(href);
+  return [label, `${url.pathname}${url.search}`];
 }
 
 /**

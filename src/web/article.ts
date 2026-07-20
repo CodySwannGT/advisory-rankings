@@ -122,31 +122,29 @@ function render(
     );
     return;
   }
-  const a = d.article;
   const resources = articleResources(d);
-
-  canonicalizeArticleRoute(a);
+  canonicalizeArticleRoute(d.article);
   center.appendChild(
     articleHead({
-      article: a,
+      article: d.article,
       events: resources.events,
       firms: resources.firmRows,
       teams: resources.teamRows,
       advisors: resources.advisorRows,
     })
   );
-  center.appendChild(articleEvidenceMap(a, resources));
+  center.appendChild(articleEvidenceMap(d.article, resources));
   appendIfPresent(center, limitationsSection(resources));
   appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
   appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));
   appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
   appendIfPresent(center, PartialFailureCard("Mentioned advisors", d.advisors));
   appendIfPresent(center, articleBodyCard(d.body));
-  appendIfPresent(center, linkOutCard(a, d.body));
+  appendIfPresent(center, linkOutCard(d.article, d.body));
   appendIfPresent(center, PartialFailureCard("Article body", d.body));
   appendIfPresent(center, evidenceSection(resources.evidenceRows));
   appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
-  right.appendChild(metadataSection(a));
+  right.appendChild(metadataSection(d.article));
 }
 
 /**

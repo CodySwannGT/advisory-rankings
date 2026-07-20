@@ -86,22 +86,8 @@ function buildPriorityGroups(
   profileItems: ReadonlyArray<AdvisorResearchQueueItem>
 ): ReadonlyArray<AdvisorResearchQueuePriorityGroup> {
   return [
-    priorityGroup(
-      "missing_contact_data",
-      "Missing contact data",
-      contactItems,
-      filters,
-      primaryMissingField(contactItems, CONTACT_FIELDS),
-      null
-    ),
-    priorityGroup(
-      "missing_profile_substance",
-      "Missing profile substance",
-      profileItems,
-      filters,
-      primaryMissingField(profileItems, PROFILE_SUBSTANCE_FIELDS),
-      null
-    ),
+    missingContactPriorityGroup(contactItems, filters),
+    missingProfileSubstancePriorityGroup(profileItems, filters),
     priorityGroup(
       "stale_checked_profiles",
       "Stale checked profiles",
@@ -119,6 +105,46 @@ function buildPriorityGroups(
       NEVER_CHECKED_STATUS
     ),
   ];
+}
+
+/**
+ * Builds the missing-contact-data priority group.
+ * @param contactItems - Queue items missing contact fields.
+ * @param filters - Active normalized filters.
+ * @returns Missing-contact priority group.
+ */
+function missingContactPriorityGroup(
+  contactItems: ReadonlyArray<AdvisorResearchQueueItem>,
+  filters: AdvisorResearchQueuePriorityInputFilters
+): AdvisorResearchQueuePriorityGroup {
+  return priorityGroup(
+    "missing_contact_data",
+    "Missing contact data",
+    contactItems,
+    filters,
+    primaryMissingField(contactItems, CONTACT_FIELDS),
+    null
+  );
+}
+
+/**
+ * Builds the missing-profile-substance priority group.
+ * @param profileItems - Queue items missing profile substance fields.
+ * @param filters - Active normalized filters.
+ * @returns Missing-profile priority group.
+ */
+function missingProfileSubstancePriorityGroup(
+  profileItems: ReadonlyArray<AdvisorResearchQueueItem>,
+  filters: AdvisorResearchQueuePriorityInputFilters
+): AdvisorResearchQueuePriorityGroup {
+  return priorityGroup(
+    "missing_profile_substance",
+    "Missing profile substance",
+    profileItems,
+    filters,
+    primaryMissingField(profileItems, PROFILE_SUBSTANCE_FIELDS),
+    null
+  );
 }
 
 /**

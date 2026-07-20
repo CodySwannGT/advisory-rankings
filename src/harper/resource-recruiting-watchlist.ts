@@ -250,19 +250,7 @@ function watchlistItem(
   firm: FirmRow | null
 ): WatchlistItem {
   if (!firm?.id) {
-    return {
-      query,
-      firm: null,
-      inbound: emptySummary(),
-      outbound: emptySummary(),
-      netMoveCount: 0,
-      netKnownAum: 0,
-      sourceCoverage: emptyCoverage(),
-      branchCoverage: unresolvedBranchCoverage(query),
-      evidenceLinks: evidenceLinks(query, null),
-      sourceMoveIds: [],
-      sourceStatus: [UNRESOLVED_FIRM],
-    };
+    return unresolvedWatchlistItem(query);
   }
   const inboundMoves = moves.filter(move => move.toFirm?.id === firm.id);
   const outboundMoves = moves.filter(move => move.fromFirm?.id === firm.id);
@@ -282,6 +270,27 @@ function watchlistItem(
     evidenceLinks: evidenceLinks(query, firm),
     sourceMoveIds: relatedMoves.map(move => move.id),
     sourceStatus: watchlistSourceStatus(relatedMoves),
+  };
+}
+
+/**
+ * Builds the watchlist row for a firm query that could not be resolved.
+ * @param query - Original firm query string.
+ * @returns Unresolved public watchlist row.
+ */
+function unresolvedWatchlistItem(query: string): WatchlistItem {
+  return {
+    query,
+    firm: null,
+    inbound: emptySummary(),
+    outbound: emptySummary(),
+    netMoveCount: 0,
+    netKnownAum: 0,
+    sourceCoverage: emptyCoverage(),
+    branchCoverage: unresolvedBranchCoverage(query),
+    evidenceLinks: evidenceLinks(query, null),
+    sourceMoveIds: [],
+    sourceStatus: [UNRESOLVED_FIRM],
   };
 }
 
