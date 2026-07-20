@@ -216,11 +216,19 @@ export async function firmPrefixSearch(
   cap: number
 ): Promise<readonly FirmRow[]> {
   if (!query) return [];
-  const [byName, byLegalName, aliasRows] = await Promise.all([
-    prefixSearch<FirmRow>(tables.Firm, "name", query, cap),
-    prefixSearch<FirmRow>(tables.Firm, "legalName", query, cap),
-    prefixSearch<FirmAliasRow>(tables.FirmAlias, "normalizedAlias", query, cap),
-  ]);
+  const byName = await prefixSearch<FirmRow>(tables.Firm, "name", query, cap);
+  const byLegalName = await prefixSearch<FirmRow>(
+    tables.Firm,
+    "legalName",
+    query,
+    cap
+  );
+  const aliasRows = await prefixSearch<FirmAliasRow>(
+    tables.FirmAlias,
+    "normalizedAlias",
+    query,
+    cap
+  );
   // Alias rows carry only a foreign-key reference to the firm; hydrate
   // those distinct ids via the indexed primary key. Bounded by the cap
   // so this is at most `cap` indexed point-lookups.
@@ -418,10 +426,8 @@ const prefixSearch = async <T extends IdentifiedRow>(
   const title = titleCaseWords(value);
   if (lower === title)
     return prefixSearchOne<T>(searchable, attribute, lower, cap);
-  const [a, b] = await Promise.all([
-    prefixSearchOne<T>(searchable, attribute, lower, cap),
-    prefixSearchOne<T>(searchable, attribute, title, cap),
-  ]);
+  const a = await prefixSearchOne<T>(searchable, attribute, lower, cap);
+  const b = await prefixSearchOne<T>(searchable, attribute, title, cap);
   return dedupeById<T>([...a, ...b]).slice(0, cap);
 };
 

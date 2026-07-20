@@ -62,22 +62,12 @@ export async function runGlobalSearch(
   const needAdvisors = kind === "all" || kind === "advisor";
   const needFirms = kind === "all" || kind === "firm";
   const needTeams = kind === "all" || kind === "team";
-  const [advisorIds, firmMatches, teamMatches, firmAliases] = await Promise.all(
-    [
-      needAdvisors
-        ? searchAdvisorsByTokens(tables.AdvisorSearchIndex, norm).then(
-            result => result.ids
-          )
-        : Promise.resolve<readonly string[]>([]),
-      needFirms
-        ? firmPrefixSearch(norm, cap)
-        : Promise.resolve<readonly FirmRow[]>([]),
-      needTeams
-        ? teamPrefixSearch(norm, cap)
-        : Promise.resolve<readonly TeamRow[]>([]),
-      optionalAll<FirmAliasRow>(tables.FirmAlias),
-    ]
-  );
+  const advisorIds = needAdvisors
+    ? (await searchAdvisorsByTokens(tables.AdvisorSearchIndex, norm)).ids
+    : [];
+  const firmMatches = needFirms ? await firmPrefixSearch(norm, cap) : [];
+  const teamMatches = needTeams ? await teamPrefixSearch(norm, cap) : [];
+  const firmAliases = await optionalAll<FirmAliasRow>(tables.FirmAlias);
   const advisors = await rowsByIds<AdvisorRow>(
     tables.Advisor,
     advisorIds.slice(0, cap)
