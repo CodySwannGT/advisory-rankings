@@ -61,6 +61,13 @@ interface CoverageDashboardEvidence {
   readonly viewportWidth: number;
 }
 
+/** Browser-side coverage dashboard read arguments. */
+interface CoverageDashboardEvidencePageArgs {
+  readonly links: typeof REQUIRED_LINKS;
+  readonly privatePatterns: readonly string[];
+  readonly privateResourcePattern: string;
+}
+
 /**
  * Verifies the public Data Coverage dashboard against the live backend.
  * @param page - Desktop smoke page shared by the full smoke journey.
@@ -176,20 +183,25 @@ function readCoverageDashboardEvidenceInPage({
   links,
   privatePatterns,
   privateResourcePattern,
-}: {
-  readonly links: typeof REQUIRED_LINKS;
-  readonly privatePatterns: readonly string[];
-  readonly privateResourcePattern: string;
-}): CoverageDashboardEvidence {
+}: CoverageDashboardEvidencePageArgs): CoverageDashboardEvidence {
   const bodyText = document.body.innerText;
   const textMatches = (pattern: string) =>
     new RegExp(pattern, "i").test(bodyText);
   const privateResource = new RegExp(privateResourcePattern);
+  const hrefFor = ([label]: readonly [string, string]) => {
+    const href =
+      [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
+        link => link.textContent?.trim() === label
+      )?.href ?? null;
+    if (!href) return [label, null];
+    const url = new URL(href);
+    return [label, `${url.pathname}${url.search}`];
+  };
   return {
     bodyText,
     h1Text: document.querySelector("h1")?.textContent?.trim() ?? "",
     hiddenPrivateCopy: privatePatterns.filter(textMatches),
-    linkHrefs: Object.fromEntries(links.map(linkHrefEntry)),
+    linkHrefs: Object.fromEntries(links.map(hrefFor)),
     metricLabels: [
       ...document.querySelectorAll<HTMLElement>(".coverage-metric-label"),
     ].map(metric => metric.textContent?.trim() ?? ""),
@@ -203,16 +215,6 @@ function readCoverageDashboardEvidenceInPage({
     ].map(section => section.dataset.coverageSection ?? ""),
     viewportWidth: document.documentElement.clientWidth,
   };
-}
-
-function linkHrefEntry([label]: readonly [string, string]) {
-  const href =
-    [...document.querySelectorAll<HTMLAnchorElement>("a")].find(
-      link => link.textContent?.trim() === label
-    )?.href ?? null;
-  if (!href) return [label, null];
-  const url = new URL(href);
-  return [label, `${url.pathname}${url.search}`];
 }
 
 /**

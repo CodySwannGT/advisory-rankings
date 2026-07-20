@@ -159,6 +159,14 @@ function readLoadedRecruitingStateInPage({
   readonly rawRecruitingLabels: readonly string[];
   readonly tableSelector: string;
 }): LoadedRecruitingState {
+  const textExists = (selector: string, text: string) =>
+    Array.from(document.querySelectorAll(selector)).some(
+      node => node.textContent?.trim() === text
+    );
+  const textIncludes = (selector: string, text: string) =>
+    Array.from(document.querySelectorAll(selector)).some(node =>
+      node.textContent?.includes(text)
+    );
   return {
     addFirmLabel: document
       .querySelector(".watchlist-add-button")
@@ -182,18 +190,6 @@ function readLoadedRecruitingStateInPage({
     ),
     rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
   };
-}
-
-function textExists(selector: string, text: string): boolean {
-  return Array.from(document.querySelectorAll(selector)).some(
-    node => node.textContent?.trim() === text
-  );
-}
-
-function textIncludes(selector: string, text: string): boolean {
-  return Array.from(document.querySelectorAll(selector)).some(node =>
-    node.textContent?.includes(text)
-  );
 }
 
 /**

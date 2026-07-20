@@ -513,23 +513,21 @@ function readAdvisorFilterLayoutInPage({
   }
   const controls = Array.from(form.querySelectorAll("input, select, button"));
   const escapedControls = controls
-    .map(control => escapedControlLabel(control, cardRect))
+    .map(control => {
+      const rect = control.getBoundingClientRect();
+      const label =
+        control.getAttribute("name") ||
+        control.textContent?.trim() ||
+        control.tagName.toLowerCase();
+      const outside =
+        rect.left < cardRect.left ||
+        rect.right > cardRect.right ||
+        rect.top < cardRect.top ||
+        rect.bottom > cardRect.bottom;
+      return outside ? label : "";
+    })
     .filter(Boolean);
   return { escapedControls, width: viewportWidth };
-}
-
-function escapedControlLabel(control: Element, cardRect: DOMRect): string {
-  const rect = control.getBoundingClientRect();
-  const label =
-    control.getAttribute("name") ||
-    control.textContent?.trim() ||
-    control.tagName.toLowerCase();
-  const outside =
-    rect.left < cardRect.left ||
-    rect.right > cardRect.right ||
-    rect.top < cardRect.top ||
-    rect.bottom > cardRect.bottom;
-  return outside ? label : "";
 }
 
 /**
