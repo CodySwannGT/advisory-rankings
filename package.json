@@ -124,7 +124,9 @@
   "resolutions": {
     "@isaacs/brace-expansion": "^5.0.1",
     "axios": ">=1.15.2",
+    "brace-expansion": "2.1.2",
     "esbuild": ">=0.28.1",
+    "fast-uri": "2.4.3",
     "handlebars": ">=4.7.9",
     "vite": ">=8.0.16",
     "ws": ">=8.21.0",
@@ -138,7 +140,9 @@
   "overrides": {
     "@isaacs/brace-expansion": "^5.0.1",
     "axios": ">=1.15.2",
+    "brace-expansion": "2.1.2",
     "esbuild": ">=0.28.1",
+    "fast-uri": "2.4.3",
     "handlebars": ">=4.7.9",
     "vite": "^8.0.16",
     "ws": ">=8.21.0",
