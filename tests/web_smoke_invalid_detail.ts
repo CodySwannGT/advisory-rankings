@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
 import {
   BASE,
   DEPLOYED_DATA_TIMEOUT,
@@ -151,10 +151,6 @@ async function runRouteCheck(
   page: Page,
   routeCheck: InvalidDetailRouteCheck
 ): Promise<readonly Check[]> {
-  // 1) Probe the JSON contract first while the page is detached from the
-  // request. The SPA's api() helper sets Accept: application/json on every
-  // fetch; the negotiation MUST keep returning JSON for that case so non-
-  // browser clients (and the SPA itself) are unaffected by the shell handoff.
   const jsonResponse = await page.request.get(`${BASE}${routeCheck.path}`, {
     headers: { Accept: "application/json" },
     failOnStatusCode: false,
@@ -162,8 +158,6 @@ async function runRouteCheck(
   const jsonContentType = jsonResponse.headers()["content-type"] ?? "";
   const jsonBodyText = await jsonResponse.text();
 
-  // 2) Document-navigation: a real browser navigation sends an HTML Accept,
-  // so the legacy resource must serve the shell that boots the SPA page.
   await smokeGoto(page, `${BASE}${routeCheck.path}`);
   await smokeWaitForSelector(page, NOT_FOUND_CARD_SELECTOR);
   await shot(page, `13-invalid-detail-${routeCheck.kind}`);
@@ -172,20 +166,12 @@ async function runRouteCheck(
   const cardText = (await cardLocator.textContent())
     ?.replace(/\s+/g, " ")
     .trim();
-  const hasTitle =
-    (await cardLocator.getByText(routeCheck.title, { exact: true }).count()) >=
-    1;
+  const hasTitle = await cardHasExactTitle(cardLocator, routeCheck.title);
 
-  // Pull the full visible body text so we can prove the raw JSON envelope is
-  // not rendered. Document-mode navigations to the same legacy resources used
-  // to dump `{"error":"not found"}` straight into <body>, which is the
-  // regression #281 guards against.
   const bodyText = ((await page.locator("body").textContent()) ?? "")
     .replace(/\s+/g, " ")
     .trim();
 
-  // 3) Recovery: the CTA must navigate to a working public route whose
-  // primary surface is interactive (the entity list, or the feed).
   await cardLocator
     .getByRole("button", { name: routeCheck.actionLabel, exact: true })
     .click();
@@ -203,6 +189,13 @@ async function runRouteCheck(
     page,
     routeCheck,
   });
+}
+
+async function cardHasExactTitle(
+  cardLocator: Locator,
+  title: string
+): Promise<boolean> {
+  return (await cardLocator.getByText(title, { exact: true }).count()) >= 1;
 }
 
 async function invalidDetailChecks(facts: {

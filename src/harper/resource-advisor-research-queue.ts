@@ -95,11 +95,7 @@ export function advisorResearchQueueResponse(
   const due = selectDueAdvisors(
     db.advisors.map(toResearchAdvisor),
     db.researchChecks.map(toResearchCheck),
-    {
-      max: Math.max(filters.limit, db.advisors.length),
-      staleDays: filters.staleDays,
-      sourceType: filters.sourceType,
-    }
+    dueAdvisorOptions(filters, db.advisors.length)
   );
   const filtered = due
     .filter(row => matchesStatus(row.lastCheck, filters.status))
@@ -125,6 +121,23 @@ export function advisorResearchQueueResponse(
       priorityGroups: priorityGroups(items, filters),
     },
     items,
+  };
+}
+
+/**
+ * Builds due-advisor selector options from already-normalized queue filters.
+ * @param filters - Normalized queue filters.
+ * @param advisorCount - Total advisors available for due selection.
+ * @returns Selector options for due advisor ordering.
+ */
+function dueAdvisorOptions(
+  filters: AdvisorResearchQueueResponseFilters,
+  advisorCount: number
+) {
+  return {
+    max: Math.max(filters.limit, advisorCount),
+    staleDays: filters.staleDays,
+    sourceType: filters.sourceType,
   };
 }
 

@@ -117,25 +117,7 @@ function summaryCard(payload: RecruitingMarketResponse): HTMLElement {
     title: "Brief summary",
     attrs: { class: "shortlist-brief-summary" },
     body: [
-      el(
-        "div",
-        { class: "watchlist-summary" },
-        metricBlock(
-          "Inbound",
-          summaryValue(payload.watchlist?.summary.inbound)
-        ),
-        metricBlock(
-          "Outbound",
-          summaryValue(payload.watchlist?.summary.outbound)
-        ),
-        metricBlock(
-          "Net",
-          netValue(
-            payload.watchlist?.summary.netKnownAum ?? 0,
-            payload.watchlist?.summary.netMoveCount ?? 0
-          )
-        )
-      ),
+      shortlistMetrics(payload),
       el(
         "p",
         { class: "shortlist-brief-note" },
@@ -151,6 +133,27 @@ function summaryCard(payload: RecruitingMarketResponse): HTMLElement {
       ]),
     ],
   });
+}
+
+/**
+ * Builds the inbound, outbound, and net movement summary metrics.
+ * @param payload - RecruitingMarket response.
+ * @returns Metric row for the shortlist summary.
+ */
+function shortlistMetrics(payload: RecruitingMarketResponse): HTMLElement {
+  return el(
+    "div",
+    { class: "watchlist-summary" },
+    metricBlock("Inbound", summaryValue(payload.watchlist?.summary.inbound)),
+    metricBlock("Outbound", summaryValue(payload.watchlist?.summary.outbound)),
+    metricBlock(
+      "Net",
+      netValue(
+        payload.watchlist?.summary.netKnownAum ?? 0,
+        payload.watchlist?.summary.netMoveCount ?? 0
+      )
+    )
+  );
 }
 
 /**

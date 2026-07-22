@@ -60,14 +60,8 @@ export async function smokeDiscrepancyQueue(
     ];
   }
 
-  const item = payload.items?.find(queueItemCandidate);
-  if (!item?.id || !item.advisorId) {
-    return [
-      pass(
-        "discrepancy-browser-smoke: authenticated queue has no open seeded discrepancy to review"
-      ),
-    ];
-  }
+  const item = firstReviewableDiscrepancy(payload);
+  if (!item) return noReviewableDiscrepancyChecks();
 
   await smokeGoto(page, `${BASE}${QUEUE_PATH}`);
   await smokeWaitForSelector(page, QUEUE_CARD_SELECTOR);
@@ -81,6 +75,23 @@ export async function smokeDiscrepancyQueue(
   );
   await clearAnalystSession(page);
   return checks;
+}
+
+function firstReviewableDiscrepancy(
+  payload: QueuePayload
+): { readonly advisorId: string; readonly id: string } | null {
+  const item = payload.items?.find(queueItemCandidate);
+  return item?.id && item.advisorId
+    ? { advisorId: item.advisorId, id: item.id }
+    : null;
+}
+
+function noReviewableDiscrepancyChecks(): readonly Check[] {
+  return [
+    pass(
+      "discrepancy-browser-smoke: authenticated queue has no open seeded discrepancy to review"
+    ),
+  ];
 }
 
 async function openReviewedProfile(

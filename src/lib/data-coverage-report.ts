@@ -143,8 +143,7 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
   const recruiting = await recruitingCoverage(query);
   const recruitingGap = await detectUnextractedRecruiting(query);
-  const [articles, transitions, firmSourceChecks] =
-    await coverageFreshnessResults(query);
+  const [a, t, f] = await coverageFreshnessResults(query);
   return {
     generatedAt: new Date().toISOString(),
     counts: counts.counts,
@@ -156,20 +155,20 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     sparseFirms: sparseFirms.rows,
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
-    freshness: freshnessReport(articles, transitions, firmSourceChecks),
+    freshness: freshnessReport(a, t, f),
     warnings: coverageWarnings({
-      articles,
+      articles: a,
       categories,
       counts,
       fields,
-      firmSourceChecks,
+      firmSourceChecks: f,
       firmSources,
       recruiting,
       recruitingGap,
       sources,
       sparseAdvisors,
       sparseFirms,
-      transitions,
+      transitions: t,
     }),
   };
 };

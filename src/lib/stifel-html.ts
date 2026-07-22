@@ -99,10 +99,7 @@ const parseAdvisor = (
   return {
     advisorName,
     advisorUrl: absoluteUrl(link.attr("href")),
-    branchName: cleanText(contact.find(".search-results-branch-link").text()),
-    branchUrl: absoluteUrl(
-      contact.find(".search-results-branch-link").attr("href")
-    ),
+    ...branchFields(contact),
     businessPhone: phones[0],
     city: location.city,
     emailContactName: cleanText(String(emailButton.data("fa-name") ?? "")),
@@ -117,6 +114,16 @@ const parseAdvisor = (
     searchUrl,
     state: location.state,
     tollFreePhone: phones[1],
+  };
+};
+
+const branchFields = (
+  contact: cheerio.Cheerio<AnyNode>
+): Pick<StifelAdvisorSource, "branchName" | "branchUrl"> => {
+  const branchLink = contact.find(".search-results-branch-link");
+  return {
+    branchName: cleanText(branchLink.text()),
+    branchUrl: absoluteUrl(branchLink.attr("href")),
   };
 };
 

@@ -196,16 +196,24 @@ function renderRatingForm(
     ratingField("Performance", numberControls.performance),
     ratingField("Planning depth", numberControls.planningDepth),
     ratingReviewField(review),
-    Button({
-      variant: "primary",
-      type: "submit",
-      children: "Save rating",
-      attrs: { class: "private-rating-save" },
-    }),
+    ratingSubmitButton(),
     status
   );
   clear(body);
   body.appendChild(form);
+}
+
+/**
+ * Builds the private-rating submit button.
+ * @returns Save button for the rating form.
+ */
+function ratingSubmitButton(): HTMLElement {
+  return Button({
+    variant: "primary",
+    type: "submit",
+    children: "Save rating",
+    attrs: { class: "private-rating-save" },
+  });
 }
 
 /**

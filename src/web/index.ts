@@ -29,9 +29,9 @@ import {
   feedApiPath,
   feedCursorFrom,
   fetchNextFeedPage,
-  installFeedPopstateReload,
 } from "./feed-route-utils.js";
 import type { FeedCursor, FeedPayload } from "./feed-route-utils.js";
+import { finishFeedRender } from "./feed-render-helpers.js";
 import { renderCenter } from "./feed-center.js";
 import {
   AvatarC,
@@ -55,7 +55,7 @@ import type {
 const FEED_PAGE_SIZE = 20;
 
 /** Current state needed to reveal or fetch more feed items. */
-interface LoadMoreFeedItemsOptions {
+export interface LoadMoreFeedItemsOptions {
   readonly cursor: FeedCursor;
   readonly loadedItems: readonly FeedItem[];
   readonly moreLoadedToReveal: boolean;
@@ -74,6 +74,7 @@ MountThreeColumnPage({
   search,
   pageTitle: "AdvisorBook feed",
   build({ left, center, right }: ThreeColumnLayout): void {
+    const feedApi = api as unknown as (path: string) => Promise<FeedPayload>;
     const loadFeed = (): void => {
       clear(left);
       clear(center);
@@ -84,19 +85,15 @@ MountThreeColumnPage({
         title: "Loading feed",
         body: "Still fetching AdvisorBook activity. Retry if this takes longer than expected.",
         onRetry: loadFeed,
-        request: () =>
-          (api as unknown as (path: string) => Promise<FeedPayload>)(
-            feedApiPath()
-          ),
-        onSuccess: (payload: FeedPayload) => {
+        request: () => feedApi(feedApiPath()),
+        onSuccess: payload =>
           renderFeed(
             { left, center, right },
             payload.items ?? [],
             feedCursorFrom(payload),
             loadFeed
-          );
-        },
-        onError: (err: unknown) => {
+          ),
+        onError: err => {
           console.error("Feed route failed to load", err);
           clear(center);
           center.appendChild(
@@ -141,7 +138,6 @@ function renderFeed(
     const filteredItems = filterFeedItems(loadedItems, filters);
     const visibleItems = filteredItems.slice(0, visibleLimit);
     const moreLoadedToReveal = visibleItems.length < filteredItems.length;
-
     renderCenter(layout.center, visibleItems, {
       categories,
       count: visibleItems.length,
@@ -163,9 +159,7 @@ function renderFeed(
     });
     renderFeedSidebars(layout, visibleItems);
   };
-
-  renderCurrentState(items, page);
-  installFeedPopstateReload(reloadFeed);
+  finishFeedRender(renderCurrentState, items, page, reloadFeed);
 }
 
 /**

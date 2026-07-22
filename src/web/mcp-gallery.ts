@@ -99,27 +99,8 @@ function headerCard(catalog: McpCatalogResponse): HTMLElement {
     body: el(
       "div",
       { class: "mcp-gallery-header-body" },
-      el(
-        "p",
-        { class: "mcp-gallery-lede" },
-        "Public inventory for the read-only AdvisorBook MCP endpoint."
-      ),
-      el(
-        "div",
-        { class: "mcp-gallery-status-row" },
-        statusTag(catalog.status),
-        TagC({
-          kind: catalog.endpoint.authRequired ? "warn" : "ok",
-          children: catalog.endpoint.authRequired
-            ? "Auth required"
-            : "No sign-in required",
-        }),
-        TagC({
-          kind: catalog.readOnlyBoundary.status === "read-only" ? "ok" : "warn",
-          children: catalog.readOnlyBoundary.status,
-        }),
-        freshnessTag(catalog.generatedAt)
-      ),
+      galleryLede(),
+      galleryStatusRow(catalog),
       el(
         "div",
         { class: "mcp-gallery-stat-grid" },
@@ -130,6 +111,42 @@ function headerCard(catalog: McpCatalogResponse): HTMLElement {
       )
     ),
   });
+}
+
+/**
+ * Builds the gallery lede text node.
+ * @returns MCP gallery lede paragraph.
+ */
+function galleryLede(): HTMLElement {
+  return el(
+    "p",
+    { class: "mcp-gallery-lede" },
+    "Public inventory for the read-only AdvisorBook MCP endpoint."
+  );
+}
+
+/**
+ * Builds endpoint and boundary status tags for the gallery header.
+ * @param catalog - Public MCP catalog response.
+ * @returns Status row element.
+ */
+function galleryStatusRow(catalog: McpCatalogResponse): HTMLElement {
+  return el(
+    "div",
+    { class: "mcp-gallery-status-row" },
+    statusTag(catalog.status),
+    TagC({
+      kind: catalog.endpoint.authRequired ? "warn" : "ok",
+      children: catalog.endpoint.authRequired
+        ? "Auth required"
+        : "No sign-in required",
+    }),
+    TagC({
+      kind: catalog.readOnlyBoundary.status === "read-only" ? "ok" : "warn",
+      children: catalog.readOnlyBoundary.status,
+    }),
+    freshnessTag(catalog.generatedAt)
+  );
 }
 
 /**

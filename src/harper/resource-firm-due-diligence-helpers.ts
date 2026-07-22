@@ -160,19 +160,7 @@ export function rankingPresenceModule(
   db: FirmDueDiligenceDb,
   rows: readonly RankingEntryRow[]
 ): RankingPresenceModule {
-  if (!rows.length)
-    return {
-      status: "unavailable",
-      note: "No RankingEntry rows are loaded for this firm; this does not imply the firm has no ranked advisors, teams, or firm appearances.",
-      appearances: [],
-      resolvedCount: 0,
-      unresolvedCount: 0,
-      provenance: { sourceTable: "RankingEntry", sourceIds: [] },
-      freshness: freshnessNote(
-        null,
-        "Ranking freshness is unavailable because no RankingEntry rows are loaded."
-      ),
-    };
+  if (!rows.length) return unavailableRankingPresenceModule();
   const appearances = rows.map(row => rankingAppearance(db, row));
   const sortedFiniteRanks = appearances
     .map(row => row.rank)
@@ -193,6 +181,25 @@ export function rankingPresenceModule(
     freshness: freshnessNote(
       latestRankingYear(appearances),
       "Ranking freshness is unavailable because ranking years are missing."
+    ),
+  };
+}
+
+/**
+ * Builds the ranking-presence payload used when no ranking rows are loaded.
+ * @returns Unavailable ranking-presence module.
+ */
+function unavailableRankingPresenceModule(): RankingPresenceModule {
+  return {
+    status: "unavailable",
+    note: "No RankingEntry rows are loaded for this firm; this does not imply the firm has no ranked advisors, teams, or firm appearances.",
+    appearances: [],
+    resolvedCount: 0,
+    unresolvedCount: 0,
+    provenance: { sourceTable: "RankingEntry", sourceIds: [] },
+    freshness: freshnessNote(
+      null,
+      "Ranking freshness is unavailable because no RankingEntry rows are loaded."
     ),
   };
 }

@@ -116,18 +116,7 @@ export function selectDueAdvisors(
   const cutoffMs = now.getTime() - opts.staleDays * DAY_MS;
   const latest = latestCheckByAdvisor(checks, opts.sourceType);
   const due = advisors
-    .map(advisor => {
-      const lastCheck = latest.get(advisor.id) ?? null;
-      const lastMs = parseDateMs(lastCheck?.checkedAt);
-      const daysSinceLastCheck =
-        lastMs === null ? null : Math.floor((now.getTime() - lastMs) / DAY_MS);
-      return {
-        advisor,
-        lastCheck,
-        missingFields: missingWebResearchFields(advisor),
-        daysSinceLastCheck,
-      };
-    })
+    .map(advisor => dueAdvisorItem(advisor, latest, now))
     .filter(item => {
       const nextCheckMs = parseDateMs(item.lastCheck?.nextCheckAfter);
       if (nextCheckMs !== null && nextCheckMs > now.getTime()) return false;
@@ -147,4 +136,28 @@ export function selectDueAdvisors(
       );
     })
     .slice(0, opts.max);
+}
+
+/**
+ * Combines advisor and latest-check rows into a due-selection candidate.
+ * @param advisor Advisor row under consideration.
+ * @param latest Latest checks indexed by advisor id.
+ * @param now Clock used for stale-age calculation.
+ * @returns Due-selection candidate with missing-field metadata.
+ */
+function dueAdvisorItem(
+  advisor: AdvisorResearchAdvisor,
+  latest: ReadonlyMap<string, AdvisorResearchCheck>,
+  now: Date
+) {
+  const lastCheck = latest.get(advisor.id) ?? null;
+  const lastMs = parseDateMs(lastCheck?.checkedAt);
+  const daysSinceLastCheck =
+    lastMs === null ? null : Math.floor((now.getTime() - lastMs) / DAY_MS);
+  return {
+    advisor,
+    lastCheck,
+    missingFields: missingWebResearchFields(advisor),
+    daysSinceLastCheck,
+  };
 }
