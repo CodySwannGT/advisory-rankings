@@ -178,18 +178,14 @@ const crawlRosterPage = async (
   const hits = searchHits(await client.firmRoster(firmId, page, PAGE_SIZE));
   if (!hits.length) return emptyCrawlSummary();
   const crds = rosterPageCrds(hits, opts, seen);
-  const summary = await fetchCrds(
-    crds,
-    client,
-    rest,
-    resolver,
-    state,
-    opts,
-    `roster ${firmId}`
+  const summary = await load(client, rest, resolver, state, opts, firmId, crds);
+  const done = rosterPageComplete(
+    hits.length,
+    opts.max || 0,
+    seen + crds.length
   );
   logRosterPage(opts, firmId, page, hits.length);
-  if (rosterPageComplete(hits.length, opts.max ?? 0, seen + crds.length))
-    return summary;
+  if (done) return summary;
   return addCrawlSummaries(
     summary,
     await nextRosterPageSummary(
@@ -205,6 +201,17 @@ const crawlRosterPage = async (
     )
   );
 };
+
+const load = (
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  opts: CrawlOptions,
+  firmId: string,
+  crds: readonly string[]
+): Promise<CrawlSummary> =>
+  fetchCrds(crds, client, rest, resolver, state, opts, `roster ${firmId}`);
 
 const rosterPageCrds = (
   hits: ReadonlyArray<ReturnType<typeof searchHits>[number]>,

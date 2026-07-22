@@ -127,15 +127,7 @@ async function exerciseFeedLoadMore(page: Page): Promise<FeedLoadMoreResult> {
   );
 
   if ((await loadMore.count()) === 0) {
-    return {
-      afterCount: beforeCount,
-      appended: true,
-      beforeCount,
-      duplicateLinks: [],
-      initialDocumentHeight,
-      initialCount: beforeCount,
-      noDuplicateLinks: true,
-    };
+    return feedLoadMoreUnavailable(beforeCount, initialDocumentHeight);
   }
 
   await loadMore.click();
@@ -158,6 +150,21 @@ async function exerciseFeedLoadMore(page: Page): Promise<FeedLoadMoreResult> {
     initialDocumentHeight,
     initialCount: beforeCount,
     noDuplicateLinks: duplicateLinks.length === 0,
+  };
+}
+
+function feedLoadMoreUnavailable(
+  beforeCount: number,
+  initialDocumentHeight: number
+): FeedLoadMoreResult {
+  return {
+    afterCount: beforeCount,
+    appended: true,
+    beforeCount,
+    duplicateLinks: [],
+    initialDocumentHeight,
+    initialCount: beforeCount,
+    noDuplicateLinks: true,
   };
 }
 

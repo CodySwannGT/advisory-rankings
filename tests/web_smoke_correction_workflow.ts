@@ -105,10 +105,9 @@ async function runAuthenticatedCorrectionWorkflow(
   const proposedValue = `QA Reviewed Advisor ${stamp}`;
   const submitterNote = `${SUBMITTER_NOTE_PREFIX} ${stamp}`;
   const reviewerNote = `${REVIEWER_NOTE_PREFIX} ${stamp}`;
-  const viewport = { width: 1280, height: 900 };
   const workflow = await correctionWorkflowRuntime(
     browser,
-    viewport,
+    { width: 1280, height: 900 },
     extraHTTPHeaders
   );
 
@@ -605,11 +604,7 @@ async function mobileCorrectionChecks(
   advisor: SmokeAdvisor,
   extraHTTPHeaders: Record<string, string>
 ): Promise<readonly Check[]> {
-  const context = await newContext(
-    browser,
-    { width: 390, height: 844 },
-    extraHTTPHeaders
-  );
+  const context = await newContext(browser, mobileViewport(), extraHTTPHeaders);
   const page = await context.newPage();
   await smokeGoto(page, `${BASE}${advisor.href}`);
   await smokeWaitForSelector(page, `${CORRECTION_CARD_SELECTOR} form`);
@@ -641,6 +636,10 @@ async function mobileCorrectionChecks(
     ),
     inboxOverflow,
   ]);
+}
+
+function mobileViewport(): ViewportSize {
+  return { width: 390, height: 844 };
 }
 
 /**

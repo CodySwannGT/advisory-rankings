@@ -43,9 +43,9 @@ import {
   licensesSection,
   outsideActivitiesSection,
   teamsSection,
-  identityCard,
 } from "./advisor-sections.js";
 import { publicReadinessCard } from "./advisor-readiness-card.js";
+import { appendAdvisorRightRail } from "./advisor-render-helpers.js";
 import { reviewedDiscrepancyNotesSection } from "./advisor-discrepancy-notes-section.js";
 import {
   advisorEvidenceProfileSections,
@@ -159,7 +159,6 @@ function render(
   const evidenceSections = advisorEvidenceProfileSections(d, {
     showAnalystDetails,
   });
-
   canonicalizeEntityRoute("advisor", { ...a, name: d.displayName });
   appendSections(center, [
     ProfileHeadComponent({
@@ -171,11 +170,7 @@ function render(
     }),
     ...advisorCenterSections(d, mobileEvidenceRoot),
   ]);
-  right.append(
-    identityCard(d.advisor),
-    desktopEvidenceRoot,
-    publicReadinessCard(d)
-  );
+  appendAdvisorRightRail(right, d, desktopEvidenceRoot);
   mountResponsiveEvidenceSections({
     desktopRoot: desktopEvidenceRoot,
     mobileRoot: mobileEvidenceRoot,

@@ -57,6 +57,7 @@ import {
   renderRecoverableDetailError,
   resourceRows,
 } from "./detail-state.js";
+import { appendArticlePartialFailures } from "./article-render-helpers.js";
 
 mountThreeColumnPage({
   active: "home",
@@ -135,10 +136,7 @@ function render(
   );
   center.appendChild(articleEvidenceMap(d.article, resources));
   appendIfPresent(center, limitationsSection(resources));
-  appendIfPresent(center, PartialFailureCard("Article events", d.eventCards));
-  appendIfPresent(center, PartialFailureCard("Mentioned firms", d.firms));
-  appendIfPresent(center, PartialFailureCard("Mentioned teams", d.teams));
-  appendIfPresent(center, PartialFailureCard("Mentioned advisors", d.advisors));
+  appendArticlePartialFailures(center, d);
   appendIfPresent(center, articleBodyCard(d.body));
   appendIfPresent(center, linkOutCard(d.article, d.body));
   appendIfPresent(center, PartialFailureCard("Article body", d.body));

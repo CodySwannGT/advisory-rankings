@@ -4,7 +4,11 @@ import { BrokerCheckClient } from "../lib/brokercheck.js";
 import { HarperREST, Resolver } from "../lib/brokercheck-load.js";
 import { loadCreds } from "./_auth.js";
 import { loadState, saveState } from "./fetch_brokercheck_core.js";
-import { runSelectedPhases } from "./brokercheck_crawl_all_helpers.js";
+import {
+  runSelectedPhases,
+  type CrawlPhaseFlags,
+  type WalkFirmRostersOptions,
+} from "./brokercheck_crawl_all_helpers.js";
 
 const LOG_FILE = "research/brokercheck-crawl.log";
 const DEFAULT_MAX_RUNTIME_SECONDS = 4 * 3600;
@@ -74,24 +78,15 @@ async function main(): Promise<void> {
   const resolver = new Resolver(rest);
   const client = new BrokerCheckClient({ rateSeconds, verbose: false });
   const state = await loadState();
+  const opts = crawlAllOptions(maxPerFirm, force, start, maxRuntimeSeconds);
   const summaries = await announceAndRunPhases(
     `==== brokercheck_crawl_all START max-per-firm=${maxPerFirm || "unlimited"} max-runtime=${maxRuntimeSeconds}s force=${force} ====`,
     rest,
     client,
     resolver,
     state,
-    {
-      maxPerFirm,
-      force,
-      log,
-      onlyFirmId: arg("--only-firm-id"),
-      deadline: start + maxRuntimeSeconds * 1000,
-    },
-    {
-      skipFirmLookup: has("--skip-firm-lookup"),
-      skipFirmSnapshots: has("--skip-firm-snapshots"),
-      skipRosters: has("--skip-rosters"),
-    }
+    opts,
+    selectedPhases()
   );
 
   await saveState(state);
@@ -100,6 +95,41 @@ async function main(): Promise<void> {
   );
   await log(`summaries: ${JSON.stringify(summaries)}`);
   await log(`resolver stats: ${JSON.stringify(resolver.stats)}`);
+}
+
+/**
+ * Builds bounded roster-crawl options from command-line flags.
+ * @param maxPerFirm Maximum advisors to crawl per firm; zero means unlimited.
+ * @param force Whether to refresh existing snapshots.
+ * @param start Start timestamp used to derive the deadline.
+ * @param maxRuntimeSeconds Runtime bound in seconds.
+ * @returns Options for selected BrokerCheck crawl phases.
+ */
+function crawlAllOptions(
+  maxPerFirm: number,
+  force: boolean,
+  start: number,
+  maxRuntimeSeconds: number
+): WalkFirmRostersOptions {
+  return {
+    maxPerFirm,
+    force,
+    log,
+    onlyFirmId: arg("--only-firm-id"),
+    deadline: start + maxRuntimeSeconds * 1000,
+  };
+}
+
+/**
+ * Reads phase-skip flags from command-line arguments.
+ * @returns Selected BrokerCheck crawl phase flags.
+ */
+function selectedPhases(): CrawlPhaseFlags {
+  return {
+    skipFirmLookup: has("--skip-firm-lookup"),
+    skipFirmSnapshots: has("--skip-firm-snapshots"),
+    skipRosters: has("--skip-rosters"),
+  };
 }
 
 const createHarperRest = (): HarperREST => {

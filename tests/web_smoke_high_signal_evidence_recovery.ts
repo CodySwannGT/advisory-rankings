@@ -4,7 +4,7 @@
  * and one transient `/Feed` failure-then-recovery cycle (single-shot route
  * fulfillment that unroutes itself so the next request succeeds).
  */
-import type { Browser, Page, Route } from "playwright";
+import type { Browser, Locator, Page, Route } from "playwright";
 import {
   BASE,
   FEED_HEADLINE_SELECTOR,
@@ -157,12 +157,7 @@ async function captureTransientErrorRecoveryEvidence(
   await shot(page, "04-evidence-feed-transient-error");
   const errorTitlePresent = (await page.locator(FEED_ERROR_TITLE).count()) >= 1;
   const retryButton = page.getByRole("button", { name: "Retry" }).first();
-  const retryVisible = (await retryButton.count()) >= 1;
-  if (retryVisible) {
-    await retryButton.click();
-  } else {
-    await page.reload({ waitUntil: "domcontentloaded" });
-  }
+  const retryVisible = await recoverFeedAfterTransientError(page, retryButton);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   await shot(page, "04-evidence-feed-transient-recovery");
   const recoveredCards = await page.locator(ARTICLE_CARD).count();
@@ -179,6 +174,19 @@ async function captureTransientErrorRecoveryEvidence(
       `cards=${recoveredCards}`
     ),
   ]);
+}
+
+async function recoverFeedAfterTransientError(
+  page: Page,
+  retryButton: Locator
+): Promise<boolean> {
+  const retryVisible = (await retryButton.count()) >= 1;
+  if (retryVisible) {
+    await retryButton.click();
+  } else {
+    await page.reload({ waitUntil: "domcontentloaded" });
+  }
+  return retryVisible;
 }
 
 async function oneShotFeedFailure(route: Route): Promise<void> {

@@ -223,14 +223,12 @@ async function checkAdvisorAttribution(page) {
       `${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/individual"]`
     )
     .count();
-  const careerSectionAttr = await page
-    .locator(".card", { hasText: /Career/i })
-    .locator(SOURCE_ATTR_SELECTOR)
-    .count();
+  const careerSectionAttr = await careerAttributionCount(page);
+  const hasAttributionText = /FINRA BrokerCheck/i.test(attrText);
   attrCount >= 1
     ? ok(`advisor.html: ${attrCount} BrokerCheck attribution footer(s)`)
     : fail("advisor.html: missing BrokerCheck attribution footer");
-  /FINRA BrokerCheck/i.test(attrText)
+  hasAttributionText
     ? ok("advisor.html: attribution names FINRA BrokerCheck")
     : fail(`advisor.html: attribution text wrong: "${attrText.slice(0, 100)}"`);
   /as of/i.test(attrText)
@@ -247,6 +245,13 @@ async function checkAdvisorAttribution(page) {
   careerSectionAttr >= 1
     ? ok("advisor.html: Career section carries its own attribution")
     : fail("advisor.html: Career section missing attribution");
+}
+
+async function careerAttributionCount(page): Promise<number> {
+  return await page
+    .locator(".card", { hasText: /Career/i })
+    .locator(SOURCE_ATTR_SELECTOR)
+    .count();
 }
 
 /**

@@ -283,44 +283,45 @@ async function firstRankingRowText(page: Page): Promise<string> {
  * @returns Facet input and suggestion evidence.
  */
 async function readRankingsFacetEvidence(page: Page) {
-  return await page.evaluate(
-    args => {
-      const optionsFor = (selector: string) =>
-        [
-          ...document.querySelectorAll<HTMLOptionElement>(`${selector} option`),
-        ].map(option => option.value);
-      const firmInput = document.querySelector<HTMLInputElement>(
-        args.firmFilterSelector
-      );
-      const stateInput = document.querySelector<HTMLInputElement>(
-        args.stateFilterSelector
-      );
-      const cityInput = document.querySelector<HTMLInputElement>(
-        args.cityFilterSelector
-      );
-      return {
-        cityFacetOptions: optionsFor(args.cityOptionsSelector),
-        firmFacetOptions: optionsFor(args.firmOptionsSelector),
-        hasFacetLists:
-          firmInput?.getAttribute(args.listAttribute) ===
-            args.firmOptionsSelector.slice(1) &&
-          stateInput?.getAttribute(args.listAttribute) ===
-            args.stateOptionsSelector.slice(1) &&
-          cityInput?.getAttribute(args.listAttribute) ===
-            args.cityOptionsSelector.slice(1),
-        stateFacetOptions: optionsFor(args.stateOptionsSelector),
-      };
-    },
-    {
-      cityFilterSelector: CITY_FILTER_SELECTOR,
-      cityOptionsSelector: CITY_OPTIONS_SELECTOR,
-      firmFilterSelector: FIRM_FILTER_SELECTOR,
-      firmOptionsSelector: FIRM_OPTIONS_SELECTOR,
-      listAttribute: LIST_ATTRIBUTE,
-      stateFilterSelector: STATE_FILTER_SELECTOR,
-      stateOptionsSelector: STATE_OPTIONS_SELECTOR,
-    }
-  );
+  return page.evaluate(args => {
+    const optionsFor = (selector: string) =>
+      [
+        ...document.querySelectorAll<HTMLOptionElement>(`${selector} option`),
+      ].map(option => option.value);
+    const firmInput = document.querySelector<HTMLInputElement>(
+      args.firmFilterSelector
+    );
+    const stateInput = document.querySelector<HTMLInputElement>(
+      args.stateFilterSelector
+    );
+    const cityInput = document.querySelector<HTMLInputElement>(
+      args.cityFilterSelector
+    );
+    return {
+      cityFacetOptions: optionsFor(args.cityOptionsSelector),
+      firmFacetOptions: optionsFor(args.firmOptionsSelector),
+      hasFacetLists:
+        firmInput?.getAttribute(args.listAttribute) ===
+          args.firmOptionsSelector.slice(1) &&
+        stateInput?.getAttribute(args.listAttribute) ===
+          args.stateOptionsSelector.slice(1) &&
+        cityInput?.getAttribute(args.listAttribute) ===
+          args.cityOptionsSelector.slice(1),
+      stateFacetOptions: optionsFor(args.stateOptionsSelector),
+    };
+  }, rankingsFacetArgs());
+}
+
+function rankingsFacetArgs() {
+  return {
+    cityFilterSelector: CITY_FILTER_SELECTOR,
+    cityOptionsSelector: CITY_OPTIONS_SELECTOR,
+    firmFilterSelector: FIRM_FILTER_SELECTOR,
+    firmOptionsSelector: FIRM_OPTIONS_SELECTOR,
+    listAttribute: LIST_ATTRIBUTE,
+    stateFilterSelector: STATE_FILTER_SELECTOR,
+    stateOptionsSelector: STATE_OPTIONS_SELECTOR,
+  };
 }
 
 /**

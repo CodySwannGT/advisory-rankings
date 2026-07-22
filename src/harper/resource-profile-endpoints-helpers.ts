@@ -5,6 +5,7 @@
  * and produces one slice of the public response.
  */
 import type {
+  BranchRow,
   BrokerCheckSnapshotRow,
   FieldAssertionRow,
 } from "../types/harper-schema.js";
@@ -34,6 +35,7 @@ import type {
   FirmAdvisorPublicRow,
   FirmProfileBody,
   FirmProfileResponse,
+  TeamProfileBranch,
   TeamProfileResponse,
 } from "./resource-profile-endpoints-types.js";
 
@@ -173,17 +175,7 @@ export function teamProfilePayload(
   return {
     team,
     currentFirm: firm ? (firmChip(firm) as unknown) : null,
-    currentBranch: branch
-      ? {
-          id: branch.id,
-          name: branch.name,
-          level: branch.level,
-          address: branch.address,
-          city: branch.city,
-          state: branch.state,
-          buildingName: branch.buildingName,
-        }
-      : null,
+    currentBranch: branch ? teamBranchPayload(branch) : null,
     currentMembers,
     pastMembers,
     metricSnapshots: db.teamSnaps
@@ -198,6 +190,23 @@ export function teamProfilePayload(
         .filter(mention => mention.teamId === teamId)
         .map(mention => mention.articleId)
     ),
+  };
+}
+
+/**
+ * Builds the current-branch slice embedded in team profile payloads.
+ * @param branch - Current branch row.
+ * @returns Public branch fields for team profile clients.
+ */
+function teamBranchPayload(branch: BranchRow): TeamProfileBranch {
+  return {
+    id: branch.id,
+    name: branch.name,
+    level: branch.level,
+    address: branch.address,
+    city: branch.city,
+    state: branch.state,
+    buildingName: branch.buildingName,
   };
 }
 

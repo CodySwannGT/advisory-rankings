@@ -299,39 +299,50 @@ function sourceContextSection(db: ResourceIndex): DataCoverageSection {
   return {
     id: "source-context",
     label: "Source context",
-    metrics: [
-      metric(
-        "field-assertions",
-        "Field assertions",
-        db.fieldAssertions.length,
-        "FieldAssertion",
-        null,
-        db.fieldAssertions.length === 0
-          ? "No field-level source assertions are loaded."
-          : "Field assertions are summarized only as aggregate counts."
-      ),
-      metric(
-        "article-mentions",
-        "Article mentions",
-        articleMentionCount,
-        "Article*Mention",
-        FEED_RESOURCE,
-        articleMentionCount === 0
-          ? "No article-to-entity mention rows are loaded."
-          : null
-      ),
-      metric(
-        "firm-aliases",
-        "Firm aliases",
-        db.firmAliases.length,
-        "FirmAlias",
-        SEARCH_RESOURCE,
-        db.firmAliases.length === 0
-          ? "Firm alias coverage is unavailable."
-          : null
-      ),
-    ],
+    metrics: sourceContextMetrics(db, articleMentionCount),
   };
+}
+
+/**
+ * Builds source-context metrics from loaded public provenance rows.
+ * @param db Shared Harper resource index.
+ * @param articleMentionCount Aggregate article mention count.
+ * @returns Source-context coverage metrics.
+ */
+function sourceContextMetrics(
+  db: ResourceIndex,
+  articleMentionCount: number
+): ReadonlyArray<DataCoverageMetric> {
+  return [
+    metric(
+      "field-assertions",
+      "Field assertions",
+      db.fieldAssertions.length,
+      "FieldAssertion",
+      null,
+      db.fieldAssertions.length === 0
+        ? "No field-level source assertions are loaded."
+        : "Field assertions are summarized only as aggregate counts."
+    ),
+    metric(
+      "article-mentions",
+      "Article mentions",
+      articleMentionCount,
+      "Article*Mention",
+      FEED_RESOURCE,
+      articleMentionCount === 0
+        ? "No article-to-entity mention rows are loaded."
+        : null
+    ),
+    metric(
+      "firm-aliases",
+      "Firm aliases",
+      db.firmAliases.length,
+      "FirmAlias",
+      SEARCH_RESOURCE,
+      db.firmAliases.length === 0 ? "Firm alias coverage is unavailable." : null
+    ),
+  ];
 }
 
 /**

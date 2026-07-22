@@ -64,10 +64,9 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await shot(page, "01-feed");
   const initialPostCount = await postCards.count();
   const sanctionPillExpectation = await expectedSanctionPillCount(page);
-  const actualSanctionPillCount = await page.locator(".sanction-pill").count();
   const transitionText = (await transition.textContent()) ?? "";
   const initialFeedChecks = await feedInitialChecks(page, {
-    actualSanctionPillCount,
+    actualSanctionPillCount: await page.locator(".sanction-pill").count(),
     initialPostCount,
     regulatoryDisclosure,
     sanctionPillExpectation,
@@ -209,9 +208,6 @@ export async function smokeAdvisor(
     ...(await advisorEvidenceChecks(page)),
     ...(await advisorCopyGuardrailChecks(page)),
   ];
-  // CRD badge: verify on an advisor that actually has one (derived from live
-  // data). Cairnes's deployed record has no finraCrd, so asserting it on
-  // Cairnes specifically was brittle; the badge rendering is what we prove.
   return [...cairnesChecks, await verifyCrdBadgeRenders(page)];
 }
 
@@ -241,19 +237,22 @@ async function cairnesProfileChecks(page: Page): Promise<readonly Check[]> {
       (await page.locator(".sanction-pill").count()) >= 3,
       "advisor.html: expected sanction pills"
     ),
-    check(
-      /suspended|withdrawn/i.test(
-        (await page
-          .locator(".profile-head .tag")
-          .filter({ hasText: /suspended|withdrawn/i })
-          .first()
-          .textContent()
-          .catch(() => "")) ?? ""
-      ),
-      "advisor.html: career status flagged"
-    ),
+    await advisorCareerStatusCheck(page),
     ...(await brokerCheckAttributionChecks(page)),
   ];
+}
+
+async function advisorCareerStatusCheck(page: Page): Promise<Check> {
+  const text = await page
+    .locator(".profile-head .tag")
+    .filter({ hasText: /suspended|withdrawn/i })
+    .first()
+    .textContent()
+    .catch(() => "");
+  return check(
+    /suspended|withdrawn/i.test(text ?? ""),
+    "advisor.html: career status flagged"
+  );
 }
 
 async function brokerCheckAttributionChecks(

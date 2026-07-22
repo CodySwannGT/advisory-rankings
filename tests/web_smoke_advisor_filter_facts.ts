@@ -68,13 +68,11 @@ function readAdvisorFilterFactsInPage(
     card => card.textContent?.includes(title)
   );
   const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
+  const hiddenMetricLabels = new Set(["Loaded", "Total", "Page size"]);
   const metricValue = (labelText: string) =>
     Number(
       /\d+/.exec(
-        (
-          labels.find(label => label.textContent === labelText)
-            ?.nextElementSibling?.textContent ?? ""
-        ).replace(/,/g, "")
+        (metricText(labels, labelText) ?? "").replace(/,/g, "")
       )?.[0] ?? NaN
     );
   const rows = Array.from(document.querySelectorAll(rowSelector));
@@ -88,8 +86,8 @@ function readAdvisorFilterFactsInPage(
     hasCrd: valueOf("hasCrd"),
     loaded: metricValue("Showing"),
     profileSubstance: valueOf("profileSubstance"),
-    rawMetricsHidden: ["Loaded", "Total", "Page size"].every(
-      label => !labels.some(item => item.textContent?.trim() === label)
+    rawMetricsHidden: labels.every(
+      label => !hiddenMetricLabels.has(label.textContent?.trim() ?? "")
     ),
     rowCount: rows.length,
     rowTexts: rows
@@ -97,6 +95,11 @@ function readAdvisorFilterFactsInPage(
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: metricValue("Matches"),
   };
+}
+
+function metricText(labels: Element[], labelText: string): string | null {
+  return labels.find(label => label.textContent === labelText)
+    ?.nextElementSibling?.textContent;
 }
 
 function readAdvisorFilterLabelsAreAccessibleInPage({

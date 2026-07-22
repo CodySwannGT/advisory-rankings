@@ -187,12 +187,16 @@ function complianceChecks(facts: {
       facts.homeNavClass ?? "missing class"
     ),
     check(facts.disclosureCount >= 1, "regulatory: disclosure events rendered"),
-    check(
-      /FINRA|regulatory|disclosure/i.test(facts.regulatoryDisclosureText ?? ""),
-      "regulatory: event shows regulatory context"
-    ),
+    regulatoryEventContextCheck(facts.regulatoryDisclosureText),
     check(facts.loadErrorCount === 0, "regulatory: no compliance load error"),
   ];
+}
+
+function regulatoryEventContextCheck(text: string | null): Check {
+  return check(
+    /FINRA|regulatory|disclosure/i.test(text ?? ""),
+    "regulatory: event shows regulatory context"
+  );
 }
 
 /**
