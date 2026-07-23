@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe("advisor firm directory lookup", () => {
-  it("uses bounded firm lookups, ignores ended employments, and de-dupes advisors", async () => {
+  it("batches firm lookups, ignores ended employments, and de-dupes advisors", async () => {
     const firms = Array.from({ length: 26 }, (_, index): FirmRow => {
       const padded = String(index + 1).padStart(2, "0");
       return {
