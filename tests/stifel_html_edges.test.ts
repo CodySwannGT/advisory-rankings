@@ -92,4 +92,34 @@ describe("parseStifelSearchResults", () => {
       },
     ]);
   });
+
+  it("keeps city-only locations without inventing a state", () => {
+    expect(
+      parseStifelSearchResults(
+        `
+          <table id="searchResults">
+            <tbody>
+              <tr>
+                <td class="search-results-name">
+                  <a class="search-results-fa-link" href="/fa/pat-advisor">Pat Advisor</a>
+                  <div>Pat Advisor</div>
+                  <div>Senior Vice President</div>
+                  <div>Chicago</div>
+                </td>
+                <td class="search-results-contact-info"></td>
+              </tr>
+            </tbody>
+          </table>
+        `,
+        "https://www.stifel.com/search?name=pat"
+      )
+    ).toEqual([
+      expect.objectContaining({
+        advisorName: "Pat Advisor",
+        city: "Chicago",
+        roleTitle: "Senior Vice President",
+        state: undefined,
+      }),
+    ]);
+  });
 });
