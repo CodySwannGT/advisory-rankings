@@ -79,12 +79,7 @@ function searchKindObservationChecks(
       observation.responseUrl
     ),
     check(
-      observation.visibleKinds.length > 0 &&
-        observation.visibleKinds.every(
-          kind =>
-            kind.trim().toLowerCase() ===
-            observation.kindCase.rowKindLabel.toLowerCase()
-        ),
+      visibleKindsMatch(observation),
       `[EVIDENCE: search-kind-filter] ${observation.kindCase.kind} mode renders only ${observation.kindCase.kind} rows`,
       observation.visibleKinds.join(",")
     ),
@@ -102,6 +97,16 @@ function searchKindObservationChecks(
       observation.countHint
     ),
   ];
+}
+
+function visibleKindsMatch(observation: SearchKindObservation): boolean {
+  const expected = observation.kindCase.rowKindLabel.toLowerCase();
+  return (
+    observation.visibleKinds.length > 0 &&
+    observation.visibleKinds.every(
+      kind => kind.trim().toLowerCase() === expected
+    )
+  );
 }
 
 /**

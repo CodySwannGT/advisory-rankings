@@ -4,10 +4,10 @@ import {
   installFeedPopstateReload,
   type FeedCursor,
 } from "./feed-route-utils.js";
-import type { LoadMoreFeedItemsOptions } from "./index.js";
+import type { FeedStateRenderer } from "./feed-state-renderer.js";
 
 export const finishFeedRender = (
-  renderCurrentState: LoadMoreFeedItemsOptions["renderCurrentState"],
+  renderCurrentState: FeedStateRenderer,
   items: readonly FeedItem[],
   page: FeedCursor,
   reloadFeed: () => void

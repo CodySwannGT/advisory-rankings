@@ -213,31 +213,37 @@ export function coverageTimelineCard(
       ? el(
           "div",
           { class: CLASS_LIST },
-          ...articles.slice(0, 4).map(article => {
-            const articleAny = article as FirmArticleStubView &
-              CoverageArticleExtras;
-            return el(
-              "a",
-              {
-                class: `${CLASS_LIST_ROW} firm-dd-link-row`,
-                href: articleAny.url || articlePath(article),
-                target: articleAny.url ? "_blank" : null,
-                rel: articleAny.url ? "noreferrer" : null,
-              },
-              el("span", {}, articleAny.headline || "Untitled article"),
-              el(
-                "strong",
-                {},
-                articleAny.publishedDate
-                  ? fmtDate(articleAny.publishedDate, { mode: "short" })
-                  : "undated"
-              )
-            );
-          })
+          ...articles.slice(0, 4).map(coverageArticleRow)
         )
       : EmptyTextComponent({
           children: "No article coverage is loaded for this firm yet.",
         }),
     metricTile("Articles on file", fmtNumber(module?.articleCount), "articles")
+  );
+}
+
+/**
+ * Builds one coverage article link row.
+ * @param article Recent firm article.
+ * @returns Article link row.
+ */
+function coverageArticleRow(article: FirmArticleStubView): HTMLElement {
+  const articleAny = article as FirmArticleStubView & CoverageArticleExtras;
+  return el(
+    "a",
+    {
+      class: `${CLASS_LIST_ROW} firm-dd-link-row`,
+      href: articleAny.url || articlePath(article),
+      target: articleAny.url ? "_blank" : null,
+      rel: articleAny.url ? "noreferrer" : null,
+    },
+    el("span", {}, articleAny.headline || "Untitled article"),
+    el(
+      "strong",
+      {},
+      articleAny.publishedDate
+        ? fmtDate(articleAny.publishedDate, { mode: "short" })
+        : "undated"
+    )
   );
 }

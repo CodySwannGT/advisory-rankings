@@ -44,18 +44,20 @@ export async function smokeTeam(page: Page): Promise<readonly Check[]> {
       "team.html: Taylor header"
     ),
     ...(await profileHeadingChecks(page, "team.html", /Taylor/)),
-    check(
-      (await page
-        .locator(".card")
-        .filter({ hasText: "Current members" })
-        .first()
-        .locator(".row")
-        .count()) >= 9,
-      "team.html: current members rendered"
-    ),
+    await currentMembersRowsCheck(page),
     await teamSnapshotRowsCheck(page),
     ...mobileChecks,
   ];
+}
+
+async function currentMembersRowsCheck(page: Page): Promise<Check> {
+  const currentMembers = page
+    .locator(".card")
+    .filter({ hasText: "Current members" });
+  return check(
+    (await currentMembers.first().locator(".row").count()) >= 9,
+    "team.html: current members rendered"
+  );
 }
 
 async function teamSnapshotRowsCheck(page: Page): Promise<Check> {

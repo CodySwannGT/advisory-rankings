@@ -553,7 +553,14 @@ async function captureLiveAdvisorFilterFacts(
   await page.locator(DIRECTORY_ROW_SELECTOR).first().waitFor({
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
-  return await page.evaluate(
+  return await readLiveAdvisorFilterFacts(page, query);
+}
+
+function readLiveAdvisorFilterFacts(
+  page: Page,
+  query: string
+): Promise<LiveAdvisorFilterFacts> {
+  return page.evaluate(
     ({ formSelector, query, rowSelector }) => {
       const firmInput = document.querySelector(
         `${formSelector} [name="firm"]`

@@ -136,10 +136,7 @@ async function socketPost(
         socketPath,
         method: "POST",
         path: "/",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${auth}`,
-        },
+        headers: harperOperationHeaders(auth),
       },
       async res => {
         res.setEncoding("utf8");
@@ -163,6 +160,15 @@ async function socketPost(
     req.write(JSON.stringify(body));
     req.end();
   });
+}
+
+/**
+ * Builds Harper operations headers for socket requests.
+ * @param auth Basic auth payload.
+ * @returns HTTP headers for the operations request.
+ */
+function harperOperationHeaders(auth: string): Record<string, string> {
+  return { "Content-Type": "application/json", Authorization: `Basic ${auth}` };
 }
 
 /**

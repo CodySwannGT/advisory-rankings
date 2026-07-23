@@ -229,13 +229,21 @@ async function invalidDetailChecks(facts: {
       facts.page.url()
     ),
     check(
-      (await facts.page
-        .locator(facts.routeCheck.destinationSelector)
-        .count()) >= 1,
+      await destinationIsInteractive(facts),
       `invalid-detail ${facts.routeCheck.kind}: recovery destination is interactive`
     ),
     ...jsonContractChecks(facts),
   ];
+}
+
+async function destinationIsInteractive(facts: {
+  readonly page: Page;
+  readonly routeCheck: InvalidDetailRouteCheck;
+}): Promise<boolean> {
+  return (
+    (await facts.page.locator(facts.routeCheck.destinationSelector).count()) >=
+    1
+  );
 }
 
 /**

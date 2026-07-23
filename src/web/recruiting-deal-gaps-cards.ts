@@ -107,15 +107,23 @@ export function dealGapFilterCard(data: DealGapResponse): HTMLElement {
         value: String(data.filters.limit),
       }),
       ButtonC({ variant: "primary", type: "submit", children: "Apply" }),
-      ButtonC({
-        variant: "neutral",
-        children: "Clear",
-        onClick: () => {
-          location.href = "/recruiting/deal-gaps";
-        },
-        attrs: { type: "button" },
-      })
+      clearDealGapFiltersButton()
     ),
+  });
+}
+
+/**
+ * Builds the clear-filters action for the deal-gap form.
+ * @returns Clear button.
+ */
+function clearDealGapFiltersButton(): HTMLElement {
+  return ButtonC({
+    variant: "neutral",
+    children: "Clear",
+    onClick: () => {
+      location.href = "/recruiting/deal-gaps";
+    },
+    attrs: { type: "button" },
   });
 }
 

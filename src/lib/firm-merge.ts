@@ -188,37 +188,30 @@ function applyCuratedMerge(
   const name = String(firm.name ?? "");
   if (!name) return current;
   const identity = resolveFirmIdentity(name);
+  const canonicalId = identity.canonicalId;
+  const canonicalName = identity.canonicalName;
   const firmIdValue = String(firm.id);
-  if (identity.canonicalId === firmIdValue) return current;
-  if (identity.canonicalName === name) return current;
-
-  const canonical = current.byId.get(identity.canonicalId) ?? {
-    id: identity.canonicalId,
-    name: identity.canonicalName,
+  if (canonicalId === firmIdValue) return current;
+  if (canonicalName === name) return current;
+  const canonical = current.byId.get(canonicalId) ?? {
+    id: canonicalId,
+    name: canonicalName,
     channel: firm.channel ?? "unknown",
   };
-  const merged = mergeFirmRows(canonical, firm, identity.canonicalName);
-  const alias = aliasRow(
-    identity.canonicalId,
-    name,
-    "curated_merge",
-    firmIdValue
-  );
+  const merged = mergeFirmRows(canonical, firm, canonicalName);
+  const alias = aliasRow(canonicalId, name, "curated_merge", firmIdValue);
   return {
-    byId: new Map([...current.byId, [identity.canonicalId, merged]]),
+    byId: new Map([...current.byId, [canonicalId, merged]]),
     aliasRows: new Map([
       ...current.aliasRows,
-      [firmAliasId(identity.canonicalId, name), alias],
+      [firmAliasId(canonicalId, name), alias],
     ]),
     replacementPairs: [
       ...current.replacementPairs,
-      { from: firmIdValue, to: identity.canonicalId },
+      { from: firmIdValue, to: canonicalId },
     ],
     mergedFirmIds: [...current.mergedFirmIds, firmIdValue],
-    auditRows: [
-      ...current.auditRows,
-      auditRow(firm, merged, identity.canonicalId),
-    ],
+    auditRows: [...current.auditRows, auditRow(firm, merged, canonicalId)],
   };
 }
 

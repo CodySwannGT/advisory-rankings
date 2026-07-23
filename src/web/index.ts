@@ -18,21 +18,11 @@ import {
 import { clear, el } from "./design-system/index.js";
 import { addToWatchlistControl } from "./add-to-watchlist.js";
 import { runDelayedRouteRequest } from "./route-loading.js";
-import {
-  feedCategories,
-  filterFeedItems,
-  readFeedFilters,
-  writeFeedFilters,
-} from "./feed-filters.js";
 import { isTransitionCard, recentDisclosures } from "./feed-event-guards.js";
-import {
-  feedApiPath,
-  feedCursorFrom,
-  fetchNextFeedPage,
-} from "./feed-route-utils.js";
+import { feedApiPath, feedCursorFrom } from "./feed-route-utils.js";
 import type { FeedCursor, FeedPayload } from "./feed-route-utils.js";
 import { finishFeedRender } from "./feed-render-helpers.js";
-import { renderCenter } from "./feed-center.js";
+import { renderFeedState } from "./feed-state-renderer.js";
 import {
   AvatarC,
   AsyncStateNoticeC,
@@ -46,26 +36,9 @@ import {
   SkeletonCardC,
 } from "./index-types.js";
 import { primaryBrowseItems } from "./design-system/index.js";
-import type {
-  FeedFilterValues,
-  ThreeColumnLayout,
-  TrendingFirmRow,
-} from "./index-types.js";
+import type { ThreeColumnLayout, TrendingFirmRow } from "./index-types.js";
 
 const FEED_PAGE_SIZE = 20;
-
-/** Current state needed to reveal or fetch more feed items. */
-export interface LoadMoreFeedItemsOptions {
-  readonly cursor: FeedCursor;
-  readonly loadedItems: readonly FeedItem[];
-  readonly moreLoadedToReveal: boolean;
-  readonly renderCurrentState: (
-    loadedItems: readonly FeedItem[],
-    cursor: FeedCursor,
-    visibleLimit?: number
-  ) => void;
-  readonly visibleLimit: number;
-}
 
 MountThreeColumnPage({
   active: "home",
@@ -133,68 +106,17 @@ function renderFeed(
     cursor: FeedCursor,
     visibleLimit: number = FEED_PAGE_SIZE
   ): void => {
-    const categories = feedCategories(loadedItems);
-    const filters = readFeedFilters(categories);
-    const filteredItems = filterFeedItems(loadedItems, filters);
-    const visibleItems = filteredItems.slice(0, visibleLimit);
-    const moreLoadedToReveal = visibleItems.length < filteredItems.length;
-    renderCenter(layout.center, visibleItems, {
-      categories,
-      count: visibleItems.length,
-      filters,
-      hasMore: moreLoadedToReveal || cursor.hasMore,
-      total: filteredItems.length,
-      onChange: (nextFilters: FeedFilterValues) => {
-        writeFeedFilters(nextFilters);
-        reloadFeed();
-      },
-      onLoadMore: () =>
-        loadMoreFeedItems({
-          cursor,
-          loadedItems,
-          moreLoadedToReveal,
-          renderCurrentState,
-          visibleLimit,
-        }),
-    });
-    renderFeedSidebars(layout, visibleItems);
+    renderFeedState(
+      layout,
+      loadedItems,
+      cursor,
+      visibleLimit,
+      reloadFeed,
+      renderCurrentState,
+      visibleItems => renderFeedSidebars(layout, visibleItems)
+    );
   };
   finishFeedRender(renderCurrentState, items, page, reloadFeed);
-}
-
-/**
- * Reveals loaded feed rows or fetches the next cursor page.
- * @param options - Current feed pagination state.
- */
-function loadMoreFeedItems(options: LoadMoreFeedItemsOptions): void {
-  const nextLimit = options.visibleLimit + FEED_PAGE_SIZE;
-  if (
-    options.moreLoadedToReveal ||
-    !options.cursor.hasMore ||
-    !options.cursor.cursor
-  ) {
-    options.renderCurrentState(options.loadedItems, options.cursor, nextLimit);
-    return;
-  }
-  fetchNextFeedPage(
-    options.cursor.cursor,
-    (more, next) =>
-      options.renderCurrentState(
-        [...options.loadedItems, ...more],
-        next,
-        nextLimit
-      ),
-    (error: unknown) => {
-      // Keep the loaded set and "Load more" control so the user can
-      // retry a transient page fetch instead of dead-ending the feed.
-      console.error("Feed: load-more page fetch failed", error);
-      options.renderCurrentState(
-        options.loadedItems,
-        options.cursor,
-        options.visibleLimit
-      );
-    }
-  );
 }
 
 /**

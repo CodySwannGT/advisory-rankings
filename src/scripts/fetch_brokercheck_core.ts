@@ -92,11 +92,7 @@ export const fetchOneCrd = async (
   updateState(state, {
     individuals: {
       ...state.individuals,
-      [crd]: {
-        fetchedAt: new Date().toISOString(),
-        legalName: parsed.advisor?.legalName ?? "",
-        counts,
-      },
+      [crd]: individualMarker(parsed.advisor?.legalName, counts),
     },
   });
   log(`[individual ${crd}] ${JSON.stringify(counts)}`);
@@ -142,13 +138,37 @@ export const fetchOneFirm = async (
   updateState(state, {
     firms: {
       ...state.firms,
-      [firmId]: {
-        fetchedAt: new Date().toISOString(),
-        name: parsed.firm?.name ?? "",
-        counts,
-      },
+      [firmId]: firmMarker(parsed.firm?.name, counts),
     },
   });
   log(`[firm ${firmId}] ${JSON.stringify(counts)}`);
   return counts;
 };
+
+/**
+ * Builds the persisted crawl marker for one individual CRD fetch.
+ * @param legalName Parsed legal name.
+ * @param counts Loader row counts.
+ * @returns Individual crawl-state marker.
+ */
+function individualMarker(legalName: unknown, counts: Counts) {
+  return {
+    fetchedAt: new Date().toISOString(),
+    legalName: String(legalName ?? ""),
+    counts,
+  };
+}
+
+/**
+ * Builds the persisted crawl marker for one firm CRD fetch.
+ * @param name Parsed firm name.
+ * @param counts Loader row counts.
+ * @returns Firm crawl-state marker.
+ */
+function firmMarker(name: unknown, counts: Counts) {
+  return {
+    fetchedAt: new Date().toISOString(),
+    name: String(name ?? ""),
+    counts,
+  };
+}
