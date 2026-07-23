@@ -311,13 +311,7 @@ function advisorProfile(id: string): unknown {
     designations: [],
     education: [],
     brokerCheckSnapshot: null,
-    evidenceFreshness: {
-      hasData: true,
-      lastCheckedAt: "2026-05-25T12:00:00Z",
-      nearestNextCheckAfter: "2026-06-01T00:00:00Z",
-      statusCounts: { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 },
-      sourceTypeCoverage: SOURCE_TYPE_COVERAGE,
-    },
+    evidenceFreshness: advisorEvidenceFreshness(),
     confidenceSummary: {
       hasData: true,
       asserted: 2,
@@ -325,6 +319,16 @@ function advisorProfile(id: string): unknown {
       derived: 1,
       total: 4,
     },
+  };
+}
+
+function advisorEvidenceFreshness(): unknown {
+  return {
+    hasData: true,
+    lastCheckedAt: "2026-05-25T12:00:00Z",
+    nearestNextCheckAfter: "2026-06-01T00:00:00Z",
+    statusCounts: { success: 2, no_new_data: 1, ambiguous: 0, failed: 0 },
+    sourceTypeCoverage: SOURCE_TYPE_COVERAGE,
   };
 }
 

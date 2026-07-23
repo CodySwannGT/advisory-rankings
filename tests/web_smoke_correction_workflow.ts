@@ -110,7 +110,6 @@ async function runAuthenticatedCorrectionWorkflow(
     { width: 1280, height: 900 },
     extraHTTPHeaders
   );
-
   try {
     const workflowChecks = await correctionWorkflowChecks(
       browser,
@@ -130,13 +129,17 @@ async function runAuthenticatedCorrectionWorkflow(
     return await closeWorkflowContexts(workflow.contexts, workflowChecks);
   } catch (error) {
     return await closeWorkflowContexts(workflow.contexts, [
-      check(
-        false,
-        "corrections: browser workflow completed",
-        error instanceof Error ? error.message : String(error)
-      ),
+      correctionWorkflowErrorCheck(error),
     ]);
   }
+}
+
+function correctionWorkflowErrorCheck(error: unknown): Check {
+  return check(
+    false,
+    "corrections: browser workflow completed",
+    error instanceof Error ? error.message : String(error)
+  );
 }
 
 async function correctionWorkflowRuntime(

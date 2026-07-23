@@ -188,11 +188,20 @@ function queueRow(item: QueueItem): HTMLElement {
     queueRowField("Missing fields", missingFields(item)),
     queueRowField("Freshness", freshnessText(item)),
     queueRowField("Source check", provenanceText(item)),
-    el(
-      "a",
-      { class: "research-queue-row-action", href: item.profileUrl },
-      "Open advisor profile"
-    )
+    queueRowAction(item)
+  );
+}
+
+/**
+ * Builds the advisor profile action for one research queue row.
+ * @param item Due advisor queue item.
+ * @returns Advisor profile link.
+ */
+function queueRowAction(item: QueueItem): HTMLElement {
+  return el(
+    "a",
+    { class: "research-queue-row-action", href: item.profileUrl },
+    "Open advisor profile"
   );
 }
 

@@ -56,24 +56,20 @@ function recruitingValidationChecks(
   input: RecruitingValidationReportInput,
   knownAumCount: number
 ): readonly ValidationCheck[] {
+  const min = input.minimums;
   return [
-    validationCheck(
-      "move-depth",
-      "Move depth",
-      input.moveCount,
-      input.minimums.minMoves
-    ),
+    validationCheck("move-depth", "Move depth", input.moveCount, min.minMoves),
     validationCheck(
       "market-depth",
       "Market depth",
       input.marketActivityCount,
-      input.minimums.minMarketActivityRows
+      min.minMarketActivityRows
     ),
     validationCheck(
       "directional-slices",
       "Directional slices",
       input.directionSliceCount,
-      input.minimums.minDirectionSlices
+      min.minDirectionSlices
     ),
     validationCheck(
       "source-backed-rows",

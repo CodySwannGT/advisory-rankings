@@ -167,6 +167,7 @@ function readLoadedRecruitingStateInPage({
     Array.from(document.querySelectorAll(selector)).some(node =>
       node.textContent?.includes(text)
     );
+  const bodyText = document.body.innerText;
   return {
     addFirmLabel: document
       .querySelector(".watchlist-add-button")
@@ -174,20 +175,18 @@ function readLoadedRecruitingStateInPage({
     hasAboutDataDisclosure: textExists("details summary", "About this data"),
     hasAumUnknownHeader: textExists(".firm-momentum-table th", "AUM unknown"),
     hasFirmOneLabel: textExists("label span", "Firm 1"),
-    hasHeader: document.body.innerText.includes("Recruiting Market Map"),
-    hasMomentum: document.body.innerText.includes("Firm momentum"),
+    hasHeader: bodyText.includes("Recruiting Market Map"),
+    hasMomentum: bodyText.includes("Firm momentum"),
     hasMissingT12Tile: textIncludes(".recruiting-stat", "Missing T12"),
-    hasRecentMoves: document.body.innerText.includes("Recent moves"),
-    hasSourceStatus: document.body.innerText.includes("Source confirmed"),
-    hasTaylorGroup: document.body.innerText.includes("The Taylor Group"),
+    hasRecentMoves: bodyText.includes("Recent moves"),
+    hasSourceStatus: bodyText.includes("Source confirmed"),
+    hasTaylorGroup: bodyText.includes("The Taylor Group"),
     hasUnknownAumTile: textIncludes(".recruiting-stat", "Unknown AUM"),
-    hasUnknownMarketLabel: document.body.innerText.includes("Unknown market"),
+    hasUnknownMarketLabel: bodyText.includes("Unknown market"),
     removeFirmLabel: document
       .querySelector(".watchlist-remove-button")
       ?.getAttribute("aria-label"),
-    rawLabels: rawRecruitingLabels.filter(label =>
-      document.body.innerText.includes(label)
-    ),
+    rawLabels: rawRecruitingLabels.filter(label => bodyText.includes(label)),
     rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
   };
 }
@@ -266,6 +265,7 @@ async function readRecruitingSlice(
   label: string,
   payload: RecruitingSlicePayload
 ): Promise<RecruitingSliceState> {
+  const expectedSourceStatus = expectedSourceStatusLabel(payload);
   const rendered = await page.evaluate(
     ({ sourceStatusLabel }) => {
       const tableRows = (selector: string): number =>
@@ -288,14 +288,32 @@ async function readRecruitingSlice(
         summaryMoves,
       };
     },
-    { sourceStatusLabel: expectedSourceStatusLabel(payload) }
+    { sourceStatusLabel: expectedSourceStatus }
   );
   return {
     ...rendered,
+    ...recruitingSliceExpectations(payload, label, expectedSourceStatus),
+  };
+}
+
+function recruitingSliceExpectations(
+  payload: RecruitingSlicePayload,
+  label: string,
+  expectedSourceStatus: string
+): Pick<
+  RecruitingSliceState,
+  | "expectedFirmMomentumRows"
+  | "expectedMarketActivityRows"
+  | "expectedRecentMoveRows"
+  | "expectedSourceStatusLabel"
+  | "expectedSummaryMoves"
+  | "label"
+> {
+  return {
     expectedFirmMomentumRows: payload.firmMomentum.length,
     expectedMarketActivityRows: payload.marketActivity.length,
     expectedRecentMoveRows: payload.recentMoves.length,
-    expectedSourceStatusLabel: expectedSourceStatusLabel(payload),
+    expectedSourceStatusLabel: expectedSourceStatus,
     expectedSummaryMoves: payload.summary.count.toLocaleString(),
     label,
   };

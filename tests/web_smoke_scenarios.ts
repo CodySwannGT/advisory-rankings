@@ -62,18 +62,16 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
-  const initialPostCount = await postCards.count();
   const sanctionPillExpectation = await expectedSanctionPillCount(page);
   const transitionText = (await transition.textContent()) ?? "";
   const initialFeedChecks = await feedInitialChecks(page, {
     actualSanctionPillCount: await page.locator(".sanction-pill").count(),
-    initialPostCount,
+    initialPostCount: await postCards.count(),
     regulatoryDisclosure,
     sanctionPillExpectation,
     taylorCard,
     transitionText,
   });
-
   return [
     ...initialFeedChecks,
     ...paginationChecks,

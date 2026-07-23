@@ -48,6 +48,10 @@ interface FieldCoverage {
   readonly pct: number;
 }
 
+/** Field coverage plus warnings captured while reading that field. */
+type FieldCoverageResult = FieldCoverage &
+  Readonly<Record<"warnings", ReadonlyArray<string>>>;
+
 /**
  *
  */
@@ -139,8 +143,7 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const categories = await safeRows<GroupCountRow>(query, articleCategorySql());
   const firmSources = await firmSourceCoverage(query, safeRows);
   const fields = await completeness(query);
-  const sparseAdvisors = await safeRows<SparseRow>(query, sparseAdvisorSql());
-  const sparseFirms = await safeRows<SparseRow>(query, sparseFirmSql());
+  const sparse = await sparseCoverage(query);
   const recruiting = await recruitingCoverage(query);
   const recruitingGap = await detectUnextractedRecruiting(query);
   const [a, t, f] = await coverageFreshnessResults(query);
@@ -151,8 +154,8 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     articleCategories: categories.rows,
     firmSourceCoverage: firmSources.coverage,
     completeness: fields.completeness,
-    sparseAdvisors: sparseAdvisors.rows,
-    sparseFirms: sparseFirms.rows,
+    sparseAdvisors: sparse.advisors.rows,
+    sparseFirms: sparse.firms.rows,
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
     freshness: freshnessReport(a, t, f),
@@ -166,12 +169,24 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
       recruiting,
       recruitingGap,
       sources,
-      sparseAdvisors,
-      sparseFirms,
+      sparseAdvisors: sparse.advisors,
+      sparseFirms: sparse.firms,
       transitions: t,
     }),
   };
 };
+
+/**
+ * Reads sparse advisor and firm coverage probes.
+ * @param query SQL reader.
+ * @returns Sparse advisor and firm rows.
+ */
+async function sparseCoverage(query: CoverageQuery) {
+  return {
+    advisors: await safeRows<SparseRow>(query, sparseAdvisorSql()),
+    firms: await safeRows<SparseRow>(query, sparseFirmSql()),
+  };
+}
 
 /**
  * Summarizes latest-date query results for the coverage report.
@@ -284,11 +299,7 @@ async function fieldCompleteness(
   const totalResult = await safeRows<CountRow>(query, countSql(table));
   const total = countValue(totalResult.rows);
   const fieldResults = await fields.reduce<
-    Promise<
-      ReadonlyArray<
-        FieldCoverage & Readonly<Record<"warnings", ReadonlyArray<string>>>
-      >
-    >
+    Promise<readonly FieldCoverageResult[]>
   >(async (previous, field) => {
     const filledResult = await safeRows<CountRow>(
       query,

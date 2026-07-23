@@ -209,13 +209,7 @@ async function createRequest(
   userId: string
 ): Promise<AdvisorCorrectionRequestRow> {
   const mine = await rowsFor(correctionRequestTable(), "submitterId", userId);
-  const pending = mine.filter(row => row.status === "pending");
-  if (pending.length >= MAX_PENDING_PER_USER) {
-    throwStatus(
-      `pending correction limit reached (${MAX_PENDING_PER_USER})`,
-      400
-    );
-  }
+  const pendingCount = mine.filter(row => row.status === "pending").length;
   const advisorId = requiredText(body.advisorId, "advisor id required", 200);
   const fieldName = requiredText(
     body.fieldName,
@@ -227,6 +221,9 @@ async function createRequest(
     "proposed value required",
     MAX_VALUE_LENGTH
   );
+  if (pendingCount >= MAX_PENDING_PER_USER) {
+    throwStatus("pending correction limit reached", 400);
+  }
   const row: AdvisorCorrectionRequestRow = {
     id: newId(userId),
     advisorId,

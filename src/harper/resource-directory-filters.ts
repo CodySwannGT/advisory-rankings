@@ -251,12 +251,7 @@ export function branchMatchesFilters(
     textMatches(filters.firm, [branch.firmId, firm?.id, firm?.name]) &&
     exactMatches(filters.gapGroup, gapGroup) &&
     exactMatches(filters.state, branch.state) &&
-    textMatches(filters.city, [
-      branch.city,
-      branch.name,
-      branch.buildingName,
-      branch.address,
-    ]) &&
+    textMatches(filters.city, branchCityTerms(branch)) &&
     exactMatches(filters.level, branch.level) &&
     (!filters.sourceType ||
       sourceTypes.some(sourceType =>
@@ -265,6 +260,15 @@ export function branchMatchesFilters(
     (filters.minAdvisorCount === null ||
       currentAdvisorCount >= filters.minAdvisorCount)
   );
+}
+
+/**
+ * Builds searchable city terms for branch directory filtering.
+ * @param branch - Branch row from the public table.
+ * @returns City filter terms.
+ */
+function branchCityTerms(branch: BranchRow): ReadonlyArray<string | undefined> {
+  return [branch.city, branch.name, branch.buildingName, branch.address];
 }
 
 /**

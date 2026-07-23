@@ -2,15 +2,11 @@ import type { ResourceIndex } from "./resource-data.js";
 import { loadAll } from "./resource-data.js";
 import { rankingsCoverage } from "./resource-rankings-explorer-coverage.js";
 import { rankingEntries } from "./resource-rankings-explorer-entries.js";
-import { sourceCoverage } from "./resource-recruiting-market-coverage.js";
-import {
-  recruitingMoves,
-  summarizeMoves,
-} from "./resource-recruiting-market-helpers.js";
 import {
   branchCoverageSection,
   PUBLIC_BRANCHES_RESOURCE,
 } from "./resource-data-coverage-branches.js";
+import { recruitingSection } from "./resource-data-coverage-recruiting.js";
 
 /** One coverage metric with its public data source named for clients. */
 export interface DataCoverageMetric {
@@ -202,51 +198,6 @@ function rankingsSection(db: ResourceIndex): DataCoverageSection {
         RANKINGS_EXPLORER_RESOURCE,
         coverage.gapBuckets.length > 0
           ? "Some ranking entries still need resolution or source fields."
-          : null
-      ),
-    ],
-  };
-}
-
-/**
- * Builds recruiting metrics from the same move model as `/RecruitingMarket`.
- * @param db Shared Harper resource index.
- * @returns Recruiting coverage section.
- */
-function recruitingSection(db: ResourceIndex): DataCoverageSection {
-  const moves = recruitingMoves(db);
-  const summary = summarizeMoves(moves);
-  const coverage = sourceCoverage(moves);
-  return {
-    id: "recruiting",
-    label: "Recruiting coverage",
-    metrics: [
-      metric(
-        "moves",
-        "Moves",
-        summary.count,
-        "TransitionEvent",
-        RECRUITING_MARKET_RESOURCE,
-        summary.count === 0 ? "No public recruiting moves are loaded." : null
-      ),
-      metric(
-        "source-backed-moves",
-        "Source-backed moves",
-        coverage.sourceBackedCount,
-        ARTICLE_TRANSITION_MENTION_SOURCE,
-        RECRUITING_MARKET_RESOURCE,
-        coverage.missingSourceCount > 0
-          ? "Some recruiting moves do not have source article mentions."
-          : null
-      ),
-      metric(
-        "missing-location",
-        "Moves missing location",
-        coverage.missingLocationCount,
-        "Branch",
-        RECRUITING_MARKET_RESOURCE,
-        coverage.missingLocationCount > 0
-          ? "Some recruiting moves cannot resolve a branch location."
           : null
       ),
     ],

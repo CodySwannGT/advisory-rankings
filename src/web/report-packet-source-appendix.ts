@@ -58,13 +58,24 @@ function packetSourceAppendixAdvisor(item: AdvisorComparisonItem): HTMLElement {
       appendixRow("Article references", articleReferences(item)),
       appendixRow("Field assertions", fieldAssertions(item)),
       appendixRow("Research source checks", researchSourceChecks(item)),
-      appendixRow(
-        "Data confidence",
-        confidence.hasData
-          ? `${confidence.total} source-backed field${confidence.total === 1 ? "" : "s"} available.`
-          : "Incomplete: no source-backed field confidence summary is available."
-      )
+      dataConfidenceRow(confidence)
     )
+  );
+}
+
+/**
+ * Builds the data-confidence source appendix row.
+ * @param confidence Advisor comparison confidence summary.
+ * @returns Data-confidence definition row.
+ */
+function dataConfidenceRow(
+  confidence: AdvisorComparisonItem["dataConfidence"]["confidenceSummary"]
+): HTMLElement {
+  return appendixRow(
+    "Data confidence",
+    confidence.hasData
+      ? `${confidence.total} source-backed field${confidence.total === 1 ? "" : "s"} available.`
+      : "Incomplete: no source-backed field confidence summary is available."
   );
 }
 
