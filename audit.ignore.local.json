@@ -34,6 +34,21 @@
       "id": "GHSA-ph9p-34f9-6g65",
       "package": "tmp",
       "reason": "Transitive through the HarperDB local CLI (harperdb > inquirer > external-editor > tmp). Project code does not invoke inquirer / external-editor at build or runtime, and the deployed Fabric app bundle does not include this dependency tree."
+    },
+    {
+      "id": "GHSA-83w8-p2f5-377r",
+      "package": "@fastify/static",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. The patched releases are outside HarperDB's pinned Fastify-compatible major line, project code does not expose this Fastify static server, and deployed Fabric resources are generated app files rather than this npm dependency tree."
+    },
+    {
+      "id": "GHSA-c96f-x56v-gq3h",
+      "package": "find-my-way",
+      "reason": "Transitive through HarperDB's local Fastify runtime. The patched release is outside Fastify 4's pinned router major line, project code does not expose a Fastify server, and deployed Fabric runtime routing is Harper-managed."
+    },
+    {
+      "id": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "reason": "Transitive through local tooling and HarperDB dependency resolution. The vulnerable expansion is not reached by project runtime input paths, and the deployed Fabric app bundle does not include this dependency tree."
     }
   ]
 }
