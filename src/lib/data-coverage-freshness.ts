@@ -58,7 +58,7 @@ async function safeRows<T extends Readonly<Record<string, unknown>>>(
   } catch (error) {
     return {
       rows: [],
-      warnings: [String(error).split("\n")[0] ?? "query failed"],
+      warnings: [String(error).split("\n")[0] || "query failed"],
     };
   }
 }

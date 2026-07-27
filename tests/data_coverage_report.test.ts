@@ -198,6 +198,18 @@ describe("data coverage report", () => {
     expect(rendered).not.toContain("recruiting extraction gap:");
   });
 
+  it("falls back to a useful freshness warning for empty thrown values", async () => {
+    const report = await buildDataCoverageReport(async query => {
+      if (query.includes("MAX(moveDate)")) {
+        throw "";
+      }
+      return mockCoverageQuery(query);
+    });
+
+    expect(report.freshness.transitions).toBeNull();
+    expect(report.warnings).toContain("query failed");
+  });
+
   it("handles empty query result sets as zero coverage", async () => {
     const report = await buildDataCoverageReport(async () => []);
 
