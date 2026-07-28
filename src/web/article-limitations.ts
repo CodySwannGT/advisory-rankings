@@ -81,39 +81,79 @@ function entityRowLimitations(
   options: ArticleLimitationResources
 ): readonly (string | null)[] {
   return [
-    rowLimitation({
-      rows: options.events,
-      raw: options.eventCards,
-      empty:
-        "No structured event cards are available for this article; the story may still mention activity in prose.",
-      failed:
-        "Structured event cards could not load; the article remains available without implying complete event coverage.",
-    }),
-    rowLimitation({
-      rows: options.firmRows,
-      raw: options.firms,
-      empty:
-        "No public firm mentions are resolved for this article; unresolved names are not shown as confirmed profile links.",
-      failed:
-        "Mentioned firms could not load; unresolved firm evidence is withheld instead of guessed.",
-    }),
-    rowLimitation({
-      rows: options.teamRows,
-      raw: options.teams,
-      empty:
-        "No public team mentions are resolved for this article; team profile links may be unavailable.",
-      failed:
-        "Mentioned teams could not load; team evidence is omitted until the public resource is available.",
-    }),
-    rowLimitation({
-      rows: options.advisorRows,
-      raw: options.advisors,
-      empty:
-        "No public advisor mentions are resolved for this article; advisor profile links may be unavailable.",
-      failed:
-        "Mentioned advisors could not load; advisor evidence is omitted until the public resource is available.",
-    }),
+    eventRowLimitation(options),
+    firmRowLimitation(options),
+    teamRowLimitation(options),
+    advisorRowLimitation(options),
   ];
+}
+
+/**
+ * Builds article event-card limitation text.
+ * @param options - Public ArticleView resources and derived rows.
+ * @returns Optional event limitation.
+ */
+function eventRowLimitation(
+  options: ArticleLimitationResources
+): string | null {
+  return rowLimitation({
+    rows: options.events,
+    raw: options.eventCards,
+    empty:
+      "No structured event cards are available for this article; the story may still mention activity in prose.",
+    failed:
+      "Structured event cards could not load; the article remains available without implying complete event coverage.",
+  });
+}
+
+/**
+ * Builds article firm-mention limitation text.
+ * @param options - Public ArticleView resources and derived rows.
+ * @returns Optional firm limitation.
+ */
+function firmRowLimitation(options: ArticleLimitationResources): string | null {
+  return rowLimitation({
+    rows: options.firmRows,
+    raw: options.firms,
+    empty:
+      "No public firm mentions are resolved for this article; unresolved names are not shown as confirmed profile links.",
+    failed:
+      "Mentioned firms could not load; unresolved firm evidence is withheld instead of guessed.",
+  });
+}
+
+/**
+ * Builds article team-mention limitation text.
+ * @param options - Public ArticleView resources and derived rows.
+ * @returns Optional team limitation.
+ */
+function teamRowLimitation(options: ArticleLimitationResources): string | null {
+  return rowLimitation({
+    rows: options.teamRows,
+    raw: options.teams,
+    empty:
+      "No public team mentions are resolved for this article; team profile links may be unavailable.",
+    failed:
+      "Mentioned teams could not load; team evidence is omitted until the public resource is available.",
+  });
+}
+
+/**
+ * Builds article advisor-mention limitation text.
+ * @param options - Public ArticleView resources and derived rows.
+ * @returns Optional advisor limitation.
+ */
+function advisorRowLimitation(
+  options: ArticleLimitationResources
+): string | null {
+  return rowLimitation({
+    rows: options.advisorRows,
+    raw: options.advisors,
+    empty:
+      "No public advisor mentions are resolved for this article; advisor profile links may be unavailable.",
+    failed:
+      "Mentioned advisors could not load; advisor evidence is omitted until the public resource is available.",
+  });
 }
 
 /**

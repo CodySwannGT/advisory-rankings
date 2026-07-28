@@ -113,29 +113,44 @@ function discrepancyCard(item: QueueItem): HTMLElement {
         Tag({ children: humanize(item.status) }),
         item.firmName ? Tag({ children: item.firmName }) : null
       ),
-      DetailsCard({
-        title: "Compared values",
-        pairs: [
-          ["Field", humanize(item.fieldName)],
-          [item.advisorHub.sourceName, item.advisorHub.value ?? "Missing"],
-          [item.brokerCheck.sourceName, item.brokerCheck.value ?? "Missing"],
-          ["Docket", item.event.docketNumber ?? NOT_LINKED],
-          ["Regulator", item.event.regulator ?? NOT_LINKED],
-        ],
-      }),
-      DetailsCard({
-        title: "Provenance",
-        pairs: [
-          ["AdvisorHub ref", item.advisorHub.sourceRef ?? NOT_LINKED],
-          ["BrokerCheck ref", item.brokerCheck.sourceRef ?? NOT_LINKED],
-          ["Disclosure ids", item.event.disclosureIds.join(", ") || "None"],
-          [
-            "Disclosure status",
-            item.event.disclosureStatuses.join(", ") || "None",
-          ],
-        ],
-      }),
+      comparedValuesCard(item),
+      provenanceCard(item),
       actionList(item),
+    ],
+  });
+}
+
+/**
+ * Builds the source value comparison block.
+ * @param item - Queue row to render.
+ * @returns Compared values card.
+ */
+function comparedValuesCard(item: QueueItem): HTMLElement {
+  return DetailsCard({
+    title: "Compared values",
+    pairs: [
+      ["Field", humanize(item.fieldName)],
+      [item.advisorHub.sourceName, item.advisorHub.value ?? "Missing"],
+      [item.brokerCheck.sourceName, item.brokerCheck.value ?? "Missing"],
+      ["Docket", item.event.docketNumber ?? NOT_LINKED],
+      ["Regulator", item.event.regulator ?? NOT_LINKED],
+    ],
+  });
+}
+
+/**
+ * Builds the source provenance block.
+ * @param item - Queue row to render.
+ * @returns Provenance card.
+ */
+function provenanceCard(item: QueueItem): HTMLElement {
+  return DetailsCard({
+    title: "Provenance",
+    pairs: [
+      ["AdvisorHub ref", item.advisorHub.sourceRef ?? NOT_LINKED],
+      ["BrokerCheck ref", item.brokerCheck.sourceRef ?? NOT_LINKED],
+      ["Disclosure ids", item.event.disclosureIds.join(", ") || "None"],
+      ["Disclosure status", item.event.disclosureStatuses.join(", ") || "None"],
     ],
   });
 }
