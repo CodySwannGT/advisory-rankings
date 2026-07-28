@@ -79,29 +79,10 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         action: "/source-triage",
       },
       categoryField(data),
-      selectField(
-        "Reason",
-        "reason",
-        data.filters.reason ?? "",
-        SOURCE_TRIAGE_REASON_OPTIONS,
-        reasonFallbackLabel
-      ),
-      el("input", {
-        type: "hidden",
-        name: "limit",
-        value: String(data.filters.limit),
-      }),
-      ButtonC({
-        variant: "primary",
-        type: "submit",
-        children: "Apply",
-      }),
-      ButtonC({
-        variant: "neutral",
-        children: "Clear",
-        onClick: clearSourceTriageFilters,
-        attrs: { type: "button" },
-      })
+      reasonField(data),
+      limitInput(data),
+      filterSubmitButton(),
+      filterClearButton()
     ),
   });
 }
@@ -119,6 +100,59 @@ function categoryField(data: SourceArticleTriageResponse): HTMLElement {
     CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const),
     filterLabel
   );
+}
+
+/**
+ * Renders the triage reason select.
+ * @param data - Current source triage response.
+ * @returns Reason select field.
+ */
+function reasonField(data: SourceArticleTriageResponse): HTMLElement {
+  return selectField(
+    "Reason",
+    "reason",
+    data.filters.reason ?? "",
+    SOURCE_TRIAGE_REASON_OPTIONS,
+    reasonFallbackLabel
+  );
+}
+
+/**
+ * Persists the current page size through filter submissions.
+ * @param data - Current source triage response.
+ * @returns Hidden limit input.
+ */
+function limitInput(data: SourceArticleTriageResponse): HTMLElement {
+  return el("input", {
+    type: "hidden",
+    name: "limit",
+    value: String(data.filters.limit),
+  });
+}
+
+/**
+ * Builds the filter submit control.
+ * @returns Submit button.
+ */
+function filterSubmitButton(): HTMLElement {
+  return ButtonC({
+    variant: "primary",
+    type: "submit",
+    children: "Apply",
+  });
+}
+
+/**
+ * Builds the filter reset control.
+ * @returns Clear button.
+ */
+function filterClearButton(): HTMLElement {
+  return ButtonC({
+    variant: "neutral",
+    children: "Clear",
+    onClick: clearSourceTriageFilters,
+    attrs: { type: "button" },
+  });
 }
 
 /**
