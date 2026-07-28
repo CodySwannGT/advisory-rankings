@@ -134,6 +134,7 @@ const MISSING_CLAWBACK_TERMS_REASON = "missing-clawback-terms";
 const MISSING_FIRM_REASON = "missing-firm";
 const EXAMPLE_WEALTH_QUERY = "example wealth";
 const OFFSET_ONE_CURSOR = "MQ";
+const OFFSET_TWO_CURSOR = "Mg";
 const SOURCE_TRIAGE_UNCATEGORIZED = "uncategorized";
 const SOURCE_TRIAGE_NO_EVENT_CARDS = "no-event-cards";
 const SOURCE_TRIAGE_NO_ENTITY_CHIPS = "no-entity-chips";
@@ -143,6 +144,7 @@ const SOURCE_TRIAGE_CANDIDATE_ONLY_PROVENANCE = "candidate-only-provenance";
 const SOURCE_GAP_ARTICLE_ID = "article-source-gap";
 const SOURCE_SECOND_GAP_ARTICLE_ID = "article-source-gap-second";
 const SOURCE_COMPLETE_ARTICLE_ID = "article-source-complete";
+const SOURCE_NEWER_COMPLETE_ARTICLE_ID = "article-source-newer-complete";
 const COMPLETE_DEAL_ID = "deal-complete";
 const DATA_COVERAGE_RANKINGS_EMPTY =
   "No rankings are loaded for this coverage view.";
@@ -3448,6 +3450,15 @@ describe("Harper resource endpoints", () => {
     setRows("Article", [
       ...(tableRows.get("Article") ?? []),
       {
+        id: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
+        headline: "Newer complete uncategorized source article",
+        url: "https://example.com/source-newer-complete",
+        slug: "source-newer-complete",
+        publishedDate: "2026-06-03",
+        bodyText: "Avery Stone joined Example Wealth Management.",
+        category: "unknown",
+      },
+      {
         id: SOURCE_GAP_ARTICLE_ID,
         headline: "Uncategorized source article",
         url: "https://example.com/source-gap",
@@ -3480,12 +3491,22 @@ describe("Harper resource endpoints", () => {
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
         advisorId: "advisor-a",
       },
+      {
+        id: "mention-source-newer-complete-advisor",
+        articleId: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
+        advisorId: "advisor-a",
+      },
     ]);
     setRows("ArticleFirmMention", [
       ...(tableRows.get("ArticleFirmMention") ?? []),
       {
         id: "mention-source-complete-firm",
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        firmId: "firm-a",
+      },
+      {
+        id: "mention-source-newer-complete-firm",
+        articleId: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
         firmId: "firm-a",
       },
     ]);
@@ -3496,12 +3517,22 @@ describe("Harper resource endpoints", () => {
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
         teamId: "team-a",
       },
+      {
+        id: "mention-source-newer-complete-team",
+        articleId: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
+        teamId: "team-a",
+      },
     ]);
     setRows("ArticleTransitionEventMention", [
       ...(tableRows.get("ArticleTransitionEventMention") ?? []),
       {
         id: "mention-source-complete-transition",
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        transitionEventId: TRANSITION_A_ID,
+      },
+      {
+        id: "mention-source-newer-complete-transition",
+        articleId: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
         transitionEventId: TRANSITION_A_ID,
       },
     ]);
@@ -3530,6 +3561,16 @@ describe("Harper resource endpoints", () => {
       {
         id: "field-source-complete",
         articleId: SOURCE_COMPLETE_ARTICLE_ID,
+        targetTable: "Advisor",
+        targetId: "advisor-a",
+        fieldName: "legalName",
+        assertedValue: JSON.stringify(AVERY_STONE_NAME),
+        quotePhrase: AVERY_STONE_NAME,
+        confidence: "high",
+      },
+      {
+        id: "field-source-newer-complete",
+        articleId: SOURCE_NEWER_COMPLETE_ARTICLE_ID,
         targetTable: "Advisor",
         targetId: "advisor-a",
         fieldName: "legalName",
@@ -3581,9 +3622,12 @@ describe("Harper resource endpoints", () => {
           ],
         },
       ],
-      nextCursor: OFFSET_ONE_CURSOR,
+      nextCursor: OFFSET_TWO_CURSOR,
       hasMore: true,
     });
+    expect(response.items.map((item: any) => item.id)).toEqual([
+      SOURCE_GAP_ARTICLE_ID,
+    ]);
     expect(
       response.items[0].reasons.map((reason: any) => reason.label)
     ).toEqual([
