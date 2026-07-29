@@ -298,13 +298,16 @@ function reasonFallbackLabel(reason: string): string {
  * @returns Human-readable label.
  */
 function displayReasonLabel(reason: string): string {
-  const normalized = reason
+  const canonicalReason = reason
     .trim()
     .toLowerCase()
-    .replace(/[\s-]+/gu, "_");
+    .replace(/[\s_]+/gu, "-");
+  const inlineLabelToken = canonicalReason.replace(/-/gu, "_");
   return (
-    sourceArticleTriageReasonLabel(reason as SourceArticleTriageReason) ??
-    formatInlineLabel(normalized) ??
+    sourceArticleTriageReasonLabel(
+      canonicalReason as SourceArticleTriageReason
+    ) ??
+    formatInlineLabel(inlineLabelToken) ??
     reason
   );
 }

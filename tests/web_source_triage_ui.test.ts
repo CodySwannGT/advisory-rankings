@@ -185,6 +185,31 @@ describe("source article triage route", () => {
     }
   });
 
+  it("labels echoed known reason aliases through canonical reason copy", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    });
+    try {
+      await routeAuth(page, false);
+      await routeTriage(page, knownReasonAliasFilterEchoPayload());
+
+      await page.goto(`${baseUrl}${SOURCE_TRIAGE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await selectedValue(page, "reason")).toBe("NO_EVENT_CARDS");
+      expect(await selectedLabel(page, "reason")).toBe(NO_EVENT_LABEL);
+      await page.getByText(NO_EVENT_LABEL).first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    } finally {
+      await page.close();
+    }
+  });
+
   it("keeps review rows readable at tablet width after filtering", async () => {
     const page = await browser.newPage({
       viewport: { width: 820, height: 1180 },
@@ -435,6 +460,19 @@ function customFilterEchoPayload(): Readonly<Record<string, unknown>> {
     filters: {
       category: "research-note",
       reason: "custom-gap-reason",
+      limit: 20,
+    },
+  };
+}
+
+function knownReasonAliasFilterEchoPayload(): Readonly<
+  Record<string, unknown>
+> {
+  return {
+    ...triagePayload(),
+    filters: {
+      category: "unknown",
+      reason: "NO_EVENT_CARDS",
       limit: 20,
     },
   };
