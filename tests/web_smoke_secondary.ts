@@ -81,17 +81,21 @@ export async function smokeArticle(page: Page): Promise<readonly Check[]> {
       "article URL: clean /articles/... path",
       page.url()
     ),
-    check(
-      (await page
-        .getByRole("heading", { name: /Source-backed facts/ })
-        .count()) >= 1,
-      "article.html: source-backed facts section present"
-    ),
+    await articleSourceFactsHeadingCheck(page),
     check(
       (await page.locator(".snap-table tbody tr").count()) >= 3,
       "article.html: source-backed fact rows rendered"
     ),
   ];
+}
+
+async function articleSourceFactsHeadingCheck(page: Page): Promise<Check> {
+  return check(
+    (await page
+      .getByRole("heading", { name: /Source-backed facts/ })
+      .count()) >= 1,
+    "article.html: source-backed facts section present"
+  );
 }
 
 /**

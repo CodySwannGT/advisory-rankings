@@ -29,6 +29,8 @@ import {
 } from "./fetch_brokercheck_core.js";
 
 const MODE_REQUIRED_ERROR = "one BrokerCheck fetch mode is required";
+/** BrokerCheck crawl module loaded lazily after direct fetch modes are skipped. */
+type BrokerCheckCrawls = typeof import("./fetch_brokercheck_crawls.js");
 const arg = (name: string): string | undefined => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
@@ -101,7 +103,7 @@ const runSelectedMode = async (
 };
 
 const runSelectedCrawlMode = async (
-  crawls: typeof import("./fetch_brokercheck_crawls.js"),
+  crawls: BrokerCheckCrawls,
   client: BrokerCheckClient,
   rest: HarperREST,
   resolver: Resolver,
@@ -109,16 +111,11 @@ const runSelectedCrawlMode = async (
   opts: CrawlOptions
 ): Promise<unknown | null> => {
   if (has("--enrich"))
-    return await crawls.enrichExistingAdvisors(
-      client,
-      rest,
-      resolver,
-      state,
-      opts
-    );
+    return await runEnrich(crawls, client, rest, resolver, state, opts);
   const searchName = arg("--search-name");
   if (searchName)
-    return await crawls.crawlNameSearch(
+    return await crawlNameSearch(
+      crawls,
       client,
       rest,
       resolver,
@@ -128,7 +125,8 @@ const runSelectedCrawlMode = async (
     );
   const firmRoster = arg("--firm-roster");
   return firmRoster
-    ? await crawls.crawlFirmRoster(
+    ? await crawlFirmRoster(
+        crawls,
         client,
         rest,
         resolver,
@@ -138,6 +136,93 @@ const runSelectedCrawlMode = async (
       )
     : null;
 };
+
+/**
+ * Runs the existing-advisor enrichment mode.
+ * @param crawls - BrokerCheck crawl module.
+ * @param client - BrokerCheck API client.
+ * @param rest - Harper REST writer.
+ * @param resolver - Shared BrokerCheck entity resolver.
+ * @param state - Crawl state cache.
+ * @param opts - Crawl options.
+ * @returns Enrichment summary.
+ */
+async function runEnrich(
+  crawls: BrokerCheckCrawls,
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  opts: CrawlOptions
+): Promise<unknown> {
+  return await crawls.enrichExistingAdvisors(
+    client,
+    rest,
+    resolver,
+    state,
+    opts
+  );
+}
+
+/**
+ * Runs the name-search crawl mode.
+ * @param crawls - BrokerCheck crawl module.
+ * @param client - BrokerCheck API client.
+ * @param rest - Harper REST writer.
+ * @param resolver - Shared BrokerCheck entity resolver.
+ * @param state - Crawl state cache.
+ * @param searchName - Name to search.
+ * @param opts - Crawl options.
+ * @returns Name-search crawl summary.
+ */
+async function crawlNameSearch(
+  crawls: BrokerCheckCrawls,
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  searchName: string,
+  opts: CrawlOptions
+): Promise<unknown> {
+  return await crawls.crawlNameSearch(
+    client,
+    rest,
+    resolver,
+    state,
+    searchName,
+    opts
+  );
+}
+
+/**
+ * Runs the firm-roster crawl mode.
+ * @param crawls - BrokerCheck crawl module.
+ * @param client - BrokerCheck API client.
+ * @param rest - Harper REST writer.
+ * @param resolver - Shared BrokerCheck entity resolver.
+ * @param state - Crawl state cache.
+ * @param firmRoster - Firm CRD whose roster should be crawled.
+ * @param opts - Crawl options.
+ * @returns Firm-roster crawl summary.
+ */
+async function crawlFirmRoster(
+  crawls: BrokerCheckCrawls,
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  firmRoster: string,
+  opts: CrawlOptions
+): Promise<unknown> {
+  return await crawls.crawlFirmRoster(
+    client,
+    rest,
+    resolver,
+    state,
+    firmRoster,
+    opts
+  );
+}
 
 const main = async (): Promise<void> => {
   const write = !has("--dry-run");

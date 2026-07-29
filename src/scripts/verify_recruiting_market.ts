@@ -50,7 +50,6 @@ export async function verifyRecruitingMarket(
   options: VerifyRecruitingMarketOptions
 ): Promise<RecruitingMarketVerificationEvidence> {
   const dataBaseUrl = stripTrailingSlashes(options.dataBaseUrl);
-  const artifactBase = options.artifactBase;
   const defaultPayload = await fetchRecruitingPayload(
     dataBaseUrl,
     "/RecruitingMarket?limit=25"
@@ -64,7 +63,7 @@ export async function verifyRecruitingMarket(
       const browserEvidence = await captureBrowserEvidence(
         browser,
         localUrl,
-        artifactBase
+        options.artifactBase
       );
       const evidence: RecruitingMarketVerificationEvidence = {
         browser: browserEvidence,
@@ -75,7 +74,7 @@ export async function verifyRecruitingMarket(
         localUrl,
       };
       assertRecruitingMarketVerification(evidence);
-      await writeJson(`${artifactBase}.json`, evidence);
+      await writeJson(`${options.artifactBase}.json`, evidence);
       return evidence;
     } finally {
       await browser.close();

@@ -231,15 +231,7 @@ async function mobileDrawerChecks(facts: {
   readonly page: Page;
 }): Promise<readonly Check[]> {
   return [
-    check(
-      facts.closedMetrics.searchWidth >= 220,
-      "mobile: search readable at 390px",
-      `width ${Math.round(facts.closedMetrics.searchWidth)}px`
-    ),
-    check(
-      await facts.page.locator(NAV_SEARCH_SELECTOR).isVisible(),
-      "mobile: search remains visible"
-    ),
+    ...(await mobileSearchChecks(facts)),
     mobileOverflowCheck(facts.closedMetrics, facts.openMetrics),
     check(
       await facts.page.locator(NAV_BURGER_SELECTOR).isVisible(),
@@ -258,6 +250,23 @@ async function mobileDrawerChecks(facts: {
     ),
     drawerLabelsCheck(facts.drawerLinkLabels),
     check(facts.page.url().endsWith("/firms"), "mobile: drawer link navigates"),
+  ];
+}
+
+async function mobileSearchChecks(facts: {
+  readonly closedMetrics: Awaited<ReturnType<typeof readClosedMobileMetrics>>;
+  readonly page: Page;
+}): Promise<readonly Check[]> {
+  return [
+    check(
+      facts.closedMetrics.searchWidth >= 220,
+      "mobile: search readable at 390px",
+      `width ${Math.round(facts.closedMetrics.searchWidth)}px`
+    ),
+    check(
+      await facts.page.locator(NAV_SEARCH_SELECTOR).isVisible(),
+      "mobile: search remains visible"
+    ),
   ];
 }
 
@@ -454,20 +463,8 @@ async function runScopedScenarios(
   page: Parameters<typeof smokeFeed>[0],
   extraHTTPHeaders: Record<string, string> | undefined
 ): Promise<readonly Check[] | null> {
-  // SMOKE_SCOPE=core runs only the resource-backed scenarios that pass against
-  // the small seeded fixture used by the PR-time local-Harper run (`test:e2e`).
-  // These cover the highest-value backend-regression classes — the /Search
-  // resource (the requiredTable 500), the kind toggle, and feed rendering —
-  // without the larger-dataset scenarios (rankings, directory pagination/stats)
-  // that the fixture cannot satisfy. The full suite still runs at deploy time.
   if (process.env.SMOKE_SCOPE === "core") {
-    return [
-      ...(await smokeRootBootResilience(page)),
-      ...(await smokeFavicon(page)),
-      ...(await smokeFeed(page)),
-      ...(await smokeFeedStallRecovery(browser, extraHTTPHeaders)),
-      ...(await smokeGlobalSearch(page)),
-    ];
+    return await runCoreScopedScenarios(browser, page, extraHTTPHeaders);
   }
   if (process.env.SMOKE_SCOPE === "discrepancy") {
     return [
@@ -475,10 +472,6 @@ async function runScopedScenarios(
       ...(await smokeDiscrepancyQueue(page)),
     ];
   }
-  // SMOKE_SCOPE=watchlists isolates the per-user private watchlist path
-  // (scoped `/UserWatchlists` resource) so the watchlist resource binding can
-  // be verified without the full deploy suite — used to confirm no privacy or
-  // binding regression after schema/table changes to the user layer.
   if (process.env.SMOKE_SCOPE === "watchlists") {
     return [
       ...(await smokeRootBootResilience(page)),
@@ -496,6 +489,20 @@ async function runScopedScenarios(
     return await smokeCoverageDashboard(page, browser, extraHTTPHeaders);
   }
   return null;
+}
+
+async function runCoreScopedScenarios(
+  browser: Browser,
+  page: Parameters<typeof smokeFeed>[0],
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  return [
+    ...(await smokeRootBootResilience(page)),
+    ...(await smokeFavicon(page)),
+    ...(await smokeFeed(page)),
+    ...(await smokeFeedStallRecovery(browser, extraHTTPHeaders)),
+    ...(await smokeGlobalSearch(page)),
+  ];
 }
 
 async function runDefaultScenarios(

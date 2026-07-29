@@ -130,18 +130,7 @@ function regulatoryDigestRow(
     el(
       "div",
       { class: "regulatory-digest-main" },
-      el(
-        "div",
-        { class: "regulatory-digest-title" },
-        digestLabel(labels.eventType, "event"),
-        labels.sourceOrVenue
-          ? digestLabel(labels.sourceOrVenue, "source")
-          : null,
-        labels.disposition
-          ? digestLabel(labels.disposition, "disposition")
-          : null,
-        el("strong", {}, digestContext(item))
-      ),
+      regulatoryDigestTitle(item, labels),
       el("p", { class: "regulatory-digest-meta" }, digestSourceLabel(item)),
       disclosure.allegationText
         ? el(
@@ -153,6 +142,26 @@ function regulatoryDigestRow(
       digestLimitationsList(item),
       regulatoryDigestLinks(item)
     )
+  );
+}
+
+/**
+ * Builds the title row for one regulatory digest item.
+ * @param item - Digest item to render.
+ * @param labels - Precomputed digest labels.
+ * @returns Digest title element.
+ */
+function regulatoryDigestTitle(
+  item: RegulatoryDigestItem,
+  labels: ReturnType<typeof digestLabels>
+): HTMLElement {
+  return el(
+    "div",
+    { class: "regulatory-digest-title" },
+    digestLabel(labels.eventType, "event"),
+    labels.sourceOrVenue ? digestLabel(labels.sourceOrVenue, "source") : null,
+    labels.disposition ? digestLabel(labels.disposition, "disposition") : null,
+    el("strong", {}, digestContext(item))
   );
 }
 

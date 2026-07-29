@@ -269,14 +269,8 @@ function narrowResourceTableRows(rows: RawRowsByKey): ResourceTableRows {
   };
 }
 
-/**
- * Narrows the original public resource tables.
- * @param at - Typed row accessor for one table key.
- * @returns Core resource rows.
- */
-function narrowCoreResourceRows(
-  at: ResourceRowAccessor
-): Pick<
+/** Row subset for the original public resource payload tables. */
+type CoreResourceRowPick = Pick<
   ResourceTableRows,
   | "articles"
   | "advisors"
@@ -292,7 +286,14 @@ function narrowCoreResourceRows(
   | "disclosures"
   | "regulatoryDiscrepancies"
   | "correctionRequests"
-> {
+>;
+
+/**
+ * Narrows the original public resource tables.
+ * @param at - Typed row accessor for one table key.
+ * @returns Core resource rows.
+ */
+function narrowCoreResourceRows(at: ResourceRowAccessor): CoreResourceRowPick {
   return {
     articles: at<ArticleRow>("articles"),
     advisors: at<AdvisorRow>("advisors"),

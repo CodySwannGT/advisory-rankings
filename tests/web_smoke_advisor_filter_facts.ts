@@ -86,15 +86,22 @@ function readAdvisorFilterFactsInPage(
     hasCrd: valueOf("hasCrd"),
     loaded: metricValue("Showing"),
     profileSubstance: valueOf("profileSubstance"),
-    rawMetricsHidden: labels.every(
-      label => !hiddenMetricLabels.has(label.textContent?.trim() ?? "")
-    ),
+    rawMetricsHidden: metricLabelsHidden(labels, hiddenMetricLabels),
     rowCount: rows.length,
     rowTexts: rows
       .slice(0, 5)
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: metricValue("Matches"),
   };
+}
+
+function metricLabelsHidden(
+  labels: Element[],
+  hiddenMetricLabels: Set<string>
+): boolean {
+  return labels.every(
+    label => !hiddenMetricLabels.has(label.textContent?.trim() ?? "")
+  );
 }
 
 function metricText(labels: Element[], labelText: string): string | null {

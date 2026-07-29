@@ -154,8 +154,7 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     articleCategories: categories.rows,
     firmSourceCoverage: firmSources.coverage,
     completeness: fields.completeness,
-    sparseAdvisors: sparse.advisors.rows,
-    sparseFirms: sparse.firms.rows,
+    ...sparseCoverageRows(sparse),
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
     freshness: freshnessReport(a, t, f),
@@ -175,6 +174,20 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     }),
   };
 };
+
+/**
+ * Projects sparse coverage rows into the public report shape.
+ * @param sparse - Sparse advisor and firm coverage probes.
+ * @returns Sparse advisor and firm report rows.
+ */
+function sparseCoverageRows(
+  sparse: Awaited<ReturnType<typeof sparseCoverage>>
+): Pick<CoverageReport, "sparseAdvisors" | "sparseFirms"> {
+  return {
+    sparseAdvisors: sparse.advisors.rows,
+    sparseFirms: sparse.firms.rows,
+  };
+}
 
 /**
  * Reads sparse advisor and firm coverage probes.
