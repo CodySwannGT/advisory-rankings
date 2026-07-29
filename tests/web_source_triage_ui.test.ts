@@ -155,6 +155,36 @@ describe("source article triage route", () => {
     }
   });
 
+  it("keeps echoed future filter values readable and selected", async () => {
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 900 },
+    });
+    try {
+      await routeAuth(page, false);
+      await routeTriage(page, customFilterEchoPayload());
+
+      await page.goto(`${baseUrl}${SOURCE_TRIAGE_PATH}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await page
+        .getByRole("link", { name: MARKET_BRIEF_TITLE })
+        .waitFor({ timeout: QUICK_TIMEOUT });
+      expect(await selectedValue(page, "category")).toBe("research-note");
+      expect(await selectedValue(page, "reason")).toBe("custom-gap-reason");
+      expect(await selectedLabel(page, "category")).toBe("Research Note");
+      expect(await selectedLabel(page, "reason")).toBe("Custom Gap Reason");
+      await page.getByText("Research Note").first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+      await page.getByText("Custom Gap Reason").first().waitFor({
+        timeout: QUICK_TIMEOUT,
+      });
+    } finally {
+      await page.close();
+    }
+  });
+
   it("keeps review rows readable at tablet width after filtering", async () => {
     const page = await browser.newPage({
       viewport: { width: 820, height: 1180 },
@@ -399,8 +429,27 @@ function triagePayloadWithLongText(): Readonly<Record<string, unknown>> {
   };
 }
 
+function customFilterEchoPayload(): Readonly<Record<string, unknown>> {
+  return {
+    ...triagePayload(),
+    filters: {
+      category: "research-note",
+      reason: "custom-gap-reason",
+      limit: 20,
+    },
+  };
+}
+
 async function selectedValue(page: Page, name: string): Promise<string> {
   return await page.locator(`select[name="${name}"]`).inputValue();
+}
+
+async function selectedLabel(page: Page, name: string): Promise<string> {
+  return (
+    (await page
+      .locator(`select[name="${name}"] option:checked`)
+      .textContent()) ?? ""
+  );
 }
 
 async function hasHorizontalOverflow(page: Page): Promise<boolean> {
