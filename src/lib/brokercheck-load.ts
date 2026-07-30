@@ -294,14 +294,13 @@ export class Resolver {
     docketNumber?: string,
     regulator = ""
   ): Promise<string> {
-    const cacheKey = JSON.stringify([
-      "disc",
+    const cacheKey = disclosureCacheKey(
       advisorIdValue,
       disclosureType,
-      datePrefix(dateInitiated),
-      docketNumber ?? "",
-      regulator,
-    ]);
+      dateInitiated,
+      docketNumber,
+      regulator
+    );
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
     const matched = await this.findDisclosureMatch(
@@ -410,4 +409,30 @@ export class Resolver {
       `lic:${advisorIdValue}:${slugify(licenseType)}:${datePrefix(grantedDate)}`
     );
   }
+}
+
+/**
+ * Builds the resolver cache key for one disclosure lookup.
+ * @param advisorIdValue - Advisor id used in deterministic ids.
+ * @param disclosureType - Disclosure category.
+ * @param dateInitiated - Date the disclosure was initiated.
+ * @param docketNumber - Optional docket number for the disclosure.
+ * @param regulator - Optional regulator label used when no docket is present.
+ * @returns Stable disclosure cache key.
+ */
+function disclosureCacheKey(
+  advisorIdValue: string,
+  disclosureType: string,
+  dateInitiated: string,
+  docketNumber: string | undefined,
+  regulator: string
+): string {
+  return JSON.stringify([
+    "disc",
+    advisorIdValue,
+    disclosureType,
+    datePrefix(dateInitiated),
+    docketNumber ?? "",
+    regulator,
+  ]);
 }

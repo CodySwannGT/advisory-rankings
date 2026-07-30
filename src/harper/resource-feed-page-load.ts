@@ -252,16 +252,31 @@ const loadMentionedEntities = async (
     ]);
   return {
     advisors,
-    firms: [
-      ...earlyFirms,
-      ...(await loadExtraFirms(earlyFirms, employments, teams)),
-    ],
+    firms: await mentionedFirms(earlyFirms, employments, teams),
     teams,
     employments,
     teamSnaps,
     sanctions,
   };
 };
+
+/**
+ * Adds firms referenced only through mentioned employment and team rows.
+ * @param earlyFirms - Firms directly mentioned by article or event rows.
+ * @param employments - Mentioned advisor employment rows.
+ * @param teams - Mentioned team rows.
+ * @returns Direct and inferred mentioned firms.
+ */
+async function mentionedFirms(
+  earlyFirms: readonly FirmRow[],
+  employments: readonly EmploymentHistoryRow[],
+  teams: readonly TeamRow[]
+): Promise<readonly FirmRow[]> {
+  return [
+    ...earlyFirms,
+    ...(await loadExtraFirms(earlyFirms, employments, teams)),
+  ];
+}
 
 const mentionedEntityIds = (
   mentions: MentionTables,

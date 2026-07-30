@@ -61,19 +61,14 @@ export async function verifyRecruitingMarket(
   try {
     const browser = await chromium.launch({ headless: true });
     try {
-      const browserEvidence = await captureBrowserEvidence(
+      const evidence = await recruitingMarketEvidence({
+        artifactBase,
         browser,
-        localUrl,
-        artifactBase
-      );
-      const evidence: RecruitingMarketVerificationEvidence = {
-        browser: browserEvidence,
-        capturedAt: new Date().toISOString(),
         dataBaseUrl,
-        defaultResource: summarizeRecruitingMarketPayload(defaultPayload),
+        defaultPayload,
         filters,
         localUrl,
-      };
+      });
       assertRecruitingMarketVerification(evidence);
       await writeJson(`${artifactBase}.json`, evidence);
       return evidence;
@@ -83,6 +78,44 @@ export async function verifyRecruitingMarket(
   } finally {
     await closeServer(server);
   }
+}
+
+/** Inputs used to assemble Recruiting Market replay evidence. */
+interface RecruitingMarketEvidenceInput {
+  readonly artifactBase: string;
+  readonly browser: Browser;
+  readonly dataBaseUrl: string;
+  readonly defaultPayload: unknown;
+  readonly filters: ReadonlyArray<RecruitingFilterEvidence>;
+  readonly localUrl: string;
+}
+
+/**
+ * Captures browser evidence and assembles the durable verification payload.
+ * @param input - Browser, API, filter, and artifact inputs.
+ * @param input.artifactBase - Artifact path prefix for screenshots and JSON.
+ * @param input.browser - Browser instance used for the UI capture.
+ * @param input.dataBaseUrl - Deployed data/backend origin.
+ * @param input.defaultPayload - Default RecruitingMarket API payload.
+ * @param input.filters - Filter evidence captured from API slices.
+ * @param input.localUrl - Local proxy URL used for browser capture.
+ * @returns Recruiting Market verification evidence.
+ */
+async function recruitingMarketEvidence(
+  input: RecruitingMarketEvidenceInput
+): Promise<RecruitingMarketVerificationEvidence> {
+  return {
+    browser: await captureBrowserEvidence(
+      input.browser,
+      input.localUrl,
+      input.artifactBase
+    ),
+    capturedAt: new Date().toISOString(),
+    dataBaseUrl: input.dataBaseUrl,
+    defaultResource: summarizeRecruitingMarketPayload(input.defaultPayload),
+    filters: input.filters,
+    localUrl: input.localUrl,
+  };
 }
 
 /**

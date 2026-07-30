@@ -108,34 +108,15 @@ const runSelectedCrawlMode = async (
   state: CrawlState,
   opts: CrawlOptions
 ): Promise<unknown | null> => {
+  const shared = [client, rest, resolver, state] as const;
   if (has("--enrich"))
-    return await crawls.enrichExistingAdvisors(
-      client,
-      rest,
-      resolver,
-      state,
-      opts
-    );
+    return await crawls.enrichExistingAdvisors(...shared, opts);
   const searchName = arg("--search-name");
   if (searchName)
-    return await crawls.crawlNameSearch(
-      client,
-      rest,
-      resolver,
-      state,
-      searchName,
-      opts
-    );
+    return await crawls.crawlNameSearch(...shared, searchName, opts);
   const firmRoster = arg("--firm-roster");
   return firmRoster
-    ? await crawls.crawlFirmRoster(
-        client,
-        rest,
-        resolver,
-        state,
-        firmRoster,
-        opts
-      )
+    ? await crawls.crawlFirmRoster(...shared, firmRoster, opts)
     : null;
 };
 

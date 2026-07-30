@@ -214,20 +214,7 @@ function readableNavLabel(value: string | null | undefined): string {
 export async function firmCopyGuardrailChecks(
   section: Locator
 ): Promise<readonly Check[]> {
-  const chipMetrics = await section
-    .locator(".firm-dd-filter")
-    .evaluateAll(buttons =>
-      buttons.map(button => {
-        const box = button.getBoundingClientRect();
-        return {
-          text: button.textContent?.trim() || "",
-          width: Math.round(box.width),
-          parentWidth: Math.round(
-            button.parentElement?.getBoundingClientRect().width || 0
-          ),
-        };
-      })
-    );
+  const chipMetrics = await firmDueDiligenceChipMetrics(section);
   const helpCount = await section.locator(".firm-dd-help summary").count();
 
   return [
@@ -249,6 +236,27 @@ export async function firmCopyGuardrailChecks(
       "firm.html: due-diligence source terms expose help affordances"
     ),
   ];
+}
+
+async function firmDueDiligenceChipMetrics(section: Locator): Promise<
+  readonly {
+    readonly parentWidth: number;
+    readonly text: string;
+    readonly width: number;
+  }[]
+> {
+  return await section.locator(".firm-dd-filter").evaluateAll(buttons =>
+    buttons.map(button => {
+      const box = button.getBoundingClientRect();
+      return {
+        text: button.textContent?.trim() || "",
+        width: Math.round(box.width),
+        parentWidth: Math.round(
+          button.parentElement?.getBoundingClientRect().width || 0
+        ),
+      };
+    })
+  );
 }
 
 /**

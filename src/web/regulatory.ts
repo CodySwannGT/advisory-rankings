@@ -143,17 +143,24 @@ function regulatoryDigestRow(
         el("strong", {}, digestContext(item))
       ),
       el("p", { class: "regulatory-digest-meta" }, digestSourceLabel(item)),
-      disclosure.allegationText
-        ? el(
-            "p",
-            { class: "regulatory-digest-summary" },
-            disclosure.allegationText
-          )
-        : null,
+      regulatoryDigestSummary(disclosure),
       digestLimitationsList(item),
       regulatoryDigestLinks(item)
     )
   );
+}
+
+/**
+ * Renders the optional allegation summary for a digest row.
+ * @param disclosure - Disclosure backing the digest item.
+ * @returns Summary paragraph or null when no allegation text exists.
+ */
+function regulatoryDigestSummary(
+  disclosure: RegulatoryDigestItem["disclosure"]
+): HTMLElement | null {
+  return disclosure.allegationText
+    ? el("p", { class: "regulatory-digest-summary" }, disclosure.allegationText)
+    : null;
 }
 
 /**

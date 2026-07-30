@@ -7,7 +7,7 @@ import {
   type RecruitingGapEntry,
 } from "./data-coverage-recruiting-gap.js";
 import { coverageFreshnessResults } from "./data-coverage-freshness.js";
-import { coverageWarnings } from "./data-coverage-warnings.js";
+import { dataCoverageWarnings } from "./data-coverage-report-warnings.js";
 
 export type { RecruitingGapEntry } from "./data-coverage-recruiting-gap.js";
 
@@ -159,19 +159,16 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
     recruitingCoverage: recruiting.rows,
     unextractedRecruitingArticles: recruitingGap.rows,
     freshness: freshnessReport(a, t, f),
-    warnings: coverageWarnings({
-      articles: a,
+    warnings: dataCoverageWarnings({
       categories,
       counts,
       fields,
-      firmSourceChecks: f,
+      freshness: { articles: a, firmSourceChecks: f, transitions: t },
       firmSources,
       recruiting,
       recruitingGap,
       sources,
-      sparseAdvisors: sparse.advisors,
-      sparseFirms: sparse.firms,
-      transitions: t,
+      sparse,
     }),
   };
 };

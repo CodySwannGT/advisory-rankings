@@ -33,6 +33,7 @@ const ADVISOR_FILTER_LABELS = [
   ["Profile", "advisor-filter-profileSubstance", "profileSubstance"],
   ["Freshness", "advisor-filter-freshness", "freshness"],
 ] as const;
+const HIDDEN_FILTER_METRIC_LABELS = new Set(["Loaded", "Total", "Page size"]);
 
 /**
  * Reads advisor filter form, result, and empty-state facts.
@@ -68,14 +69,13 @@ function readAdvisorFilterFactsInPage(
     card => card.textContent?.includes(title)
   );
   const labels = Array.from(stats?.querySelectorAll("dt") ?? []);
-  const hiddenMetricLabels = new Set(["Loaded", "Total", "Page size"]);
   const metricValue = (labelText: string) =>
     Number(
       /\d+/.exec(
         (metricText(labels, labelText) ?? "").replace(/,/g, "")
       )?.[0] ?? NaN
     );
-  const rows = Array.from(document.querySelectorAll(rowSelector));
+  const rows = filterFactRows(rowSelector);
   return {
     bodyText: document.body.textContent || "",
     careerStatus: valueOf("careerStatus"),
@@ -87,7 +87,7 @@ function readAdvisorFilterFactsInPage(
     loaded: metricValue("Showing"),
     profileSubstance: valueOf("profileSubstance"),
     rawMetricsHidden: labels.every(
-      label => !hiddenMetricLabels.has(label.textContent?.trim() ?? "")
+      label => !HIDDEN_FILTER_METRIC_LABELS.has(label.textContent?.trim() ?? "")
     ),
     rowCount: rows.length,
     rowTexts: rows
@@ -95,6 +95,10 @@ function readAdvisorFilterFactsInPage(
       .map(row => row.textContent?.replace(/\s+/g, " ").trim() || ""),
     total: metricValue("Matches"),
   };
+}
+
+function filterFactRows(rowSelector: string): Element[] {
+  return Array.from(document.querySelectorAll(rowSelector));
 }
 
 function metricText(labels: Element[], labelText: string): string | null {

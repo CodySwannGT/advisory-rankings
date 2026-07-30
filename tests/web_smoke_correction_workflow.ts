@@ -242,17 +242,11 @@ async function correctionJourneyChecks(
     values.proposedValue,
     values.reviewerNote
   );
-  const mobileChecks = await mobileCorrectionChecks(
-    browser,
-    advisor,
-    extraHTTPHeaders
-  );
-
   return [
     check(Boolean(requestId), "corrections: request id returned"),
     ...inboxChecks,
     ...profileChecks,
-    ...mobileChecks,
+    ...(await mobileCorrectionChecks(browser, advisor, extraHTTPHeaders)),
   ];
 }
 

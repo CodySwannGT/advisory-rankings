@@ -164,9 +164,7 @@ function readLoadedRecruitingStateInPage({
       node => node.textContent?.trim() === text
     );
   const textIncludes = (selector: string, text: string) =>
-    Array.from(document.querySelectorAll(selector)).some(node =>
-      node.textContent?.includes(text)
-    );
+    textInNodes(selector, text, textContent => textContent.includes(text));
   const bodyText = document.body.innerText;
   return {
     addFirmLabel: document
@@ -189,6 +187,16 @@ function readLoadedRecruitingStateInPage({
     rawLabels: rawRecruitingLabels.filter(label => bodyText.includes(label)),
     rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
   };
+}
+
+function textInNodes(
+  selector: string,
+  text: string,
+  predicate: (textContent: string, text: string) => boolean
+): boolean {
+  return Array.from(document.querySelectorAll(selector)).some(node =>
+    predicate(node.textContent ?? "", text)
+  );
 }
 
 /**

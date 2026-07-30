@@ -144,9 +144,7 @@ const buildSearchResponse = async (
     norm,
   }).filter(match => kind === "all" || match.kind === kind);
   const displayed = matches.slice(0, cap);
-  const displayedAdvisorIds = displayed
-    .filter(match => match.kind === "advisor")
-    .map(match => match.id);
+  const displayedAdvisorIds = advisorIdsFromSearchMatches(displayed);
   const subtitleByAdvisor = await resolveSearchAdvisorSubtitles({
     advisorIds: displayedAdvisorIds,
     searchFirms: rows.firms,
@@ -161,6 +159,19 @@ const buildSearchResponse = async (
     counts: canonicalSearchCounts(input.counts, rows),
   };
 };
+
+/**
+ * Lists displayed advisor IDs that need subtitle hydration.
+ * @param matches - Ranked public search matches after filtering and capping.
+ * @returns Advisor IDs from the visible result rows.
+ */
+function advisorIdsFromSearchMatches(
+  matches: readonly SearchMatch[]
+): readonly string[] {
+  return matches
+    .filter(match => match.kind === "advisor")
+    .map(match => match.id);
+}
 
 /**
  * Converts an internal ranked match into the public search payload.

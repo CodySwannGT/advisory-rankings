@@ -130,11 +130,7 @@ export function rankingEntries(
     const ranking = db.byRanking.get(row.rankingId) || null;
     const subject = entrySubject(db, row, ranking);
     const firm = entryFirm(db, row);
-    const location: RankingLocation = {
-      city: row.city || null,
-      state: normalizeState(row.state),
-      label: [row.city, normalizeState(row.state)].filter(Boolean).join(", "),
-    };
+    const location = rankingLocation(row);
     return {
       id: row.id,
       ranking: rankingPayload(ranking, row),
@@ -160,6 +156,19 @@ export function rankingEntries(
       _sort: rankingSortFields(row, ranking, subject, firm, location),
     };
   });
+}
+
+/**
+ * Builds the normalized location payload for one ranking row.
+ * @param row - Stored ranking entry row.
+ * @returns Ranking location display fields.
+ */
+function rankingLocation(row: RankingEntryRow): RankingLocation {
+  return {
+    city: row.city || null,
+    state: normalizeState(row.state),
+    label: [row.city, normalizeState(row.state)].filter(Boolean).join(", "),
+  };
 }
 
 /**

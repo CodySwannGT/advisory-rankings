@@ -208,16 +208,11 @@ async function smokeMultiWordFirmSearchChecks(
     (await morganFirstRow.locator(".gs-kind").textContent()) ?? ""
   );
   const morganFirstText = ((await morganFirstRow.textContent()) ?? "").trim();
-
   await input.fill("wells fargo advisors");
   await waitForSearchRowContaining(page, /Wells Fargo/i);
   const wellsRows = await results.count();
   const wellsText = (await results.allTextContents()).join(" | ");
   const wellsKinds = await searchKinds(results);
-  const wellsHasMatchingFirmOrTeam =
-    /Wells Fargo/i.test(wellsText) &&
-    wellsKinds.some(kind => kind === "firm" || kind === "team");
-
   return [
     check(
       morganFirstKind === "firm" && /Morgan Stanley/i.test(morganFirstText),
@@ -230,11 +225,22 @@ async function smokeMultiWordFirmSearchChecks(
       `rows ${wellsRows}`
     ),
     check(
-      wellsHasMatchingFirmOrTeam,
+      hasMatchingWellsFirmOrTeam(wellsText, wellsKinds),
       "global search: Wells Fargo Advisors includes matching firm or team",
       wellsText
     ),
   ];
+}
+
+function hasMatchingWellsFirmOrTeam(
+  text: string,
+  kinds: readonly (SearchKind | null)[]
+): boolean {
+  return /Wells Fargo/i.test(text) && kinds.some(isFirmOrTeamSearchKind);
+}
+
+function isFirmOrTeamSearchKind(kind: SearchKind | null): boolean {
+  return kind === "firm" || kind === "team";
 }
 
 async function waitForFirstSearchRow(
@@ -361,9 +367,7 @@ async function smokeSearchEmptyAndDismissChecks(
     { timeout: DEPLOYED_DATA_TIMEOUT }
   );
   const activeAfterEscape = await activeSearchRowCount(page);
-  const dropdownHidden = await dropdown.evaluate(node =>
-    node.hasAttribute("hidden")
-  );
+  const dropdownHidden = await isHiddenDropdown(dropdown);
 
   return searchEmptyDismissChecks(shell, {
     activeAfterEscape,
@@ -372,6 +376,10 @@ async function smokeSearchEmptyAndDismissChecks(
     emptyStateRows,
     emptyStateText,
   });
+}
+
+async function isHiddenDropdown(dropdown: Locator): Promise<boolean> {
+  return await dropdown.evaluate(node => node.hasAttribute("hidden"));
 }
 
 async function waitForSearchEmptyCopy(page: Page): Promise<void> {

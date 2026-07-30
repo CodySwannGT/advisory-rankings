@@ -49,7 +49,6 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     .locator(DISCLOSURE_CARD_SELECTOR)
     .filter({ hasText: /FINRA|regulatory/i })
     .first();
-
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const paginationChecks = await smokeFeedPagination(page);
@@ -62,15 +61,11 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
-  const sanctionPillExpectation = await expectedSanctionPillCount(page);
-  const transitionText = (await transition.textContent()) ?? "";
-  const initialFeedChecks = await feedInitialChecks(page, {
-    actualSanctionPillCount: await page.locator(".sanction-pill").count(),
-    initialPostCount: await postCards.count(),
+  const initialFeedChecks = await initialFeedChecksForPage(page, {
+    postCards,
     regulatoryDisclosure,
-    sanctionPillExpectation,
     taylorCard,
-    transitionText,
+    transition,
   });
   return [
     ...initialFeedChecks,
@@ -78,6 +73,29 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     ...(await smokeFeedFilters(page)),
     ...(await feedCopyGuardrailChecks(page)),
   ];
+}
+
+async function initialFeedChecksForPage(
+  page: Page,
+  locators: {
+    readonly postCards: Locator;
+    readonly regulatoryDisclosure: Locator;
+    readonly taylorCard: Locator;
+    readonly transition: Locator;
+  }
+): Promise<readonly Check[]> {
+  return await feedInitialChecks(page, {
+    actualSanctionPillCount: await page.locator(".sanction-pill").count(),
+    initialPostCount: await locators.postCards.count(),
+    regulatoryDisclosure: locators.regulatoryDisclosure,
+    sanctionPillExpectation: await expectedSanctionPillCount(page),
+    taylorCard: locators.taylorCard,
+    transitionText: await locatorText(locators.transition),
+  });
+}
+
+async function locatorText(locator: Locator): Promise<string> {
+  return (await locator.textContent()) ?? "";
 }
 
 /**

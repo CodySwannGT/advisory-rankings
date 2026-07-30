@@ -251,14 +251,19 @@ async function mobileDrawerChecks(facts: {
     ),
     escapeClosesDrawerCheck(facts.escapeResult),
     ...facts.focusChecks,
-    check(
-      facts.escapeResult.reopened.open &&
-        facts.escapeResult.reopened.expanded === "true",
-      "mobile: drawer reopens after Escape dismissal"
-    ),
+    drawerReopensCheck(facts.escapeResult),
     drawerLabelsCheck(facts.drawerLinkLabels),
     check(facts.page.url().endsWith("/firms"), "mobile: drawer link navigates"),
   ];
+}
+
+function drawerReopensCheck(
+  escapeResult: Awaited<ReturnType<typeof exerciseEscapeDismissal>>
+): Check {
+  return check(
+    escapeResult.reopened.open && escapeResult.reopened.expanded === "true",
+    "mobile: drawer reopens after Escape dismissal"
+  );
 }
 
 function escapeClosesDrawerCheck(
@@ -460,15 +465,8 @@ async function runScopedScenarios(
   // resource (the requiredTable 500), the kind toggle, and feed rendering —
   // without the larger-dataset scenarios (rankings, directory pagination/stats)
   // that the fixture cannot satisfy. The full suite still runs at deploy time.
-  if (process.env.SMOKE_SCOPE === "core") {
-    return [
-      ...(await smokeRootBootResilience(page)),
-      ...(await smokeFavicon(page)),
-      ...(await smokeFeed(page)),
-      ...(await smokeFeedStallRecovery(browser, extraHTTPHeaders)),
-      ...(await smokeGlobalSearch(page)),
-    ];
-  }
+  if (process.env.SMOKE_SCOPE === "core")
+    return await smokeCoreScope(browser, page, extraHTTPHeaders);
   if (process.env.SMOKE_SCOPE === "discrepancy") {
     return [
       ...(await smokeRootBootResilience(page)),
@@ -496,6 +494,20 @@ async function runScopedScenarios(
     return await smokeCoverageDashboard(page, browser, extraHTTPHeaders);
   }
   return null;
+}
+
+async function smokeCoreScope(
+  browser: Browser,
+  page: Parameters<typeof smokeFeed>[0],
+  extraHTTPHeaders: Record<string, string> | undefined
+): Promise<readonly Check[]> {
+  return [
+    ...(await smokeRootBootResilience(page)),
+    ...(await smokeFavicon(page)),
+    ...(await smokeFeed(page)),
+    ...(await smokeFeedStallRecovery(browser, extraHTTPHeaders)),
+    ...(await smokeGlobalSearch(page)),
+  ];
 }
 
 async function runDefaultScenarios(

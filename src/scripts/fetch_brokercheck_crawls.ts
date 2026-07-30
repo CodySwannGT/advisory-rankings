@@ -42,10 +42,7 @@ export const enrichExistingAdvisors = async (
 ): Promise<EnrichSummary> => {
   const advisors = ((await rest.get("/Advisor/")) ??
     []) as ReadonlyArray<BrokerRecord>;
-  const targets = applyLimit(
-    advisors.filter(advisor => !advisor.finraCrd),
-    opts.max ?? 0
-  );
+  const targets = enrichmentTargets(advisors, opts.max ?? 0);
   const log = opts.log ?? console.error;
   log(`[enrich] ${targets.length}/${advisors.length} advisors lack finraCrd`);
   return await targets.reduce<Promise<EnrichSummary>>(
@@ -71,6 +68,22 @@ export const enrichExistingAdvisors = async (
     Promise.resolve({ matched: 0, no_match: 0, ambiguous: 0, loaded: 0 })
   );
 };
+
+/**
+ * Selects existing advisors still missing FINRA CRDs for enrichment.
+ * @param advisors - Advisor rows from Harper.
+ * @param max - Maximum number of rows to process; zero means no limit.
+ * @returns Enrichment target advisors.
+ */
+function enrichmentTargets(
+  advisors: readonly BrokerRecord[],
+  max: number
+): readonly BrokerRecord[] {
+  return applyLimit(
+    advisors.filter(advisor => !advisor.finraCrd),
+    max
+  );
+}
 
 /**
  * Crawls all individuals returned by a BrokerCheck firm roster.

@@ -275,35 +275,33 @@ function branchDirectoryMatch(
   employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
   filters: ReturnType<typeof parseBranchDirectoryFilters>
 ): BranchDirectoryRow | null {
-  const firm = byFirm.get(branch.firmId) ?? null;
-  const coverage = coverageByBranch.get(branch.id) ?? null;
+  const firm = byFirm.get(branch.firmId) ?? null,
+    coverage = coverageByBranch.get(branch.id) ?? null;
   const linkedEmployments = coverage
     ? []
     : (employmentsByBranch.get(branch.id) ?? []);
-  const currentAdvisorCount =
+  const advisorCount =
     coverage?.currentAdvisorCount ??
     currentBranchAdvisorCount(linkedEmployments);
-  const sourceMetadata = coverage
+  const metadata = coverage
     ? branchCoverageSourceMetadata(coverage)
     : branchSourceSummary(linkedEmployments);
   const gapGroup =
     coverage?.gapGroup ??
-    branchGapGroup({ firm, currentAdvisorCount, sourceMetadata });
+    branchGapGroup({
+      firm,
+      currentAdvisorCount: advisorCount,
+      sourceMetadata: metadata,
+    });
   return branchMatchesFilters(
     branch,
     filters,
     firm,
-    sourceMetadata.sourceTypes,
-    currentAdvisorCount,
+    metadata.sourceTypes,
+    advisorCount,
     gapGroup
   )
-    ? branchDirectoryRow(
-        branch,
-        firm,
-        currentAdvisorCount,
-        sourceMetadata,
-        coverage
-      )
+    ? branchDirectoryRow(branch, firm, advisorCount, metadata, coverage)
     : null;
 }
 

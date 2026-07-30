@@ -168,9 +168,7 @@ async function runRouteCheck(
     .trim();
   const hasTitle = await cardHasExactTitle(cardLocator, routeCheck.title);
 
-  const bodyText = ((await page.locator("body").textContent()) ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const bodyText = await normalizedBodyText(page);
 
   await cardLocator
     .getByRole("button", { name: routeCheck.actionLabel, exact: true })
@@ -189,6 +187,12 @@ async function runRouteCheck(
     page,
     routeCheck,
   });
+}
+
+async function normalizedBodyText(page: Page): Promise<string> {
+  return ((await page.locator("body").textContent()) ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function cardHasExactTitle(
