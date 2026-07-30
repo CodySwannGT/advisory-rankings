@@ -115,9 +115,16 @@ describe("feed hydration with a stale secondary index on the serving node", () =
     expect(db.mAdv.map(row => row.id)).toContain("ma1");
     expect(db.mFirm.map(row => row.id)).toContain("mf1");
 
-    // And the event row those mentions point at is hydrated by primary key.
-    expect(db.byTransition.get("te-1")).toBeTruthy();
-    expect(db.byDisclosure.get("disc-1")).toBeTruthy();
+    // And the event rows those mentions point at are hydrated by primary key.
+    expect(db.byTransition.get("te-1")).toEqual({
+      id: "te-1",
+      subjectAdvisorId: "adv-1",
+      fromFirmId: "firm-1",
+    });
+    expect(db.byDisclosure.get("disc-1")).toEqual({
+      id: "disc-1",
+      advisorId: "adv-1",
+    });
   });
 
   it("guards the simulation: an articleId-conditioned search really is empty", async () => {
