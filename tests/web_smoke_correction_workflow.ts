@@ -223,6 +223,30 @@ async function correctionJourneyChecks(
   values: CorrectionWorkflowValues,
   extraHTTPHeaders: Record<string, string>
 ): Promise<readonly Check[]> {
+  const { requestId, inboxChecks, profileChecks } =
+    await desktopCorrectionJourneyChecks(pages, advisor, values);
+  const mobileChecks = await mobileJourneyChecks(
+    browser,
+    advisor,
+    extraHTTPHeaders
+  );
+  return journeyResultChecks(
+    requestId,
+    inboxChecks,
+    profileChecks,
+    mobileChecks
+  );
+}
+
+async function desktopCorrectionJourneyChecks(
+  pages: CorrectionWorkflowPages,
+  advisor: SmokeAdvisor,
+  values: CorrectionWorkflowValues
+): Promise<{
+  readonly inboxChecks: readonly Check[];
+  readonly profileChecks: readonly Check[];
+  readonly requestId: string;
+}> {
   const requestId = await submitCorrection(
     pages.submitterPage,
     advisor,
@@ -242,12 +266,23 @@ async function correctionJourneyChecks(
     values.proposedValue,
     values.reviewerNote
   );
-  const mobileChecks = await mobileCorrectionChecks(
-    browser,
-    advisor,
-    extraHTTPHeaders
-  );
+  return { inboxChecks, profileChecks, requestId };
+}
 
+async function mobileJourneyChecks(
+  browser: Browser,
+  advisor: SmokeAdvisor,
+  extraHTTPHeaders: Record<string, string>
+): Promise<readonly Check[]> {
+  return await mobileCorrectionChecks(browser, advisor, extraHTTPHeaders);
+}
+
+function journeyResultChecks(
+  requestId: string,
+  inboxChecks: readonly Check[],
+  profileChecks: readonly Check[],
+  mobileChecks: readonly Check[]
+): readonly Check[] {
   return [
     check(Boolean(requestId), "corrections: request id returned"),
     ...inboxChecks,

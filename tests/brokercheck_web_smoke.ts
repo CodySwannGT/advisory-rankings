@@ -215,14 +215,7 @@ async function checkAdvisorAttribution(page) {
     .first()
     .textContent()
     .catch(() => "");
-  const tosLink = await page
-    .locator(`${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/terms"]`)
-    .count();
-  const bcLink = await page
-    .locator(
-      `${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/individual"]`
-    )
-    .count();
+  const { tosLink, bcLink } = await advisorAttributionLinkCounts(page);
   const careerSectionAttr = await careerAttributionCount(page);
   const hasAttributionText = /FINRA BrokerCheck/i.test(attrText);
   attrCount >= 1
@@ -245,6 +238,21 @@ async function checkAdvisorAttribution(page) {
   careerSectionAttr >= 1
     ? ok("advisor.html: Career section carries its own attribution")
     : fail("advisor.html: Career section missing attribution");
+}
+
+async function advisorAttributionLinkCounts(
+  page
+): Promise<Readonly<Record<"bcLink" | "tosLink", number>>> {
+  return {
+    bcLink: await page
+      .locator(
+        `${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/individual"]`
+      )
+      .count(),
+    tosLink: await page
+      .locator(`${SOURCE_ATTR_SELECTOR} a[href*="brokercheck.finra.org/terms"]`)
+      .count(),
+  };
 }
 
 async function careerAttributionCount(page): Promise<number> {

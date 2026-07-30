@@ -37,6 +37,7 @@ import {
   queryValue,
 } from "./resource-directory-filters.js";
 import { allRows, optionalAll } from "./resource-directory-tables.js";
+import { branchGapGroup } from "./resource-branch-gap-groups.js";
 import {
   compareFirmDirectoryRows,
   compareTeamDirectoryRows,
@@ -47,17 +48,12 @@ import {
 } from "./resource-directory-sorting.js";
 import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
-import { branchGapGroup } from "./resource-branch-gap-groups.js";
 import {
   branchCoverageByBranch,
-  branchCoverageSourceMetadata,
   type BranchCoverageByBranch,
 } from "./resource-branch-coverage-read-model.js";
-import { branchSourceSummary } from "./resource-branch-source-labels.js";
-import {
-  currentBranchAdvisorCount,
-  fallbackEmploymentsByBranch,
-} from "./resource-directory-branch-employment.js";
+import { fallbackEmploymentsByBranch } from "./resource-directory-branch-employment.js";
+import { branchDirectoryMatchContext } from "./resource-directory-branch-match.js";
 
 export type {
   SearchCounts,
@@ -277,31 +273,25 @@ function branchDirectoryMatch(
 ): BranchDirectoryRow | null {
   const firm = byFirm.get(branch.firmId) ?? null;
   const coverage = coverageByBranch.get(branch.id) ?? null;
-  const linkedEmployments = coverage
-    ? []
-    : (employmentsByBranch.get(branch.id) ?? []);
-  const currentAdvisorCount =
-    coverage?.currentAdvisorCount ??
-    currentBranchAdvisorCount(linkedEmployments);
-  const sourceMetadata = coverage
-    ? branchCoverageSourceMetadata(coverage)
-    : branchSourceSummary(linkedEmployments);
-  const gapGroup =
-    coverage?.gapGroup ??
-    branchGapGroup({ firm, currentAdvisorCount, sourceMetadata });
+  const context = branchDirectoryMatchContext({
+    branchId: branch.id,
+    coverage,
+    employmentsByBranch,
+    firm,
+  });
   return branchMatchesFilters(
     branch,
     filters,
     firm,
-    sourceMetadata.sourceTypes,
-    currentAdvisorCount,
-    gapGroup
+    context.sourceMetadata.sourceTypes,
+    context.currentAdvisorCount,
+    context.gapGroup
   )
     ? branchDirectoryRow(
         branch,
         firm,
-        currentAdvisorCount,
-        sourceMetadata,
+        context.currentAdvisorCount,
+        context.sourceMetadata,
         coverage
       )
     : null;

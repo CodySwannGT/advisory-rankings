@@ -49,7 +49,6 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
     .locator(DISCLOSURE_CARD_SELECTOR)
     .filter({ hasText: /FINRA|regulatory/i })
     .first();
-
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
   const paginationChecks = await smokeFeedPagination(page);
@@ -62,22 +61,55 @@ export async function smokeFeed(page: Page): Promise<readonly Check[]> {
   await disclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await regulatoryDisclosure.waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "01-feed");
-  const sanctionPillExpectation = await expectedSanctionPillCount(page);
-  const transitionText = (await transition.textContent()) ?? "";
-  const initialFeedChecks = await feedInitialChecks(page, {
-    actualSanctionPillCount: await page.locator(".sanction-pill").count(),
-    initialPostCount: await postCards.count(),
+  const initialFeedChecks = await initialFeedChecksForPage(
+    page,
+    postCards,
     regulatoryDisclosure,
-    sanctionPillExpectation,
     taylorCard,
-    transitionText,
-  });
+    transition
+  );
   return [
     ...initialFeedChecks,
     ...paginationChecks,
     ...(await smokeFeedFilters(page)),
     ...(await feedCopyGuardrailChecks(page)),
   ];
+}
+
+async function initialFeedChecksForPage(
+  page: Page,
+  postCards: Locator,
+  regulatoryDisclosure: Locator,
+  taylorCard: Locator,
+  transition: Locator
+): Promise<readonly Check[]> {
+  return await feedInitialChecks(
+    page,
+    await initialFeedFacts(
+      page,
+      postCards,
+      regulatoryDisclosure,
+      taylorCard,
+      transition
+    )
+  );
+}
+
+async function initialFeedFacts(
+  page: Page,
+  postCards: Locator,
+  regulatoryDisclosure: Locator,
+  taylorCard: Locator,
+  transition: Locator
+) {
+  return {
+    actualSanctionPillCount: await page.locator(".sanction-pill").count(),
+    initialPostCount: await postCards.count(),
+    regulatoryDisclosure,
+    sanctionPillExpectation: await expectedSanctionPillCount(page),
+    taylorCard,
+    transitionText: (await transition.textContent()) ?? "",
+  };
 }
 
 /**

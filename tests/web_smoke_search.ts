@@ -214,9 +214,7 @@ async function smokeMultiWordFirmSearchChecks(
   const wellsRows = await results.count();
   const wellsText = (await results.allTextContents()).join(" | ");
   const wellsKinds = await searchKinds(results);
-  const wellsHasMatchingFirmOrTeam =
-    /Wells Fargo/i.test(wellsText) &&
-    wellsKinds.some(kind => kind === "firm" || kind === "team");
+  const wellsHasMatchingFirmOrTeam = hasFirmOrTeamMatch(wellsText, wellsKinds);
 
   return [
     check(
@@ -235,6 +233,16 @@ async function smokeMultiWordFirmSearchChecks(
       wellsText
     ),
   ];
+}
+
+function hasFirmOrTeamMatch(
+  text: string,
+  kinds: readonly (SearchKind | null)[]
+): boolean {
+  return (
+    /Wells Fargo/i.test(text) &&
+    kinds.some(kind => kind === "firm" || kind === "team")
+  );
 }
 
 async function waitForFirstSearchRow(
@@ -339,17 +347,14 @@ async function smokeSearchEmptyAndDismissChecks(
   const dropdown = page.locator(SEARCH_RESULTS_SELECTOR);
   const rows = page.locator(SEARCH_RESULT_ROWS_SELECTOR);
   const empty = page.locator(SEARCH_EMPTY_SELECTOR).first();
-
   await smokeGoto(page, `${BASE}/`);
   await smokeWaitForSelector(page, FEED_HEADLINE_SELECTOR);
-
   await input.fill("zzzzzzzzzzzz-no-match");
   await empty.waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await waitForSearchEmptyCopy(page);
   await shot(page, `02-${shell}-global-search-empty`);
   const emptyStateText = (await empty.textContent()) ?? "";
   const emptyStateRows = await rows.count();
-
   await input.fill("wells");
   await rows.first().waitFor({ timeout: DEPLOYED_DATA_TIMEOUT });
   await input.press("ArrowDown");
@@ -361,10 +366,7 @@ async function smokeSearchEmptyAndDismissChecks(
     { timeout: DEPLOYED_DATA_TIMEOUT }
   );
   const activeAfterEscape = await activeSearchRowCount(page);
-  const dropdownHidden = await dropdown.evaluate(node =>
-    node.hasAttribute("hidden")
-  );
-
+  const dropdownHidden = await searchDropdownHidden(dropdown);
   return searchEmptyDismissChecks(shell, {
     activeAfterEscape,
     activeBeforeEscape,
@@ -372,6 +374,10 @@ async function smokeSearchEmptyAndDismissChecks(
     emptyStateRows,
     emptyStateText,
   });
+}
+
+async function searchDropdownHidden(dropdown: Locator): Promise<boolean> {
+  return await dropdown.evaluate(node => node.hasAttribute("hidden"));
 }
 
 async function waitForSearchEmptyCopy(page: Page): Promise<void> {

@@ -23,6 +23,12 @@ import { fetchOneCrd, saveState } from "./fetch_brokercheck_core.js";
 
 const PAGE_SIZE = 50;
 const DEFAULT_SEARCH_MAX = 25;
+const EMPTY_ENRICH_SUMMARY = Promise.resolve({
+  matched: 0,
+  no_match: 0,
+  ambiguous: 0,
+  loaded: 0,
+});
 
 /**
  * Matches existing advisors without CRDs against BrokerCheck search results.
@@ -49,28 +55,66 @@ export const enrichExistingAdvisors = async (
   const log = opts.log ?? console.error;
   log(`[enrich] ${targets.length}/${advisors.length} advisors lack finraCrd`);
   return await targets.reduce<Promise<EnrichSummary>>(
-    async (previous, advisor) => {
-      const summary = await previous;
-      const legalName = stringValue(advisor.legalName).trim();
-      if (!legalName) return summary;
-      const candidates = matchingSearchSources(
-        await client.searchIndividual(legalName, undefined, 0, 5),
-        advisor
-      );
-      return await handleAdvisorCandidates(
-        candidates,
-        legalName,
-        client,
-        rest,
-        resolver,
-        state,
-        opts,
-        summary
-      );
-    },
-    Promise.resolve({ matched: 0, no_match: 0, ambiguous: 0, loaded: 0 })
+    enrichAdvisorFromBrokerCheck(client, rest, resolver, state, opts),
+    EMPTY_ENRICH_SUMMARY
   );
 };
+
+/**
+ * Builds the reducer callback for one advisor enrichment run.
+ * @param client - BrokerCheck API client.
+ * @param rest - Harper REST writer used by the loader.
+ * @param resolver - Entity resolver shared across loader calls.
+ * @param state - Crawl state updated as matched CRDs are fetched.
+ * @param opts - Write, max, force, and logging options for the enrichment run.
+ * @returns Advisor enrichment reducer.
+ */
+function enrichAdvisorFromBrokerCheck(
+  client: BrokerCheckClient,
+  rest: HarperREST,
+  resolver: Resolver,
+  state: CrawlState,
+  opts: CrawlOptions
+) {
+  return async (previous: Promise<EnrichSummary>, advisor: BrokerRecord) => {
+    const summary = await previous;
+    const legalName = stringValue(advisor.legalName).trim();
+    if (!legalName) return summary;
+    const candidates = await matchingAdvisorSearchSources(
+      client,
+      legalName,
+      advisor
+    );
+    return await handleAdvisorCandidates(
+      candidates,
+      legalName,
+      client,
+      rest,
+      resolver,
+      state,
+      opts,
+      summary
+    );
+  };
+}
+
+/**
+ * Finds BrokerCheck search sources that match one advisor.
+ * @param client - BrokerCheck API client.
+ * @param legalName - Advisor legal name.
+ * @param advisor - Advisor row used for match filtering.
+ * @returns Matching BrokerCheck search sources.
+ */
+async function matchingAdvisorSearchSources(
+  client: BrokerCheckClient,
+  legalName: string,
+  advisor: BrokerRecord
+): Promise<ReturnType<typeof matchingSearchSources>> {
+  return matchingSearchSources(
+    await client.searchIndividual(legalName, undefined, 0, 5),
+    advisor
+  );
+}
 
 /**
  * Crawls all individuals returned by a BrokerCheck firm roster.

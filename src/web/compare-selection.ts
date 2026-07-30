@@ -128,31 +128,48 @@ export function comparisonColumnHeader(
     { scope: "col", "data-advisor-id": item.id },
     el("span", { class: "comparison-name" }, item.displayName),
     el("span", { class: "comparison-firm" }, actions.firmName(item)),
-    el(
-      "div",
-      { class: "comparison-column-controls", role: "group" },
-      comparisonControlButton({
-        label: `Move ${item.displayName} left`,
-        className: "comparison-move-left",
-        disabled: index === 0,
-        icon: "arrow-left",
-        onClick: () => actions.move(item.id, -1),
-      }),
-      comparisonControlButton({
-        label: `Move ${item.displayName} right`,
-        className: "comparison-move-right",
-        disabled: index === count - 1,
-        icon: "arrow-right",
-        onClick: () => actions.move(item.id, 1),
-      }),
-      comparisonControlButton({
-        label: `Remove ${item.displayName}`,
-        className: "comparison-remove",
-        disabled: count <= 1,
-        icon: "x",
-        onClick: () => actions.remove(item.id),
-      })
-    )
+    comparisonColumnControls(item, index, count, actions)
+  );
+}
+
+/**
+ * Builds the move and remove controls for one comparison column.
+ * @param item - Compared advisor item.
+ * @param index - Column index.
+ * @param count - Total visible advisor columns.
+ * @param actions - Selection mutation callbacks.
+ * @returns Column control group.
+ */
+function comparisonColumnControls(
+  item: AdvisorComparisonItem,
+  index: number,
+  count: number,
+  actions: ComparisonColumnActions
+): HTMLElement {
+  return el(
+    "div",
+    { class: "comparison-column-controls", role: "group" },
+    comparisonControlButton({
+      label: `Move ${item.displayName} left`,
+      className: "comparison-move-left",
+      disabled: index === 0,
+      icon: "arrow-left",
+      onClick: () => actions.move(item.id, -1),
+    }),
+    comparisonControlButton({
+      label: `Move ${item.displayName} right`,
+      className: "comparison-move-right",
+      disabled: index === count - 1,
+      icon: "arrow-right",
+      onClick: () => actions.move(item.id, 1),
+    }),
+    comparisonControlButton({
+      label: `Remove ${item.displayName}`,
+      className: "comparison-remove",
+      disabled: count <= 1,
+      icon: "x",
+      onClick: () => actions.remove(item.id),
+    })
   );
 }
 

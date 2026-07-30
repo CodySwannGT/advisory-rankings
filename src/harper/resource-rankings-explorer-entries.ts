@@ -79,7 +79,7 @@ export interface RankingSource {
 /** Provenance bundled onto each ranking entry. */
 export interface RankingProvenance {
   readonly sourceTable: "RankingEntry";
-  readonly sourceIds: readonly string[];
+  readonly sourceIds: ReadonlyArray<string>;
   readonly rankingId: string;
 }
 
@@ -112,7 +112,7 @@ export interface RankingExplorerEntry {
   readonly metrics: RankingMetrics;
   readonly source: RankingSource;
   readonly resolutionStatus: string;
-  readonly sourceStatus: readonly string[];
+  readonly sourceStatus: ReadonlyArray<string>;
   readonly provenance: RankingProvenance;
   readonly _sort: RankingSortFields;
 }
@@ -152,14 +152,23 @@ export function rankingEntries(
       },
       resolutionStatus: resolutionStatus(row, subject),
       sourceStatus: sourceStatus(row, subject, firm, location),
-      provenance: {
-        sourceTable: "RankingEntry",
-        sourceIds: [row.id],
-        rankingId: row.rankingId,
-      },
+      provenance: rankingProvenance(row),
       _sort: rankingSortFields(row, ranking, subject, firm, location),
     };
   });
+}
+
+/**
+ * Builds provenance metadata for one ranking entry.
+ * @param row - Stored ranking entry row.
+ * @returns Ranking entry provenance.
+ */
+function rankingProvenance(row: RankingEntryRow): RankingProvenance {
+  return {
+    sourceTable: "RankingEntry",
+    sourceIds: [row.id],
+    rankingId: row.rankingId,
+  };
 }
 
 /**

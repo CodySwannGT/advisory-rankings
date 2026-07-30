@@ -144,9 +144,7 @@ const buildSearchResponse = async (
     norm,
   }).filter(match => kind === "all" || match.kind === kind);
   const displayed = matches.slice(0, cap);
-  const displayedAdvisorIds = displayed
-    .filter(match => match.kind === "advisor")
-    .map(match => match.id);
+  const displayedAdvisorIds = searchAdvisorIds(displayed);
   const subtitleByAdvisor = await resolveSearchAdvisorSubtitles({
     advisorIds: displayedAdvisorIds,
     searchFirms: rows.firms,
@@ -161,6 +159,19 @@ const buildSearchResponse = async (
     counts: canonicalSearchCounts(input.counts, rows),
   };
 };
+
+/**
+ * Reads advisor ids from displayed search matches.
+ * @param displayed - Search matches included in the response.
+ * @returns Displayed advisor ids.
+ */
+function searchAdvisorIds(
+  displayed: readonly SearchMatch[]
+): readonly string[] {
+  return displayed
+    .filter(match => match.kind === "advisor")
+    .map(match => match.id);
+}
 
 /**
  * Converts an internal ranked match into the public search payload.

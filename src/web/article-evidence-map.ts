@@ -38,36 +38,51 @@ export function articleEvidenceMap(
   const nextSteps = nextStepRows(article, resources);
   return SectionCard({
     title: "Article evidence map",
-    body: el(
-      "div",
-      { class: "article-evidence-map" },
-      evidenceMapGroup({
-        title: "Connected entities",
-        count: connectedEntityCount(resources),
-        rows: connectedEntityRows(resources),
-      }),
-      evidenceMapGroup({
-        title: "Extracted facts",
-        count: extractedFactCount(resources),
-        rows: extractedFactRows(resources),
-      }),
-      evidenceMapGroup({
-        title: "Event signals",
-        count: resources.events.length,
-        rows: eventSignalRows(resources),
-      }),
-      evidenceMapGroup({
-        title: "Source status",
-        count: sourceStatusCount(article, resources),
-        rows: sourceStatusRows(article, resources),
-      }),
-      evidenceMapGroup({
-        title: "Next steps",
-        count: nextSteps.length,
-        rows: nextSteps,
-      })
-    ),
+    body: articleEvidenceMapBody(article, resources, nextSteps),
   });
+}
+
+/**
+ * Renders the evidence-map body groups.
+ * @param article - Article metadata used for source status rows.
+ * @param resources - Normalized ArticleView resources.
+ * @param nextSteps - Derived next-step rows.
+ * @returns Evidence-map body element.
+ */
+function articleEvidenceMapBody(
+  article: ArticleMetadata,
+  resources: ArticleLimitationResources,
+  nextSteps: readonly EvidenceMapRow[]
+): HTMLElement {
+  return el(
+    "div",
+    { class: "article-evidence-map" },
+    evidenceMapGroup({
+      title: "Connected entities",
+      count: connectedEntityCount(resources),
+      rows: connectedEntityRows(resources),
+    }),
+    evidenceMapGroup({
+      title: "Extracted facts",
+      count: extractedFactCount(resources),
+      rows: extractedFactRows(resources),
+    }),
+    evidenceMapGroup({
+      title: "Event signals",
+      count: resources.events.length,
+      rows: eventSignalRows(resources),
+    }),
+    evidenceMapGroup({
+      title: "Source status",
+      count: sourceStatusCount(article, resources),
+      rows: sourceStatusRows(article, resources),
+    }),
+    evidenceMapGroup({
+      title: "Next steps",
+      count: nextSteps.length,
+      rows: nextSteps,
+    })
+  );
 }
 
 /**

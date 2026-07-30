@@ -157,21 +157,13 @@ async function runRouteCheck(
   });
   const jsonContentType = jsonResponse.headers()["content-type"] ?? "";
   const jsonBodyText = await jsonResponse.text();
-
   await smokeGoto(page, `${BASE}${routeCheck.path}`);
   await smokeWaitForSelector(page, NOT_FOUND_CARD_SELECTOR);
   await shot(page, `13-invalid-detail-${routeCheck.kind}`);
-
   const cardLocator = page.locator(NOT_FOUND_CARD_SELECTOR);
-  const cardText = (await cardLocator.textContent())
-    ?.replace(/\s+/g, " ")
-    .trim();
+  const cardText = await normalizedLocatorText(cardLocator);
   const hasTitle = await cardHasExactTitle(cardLocator, routeCheck.title);
-
-  const bodyText = ((await page.locator("body").textContent()) ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
-
+  const bodyText = await normalizedLocatorText(page.locator("body"));
   await cardLocator
     .getByRole("button", { name: routeCheck.actionLabel, exact: true })
     .click();
@@ -179,7 +171,6 @@ async function runRouteCheck(
     timeout: DEPLOYED_DATA_TIMEOUT,
   });
   await smokeWaitForSelector(page, routeCheck.destinationSelector);
-
   return invalidDetailChecks({
     bodyText,
     cardText,
@@ -189,6 +180,10 @@ async function runRouteCheck(
     page,
     routeCheck,
   });
+}
+
+async function normalizedLocatorText(locator: Locator): Promise<string> {
+  return ((await locator.textContent()) ?? "").replace(/\s+/g, " ").trim();
 }
 
 async function cardHasExactTitle(

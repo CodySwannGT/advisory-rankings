@@ -252,10 +252,9 @@ const loadMentionedEntities = async (
     ]);
   return {
     advisors,
-    firms: [
-      ...earlyFirms,
-      ...(await loadExtraFirms(earlyFirms, employments, teams)),
-    ],
+    firms: earlyFirms.concat(
+      await loadExtraFirms(earlyFirms, employments, teams)
+    ),
     teams,
     employments,
     teamSnaps,
