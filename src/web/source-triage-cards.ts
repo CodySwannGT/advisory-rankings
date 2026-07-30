@@ -7,6 +7,7 @@ import {
 
 import { fmtDate } from "./app.js";
 import { Button, EmptyCard, SectionCard, el } from "./design-system/index.js";
+import { formatInlineLabel } from "./design-system/format-label.js";
 import { feedCategoryLabel } from "./feed-category-labels.js";
 
 /** Callable adapter for untyped design-system components. */
@@ -79,29 +80,10 @@ export function filterCard(data: SourceArticleTriageResponse): HTMLElement {
         action: "/source-triage",
       },
       categoryField(data),
-      selectField(
-        "Reason",
-        "reason",
-        data.filters.reason ?? "",
-        SOURCE_TRIAGE_REASON_OPTIONS,
-        reasonFallbackLabel
-      ),
-      el("input", {
-        type: "hidden",
-        name: "limit",
-        value: String(data.filters.limit),
-      }),
-      ButtonC({
-        variant: "primary",
-        type: "submit",
-        children: "Apply",
-      }),
-      ButtonC({
-        variant: "neutral",
-        children: "Clear",
-        onClick: clearSourceTriageFilters,
-        attrs: { type: "button" },
-      })
+      reasonField(data),
+      limitInput(data),
+      filterSubmitButton(),
+      filterClearButton()
     ),
   });
 }
@@ -119,6 +101,59 @@ function categoryField(data: SourceArticleTriageResponse): HTMLElement {
     CATEGORY_OPTIONS.map(value => [value, filterLabel(value)] as const),
     filterLabel
   );
+}
+
+/**
+ * Renders the triage reason select.
+ * @param data - Current source triage response.
+ * @returns Reason select field.
+ */
+function reasonField(data: SourceArticleTriageResponse): HTMLElement {
+  return selectField(
+    "Reason",
+    "reason",
+    data.filters.reason ?? "",
+    SOURCE_TRIAGE_REASON_OPTIONS,
+    reasonFallbackLabel
+  );
+}
+
+/**
+ * Persists the current page size through filter submissions.
+ * @param data - Current source triage response.
+ * @returns Hidden limit input.
+ */
+function limitInput(data: SourceArticleTriageResponse): HTMLElement {
+  return el("input", {
+    type: "hidden",
+    name: "limit",
+    value: String(data.filters.limit),
+  });
+}
+
+/**
+ * Builds the filter submit control.
+ * @returns Submit button.
+ */
+function filterSubmitButton(): HTMLElement {
+  return ButtonC({
+    variant: "primary",
+    type: "submit",
+    children: "Apply",
+  });
+}
+
+/**
+ * Builds the filter reset control.
+ * @returns Clear button.
+ */
+function filterClearButton(): HTMLElement {
+  return ButtonC({
+    variant: "neutral",
+    children: "Clear",
+    onClick: clearSourceTriageFilters,
+    attrs: { type: "button" },
+  });
 }
 
 /**
@@ -242,8 +277,10 @@ function filterLabel(value: string): string {
  * @param reason - Reason token.
  * @returns Visible label.
  */
-function reasonLabel(reason: SourceArticleTriageReason | null): string {
-  return reason ? sourceArticleTriageReasonLabel(reason) : ALL_REASONS_LABEL;
+function reasonLabel(
+  reason: SourceArticleTriageReason | string | null
+): string {
+  return reason ? displayReasonLabel(reason) : ALL_REASONS_LABEL;
 }
 
 /**
@@ -252,7 +289,25 @@ function reasonLabel(reason: SourceArticleTriageReason | null): string {
  * @returns Visible label.
  */
 function reasonFallbackLabel(reason: string): string {
-  return reason
-    ? sourceArticleTriageReasonLabel(reason as SourceArticleTriageReason)
-    : ALL_REASONS_LABEL;
+  return reason ? displayReasonLabel(reason) : ALL_REASONS_LABEL;
+}
+
+/**
+ * Converts known and forward-compatible reason tokens into visible labels.
+ * @param reason - Reason token echoed by the resource.
+ * @returns Human-readable label.
+ */
+function displayReasonLabel(reason: string): string {
+  const canonicalReason = reason
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/gu, "-");
+  const inlineLabelToken = canonicalReason.replace(/-/gu, "_");
+  return (
+    sourceArticleTriageReasonLabel(
+      canonicalReason as SourceArticleTriageReason
+    ) ??
+    formatInlineLabel(inlineLabelToken) ??
+    reason
+  );
 }
