@@ -161,11 +161,9 @@ const buildIndividualRows = async (
     employmentRows: employmentResults.map(result => result.employmentRow),
     disclosureRows: disclosureResults.flatMap(result => result.disclosureRows),
     sanctionRows: disclosureResults.flatMap(result => result.sanctionRows),
-    licenseRows: parsed.licenses.map(license =>
-      licenseRow(license, resolver, advisorUuid)
-    ),
-    snapshotRow: individualSnapshotRow(
-      parsed.summary ?? {},
+    licenseRows: parsedLicenseRows(parsed, resolver, advisorUuid),
+    snapshotRow: parsedIndividualSnapshotRow(
+      parsed,
       rawContent,
       advisorUuid,
       crd,
@@ -173,6 +171,28 @@ const buildIndividualRows = async (
     ),
   };
 };
+
+const parsedLicenseRows = (
+  parsed: ParsedIndividual,
+  resolver: Resolver,
+  advisorUuid: string
+): IndividualRows["licenseRows"] =>
+  parsed.licenses.map(license => licenseRow(license, resolver, advisorUuid));
+
+const parsedIndividualSnapshotRow = (
+  parsed: ParsedIndividual,
+  rawContent: unknown,
+  advisorUuid: string,
+  crd: string,
+  snapshotId: string
+): IndividualRows["snapshotRow"] =>
+  individualSnapshotRow(
+    parsed.summary ?? {},
+    rawContent,
+    advisorUuid,
+    crd,
+    snapshotId
+  );
 
 const resolveParsedAdvisorUuid = async (
   parsed: ParsedIndividual,

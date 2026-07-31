@@ -164,9 +164,7 @@ const discrepancyRow = (
   advisorHubSourceRef: source.assertion.articleId,
   advisorHubValue: source.normalizedValue,
   brokerCheckSourceType: "brokercheck",
-  brokerCheckSourceRef:
-    brokerCheck.disclosure.sourceRef ??
-    `crd:${brokerCheck.disclosure.advisorId}:docket:${brokerCheck.disclosure.docketNumber ?? ""}`,
+  brokerCheckSourceRef: brokerCheckSourceRef(brokerCheck),
   brokerCheckValue: brokerCheck.normalizedValue,
   sourceMetadata: JSON.stringify({
     regulator: brokerCheck.disclosure.regulator ?? source.disclosure.regulator,
@@ -180,6 +178,10 @@ const discrepancyRow = (
   severity: "high",
   status: "open",
 });
+
+const brokerCheckSourceRef = (brokerCheck: BrokerCheckValue): string =>
+  brokerCheck.disclosure.sourceRef ??
+  `crd:${brokerCheck.disclosure.advisorId}:docket:${brokerCheck.disclosure.docketNumber ?? ""}`;
 
 const isComparableEvent = (
   source: SourceAssertion,

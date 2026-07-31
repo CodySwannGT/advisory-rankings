@@ -103,9 +103,7 @@ const parseAdvisor = (
     businessPhone: phones[0],
     city: location.city,
     emailContactName: cleanText(String(emailButton.data("fa-name") ?? "")),
-    emailUrlFriendlyName: cleanText(
-      String(emailButton.data("fa-url-friendly-name") ?? "")
-    ),
+    emailUrlFriendlyName: emailUrlFriendlyName(emailButton),
     headshotUrl: absoluteUrl(root.find(".search-results-fa-image").attr("src")),
     linkedInUrl: normalizeUrl(
       root.find('a[href*="linkedin.com"]').first().attr("href")
@@ -116,6 +114,9 @@ const parseAdvisor = (
     tollFreePhone: phones[1],
   };
 };
+
+const emailUrlFriendlyName = (emailButton: cheerio.Cheerio<AnyNode>): string =>
+  cleanText(String(emailButton.data("fa-url-friendly-name") ?? ""));
 
 const branchFields = (
   contact: cheerio.Cheerio<AnyNode>

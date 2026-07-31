@@ -106,34 +106,44 @@ mountThreeColumnPage({
       );
       return;
     }
-    const loadAdvisorProfile = (): void => {
-      const profileRequest = api<AdvisorProfilePayload>(
-        `/AdvisorProfile/${encodeURIComponent(id)}`
-      );
-      const meRequest = refreshMe().catch(() => null);
-      clear(center);
-      clear(right);
-      renderDetailLoading({ center, right, label: "advisor profile" });
-      Promise.all([profileRequest, meRequest])
-        .then(([d, me]) => {
-          clear(center);
-          clear(right);
-          render(d, center, right, isAnalystSession(me));
-        })
-        .catch((err: unknown) => {
-          renderRecoverableDetailError({
-            center,
-            right,
-            title: "Could not load advisor",
-            error: err,
-            onRetry: loadAdvisorProfile,
-          });
-        });
-    };
-
-    loadAdvisorProfile();
+    loadAdvisorProfile(id, center, right);
   },
 });
+
+/**
+ * Loads the selected advisor profile and wires retry back to the same route id.
+ * @param id - Advisor id from the route.
+ * @param center - Main content column.
+ * @param right - Right sidebar column.
+ */
+function loadAdvisorProfile(
+  id: string,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  const profileRequest = api<AdvisorProfilePayload>(
+    `/AdvisorProfile/${encodeURIComponent(id)}`
+  );
+  const meRequest = refreshMe().catch(() => null);
+  clear(center);
+  clear(right);
+  renderDetailLoading({ center, right, label: "advisor profile" });
+  Promise.all([profileRequest, meRequest])
+    .then(([d, me]) => {
+      clear(center);
+      clear(right);
+      render(d, center, right, isAnalystSession(me));
+    })
+    .catch((err: unknown) => {
+      renderRecoverableDetailError({
+        center,
+        right,
+        title: "Could not load advisor",
+        error: err,
+        onRetry: () => loadAdvisorProfile(id, center, right),
+      });
+    });
+}
 
 /**
  * Renders an advisor profile from the AdvisorProfile resource payload.
@@ -289,30 +299,27 @@ function advisorCenterSections(
   mobileEvidenceRoot: HTMLElement
 ): readonly (HTMLElement | null)[] {
   const reviewed = reviewedNoteRows(d);
+  const snapshot = d.brokerCheckSnapshot;
+  const rows = advisorSectionRows(d);
   return [
     ...advisorPrimaryCards(d, mobileEvidenceRoot),
     careerSection(d),
-    teamsSection(narrowRows(resourceRows(d.teams), isAdvisorTeamRow)),
+    teamsSection(rows.teams),
     PartialFailureCard("Teams", d.teams),
-    licensesSection(
-      narrowRows(resourceRows(d.licenses), isLicenseStub),
-      d.brokerCheckSnapshot
-    ),
+    licensesSection(rows.licenses, snapshot),
     PartialFailureCard("Licenses", d.licenses),
-    designationsSection(
-      narrowRows(resourceRows(d.designations), isDesignationStub)
-    ),
+    designationsSection(rows.designations),
     PartialFailureCard("Designations", d.designations),
-    educationSection(narrowRows(resourceRows(d.education), isEducationStub)),
+    educationSection(rows.education),
     PartialFailureCard("Education", d.education),
-    disclosuresSection(resourceRows(d.disclosures), d.brokerCheckSnapshot),
+    disclosuresSection(resourceRows(d.disclosures), snapshot),
     PartialFailureCard("Disclosures", d.disclosures),
     reviewedDiscrepancyNotesSection(
       reviewed.discrepancies,
       reviewed.corrections,
-      d.brokerCheckSnapshot
+      snapshot
     ),
-    reviewedNotesFailureCard(reviewed.all),
+    PartialFailureCard("Reviewed discrepancy notes", reviewed.all),
     outsideActivitiesSection(advisorOutsideBusinessActivities(d)),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
     advisorTransitionsSection(resourceRows(d.transitions)),
@@ -321,6 +328,13 @@ function advisorCenterSections(
     PartialFailureCard("Coverage", d.articles),
   ];
 }
+
+const advisorSectionRows = (d: AdvisorProfilePayload) => ({
+  designations: narrowRows(resourceRows(d.designations), isDesignationStub),
+  education: narrowRows(resourceRows(d.education), isEducationStub),
+  licenses: narrowRows(resourceRows(d.licenses), isLicenseStub),
+  teams: narrowRows(resourceRows(d.teams), isAdvisorTeamRow),
+});
 
 /**
  * Checks whether the session can see analyst-only profile details.
@@ -331,17 +345,6 @@ function isAnalystSession(
   me: Awaited<ReturnType<typeof refreshMe>> | null
 ): boolean {
   return me?.authenticated === true && me.role === "analyst";
-}
-
-/**
- * Builds the partial-failure card for reviewed discrepancy/correction rows.
- * @param reviewedRows - Combined reviewed discrepancy and correction rows.
- * @returns Failure card, or null when no failure metadata exists.
- */
-function reviewedNotesFailureCard(
-  reviewedRows: readonly unknown[]
-): HTMLElement | null {
-  return PartialFailureCard("Reviewed discrepancy notes", reviewedRows);
 }
 
 /**

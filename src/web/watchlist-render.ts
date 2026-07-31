@@ -191,12 +191,7 @@ function entryRow(
   return elC(
     "div",
     { class: "watchlist-firm-row", "data-advisor-id": entry.advisorId },
-    elC("input", {
-      class: "watchlist-compare-select",
-      type: "checkbox",
-      value: entry.advisorId,
-      "aria-label": `Select ${entry.advisorId} for comparison`,
-    }),
+    compareEntryInput(entry),
     elC("span", { class: "watchlist-rank" }, String(entry.rank ?? "")),
     elC(
       "a",
@@ -214,6 +209,14 @@ function entryRow(
     status
   );
 }
+
+const compareEntryInput = (entry: WatchlistEntryView): HTMLInputElement =>
+  elC("input", {
+    class: "watchlist-compare-select",
+    type: "checkbox",
+    value: entry.advisorId,
+    "aria-label": `Select ${entry.advisorId} for comparison`,
+  }) as HTMLInputElement;
 
 /**
  * Builds the save-note mutation button for a watchlist entry.

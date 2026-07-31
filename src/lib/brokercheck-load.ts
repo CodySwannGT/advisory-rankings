@@ -1,12 +1,15 @@
 import { HarperREST } from "./brokercheck-rest.js";
 import {
   advisorId as canonicalAdvisorId,
-  disclosureId,
   employmentHistoryId,
   sanctionId,
   slugify,
   uid,
 } from "./ids.js";
+import {
+  disclosureCacheKeyFor,
+  mintedDisclosureId,
+} from "./brokercheck-load-disclosure-ids.js";
 import {
   canonicalFirmId,
   curatedFirmAliasRows,
@@ -294,13 +297,14 @@ export class Resolver {
     docketNumber?: string,
     regulator = ""
   ): Promise<string> {
-    const cacheKey = disclosureCacheKey(
+    const idParts = {
       advisorIdValue,
       disclosureType,
       dateInitiated,
       docketNumber,
-      regulator
-    );
+      regulator,
+    };
+    const cacheKey = disclosureCacheKeyFor(idParts);
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
     const matched = await this.findDisclosureMatch(
@@ -314,12 +318,7 @@ export class Resolver {
       this.cache.set(cacheKey, matched);
       return matched;
     }
-    const id = disclosureId(
-      advisorIdValue,
-      disclosureType,
-      datePrefix(dateInitiated),
-      docketNumber || regulator
-    );
+    const id = mintedDisclosureId(idParts);
     this.state.stats.disclosure_minted++;
     this.cache.set(cacheKey, id);
     return id;
@@ -409,30 +408,4 @@ export class Resolver {
       `lic:${advisorIdValue}:${slugify(licenseType)}:${datePrefix(grantedDate)}`
     );
   }
-}
-
-/**
- * Builds the disclosure resolver cache key.
- * @param advisorIdValue - Advisor id used in deterministic ids.
- * @param disclosureType - Disclosure category.
- * @param dateInitiated - Date the disclosure was initiated.
- * @param docketNumber - Optional docket number.
- * @param regulator - Optional regulator label.
- * @returns Disclosure cache key.
- */
-function disclosureCacheKey(
-  advisorIdValue: string,
-  disclosureType: string,
-  dateInitiated: string,
-  docketNumber: string | undefined,
-  regulator: string
-): string {
-  return JSON.stringify([
-    "disc",
-    advisorIdValue,
-    disclosureType,
-    datePrefix(dateInitiated),
-    docketNumber ?? "",
-    regulator,
-  ]);
 }

@@ -80,32 +80,31 @@ export function rankingsTableCard(
   }
   return SectionCard({
     title: RANKED_PROFILES_LABEL,
-    body: ScrollableTable(
-      table(
-        [
-          "Rank",
-          "Name",
-          "Ranking",
-          "Firm",
-          "Market",
-          "Scale",
-          "Growth",
-          "Source",
-        ],
-        rows.map(row => [
-          numberCell(row.rank),
-          subjectCell(row),
-          rankingCell(row),
-          firmCell(row),
-          row.location?.label || statusTag("missing-market"),
-          scoreCell(row.scores?.scale),
-          scoreCell(row.scores?.growth),
-          sourceCell(row),
-        ])
-      )
-    ),
+    body: ScrollableTable(table(RANKINGS_TABLE_HEADERS, rows.map(rankingRow))),
   });
 }
+
+const RANKINGS_TABLE_HEADERS = [
+  "Rank",
+  "Name",
+  "Ranking",
+  "Firm",
+  "Market",
+  "Scale",
+  "Growth",
+  "Source",
+] as const;
+
+const rankingRow = (row: PublicRankingEntry): readonly DomChild[] => [
+  numberCell(row.rank),
+  subjectCell(row),
+  rankingCell(row),
+  firmCell(row),
+  row.location?.label || statusTag("missing-market"),
+  scoreCell(row.scores?.scale),
+  scoreCell(row.scores?.growth),
+  sourceCell(row),
+];
 
 /**
  * Builds an explicit explanation for sparse and filtered rankings states.

@@ -48,43 +48,56 @@ MountThreeColumnPage({
   pageTitle: "AdvisorBook feed",
   build({ left, center, right }: ThreeColumnLayout): void {
     const feedApi = api as unknown as (path: string) => Promise<FeedPayload>;
-    const loadFeed = (): void => {
-      clear(left);
-      clear(center);
-      clear(right);
-      center.append(SkeletonCardC(), SkeletonCardC());
-      runDelayedRouteRequest({
-        container: center,
-        title: "Loading feed",
-        body: "Still fetching AdvisorBook activity. Retry if this takes longer than expected.",
-        onRetry: loadFeed,
-        request: () => feedApi(feedApiPath()),
-        onSuccess: payload =>
-          renderFeed(
-            { left, center, right },
-            payload.items ?? [],
-            feedCursorFrom(payload),
-            loadFeed
-          ),
-        onError: err => {
-          console.error("Feed route failed to load", err);
-          clear(center);
-          center.appendChild(
-            AsyncStateNoticeC({
-              kind: "error",
-              title: "Could not load feed",
-              body: "Try again shortly.",
-              actionLabel: "Retry",
-              onAction: loadFeed,
-            })
-          );
-        },
-      });
-    };
-
-    loadFeed();
+    loadFeed({ left, center, right }, feedApi);
   },
 });
+
+/**
+ * Loads the current feed route and renders success or retry states.
+ * @param layout - Three-column page layout.
+ * @param feedApi - Feed resource reader.
+ */
+function loadFeed(
+  layout: ThreeColumnLayout,
+  feedApi: (path: string) => Promise<FeedPayload>
+): void {
+  const { left, center, right } = layout;
+  clear(left);
+  clear(center);
+  clear(right);
+  center.append(SkeletonCardC(), SkeletonCardC());
+  runDelayedRouteRequest({
+    container: center,
+    title: "Loading feed",
+    body: "Still fetching AdvisorBook activity. Retry if this takes longer than expected.",
+    onRetry: () => loadFeed(layout, feedApi),
+    request: () => feedApi(feedApiPath()),
+    onSuccess: payload =>
+      renderFeed(layout, payload.items ?? [], feedCursorFrom(payload), () =>
+        loadFeed(layout, feedApi)
+      ),
+    onError: err =>
+      renderFeedError(center, err, () => loadFeed(layout, feedApi)),
+  });
+}
+
+const renderFeedError = (
+  center: HTMLElement,
+  err: unknown,
+  onRetry: () => void
+): void => {
+  console.error("Feed route failed to load", err);
+  clear(center);
+  center.appendChild(
+    AsyncStateNoticeC({
+      kind: "error",
+      title: "Could not load feed",
+      body: "Try again shortly.",
+      actionLabel: "Retry",
+      onAction: onRetry,
+    })
+  );
+};
 
 /**
  * Renders the feed and re-renders it when browser history restores filter

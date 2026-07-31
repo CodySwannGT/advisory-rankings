@@ -122,40 +122,43 @@ async function readLoadedRankings(page: Page) {
  */
 async function readRankingsMainEvidence(page: Page) {
   const browseEvidence = await readRankingsBrowseEvidence(page);
-  const textEvidence = await page.evaluate(args => {
-    const pageText = document.body.innerText;
-    const pageTextLower = pageText.toLowerCase();
-    return {
-      hasHeader: pageText.includes("Advisor Rankings Browser"),
-      hasPurposeLede: pageText.includes(
-        "Browse public advisor and team ranking appearances"
-      ),
-      hasNextGen: pageText.includes("Next Gen"),
-      hasPublicRankingsOnly: !pageText.includes("Ranking data quality"),
-      hasSummaryMetricLabels: [
-        "Ranked profiles",
-        "Linked profiles",
-        "Profiles to link",
-        "Markets",
-      ].every(label => pageText.includes(label)),
-      hasResolved: pageTextLower.includes("linked advisorbook profile"),
-      hasSourceBacked: pageTextLower.includes("verified source"),
-      hasTopFirmCountLabels:
-        pageText.includes("Wells Fargo Advisors") &&
-        /\b\d+ rankings?\b/.test(pageText) &&
-        pageText.includes("Matched AdvisorBook firm"),
-      hasScoreSignal:
-        pageTextLower.includes("missing score") ||
-        /\b\d{2,3}\.\d\b/.test(pageText),
-      placeholderNames: args.placeholderNames.filter(name =>
-        pageText.includes(name)
-      ),
-      rawLabels: args.rawRankingsLabels.filter(label =>
-        pageText.includes(label)
-      ),
-    };
-  }, RANKINGS_EVIDENCE_ARGS);
+  const textEvidence = await page.evaluate(
+    readRankingsTextEvidenceInPage,
+    RANKINGS_EVIDENCE_ARGS
+  );
   return { ...browseEvidence, ...textEvidence };
+}
+
+function readRankingsTextEvidenceInPage(args: typeof RANKINGS_EVIDENCE_ARGS) {
+  const pageText = document.body.innerText;
+  const pageTextLower = pageText.toLowerCase();
+  return {
+    hasHeader: pageText.includes("Advisor Rankings Browser"),
+    hasPurposeLede: pageText.includes(
+      "Browse public advisor and team ranking appearances"
+    ),
+    hasNextGen: pageText.includes("Next Gen"),
+    hasPublicRankingsOnly: !pageText.includes("Ranking data quality"),
+    hasSummaryMetricLabels: [
+      "Ranked profiles",
+      "Linked profiles",
+      "Profiles to link",
+      "Markets",
+    ].every(label => pageText.includes(label)),
+    hasResolved: pageTextLower.includes("linked advisorbook profile"),
+    hasSourceBacked: pageTextLower.includes("verified source"),
+    hasTopFirmCountLabels:
+      pageText.includes("Wells Fargo Advisors") &&
+      /\b\d+ rankings?\b/.test(pageText) &&
+      pageText.includes("Matched AdvisorBook firm"),
+    hasScoreSignal:
+      pageTextLower.includes("missing score") ||
+      /\b\d{2,3}\.\d\b/.test(pageText),
+    placeholderNames: args.placeholderNames.filter(name =>
+      pageText.includes(name)
+    ),
+    rawLabels: args.rawRankingsLabels.filter(label => pageText.includes(label)),
+  };
 }
 
 /**

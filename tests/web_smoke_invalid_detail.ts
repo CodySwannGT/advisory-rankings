@@ -207,12 +207,7 @@ async function invalidDetailChecks(facts: {
       facts.hasTitle,
       `invalid-detail ${facts.routeCheck.kind}: resource-specific title rendered`
     ),
-    check(
-      !HTTP_VERB_RE.test(facts.cardText || "") &&
-        !HTTP_STATUS_RE.test(facts.cardText || ""),
-      `invalid-detail ${facts.routeCheck.kind}: no raw backend error text in card`,
-      facts.cardText
-    ),
+    rawBackendErrorCheck(facts),
     check(
       !RAW_JSON_NEEDLE.test(facts.bodyText),
       `invalid-detail ${facts.routeCheck.kind}: raw JSON error envelope not rendered as page body`,
@@ -230,6 +225,17 @@ async function invalidDetailChecks(facts: {
     ...jsonContractChecks(facts),
   ];
 }
+
+const rawBackendErrorCheck = (facts: {
+  readonly cardText: string | undefined;
+  readonly routeCheck: InvalidDetailRouteCheck;
+}): Check =>
+  check(
+    !HTTP_VERB_RE.test(facts.cardText || "") &&
+      !HTTP_STATUS_RE.test(facts.cardText || ""),
+    `invalid-detail ${facts.routeCheck.kind}: no raw backend error text in card`,
+    facts.cardText
+  );
 
 async function destinationIsInteractive(facts: {
   readonly page: Page;

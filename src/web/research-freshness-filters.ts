@@ -125,17 +125,20 @@ function queueFilterForm(
       label: "Status",
       control: selectControl("status", filters.status, [...STATUS_OPTIONS]),
     }),
-    FormLabel({
-      label: "Missing field",
-      control: selectControl("missingField", filters.missingField, [
-        ...MISSING_FIELD_OPTIONS,
-      ]),
-    }),
+    missingFieldLabel(filters),
     numberLabel("Limit", "limit", filters.limit, "100"),
     filterActions(filters, onChange)
   ) as HTMLFormElement;
   return form;
 }
+
+const missingFieldLabel = (filters: QueueFilters): HTMLElement =>
+  FormLabel({
+    label: "Missing field",
+    control: selectControl("missingField", filters.missingField, [
+      ...MISSING_FIELD_OPTIONS,
+    ]),
+  });
 
 /**
  * Builds a bounded number control wrapped in a form label.

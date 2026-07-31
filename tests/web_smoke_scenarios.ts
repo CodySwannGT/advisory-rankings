@@ -176,12 +176,7 @@ const firmProfileChecks = async (
     "firm URL: clean /firms/... path",
     page.url()
   ),
-  check(
-    /Wells Fargo/.test(
-      (await page.locator(PROFILE_HEADING_SELECTOR).textContent()) ?? ""
-    ),
-    "firm.html: Wells Fargo header"
-  ),
+  await firmHeaderCheck(page),
   ...(await profileHeadingChecks(page, "firm.html", /Wells Fargo/)),
   ...(await firmCardTitleChecks(page)),
   check(
@@ -201,6 +196,14 @@ const firmProfileChecks = async (
     "firm.html: right rail shows Branches"
   ),
 ];
+
+const firmHeaderCheck = async (page: Page): Promise<Check> =>
+  check(
+    /Wells Fargo/.test(
+      (await page.locator(PROFILE_HEADING_SELECTOR).textContent()) ?? ""
+    ),
+    "firm.html: Wells Fargo header"
+  );
 
 const firmCardTitleChecks = async (page: Page): Promise<readonly Check[]> => {
   const titles = await page.locator(CARD_TITLE_SELECTOR).allTextContents();

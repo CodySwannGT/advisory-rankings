@@ -170,10 +170,7 @@ function complianceChecks(facts: {
   readonly regulatoryDisclosureText: string | null;
 }): readonly Check[] {
   return [
-    check(
-      new URL(facts.pageUrl).pathname === "/regulatory",
-      "regulatory: clean URL"
-    ),
+    regulatoryRouteCheck(facts.pageUrl),
     check(
       facts.legacyOk,
       "regulatory.html: legacy route remains compatible",
@@ -195,6 +192,9 @@ function complianceChecks(facts: {
     check(facts.loadErrorCount === 0, "regulatory: no compliance load error"),
   ];
 }
+
+const regulatoryRouteCheck = (pageUrl: string): Check =>
+  check(new URL(pageUrl).pathname === "/regulatory", "regulatory: clean URL");
 
 function regulatoryEventContextCheck(text: string | null): Check {
   return check(

@@ -196,13 +196,18 @@ function rankingsSection(db: ResourceIndex): DataCoverageSection {
         coverage.gapBuckets.length,
         "RankingsExplorer.coverage.gapBuckets",
         RANKINGS_EXPLORER_RESOURCE,
-        coverage.gapBuckets.length > 0
-          ? "Some ranking entries still need resolution or source fields."
-          : null
+        rankingGapWarning(coverage)
       ),
     ],
   };
 }
+
+const rankingGapWarning = (
+  coverage: ReturnType<typeof rankingsCoverage>
+): string | null =>
+  coverage.gapBuckets.length > 0
+    ? "Some ranking entries still need resolution or source fields."
+    : null;
 
 /**
  * Builds research freshness metrics from public research-check rows.

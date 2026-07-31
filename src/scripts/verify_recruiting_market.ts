@@ -41,6 +41,15 @@ interface VerifyRecruitingMarketOptions {
   readonly dataBaseUrl: string;
 }
 
+/** Inputs required to capture and persist Recruiting Market browser evidence. */
+interface RecruitingMarketEvidenceArgs {
+  readonly artifactBase: string;
+  readonly dataBaseUrl: string;
+  readonly defaultPayload: unknown;
+  readonly filters: ReadonlyArray<RecruitingFilterEvidence>;
+  readonly localUrl: string;
+}
+
 /**
  * Captures replayable API and browser evidence for Recruiting Market.
  * @param options - Target backend and artifact location.
@@ -58,29 +67,51 @@ export async function verifyRecruitingMarket(
   const server = await startStaticProxyServer(dataBaseUrl);
   const localUrl = localServerUrl(server);
   try {
-    const browser = await chromium.launch({ headless: true });
-    try {
-      const browserEvidence = await captureBrowserEvidence(
-        browser,
-        localUrl,
-        options.artifactBase
-      );
-      const evidence: RecruitingMarketVerificationEvidence = {
-        browser: browserEvidence,
-        capturedAt: new Date().toISOString(),
-        dataBaseUrl,
-        defaultResource: summarizeRecruitingMarketPayload(defaultPayload),
-        filters,
-        localUrl,
-      };
-      assertRecruitingMarketVerification(evidence);
-      await writeJson(`${options.artifactBase}.json`, evidence);
-      return evidence;
-    } finally {
-      await browser.close();
-    }
+    return await captureRecruitingMarketEvidence({
+      artifactBase: options.artifactBase,
+      dataBaseUrl,
+      defaultPayload,
+      filters,
+      localUrl,
+    });
   } finally {
     await closeServer(server);
+  }
+}
+
+/**
+ * Captures browser evidence through the local proxy and writes the artifact.
+ * @param args - Evidence capture inputs from the API and proxy setup.
+ * @param args.artifactBase - Artifact path prefix for screenshots and JSON.
+ * @param args.dataBaseUrl - Deployed data/backend origin.
+ * @param args.defaultPayload - Default RecruitingMarket API payload.
+ * @param args.filters - Filter slice evidence gathered from the API.
+ * @param args.localUrl - Local proxy URL used for browser capture.
+ * @returns Recruiting Market verification evidence.
+ */
+async function captureRecruitingMarketEvidence(
+  args: RecruitingMarketEvidenceArgs
+): Promise<RecruitingMarketVerificationEvidence> {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const browserEvidence = await captureBrowserEvidence(
+      browser,
+      args.localUrl,
+      args.artifactBase
+    );
+    const evidence: RecruitingMarketVerificationEvidence = {
+      browser: browserEvidence,
+      capturedAt: new Date().toISOString(),
+      dataBaseUrl: args.dataBaseUrl,
+      defaultResource: summarizeRecruitingMarketPayload(args.defaultPayload),
+      filters: args.filters,
+      localUrl: args.localUrl,
+    };
+    assertRecruitingMarketVerification(evidence);
+    await writeJson(`${args.artifactBase}.json`, evidence);
+    return evidence;
+  } finally {
+    await browser.close();
   }
 }
 

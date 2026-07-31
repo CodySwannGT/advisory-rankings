@@ -27,18 +27,7 @@ export async function firmDueDiligenceChecks(
   await section.getByRole("button", { name: "All" }).click();
 
   return [
-    check(
-      /Firm due diligence/.test(text),
-      "firm.html: due-diligence summary section"
-    ),
-    check(
-      /Recruiting momentum/.test(text),
-      "firm.html: due-diligence recruiting module"
-    ),
-    check(
-      /Regulatory snapshot/.test(text) && /BrokerCheck/i.test(text),
-      "firm.html: due-diligence BrokerCheck attribution"
-    ),
+    ...firmDueDiligenceTextChecks(text),
     check(
       /Ranking presence/.test(needsDataText),
       "firm.html: due-diligence missing ranking state"
@@ -50,3 +39,18 @@ export async function firmDueDiligenceChecks(
     ...(await firmCopyGuardrailChecks(section)),
   ];
 }
+
+const firmDueDiligenceTextChecks = (text: string): readonly Check[] => [
+  check(
+    /Firm due diligence/.test(text),
+    "firm.html: due-diligence summary section"
+  ),
+  check(
+    /Recruiting momentum/.test(text),
+    "firm.html: due-diligence recruiting module"
+  ),
+  check(
+    /Regulatory snapshot/.test(text) && /BrokerCheck/i.test(text),
+    "firm.html: due-diligence BrokerCheck attribution"
+  ),
+];

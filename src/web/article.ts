@@ -125,6 +125,15 @@ function render(
   }
   const resources = articleResources(d);
   canonicalizeArticleRoute(d.article);
+  appendArticleMainSections(center, d, resources);
+  right.appendChild(metadataSection(d.article));
+}
+
+const appendArticleMainSections = (
+  center: HTMLElement,
+  d: Exclude<ArticleViewPayload, ArticleViewErrorPayload>,
+  resources: ReturnType<typeof articleResources>
+): void => {
   center.appendChild(
     articleHead({
       article: d.article,
@@ -142,8 +151,7 @@ function render(
   appendIfPresent(center, PartialFailureCard("Article body", d.body));
   appendIfPresent(center, evidenceSection(resources.evidenceRows));
   appendIfPresent(center, PartialFailureCard("Extracted facts", d.provenance));
-  right.appendChild(metadataSection(d.article));
-}
+};
 
 /**
  * Normalizes public ArticleView resource fields for article sections.
@@ -333,13 +341,11 @@ function compactProvenance(
       const fact = humanFacingFact(row);
       const context = sourceContext(row);
       if (!fact || !context) return acc;
-      const value = `${context}`;
-      const field = fact;
-      const key = `${field.toLowerCase()}::${value.toLowerCase()}`;
+      const key = `${fact.toLowerCase()}::${context.toLowerCase()}`;
       if (acc.keys.includes(key)) return acc;
       return {
         keys: [...acc.keys, key],
-        rows: [...acc.rows, { field, value }],
+        rows: [...acc.rows, { field: fact, value: context }],
       };
     },
     { keys: [], rows: [] }
@@ -381,6 +387,5 @@ function publicFactLabel(fieldName: unknown): string | null {
 function sourceContext(row: ArticleProvenancePayload): string | null {
   const value = String(row.assertedValue ?? "").trim();
   const quote = String(row.quotePhrase ?? "").trim();
-  if (!quote || quote.toLowerCase() === value.toLowerCase()) return null;
-  return quote;
+  return quote && quote.toLowerCase() !== value.toLowerCase() ? quote : null;
 }

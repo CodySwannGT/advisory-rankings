@@ -128,37 +128,37 @@ export function branchesCard(
 ): HTMLElement | null {
   return branches.length
     ? SectionCardC({
-        body: [
-          HeadingC({
-            level: 3,
-            attrs: { class: "card-subtitle" },
-            children: `Branches (${branches.length.toLocaleString()})`,
-          }),
-          elC(
-            "p",
-            { class: "muted" },
-            elC(
-              "a",
-              { href: firmBranchExplorerHref(firm.id) },
-              "Open branch explorer"
-            ),
-            " with this firm selected."
-          ),
-          EntityListC({
-            rows: branches.map(b =>
-              EntityRowC({
-                avatar: branchAvatar(b),
-                name: b.name || b.buildingName || "(unnamed)",
-                sub: [b.level, [b.city, b.state].filter(Boolean).join(", ")]
-                  .filter(Boolean)
-                  .join(" · "),
-              })
-            ),
-          }),
-        ],
+        body: branchesCardBody(firm, branches),
       })
     : null;
 }
+
+const branchesCardBody = (
+  firm: FirmRow,
+  branches: readonly BranchRow[]
+): readonly HTMLElement[] => [
+  HeadingC({
+    level: 3,
+    attrs: { class: "card-subtitle" },
+    children: `Branches (${branches.length.toLocaleString()})`,
+  }),
+  elC(
+    "p",
+    { class: "muted" },
+    elC("a", { href: firmBranchExplorerHref(firm.id) }, "Open branch explorer"),
+    " with this firm selected."
+  ),
+  EntityListC({ rows: branches.map(branchRow) }),
+];
+
+const branchRow = (b: BranchRow): HTMLElement =>
+  EntityRowC({
+    avatar: branchAvatar(b),
+    name: b.name || b.buildingName || "(unnamed)",
+    sub: [b.level, [b.city, b.state].filter(Boolean).join(", ")]
+      .filter(Boolean)
+      .join(" · "),
+  });
 
 /**
  * Chooses a compact branch-level avatar letter.

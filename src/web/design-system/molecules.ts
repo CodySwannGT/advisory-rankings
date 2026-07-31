@@ -190,22 +190,28 @@ export function PostHeader({
     el(
       "div",
       { class: "post-meta" },
-      el(
-        "span",
-        { class: "src" },
-        source,
-        authors && authors.length
-          ? el(
-              "span",
-              { style: "color:var(--ab-color-text-muted); font-weight: 400;" },
-              ` · ${authors.join(", ")}`
-            )
-          : null
-      ),
+      postSourceLine(source, authors),
       meta ? el("span", { class: "when" }, meta) : null
     )
   );
 }
+
+const postSourceLine = (
+  source: string | null,
+  authors: readonly string[] | null | undefined
+): HTMLElement =>
+  el(
+    "span",
+    { class: "src" },
+    source ?? "External",
+    authors && authors.length
+      ? el(
+          "span",
+          { style: "color:var(--ab-color-text-muted); font-weight: 400;" },
+          ` · ${authors.join(", ")}`
+        )
+      : null
+  );
 
 /**
  * Checks whether the value is useful meta.

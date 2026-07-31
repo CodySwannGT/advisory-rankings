@@ -384,13 +384,7 @@ function comparisonItem(id: string): unknown {
   return {
     status: "found",
     id,
-    identity: {
-      id,
-      legalName: displayName,
-      preferredName: displayName,
-      careerStatus: "active",
-      yearsExperience: isPrimary ? 12 : 9,
-    },
+    identity: comparisonIdentity(id, displayName, isPrimary),
     displayName,
     firm: {
       id: isPrimary ? "firm-a" : "firm-b",
@@ -413,6 +407,20 @@ function comparisonItem(id: string): unknown {
       assertions: [],
       researchSources: [],
     },
+  };
+}
+
+function comparisonIdentity(
+  id: string,
+  displayName: string,
+  isPrimary: boolean
+): unknown {
+  return {
+    id,
+    legalName: displayName,
+    preferredName: displayName,
+    careerStatus: "active",
+    yearsExperience: isPrimary ? 12 : 9,
   };
 }
 
