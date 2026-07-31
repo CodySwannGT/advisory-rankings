@@ -767,13 +767,9 @@ async function verifyFeed(clusterUrl: string): Promise<void> {
   const feed = await waitForLoggedFeed(clusterUrl);
   console.log();
   if (!feed || !feed.ok) {
-    console.log(
-      "  /Feed never came back up:",
-      feed?.status,
-      (await feed?.text())?.slice(0, 300)
+    throw new Error(
+      `/Feed never came back up: ${feed?.status ?? "no response"} ${(await feed?.text())?.slice(0, 300) ?? ""}`
     );
-    process.exitCode = 1;
-    return;
   }
   await logFeedSummary(clusterUrl, feed);
   await verifyRuntimeFreshness(clusterUrl);
