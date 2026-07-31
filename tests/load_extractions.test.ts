@@ -16,6 +16,7 @@ const ROCKEFELLER = "Rockefeller Capital";
 const BLAIR_BROKER = "Blair Broker";
 const ALEX_WELLS_MOVE_DATE = "2026-05-01";
 const COMPARATOR_MOVE_ANNOUNCED_DATE = "2026-05-02";
+const SUMMARY_ARTIFACT_FILENAME = "summary.json";
 
 describe("AdvisorHub extraction loader", () => {
   it("derives Article.publishedDate from modifiedDate when the source omits it", () => {
@@ -397,7 +398,7 @@ describe("AdvisorHub extraction loader", () => {
 
   it("runs a bounded dry-run recruiting article backfill with summary counts", async () => {
     const dir = await mkdtemp(join(tmpdir(), "recruiting-backfill-"));
-    const artifactPath = join(dir, "summary.json");
+    const artifactPath = join(dir, SUMMARY_ARTIFACT_FILENAME);
     try {
       await writeFile(
         join(dir, "001-recruiting.json"),
@@ -467,7 +468,160 @@ describe("AdvisorHub extraction loader", () => {
         ArticleTransitionEventMention: 1,
       });
       expect(artifact.moveCount).toBe(1);
-      expect(artifact.artifact).toBe("summary.json");
+      expect(artifact.artifact).toBe(SUMMARY_ARTIFACT_FILENAME);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects non-positive recruiting article backfill limits", async () => {
+    await expect(
+      runRecruitingArticleBackfill({
+        limit: 0,
+        dryRun: true,
+      })
+    ).rejects.toThrow("--limit must be a positive integer");
+  });
+
+  it("writes an empty recruiting article backfill summary for a missing source directory", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "recruiting-backfill-missing-"));
+    const missingSourceDir = join(dir, "missing-extractions");
+    const artifactPath = join(dir, "nested", SUMMARY_ARTIFACT_FILENAME);
+    try {
+      const summary = await runRecruitingArticleBackfill({
+        sourceDir: missingSourceDir,
+        artifactPath,
+        limit: 3,
+        dryRun: true,
+      });
+      const artifact = JSON.parse(await readFile(artifactPath, "utf8"));
+
+      expect(summary).toEqual({
+        sourceDir: missingSourceDir,
+        limit: 3,
+        dryRun: true,
+        checkedCount: 0,
+        loadedCount: 0,
+        skippedCount: 0,
+        articleCount: 0,
+        moveCount: 0,
+        unresolvedCount: 0,
+        files: [],
+      });
+      expect(artifact).toEqual({
+        ...summary,
+        artifact: SUMMARY_ARTIFACT_FILENAME,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips non-public recruiting article backfill sources with exact reasons", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "recruiting-backfill-skip-"));
+    try {
+      await writeFile(
+        join(dir, "001-invalid-url.json"),
+        JSON.stringify({
+          article: {
+            url: "not a url",
+            headline: "Invalid URL recruiting item",
+            category: "recruiting",
+          },
+        })
+      );
+      await writeFile(
+        join(dir, "002-private-host.json"),
+        JSON.stringify({
+          article: {
+            url: "https://private.example.com/recruiting-example/",
+            headline: "Private recruiting item",
+            category: "recruiting",
+          },
+        })
+      );
+
+      const summary = await runRecruitingArticleBackfill({
+        sourceDir: dir,
+        artifactPath: join(dir, SUMMARY_ARTIFACT_FILENAME),
+        limit: 2,
+        dryRun: true,
+      });
+
+      expect(summary).toMatchObject({
+        checkedCount: 2,
+        loadedCount: 0,
+        skippedCount: 2,
+        articleCount: 0,
+        moveCount: 0,
+        unresolvedCount: 0,
+      });
+      expect(summary.files).toEqual([
+        expect.objectContaining({
+          file: join(dir, "001-invalid-url.json"),
+          status: "skipped",
+          reason: "non_public_source",
+        }),
+        expect.objectContaining({
+          file: join(dir, "002-private-host.json"),
+          status: "skipped",
+          reason: "non_public_source",
+        }),
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("counts unresolved recruiting article moves retained as extraction assertions", async () => {
+    const dir = await mkdtemp(
+      join(tmpdir(), "recruiting-backfill-unresolved-")
+    );
+    try {
+      await writeFile(
+        join(dir, "001-move-without-subject.json"),
+        JSON.stringify({
+          article: {
+            url: "https://www.advisorhub.com/recruiting-unresolved-move/",
+            headline: "Recruiting unresolved move",
+            category: "regulatory",
+          },
+          comparator_transition_events: [
+            {
+              local_key: "missing-subject",
+              from_firm_canonical_name: MORGAN_STANLEY,
+              to_firm_canonical_name: WELLS_FARGO,
+            },
+          ],
+        })
+      );
+
+      const summary = await runRecruitingArticleBackfill({
+        sourceDir: dir,
+        artifactPath: join(dir, SUMMARY_ARTIFACT_FILENAME),
+        limit: 1,
+        dryRun: true,
+      });
+
+      expect(summary).toMatchObject({
+        checkedCount: 1,
+        loadedCount: 1,
+        skippedCount: 0,
+        articleCount: 1,
+        moveCount: 0,
+        unresolvedCount: 1,
+      });
+      expect(summary.files[0]).toMatchObject({
+        file: join(dir, "001-move-without-subject.json"),
+        status: "loaded",
+        articleCount: 1,
+        moveCount: 0,
+        unresolvedCount: 1,
+        upserts: {
+          Article: 1,
+          FieldAssertion: 1,
+        },
+      });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
