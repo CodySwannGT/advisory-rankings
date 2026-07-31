@@ -138,6 +138,38 @@ interface DataCoverageReporter {
  * @returns Aggregated data coverage report.
  */
 export const buildDataCoverageReport: DataCoverageReporter = async query => {
+  const inputs = await coverageReportInputs(query);
+  const [a, t, f] = inputs.freshness;
+  return {
+    generatedAt: new Date().toISOString(),
+    counts: inputs.counts.counts,
+    sourceCounts: inputs.sources.rows,
+    articleCategories: inputs.categories.rows,
+    firmSourceCoverage: inputs.firmSources.coverage,
+    completeness: inputs.fields.completeness,
+    sparseAdvisors: inputs.sparse.advisors.rows,
+    sparseFirms: inputs.sparse.firms.rows,
+    recruitingCoverage: inputs.recruiting.rows,
+    unextractedRecruitingArticles: inputs.recruitingGap.rows,
+    freshness: freshnessReport(a, t, f),
+    warnings: coverageWarnings({
+      articles: a,
+      categories: inputs.categories,
+      counts: inputs.counts,
+      fields: inputs.fields,
+      firmSourceChecks: f,
+      firmSources: inputs.firmSources,
+      recruiting: inputs.recruiting,
+      recruitingGap: inputs.recruitingGap,
+      sources: inputs.sources,
+      sparseAdvisors: inputs.sparse.advisors,
+      sparseFirms: inputs.sparse.firms,
+      transitions: t,
+    }),
+  };
+};
+
+const coverageReportInputs = async (query: CoverageQuery) => {
   const counts = await tableCounts(query);
   const sources = await safeRows<GroupCountRow>(query, sourceCountSql());
   const categories = await safeRows<GroupCountRow>(query, articleCategorySql());
@@ -146,48 +178,19 @@ export const buildDataCoverageReport: DataCoverageReporter = async query => {
   const sparse = await sparseCoverage(query);
   const recruiting = await recruitingCoverage(query);
   const recruitingGap = await detectUnextractedRecruiting(query);
-  const [a, t, f] = await coverageFreshnessResults(query);
+  const freshness = await coverageFreshnessResults(query);
   return {
-    generatedAt: new Date().toISOString(),
-    counts: counts.counts,
-    sourceCounts: sources.rows,
-    articleCategories: categories.rows,
-    firmSourceCoverage: firmSources.coverage,
-    completeness: fields.completeness,
-    ...sparseCoverageRows(sparse),
-    recruitingCoverage: recruiting.rows,
-    unextractedRecruitingArticles: recruitingGap.rows,
-    freshness: freshnessReport(a, t, f),
-    warnings: coverageWarnings({
-      articles: a,
-      categories,
-      counts,
-      fields,
-      firmSourceChecks: f,
-      firmSources,
-      recruiting,
-      recruitingGap,
-      sources,
-      sparseAdvisors: sparse.advisors,
-      sparseFirms: sparse.firms,
-      transitions: t,
-    }),
+    categories,
+    counts,
+    fields,
+    firmSources,
+    freshness,
+    recruiting,
+    recruitingGap,
+    sources,
+    sparse,
   };
 };
-
-/**
- * Projects sparse coverage rows into the public report shape.
- * @param sparse - Sparse advisor and firm coverage probes.
- * @returns Sparse advisor and firm report rows.
- */
-function sparseCoverageRows(
-  sparse: Awaited<ReturnType<typeof sparseCoverage>>
-): Pick<CoverageReport, "sparseAdvisors" | "sparseFirms"> {
-  return {
-    sparseAdvisors: sparse.advisors.rows,
-    sparseFirms: sparse.firms.rows,
-  };
-}
 
 /**
  * Reads sparse advisor and firm coverage probes.

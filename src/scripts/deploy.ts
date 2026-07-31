@@ -767,13 +767,9 @@ async function verifyFeed(clusterUrl: string): Promise<void> {
   const feed = await waitForLoggedFeed(clusterUrl);
   console.log();
   if (!feed || !feed.ok) {
-    console.log(
-      "  /Feed never came back up:",
-      feed?.status,
-      (await feed?.text())?.slice(0, 300)
+    throw new Error(
+      `/Feed never came back up: ${feed?.status ?? "no response"} ${(await feed?.text())?.slice(0, 300) ?? ""}`
     );
-    process.exitCode = 1;
-    return;
   }
   await logFeedSummary(clusterUrl, feed);
   await verifyRuntimeFreshness(clusterUrl);
@@ -907,13 +903,21 @@ async function main(): Promise<void> {
     return;
   }
 
+  await verifyDeployedFeed(creds.clusterUrl);
+}
+
+/**
+ * Runs post-deploy feed verification and public-runtime recovery when needed.
+ * @param clusterUrl - Harper cluster URL to verify.
+ */
+async function verifyDeployedFeed(clusterUrl: string): Promise<void> {
   try {
-    await verifyFeed(creds.clusterUrl);
+    await verifyFeed(clusterUrl);
   } catch (error) {
     const recovered = await recoverPublicRuntime(error, {
       deployPublicRuntime,
       restartPublicRuntime,
-      verifyFeed: () => verifyFeed(creds.clusterUrl),
+      verifyFeed: () => verifyFeed(clusterUrl),
     });
     if (!recovered) {
       process.exitCode = 1;

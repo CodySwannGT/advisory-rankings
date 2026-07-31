@@ -89,6 +89,7 @@ interface RecruitingSliceState {
   readonly renderedSourceStatus: string;
   readonly summaryMoves: string;
 }
+type RecruitingSlicePath = Readonly<Record<"label" | "path", string>>;
 /** Minimal `/RecruitingMarket` payload shape needed for page/API parity checks. */
 interface RecruitingSlicePayload {
   readonly firmMomentum: readonly unknown[];
@@ -202,34 +203,9 @@ function exactTextExists(selector: string, text: string): boolean {
 async function readRecruitingSlices(
   page: Page
 ): Promise<readonly RecruitingSliceState[]> {
-  const slices = [
-    {
-      label: "firm",
-      path: `/recruiting?firm=${encodeURIComponent(INBOUND_RECRUITING_FIRM)}`,
-    },
-    {
-      label: "state",
-      path: `/recruiting?state=${REPRESENTATIVE_RECRUITING_STATE}`,
-    },
-    {
-      label: "year",
-      path: `/recruiting?year=${REPRESENTATIVE_RECRUITING_YEAR}`,
-    },
-    {
-      label: "inbound direction",
-      path: `/recruiting?firm=${encodeURIComponent(
-        INBOUND_RECRUITING_FIRM
-      )}&direction=inbound`,
-    },
-    {
-      label: "outbound direction",
-      path: `/recruiting?firm=${encodeURIComponent(
-        OUTBOUND_RECRUITING_FIRM
-      )}&direction=outbound`,
-    },
-  ] as const;
-
-  return await slices.reduce<Promise<readonly RecruitingSliceState[]>>(
+  return await RECRUITING_SLICES.reduce<
+    Promise<readonly RecruitingSliceState[]>
+  >(
     async (previous, slice) => [
       ...(await previous),
       await readRecruitingSliceFromPath(page, slice),
@@ -237,6 +213,26 @@ async function readRecruitingSlices(
     Promise.resolve([])
   );
 }
+
+const RECRUITING_SLICES: readonly RecruitingSlicePath[] = [
+  {
+    label: "firm",
+    path: `/recruiting?firm=${encodeURIComponent(INBOUND_RECRUITING_FIRM)}`,
+  },
+  {
+    label: "state",
+    path: `/recruiting?state=${REPRESENTATIVE_RECRUITING_STATE}`,
+  },
+  { label: "year", path: `/recruiting?year=${REPRESENTATIVE_RECRUITING_YEAR}` },
+  {
+    label: "inbound direction",
+    path: `/recruiting?firm=${encodeURIComponent(INBOUND_RECRUITING_FIRM)}&direction=inbound`,
+  },
+  {
+    label: "outbound direction",
+    path: `/recruiting?firm=${encodeURIComponent(OUTBOUND_RECRUITING_FIRM)}&direction=outbound`,
+  },
+] as const;
 
 /**
  * Loads and reads one representative Recruiting filter slice.
@@ -248,7 +244,7 @@ async function readRecruitingSlices(
  */
 async function readRecruitingSliceFromPath(
   page: Page,
-  slice: { readonly label: string; readonly path: string }
+  slice: RecruitingSlicePath
 ): Promise<RecruitingSliceState> {
   const payload = await readRecruitingSlicePayload(page, slice.path);
   await smokeGoto(page, `${BASE}${slice.path}`);
@@ -729,35 +725,41 @@ async function readRecruitingOverflow(page: Page): Promise<{
   readonly tableCount: number;
   readonly tables: readonly RecruitingTableOverflow[];
 }> {
-  return await page.evaluate(() => {
-    const tables = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        ".snap-table-scroll:has(.recruiting-table)"
-      )
-    ).map((wrapper, index) => {
-      const heading =
-        wrapper.closest(".card")?.querySelector(".card-title")?.textContent ??
-        `table ${index + 1}`;
-      return {
-        clientWidth: wrapper.clientWidth,
-        index,
-        label: heading.trim(),
-        overflow: Math.max(0, wrapper.scrollWidth - wrapper.clientWidth),
-        scrollWidth: wrapper.scrollWidth,
-      };
-    });
+  return await page.evaluate(readRecruitingOverflowInPage);
+}
+
+function readRecruitingOverflowInPage() {
+  const recruitingTableOverflow = (
+    wrapper: HTMLElement,
+    index: number
+  ): RecruitingTableOverflow => {
+    const heading =
+      wrapper.closest(".card")?.querySelector(".card-title")?.textContent ??
+      `table ${index + 1}`;
     return {
-      clientWidth: document.documentElement.clientWidth,
-      maxTableOverflow: Math.max(0, ...tables.map(table => table.overflow)),
-      pageOverflow: Math.max(
-        0,
-        document.documentElement.scrollWidth -
-          document.documentElement.clientWidth
-      ),
-      tableCount: tables.length,
-      tables,
+      clientWidth: wrapper.clientWidth,
+      index,
+      label: heading.trim(),
+      overflow: Math.max(0, wrapper.scrollWidth - wrapper.clientWidth),
+      scrollWidth: wrapper.scrollWidth,
     };
-  });
+  };
+  const tables = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      ".snap-table-scroll:has(.recruiting-table)"
+    )
+  ).map(recruitingTableOverflow);
+  return {
+    clientWidth: document.documentElement.clientWidth,
+    maxTableOverflow: Math.max(0, ...tables.map(table => table.overflow)),
+    pageOverflow: Math.max(
+      0,
+      document.documentElement.scrollWidth -
+        document.documentElement.clientWidth
+    ),
+    tableCount: tables.length,
+    tables,
+  };
 }
 
 /**

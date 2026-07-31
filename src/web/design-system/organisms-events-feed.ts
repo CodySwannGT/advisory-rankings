@@ -220,15 +220,7 @@ export function FeedPostCard(
   return el(
     "article",
     { class: "card" },
-    PostHeaderC({
-      initials: src.initials,
-      source: src.source,
-      authors: visibleFeedAuthors(a.authors),
-      when: fmtDate
-        ? fmtDate(a.publishedDate ?? null, { mode: "rel" })
-        : (a.publishedDate ?? null),
-      category: visibleFeedCategory(a.category),
-    }),
+    feedPostHeader(a, src, fmtDate),
     el(
       "h2",
       { class: "post-headline" },
@@ -244,6 +236,21 @@ export function FeedPostCard(
     feedPostFooter(detailHref, a.url, src)
   );
 }
+
+const feedPostHeader = (
+  article: FeedItem["article"],
+  src: ArticleSourceMeta,
+  fmtDate: EventFormatters["fmtDate"]
+): HTMLElement =>
+  PostHeaderC({
+    initials: src.initials,
+    source: src.source,
+    authors: visibleFeedAuthors(article.authors),
+    when: fmtDate
+      ? fmtDate(article.publishedDate ?? null, { mode: "rel" })
+      : (article.publishedDate ?? null),
+    category: visibleFeedCategory(article.category),
+  });
 
 /**
  * Hides absent article category metadata in the feed byline.

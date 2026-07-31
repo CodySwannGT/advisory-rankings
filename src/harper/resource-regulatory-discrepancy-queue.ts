@@ -229,12 +229,7 @@ function queueItem(
     fieldName: row.fieldName,
     severity: row.severity,
     status: row.status,
-    advisorHub: sourceValue(
-      "AdvisorHub",
-      row.advisorHubSourceType,
-      row.advisorHubSourceRef,
-      row.advisorHubValue
-    ),
+    advisorHub: advisorHubValue(row),
     brokerCheck: sourceValue(
       "FINRA BrokerCheck",
       row.brokerCheckSourceType,
@@ -253,6 +248,16 @@ function queueItem(
     },
   };
 }
+
+const advisorHubValue = (
+  row: RegulatoryDiscrepancyRow
+): RegulatoryDiscrepancyQueueItem["advisorHub"] =>
+  sourceValue(
+    "AdvisorHub",
+    row.advisorHubSourceType,
+    row.advisorHubSourceRef,
+    row.advisorHubValue
+  );
 
 /**
  * Builds one normalized source-side value.

@@ -151,16 +151,7 @@ function requestCard(
     attrs: { class: "correction-inbox-card" },
     body: [
       requestChips(item),
-      DetailsCard({
-        title: "Requested change",
-        pairs: [
-          ["Advisor", advisorLink(item)],
-          ["Field", humanize(item.fieldName)],
-          ["Displayed value", valueText(item.displayedValue)],
-          ["Proposed value", item.proposedValue],
-          ["Submitter note", valueText(item.submitterNote)],
-        ],
-      }),
+      requestedChangeCard(item),
       DetailsCard({
         title: "Source context",
         pairs: [
@@ -175,6 +166,20 @@ function requestCard(
     ],
   });
 }
+
+const requestedChangeCard = (
+  item: AdvisorCorrectionRequestQueueItem
+): HTMLElement =>
+  DetailsCard({
+    title: "Requested change",
+    pairs: [
+      ["Advisor", advisorLink(item)],
+      ["Field", humanize(item.fieldName)],
+      ["Displayed value", valueText(item.displayedValue)],
+      ["Proposed value", item.proposedValue],
+      ["Submitter note", valueText(item.submitterNote)],
+    ],
+  });
 
 /**
  * Builds status and source chips for one correction request.

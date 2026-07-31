@@ -230,26 +230,7 @@ const loadMentionedEntities = async (
 ): Promise<MentionedEntities> => {
   const ids = mentionedEntityIds(mentions, events);
   const [advisors, teams, earlyFirms, employments, teamSnaps, sanctions] =
-    await Promise.all([
-      rowsByIds<AdvisorRow>(tables.Advisor, ids.advisorIds),
-      rowsByIds<TeamRow>(tables.Team, ids.teamIds),
-      rowsByIds<FirmRow>(tables.Firm, ids.firmIds),
-      indexedRowsForMentions<EmploymentHistoryRow>(
-        tables.EmploymentHistory,
-        "advisorId",
-        ids.advisorIds
-      ),
-      indexedRowsForMentions<TeamMetricSnapshotRow>(
-        tables.TeamMetricSnapshot,
-        "teamId",
-        ids.teamIds
-      ),
-      indexedRowsForMentions<SanctionRow>(
-        tables.Sanction,
-        "disclosureId",
-        ids.disclosureIds
-      ),
-    ]);
+    await loadMentionRows(ids);
   return {
     advisors,
     firms: earlyFirms.concat(
@@ -261,6 +242,39 @@ const loadMentionedEntities = async (
     sanctions,
   };
 };
+
+const loadMentionRows = async (
+  ids: MentionedEntityIds
+): Promise<
+  readonly [
+    readonly AdvisorRow[],
+    readonly TeamRow[],
+    readonly FirmRow[],
+    readonly EmploymentHistoryRow[],
+    readonly TeamMetricSnapshotRow[],
+    readonly SanctionRow[],
+  ]
+> =>
+  await Promise.all([
+    rowsByIds<AdvisorRow>(tables.Advisor, ids.advisorIds),
+    rowsByIds<TeamRow>(tables.Team, ids.teamIds),
+    rowsByIds<FirmRow>(tables.Firm, ids.firmIds),
+    indexedRowsForMentions<EmploymentHistoryRow>(
+      tables.EmploymentHistory,
+      "advisorId",
+      ids.advisorIds
+    ),
+    indexedRowsForMentions<TeamMetricSnapshotRow>(
+      tables.TeamMetricSnapshot,
+      "teamId",
+      ids.teamIds
+    ),
+    indexedRowsForMentions<SanctionRow>(
+      tables.Sanction,
+      "disclosureId",
+      ids.disclosureIds
+    ),
+  ]);
 
 const mentionedEntityIds = (
   mentions: MentionTables,

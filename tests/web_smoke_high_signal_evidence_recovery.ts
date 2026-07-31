@@ -92,41 +92,35 @@ async function captureEmptyFilterEvidence(
  * @returns Category value or "" if every category has a move.
  */
 async function categoryWithoutMoves(page: Page): Promise<string> {
-  return await page.evaluate(async () => {
-    const response = await fetch("/Feed");
-    const body = (await response.json()) as {
-      readonly items?: readonly {
-        readonly article?: { readonly category?: string };
-        readonly eventCards?: readonly { readonly kind?: string }[];
-      }[];
-    };
-    const items = Array.isArray(body.items) ? body.items : [];
-    const allCategories = new Set(
-      items
-        .map(item => item.article?.category)
-        .filter(
-          (category): category is string =>
-            typeof category === "string" && category.length > 0
-        )
-    );
-    const moveCategories = new Set(
-      items
-        .filter(item =>
-          (item.eventCards ?? []).some(
-            (event: { readonly kind?: string }) => event.kind === "transition"
-          )
-        )
-        .map(item => item.article?.category)
-        .filter(
-          (category): category is string =>
-            typeof category === "string" && category.length > 0
-        )
-    );
-    const empty = [...allCategories].find(
-      category => !moveCategories.has(category)
-    );
-    return empty ?? "";
-  });
+  return await page.evaluate(categoryWithoutMovesInPage);
+}
+
+async function categoryWithoutMovesInPage(): Promise<string> {
+  const response = await fetch("/Feed");
+  const body = (await response.json()) as {
+    readonly items?: readonly {
+      readonly article?: { readonly category?: string };
+      readonly eventCards?: readonly { readonly kind?: string }[];
+    }[];
+  };
+  const items = Array.isArray(body.items) ? body.items : [];
+  const feedCategory = (item: (typeof items)[number]) => item.article?.category;
+  const isUsefulCategory = (category: string | undefined): category is string =>
+    typeof category === "string" && category.length > 0;
+  const allCategories = new Set(
+    items.map(feedCategory).filter(isUsefulCategory)
+  );
+  const moveCategories = new Set(
+    items
+      .filter(item =>
+        (item.eventCards ?? []).some(event => event.kind === "transition")
+      )
+      .map(feedCategory)
+      .filter(isUsefulCategory)
+  );
+  return (
+    [...allCategories].find(category => !moveCategories.has(category)) ?? ""
+  );
 }
 
 /**

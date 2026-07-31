@@ -341,7 +341,11 @@ async function signedOutGuidanceChecks(
     .getByText("Sign in to queue profile corrections.")
     .waitFor({ timeout: QUICK_UI_TIMEOUT });
   await shot(page, "12-corrections-signed-out-mobile");
-  return await closeWithChecks(context, [
+  return await closeWithChecks(context, await signedOutChecks(page));
+}
+
+async function signedOutChecks(page: Page): Promise<readonly Check[]> {
+  return [
     check(
       await page.getByRole("heading", { level: 1 }).isVisible(),
       "corrections: signed-out profile heading remains visible"
@@ -356,7 +360,7 @@ async function signedOutGuidanceChecks(
       page,
       "corrections: signed-out mobile no overflow"
     ),
-  ]);
+  ];
 }
 
 /**
@@ -446,12 +450,17 @@ async function reviewCorrection(
   await submitCorrectionReview(page, card, item.id, reviewerNote);
   await shot(page, "14-corrections-reviewed");
 
-  return [
-    check(true, "corrections: submitted request appears in analyst queue"),
-    check(rendersSubmitterNote, "corrections: inbox renders submitter note"),
-    check(rendersProposedValue, "corrections: inbox renders proposed value"),
-  ];
+  return reviewedCorrectionChecks(rendersSubmitterNote, rendersProposedValue);
 }
+
+const reviewedCorrectionChecks = (
+  rendersSubmitterNote: boolean,
+  rendersProposedValue: boolean
+): readonly Check[] => [
+  check(true, "corrections: submitted request appears in analyst queue"),
+  check(rendersSubmitterNote, "corrections: inbox renders submitter note"),
+  check(rendersProposedValue, "corrections: inbox renders proposed value"),
+];
 
 async function submittedCorrectionFacts(
   page: Page,
