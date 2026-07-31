@@ -101,6 +101,35 @@ describe("major firm import runner", () => {
     });
   });
 
+  it("captures default command runner failures as blocked artifacts", async () => {
+    const cwd = process.cwd();
+    const emptyCwd = await tempDir();
+    const outputDir = await tempDir();
+    process.chdir(emptyCwd);
+    try {
+      const summary = await runMajorFirmImports({
+        checkedAt: "2026-07-31",
+        maxAdvisors: 1,
+        outputDir,
+        sampleLimit: 1,
+        write: false,
+      });
+
+      expect(summary.adapters).toHaveLength(8);
+      expect(
+        summary.adapters.every(adapter => adapter.status === "blocked")
+      ).toBe(true);
+      const rbcArtifact = JSON.parse(
+        await readFile(path.join(outputDir, "rbc.json"), "utf8")
+      ) as { dryRun: AdapterModeArtifact };
+      expect(rbcArtifact.dryRun.ok).toBe(false);
+      expect(rbcArtifact.dryRun.error).toContain("Command failed");
+      expect(rbcArtifact.dryRun.stderr).toContain("Cannot find module");
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+
   it("classifies source-limited and write-blocked adapter outcomes", () => {
     const zeroDryRun = modeArtifact("dry-run", true, 0, 0);
     const mappedDryRun = modeArtifact("dry-run", true, TOTAL_ROWS, TOTAL_ROWS);
