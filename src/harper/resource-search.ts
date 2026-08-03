@@ -144,13 +144,7 @@ export function advisorSearchMatches(
     .map(({ advisor, display }) => ({
       advisor,
       display,
-      score: Math.max(
-        scoreName(display, query),
-        scoreName(advisor.legalName, query),
-        scoreName(advisor.preferredName, query),
-        scoreName(advisor.firstName, query),
-        scoreName(advisor.lastName, query)
-      ),
+      score: advisorSearchScore(advisor, display, query),
     }))
     .filter(({ score }) => score)
     .map(({ advisor, display, score }) => {
@@ -165,6 +159,27 @@ export function advisorSearchMatches(
         sortKey: (advisor.lastName || display || "").toLowerCase(),
       };
     });
+}
+
+/**
+ * Scores an advisor across display and legal-name fields.
+ * @param advisor - Advisor row to score.
+ * @param display - Resolved display name.
+ * @param query - Lowercased user search query.
+ * @returns Highest matching advisor-name score.
+ */
+function advisorSearchScore(
+  advisor: AdvisorRow,
+  display: string,
+  query: string
+): number {
+  return Math.max(
+    scoreName(display, query),
+    scoreName(advisor.legalName, query),
+    scoreName(advisor.preferredName, query),
+    scoreName(advisor.firstName, query),
+    scoreName(advisor.lastName, query)
+  );
 }
 
 /**

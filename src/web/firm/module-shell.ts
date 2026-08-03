@@ -115,34 +115,47 @@ export function recentMovesList(
     return EmptyTextComponent({
       children: "No recent moves are loaded for this firm.",
     });
+  return el("div", { class: CLASS_LIST }, ...moves.map(recentMoveRow));
+}
+
+/**
+ * Builds one recent move list row.
+ * @param move - Recent transition move.
+ * @returns Move row element.
+ */
+function recentMoveRow(move: RecentTransitionMove): HTMLElement {
+  const subject = move.subject as MoveSubject | null | undefined;
   return el(
     "div",
-    { class: CLASS_LIST },
-    ...moves.map(move => {
-      const subject = move.subject as MoveSubject | null | undefined;
-      return el(
-        "div",
-        { class: CLASS_LIST_ROW },
-        el(
-          "span",
-          {},
-          subject?.id && subject.kind
-            ? el("a", { href: entityPath(subject.kind, subject) }, subject.name)
-            : subject?.name || "Unresolved move subject"
-        ),
-        el(
-          "strong",
-          {},
-          [
-            humanize(move.direction),
-            move.moveDate ? fmtDate(move.moveDate, { mode: "short" }) : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        )
-      );
-    })
+    { class: CLASS_LIST_ROW },
+    el("span", {}, moveSubjectLabel(subject)),
+    el("strong", {}, moveDateLabel(move))
   );
+}
+
+/**
+ * Builds the subject label or link for one move row.
+ * @param subject - Move subject payload.
+ * @returns Subject link, name, or fallback copy.
+ */
+function moveSubjectLabel(subject: MoveSubject | null | undefined) {
+  return subject?.id && subject.kind
+    ? el("a", { href: entityPath(subject.kind, subject) }, subject.name)
+    : subject?.name || "Unresolved move subject";
+}
+
+/**
+ * Builds the direction/date label for one move row.
+ * @param move - Recent transition move.
+ * @returns Direction and date copy.
+ */
+function moveDateLabel(move: RecentTransitionMove): string {
+  return [
+    humanize(move.direction),
+    move.moveDate ? fmtDate(move.moveDate, { mode: "short" }) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
@@ -176,14 +189,23 @@ export function dataConfidenceBlock(
     el(
       "div",
       { class: "firm-dd-confidence-modules" },
-      ...(confidence.modules || []).map(module =>
-        el(
-          "span",
-          { class: "firm-dd-confidence-chip" },
-          `${humanize(module.name)}: ${statusCopy(module.status)}`
-        )
-      )
+      ...(confidence.modules || []).map(confidenceChip)
     )
+  );
+}
+
+/**
+ * Builds one confidence status chip.
+ * @param module - Confidence module status.
+ * @returns Confidence chip element.
+ */
+function confidenceChip(
+  module: DataConfidenceModule["modules"][number]
+): HTMLElement {
+  return el(
+    "span",
+    { class: "firm-dd-confidence-chip" },
+    `${humanize(module.name)}: ${statusCopy(module.status)}`
   );
 }
 

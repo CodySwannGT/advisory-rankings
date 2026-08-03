@@ -294,13 +294,10 @@ async function submitCorrection(
       correctionRequestPayload(advisorId, field, controls)
     );
     const id = correctionRequestId(response);
-    Object.assign(controls.proposed, { value: "" });
-    Object.assign(controls.note, { value: "" });
-    status.replaceChildren(
-      id
-        ? `Correction request queued for review (${id}). Public facts remain unchanged.`
-        : "Correction request queued for review. Public facts remain unchanged."
+    [controls.proposed, controls.note].forEach(control =>
+      Object.assign(control, { value: "" })
     );
+    status.replaceChildren(correctionQueuedMessage(id));
   } catch (error) {
     status.replaceChildren(
       isAuthFailure(error)
@@ -310,6 +307,17 @@ async function submitCorrection(
   } finally {
     setCorrectionControlsDisabled(controls, false);
   }
+}
+
+/**
+ * Builds queued-request confirmation copy.
+ * @param id - Stored request id when returned by the resource.
+ * @returns User-facing confirmation copy.
+ */
+function correctionQueuedMessage(id: string | null | undefined): string {
+  return id
+    ? `Correction request queued for review (${id}). Public facts remain unchanged.`
+    : "Correction request queued for review. Public facts remain unchanged.";
 }
 
 /**

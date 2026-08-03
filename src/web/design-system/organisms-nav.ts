@@ -93,17 +93,7 @@ export function Navbar({
     onClick: () => toggleDrawer(burger, drawer, false),
   });
   const mobileDrawerQuery = window.matchMedia(NAV_DRAWER_MEDIA);
-  syncDrawerFocusState({ drawer, open: false });
-  mobileDrawerQuery.addEventListener("change", () =>
-    syncDrawerFocusState({ drawer, open: isDrawerOpen(burger) })
-  );
-  document.addEventListener("keydown", (event: KeyboardEvent) =>
-    closeDrawerFromKeyboard({ event, burger, drawer })
-  );
-
-  links.addEventListener("click", event =>
-    closeDrawerAfterLinkClick(event, burger, drawer)
-  );
+  wireDrawerEvents(burger, drawer, links, mobileDrawerQuery);
   if (refreshMe) refreshMe().then(me => renderMe({ meSpot, me, logout }));
 
   return el(
@@ -114,6 +104,31 @@ export function Navbar({
     GlobalSearch({ search }),
     drawer,
     scrim
+  );
+}
+
+/**
+ * Wires mobile drawer focus, keyboard, and link-close behavior.
+ * @param burger - Drawer toggle button.
+ * @param drawer - Drawer element.
+ * @param links - Drawer navigation links.
+ * @param mobileDrawerQuery - Mobile drawer media query.
+ */
+function wireDrawerEvents(
+  burger: HTMLElement,
+  drawer: HTMLElement,
+  links: HTMLElement,
+  mobileDrawerQuery: MediaQueryList
+): void {
+  syncDrawerFocusState({ drawer, open: false });
+  mobileDrawerQuery.addEventListener("change", () =>
+    syncDrawerFocusState({ drawer, open: isDrawerOpen(burger) })
+  );
+  document.addEventListener("keydown", (event: KeyboardEvent) =>
+    closeDrawerFromKeyboard({ event, burger, drawer })
+  );
+  links.addEventListener("click", event =>
+    closeDrawerAfterLinkClick(event, burger, drawer)
   );
 }
 

@@ -208,8 +208,7 @@ async function createRequest(
   body: CorrectionRequestBody,
   userId: string
 ): Promise<AdvisorCorrectionRequestRow> {
-  const mine = await rowsFor(correctionRequestTable(), "submitterId", userId);
-  const pendingCount = mine.filter(row => row.status === "pending").length;
+  const pendingCount = await pendingCorrectionCount(userId);
   const advisorId = requiredText(body.advisorId, "advisor id required", 200);
   const fieldName = requiredText(
     body.fieldName,
@@ -239,6 +238,17 @@ async function createRequest(
   };
   await writeRow(correctionRequestTable(), row);
   return row;
+}
+
+/**
+ * Counts pending correction requests for a submitter.
+ * @param userId Stable submitter identifier from the session.
+ * @returns Pending request count.
+ */
+async function pendingCorrectionCount(userId: string): Promise<number> {
+  return (
+    await rowsFor(correctionRequestTable(), "submitterId", userId)
+  ).filter(row => row.status === "pending").length;
 }
 
 /**

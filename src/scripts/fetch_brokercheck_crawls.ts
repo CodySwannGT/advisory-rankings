@@ -223,13 +223,10 @@ const crawlRosterPage = async (
   if (!hits.length) return emptyCrawlSummary();
   const crds = rosterPageCrds(hits, opts, seen);
   const summary = await load(client, rest, resolver, state, opts, firmId, crds);
-  const done = rosterPageComplete(
-    hits.length,
-    opts.max || 0,
-    seen + crds.length
-  );
   logRosterPage(opts, firmId, page, hits.length);
-  if (done) return summary;
+  if (rosterPageComplete(hits.length, opts.max || 0, seen + crds.length)) {
+    return summary;
+  }
   return addCrawlSummaries(
     summary,
     await nextRosterPageSummary(

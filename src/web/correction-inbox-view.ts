@@ -50,18 +50,29 @@ export function renderInbox(
     return;
   }
   center.appendChild(summaryCard(payload));
-  center.append(
-    ...(payload.items.length
-      ? payload.items.map(item => requestCard(item, actions))
-      : [
-          AsyncStateCard({
-            kind: "empty",
-            title: "No pending correction requests",
-            body: "Reviewed and submitted requests will appear here when they need analyst disposition.",
-          }),
-        ])
-  );
+  center.append(...inboxQueueNodes(payload, actions));
   right.appendChild(statusCard(payload));
+}
+
+/**
+ * Builds queue cards or the pending-empty state.
+ * @param payload Queue payload.
+ * @param actions Page callbacks.
+ * @returns Nodes for the inbox body.
+ */
+function inboxQueueNodes(
+  payload: AdvisorCorrectionRequestQueueResponse,
+  actions: InboxActions
+): readonly HTMLElement[] {
+  return payload.items.length
+    ? payload.items.map(item => requestCard(item, actions))
+    : [
+        AsyncStateCard({
+          kind: "empty",
+          title: "No pending correction requests",
+          body: "Reviewed and submitted requests will appear here when they need analyst disposition.",
+        }),
+      ];
 }
 
 /**
@@ -219,12 +230,7 @@ function dispositionForm(
   actions: InboxActions
 ): HTMLElement {
   const decision = dispositionDecisionSelect();
-  const note = el("textarea", {
-    name: "reviewerNote",
-    rows: 3,
-    placeholder: "Reviewer note",
-    required: true,
-  }) as HTMLTextAreaElement;
+  const note = reviewerNoteInput();
   const submit = Button({
     variant: "primary",
     type: "submit",
@@ -248,6 +254,19 @@ function dispositionForm(
     label("Reviewer note", note),
     submit
   );
+}
+
+/**
+ * Builds the required reviewer note control.
+ * @returns Reviewer note textarea.
+ */
+function reviewerNoteInput(): HTMLTextAreaElement {
+  return el("textarea", {
+    name: "reviewerNote",
+    rows: 3,
+    placeholder: "Reviewer note",
+    required: true,
+  }) as HTMLTextAreaElement;
 }
 
 /**

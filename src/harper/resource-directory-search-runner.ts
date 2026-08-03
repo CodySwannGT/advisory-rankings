@@ -144,9 +144,8 @@ const buildSearchResponse = async (
     norm,
   }).filter(match => kind === "all" || match.kind === kind);
   const displayed = matches.slice(0, cap);
-  const displayedAdvisorIds = searchAdvisorIds(displayed);
   const subtitleByAdvisor = await resolveSearchAdvisorSubtitles({
-    advisorIds: displayedAdvisorIds,
+    advisorIds: searchAdvisorIds(displayed),
     searchFirms: rows.firms,
   });
   const advisorById = new Map(advisors.map(advisor => [advisor.id, advisor]));

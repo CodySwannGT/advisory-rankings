@@ -132,12 +132,7 @@ async function socketPost(
 ): Promise<string> {
   return await new Promise((resolve, reject) => {
     const req = httpRequest(
-      {
-        socketPath,
-        method: "POST",
-        path: "/",
-        headers: harperOperationHeaders(auth),
-      },
+      harperSocketRequestOptions(socketPath, auth),
       async res => {
         res.setEncoding("utf8");
         try {
@@ -160,6 +155,21 @@ async function socketPost(
     req.write(JSON.stringify(body));
     req.end();
   });
+}
+
+/**
+ * Builds request options for Harper local-socket operation posts.
+ * @param socketPath - Harper operations socket path.
+ * @param auth - Basic auth header payload.
+ * @returns Node HTTP request options.
+ */
+function harperSocketRequestOptions(socketPath: string, auth: string) {
+  return {
+    socketPath,
+    method: "POST",
+    path: "/",
+    headers: harperOperationHeaders(auth),
+  };
 }
 
 /**

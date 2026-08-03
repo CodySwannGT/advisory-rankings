@@ -101,15 +101,7 @@ export function advisorResearchQueueResponse(
     .filter(row => matchesStatus(row.lastCheck, filters.status))
     .filter(row => matchesMissingField(row.missingFields, filters.missingField))
     .slice(0, filters.limit);
-  const items = filtered.map(row =>
-    queueItem(
-      row.advisor,
-      row.lastCheck,
-      row.missingFields,
-      filters.sourceType,
-      db
-    )
-  );
+  const items = filtered.map(row => queueItemForResearchRow(row, filters, db));
   return {
     generatedAt: new Date().toISOString(),
     filters,
@@ -122,6 +114,27 @@ export function advisorResearchQueueResponse(
     },
     items,
   };
+}
+
+/**
+ * Converts a due-advisor row into the public queue item payload.
+ * @param row - Due advisor row selected for return.
+ * @param filters - Normalized queue filters.
+ * @param db - Shared Harper resource index.
+ * @returns Public queue item payload.
+ */
+function queueItemForResearchRow(
+  row: ReturnType<typeof selectDueAdvisors>[number],
+  filters: AdvisorResearchQueueFilters,
+  db: Awaited<ReturnType<typeof loadAll>>
+) {
+  return queueItem(
+    row.advisor,
+    row.lastCheck,
+    row.missingFields,
+    filters.sourceType,
+    db
+  );
 }
 
 /**

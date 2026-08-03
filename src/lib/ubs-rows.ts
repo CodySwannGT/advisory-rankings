@@ -136,13 +136,7 @@ const advisorRow = (source: UbsAdvisorEntity): Record<string, unknown> => {
     source.FirstName || source.LastName
       ? sourceNames(source)
       : splitName(legalName);
-  const notes = [
-    source.AdditionalData?.RankTitle,
-    source.AdditionalData?.LinkedInUrl
-      ? `LinkedIn: ${source.AdditionalData.LinkedInUrl}`
-      : undefined,
-    teamNote(source),
-  ].filter(Boolean);
+  const notes = advisorNotes(source);
   return withoutEmpty({
     id: advisorId(
       legalName,
@@ -166,6 +160,21 @@ const advisorRow = (source: UbsAdvisorEntity): Record<string, unknown> => {
     piiLevel: "public",
   });
 };
+
+/**
+ * Builds optional bio note lines for a UBS advisor.
+ * @param source - Raw UBS advisor entity.
+ * @returns Note lines that should be joined into bio text.
+ */
+function advisorNotes(source: UbsAdvisorEntity): readonly unknown[] {
+  return [
+    source.AdditionalData?.RankTitle,
+    source.AdditionalData?.LinkedInUrl
+      ? `LinkedIn: ${source.AdditionalData.LinkedInUrl}`
+      : undefined,
+    teamNote(source),
+  ].filter(Boolean);
+}
 
 const employmentRow = (
   advisor: Record<string, unknown>,
