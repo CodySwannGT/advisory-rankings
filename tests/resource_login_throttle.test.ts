@@ -64,4 +64,17 @@ describe("login throttle", () => {
     failTimes("User@Example.com", 6);
     expect(() => assertLoginAllowed(USER, T0 + 500)).toThrow();
   });
+
+  it("evicts the oldest tracked account when the throttle reaches capacity", () => {
+    const oldestUser = "oldest@example.com";
+    failTimes(oldestUser, 6);
+    for (let userIndex = 0; userIndex < 9_999; userIndex += 1) {
+      recordLoginFailure(`tracked-${userIndex}@example.com`, T0);
+    }
+
+    expect(() => assertLoginAllowed(oldestUser, T0 + 500)).toThrow();
+    recordLoginFailure("new-user@example.com", T0);
+
+    expect(() => assertLoginAllowed(oldestUser, T0 + 500)).not.toThrow();
+  });
 });
