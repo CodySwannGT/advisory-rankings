@@ -173,6 +173,8 @@ const DATE_2024_05_01 = "2024-05-01";
 const DATE_2025_01_02 = "2025-01-02";
 const ADVISOR_READY_ID = "advisor-ready";
 const ADVISOR_SUBSTANCE_GAP_ID = "advisor-substance-gap";
+const PAGINATED_PAST_ADVISOR_ID = "advisor-roster-page-c";
+const PAGINATED_PAST_EMPLOYMENT_ID = "employment-roster-page-c";
 const DATE_2026_05_25 = "2026-05-25";
 const RESEARCH_B_CHECKED_AT = "2026-05-25T12:00:00Z";
 
@@ -3376,6 +3378,56 @@ describe("Harper resource endpoints", () => {
       currentMembers: [{ advisor: { id: "advisor-a" } }],
       pastMembers: [{ advisor: { id: "advisor-b" } }],
     });
+  });
+
+  it("paginates firm advisor rosters without exposing cursor internals", async () => {
+    setRows("Advisor", [
+      ...(tableRows.get("Advisor") ?? []),
+      {
+        id: PAGINATED_PAST_ADVISOR_ID,
+        firstName: "Casey",
+        lastName: "Lane",
+        legalName: "Casey Lane",
+        careerStatus: "retired",
+      },
+    ]);
+    setRows("EmploymentHistory", [
+      ...(tableRows.get("EmploymentHistory") ?? []),
+      {
+        id: PAGINATED_PAST_EMPLOYMENT_ID,
+        advisorId: PAGINATED_PAST_ADVISOR_ID,
+        firmId: "firm-a",
+        roleTitle: "Senior Advisor",
+        startDate: DATE_2018_01_01,
+        endDate: DATE_2020_01_01,
+        reasonForLeaving: "joined another firm",
+      },
+    ]);
+
+    const endpoint = new (resources as any).FirmAdvisors();
+    const firstPage = await endpoint.get(
+      routeTarget("firm-a", { status: "past", limit: "1" })
+    );
+    const secondPage = await endpoint.get(
+      routeTarget("firm-a", {
+        status: "past",
+        limit: "1",
+        cursor: firstPage.nextCursor,
+      })
+    );
+
+    expect(firstPage).toMatchObject({
+      items: [{ advisor: { id: "advisor-b" } }],
+      nextCursor: expect.any(String),
+    });
+    expect(firstPage.items[0]).not.toHaveProperty("_sortKey");
+    expect(firstPage.items[0]).not.toHaveProperty("_id");
+    expect(secondPage).toMatchObject({
+      items: [{ advisor: { id: PAGINATED_PAST_ADVISOR_ID } }],
+      nextCursor: null,
+    });
+    expect(secondPage.items[0]).not.toHaveProperty("_sortKey");
+    expect(secondPage.items[0]).not.toHaveProperty("_id");
   });
 
   it("normalizes source article triage reasons and candidate provenance", () => {
