@@ -199,6 +199,7 @@ export default [
     files: ["tests/**/*.test.ts", "tests/**/*.ts", "**/__tests__/**/*.ts"],
     rules: {
       "max-lines": "off",
+      "max-lines-per-function": "off",
       "jsdoc/require-jsdoc": "off",
       "sonarjs/assertions-in-tests": "off",
       "sonarjs/publicly-writable-directories": "off",

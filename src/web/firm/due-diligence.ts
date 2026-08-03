@@ -58,6 +58,41 @@ export function dueDiligenceSection(
     })
   );
   const filters = dueDiligenceFilters(grid, emptyState);
+  appendDueDiligenceBody(
+    body,
+    diligence,
+    moduleEntries,
+    filters,
+    grid,
+    emptyState
+  );
+  return SectionCardComponent({
+    title: sectionTitleWithHelp(
+      "Firm due diligence",
+      "Firm due diligence shows which public sources support each trust check and where more data is needed."
+    ),
+    attrs: { class: "firm-dd-card" },
+    body,
+  });
+}
+
+/**
+ * Appends due-diligence summary, controls, modules, and confidence.
+ * @param body - Due-diligence body container.
+ * @param diligence - Firm due-diligence payload.
+ * @param moduleEntries - Renderable module entries.
+ * @param filters - Filter control element.
+ * @param grid - Module grid element.
+ * @param emptyState - Empty-state element.
+ */
+function appendDueDiligenceBody(
+  body: HTMLElement,
+  diligence: FirmDueDiligencePayload,
+  moduleEntries: readonly ModuleEntry[],
+  filters: HTMLElement,
+  grid: HTMLElement,
+  emptyState: HTMLElement
+): void {
   body.append(
     el(
       "p",
@@ -69,14 +104,6 @@ export function dueDiligenceSection(
     emptyState,
     dataConfidenceBlock(diligence.dataConfidence) ?? document.createComment("")
   );
-  return SectionCardComponent({
-    title: sectionTitleWithHelp(
-      "Firm due diligence",
-      "Firm due diligence shows which public sources support each trust check and where more data is needed."
-    ),
-    attrs: { class: "firm-dd-card" },
-    body,
-  });
 }
 
 /**
@@ -141,18 +168,32 @@ export function dueDiligenceFilters(
       })
   );
   const allButton = buttons[0];
-  emptyState
-    .querySelector("[data-firm-dd-reset]")
-    ?.addEventListener("click", () => {
-      applyDueDiligenceFilter(grid, emptyState, allButton);
-      allButton.focus();
-    });
+  wireDueDiligenceReset(emptyState, grid, allButton);
   return el(
     "div",
     { class: "firm-dd-filters", "aria-label": "Due diligence module filter" },
     el("div", { class: "firm-dd-filter-buttons" }, ...buttons),
     el("div", { class: "firm-dd-filter-help" }, ...dueDiligenceFilterHelp())
   );
+}
+
+/**
+ * Wires the empty-state reset button back to the all-modules filter.
+ * @param emptyState - Empty-state element.
+ * @param grid - Module grid element.
+ * @param allButton - All-modules filter button.
+ */
+function wireDueDiligenceReset(
+  emptyState: HTMLElement,
+  grid: HTMLElement,
+  allButton: HTMLElement
+): void {
+  emptyState
+    .querySelector("[data-firm-dd-reset]")
+    ?.addEventListener("click", () => {
+      applyDueDiligenceFilter(grid, emptyState, allButton);
+      allButton.focus();
+    });
 }
 
 /**

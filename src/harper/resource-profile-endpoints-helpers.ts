@@ -145,15 +145,28 @@ function firmProfileBody(
     disclosuresAtThisFirm: db.disclosures
       .filter(row => row.firmIdAtTime === firmId)
       .map(row => disclosureRow(row, db) as unknown),
-    articles: mentionedArticles(
-      db,
-      db.mFirm
-        .filter(mention => mention.firmId === firmId)
-        .map(mention => mention.articleId)
-    ),
+    articles: mentionedFirmArticles(db, firmId),
     brokerCheckSnapshot: firmBrokerCheckSnapshot(db, firmId),
   };
   return profile;
+}
+
+/**
+ * Resolves articles mentioning a firm into newest-first profile coverage.
+ * @param db - Preloaded article and mention rows.
+ * @param firmId - Firm id to match against mention rows.
+ * @returns Compact article rows suitable for profile sidebars.
+ */
+function mentionedFirmArticles(
+  db: ResourceIndex,
+  firmId: string
+): readonly FirmArticleStubView[] {
+  return mentionedArticles(
+    db,
+    db.mFirm
+      .filter(mention => mention.firmId === firmId)
+      .map(mention => mention.articleId)
+  );
 }
 
 /**

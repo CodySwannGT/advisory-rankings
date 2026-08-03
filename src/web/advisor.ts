@@ -159,10 +159,7 @@ function render(
   right: HTMLElement,
   showAnalystDetails: boolean
 ): void {
-  if (isErrorPayload(d)) {
-    renderAdvisorNotFound(center, d.id);
-    return;
-  }
+  if (isErrorPayload(d)) return renderAdvisorNotFound(center, d.id);
   const a = d.advisor;
   const mobileEvidenceRoot = el("div", { class: "advisor-mobile-evidence" });
   const desktopEvidenceRoot = el("div", { class: "advisor-desktop-evidence" });

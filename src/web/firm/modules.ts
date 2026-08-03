@@ -168,24 +168,7 @@ export function regulatorySnapshotCard(
   return moduleCard(
     "Regulatory snapshot",
     module,
-    snapshot
-      ? el(
-          "div",
-          { class: CLASS_STAT_ROW },
-          metricTile("Disclosures", fmtNumber(snapshot.disclosureCount)),
-          metricTile("BD scope", snapshot.bcScope || COPY_NOT_LOADED),
-          metricTile("IA scope", snapshot.iaScope || COPY_NOT_LOADED),
-          metricTile(
-            "State registrations",
-            fmtNumber(snapshot.registeredStateCount)
-          )
-        )
-      : EmptyTextComponent({
-          children:
-            module?.status === STATUS_LOADED
-              ? "Regulatory values are backed by FINRA BrokerCheck."
-              : "No FINRA BrokerCheck snapshot is loaded for this firm yet.",
-        }),
+    regulatorySnapshotBody(snapshot, module),
     module?.source
       ? SourceAttributionComponent({
           source: module.source.sourceName,
@@ -195,6 +178,36 @@ export function regulatorySnapshotCard(
         })
       : null
   );
+}
+
+/**
+ * Builds the regulatory snapshot body or its empty state.
+ * @param snapshot - Loaded BrokerCheck snapshot.
+ * @param module - Regulatory module payload.
+ * @returns Regulatory module body.
+ */
+function regulatorySnapshotBody(
+  snapshot: RegulatorySnapshotModule["snapshot"] | null,
+  module: RegulatorySnapshotModule | null | undefined
+): HTMLElement {
+  return snapshot
+    ? el(
+        "div",
+        { class: CLASS_STAT_ROW },
+        metricTile("Disclosures", fmtNumber(snapshot.disclosureCount)),
+        metricTile("BD scope", snapshot.bcScope || COPY_NOT_LOADED),
+        metricTile("IA scope", snapshot.iaScope || COPY_NOT_LOADED),
+        metricTile(
+          "State registrations",
+          fmtNumber(snapshot.registeredStateCount)
+        )
+      )
+    : EmptyTextComponent({
+        children:
+          module?.status === STATUS_LOADED
+            ? "Regulatory values are backed by FINRA BrokerCheck."
+            : "No FINRA BrokerCheck snapshot is loaded for this firm yet.",
+      });
 }
 
 /**

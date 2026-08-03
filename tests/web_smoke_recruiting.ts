@@ -160,7 +160,10 @@ function readLoadedRecruitingStateInPage({
   readonly rawRecruitingLabels: readonly string[];
   readonly tableSelector: string;
 }): LoadedRecruitingState {
-  const textExists = exactTextExists;
+  const textExists = (selector: string, text: string) =>
+    Array.from(document.querySelectorAll(selector)).some(
+      node => node.textContent?.trim() === text
+    );
   const textIncludes = (selector: string, text: string) =>
     Array.from(document.querySelectorAll(selector)).some(node =>
       node.textContent?.includes(text)
@@ -187,12 +190,6 @@ function readLoadedRecruitingStateInPage({
     rawLabels: rawRecruitingLabels.filter(label => bodyText.includes(label)),
     rowCount: document.querySelectorAll(`${tableSelector} tbody tr`).length,
   };
-}
-
-function exactTextExists(selector: string, text: string): boolean {
-  return Array.from(document.querySelectorAll(selector)).some(
-    node => node.textContent?.trim() === text
-  );
 }
 
 /**

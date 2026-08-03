@@ -112,16 +112,10 @@ export async function loadFirm(
     crd
   );
   const snapshotId = uid(`bcsnap:firm:${crd}`);
-  const firmRow = brokerFirmRow(
-    parsed.firm,
-    opts.resolver,
-    firmUuid,
-    crd,
-    snapshotId
-  );
-  const snapshotRow = firmSnapshotRow(
-    parsed.summary ?? {},
+  const rows = brokerFirmRows(
+    parsed,
     rawContent,
+    opts.resolver,
     firmUuid,
     crd,
     snapshotId
@@ -129,11 +123,41 @@ export async function loadFirm(
   return opts.write === false
     ? { Firm: 1, BrokerCheckSnapshot: 1 }
     : {
-        Firm: Number(await opts.rest.put("Firm", firmRow)),
+        Firm: Number(await opts.rest.put("Firm", rows.firmRow)),
         BrokerCheckSnapshot: Number(
-          await opts.rest.put("BrokerCheckSnapshot", snapshotRow)
+          await opts.rest.put("BrokerCheckSnapshot", rows.snapshotRow)
         ),
       };
+}
+
+/**
+ * Builds firm and snapshot rows for a parsed BrokerCheck firm profile.
+ * @param parsed - Parsed firm payload.
+ * @param rawContent - Original BrokerCheck payload stored in the snapshot row.
+ * @param resolver - Shared resolver used to reuse canonical firm IDs.
+ * @param firmUuid - Canonical firm row ID.
+ * @param crd - Firm CRD number.
+ * @param snapshotId - BrokerCheck snapshot row ID.
+ * @returns Firm and BrokerCheck snapshot rows.
+ */
+function brokerFirmRows(
+  parsed: ParsedFirm,
+  rawContent: unknown,
+  resolver: Resolver,
+  firmUuid: string,
+  crd: string,
+  snapshotId: string
+) {
+  return {
+    firmRow: brokerFirmRow(parsed.firm, resolver, firmUuid, crd, snapshotId),
+    snapshotRow: firmSnapshotRow(
+      parsed.summary ?? {},
+      rawContent,
+      firmUuid,
+      crd,
+      snapshotId
+    ),
+  };
 }
 
 const buildIndividualRows = async (

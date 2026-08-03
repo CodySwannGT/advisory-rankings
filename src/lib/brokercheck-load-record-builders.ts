@@ -87,18 +87,35 @@ export const buildDisclosureRows = async (
         sourceRef: snapshotId,
       },
     ],
-    sanctionRows: block.sanctions.map(sanction => ({
-      ...sanction,
-      id: resolver.sanction(
-        disclosureUuid,
-        stringValue(sanction.sanctionType),
-        optionalNumber(sanction.amount),
-        optionalNumber(sanction.durationMonths)
-      ),
-      disclosureId: disclosureUuid,
-    })),
+    sanctionRows: block.sanctions.map(sanction =>
+      sanctionRow(sanction, resolver, disclosureUuid)
+    ),
   };
 };
+
+/**
+ * Builds one Harper Sanction row linked to a disclosure row.
+ * @param sanction - Parsed BrokerCheck sanction.
+ * @param resolver - Shared resolver used to mint sanction IDs.
+ * @param disclosureUuid - Parent disclosure row ID.
+ * @returns Harper Sanction row.
+ */
+function sanctionRow(
+  sanction: DisclosureBlock["sanctions"][number],
+  resolver: Resolver,
+  disclosureUuid: string
+) {
+  return {
+    ...sanction,
+    id: resolver.sanction(
+      disclosureUuid,
+      stringValue(sanction.sanctionType),
+      optionalNumber(sanction.amount),
+      optionalNumber(sanction.durationMonths)
+    ),
+    disclosureId: disclosureUuid,
+  };
+}
 
 /**
  * Reduces a list of employment build results to the deduplicated set of Firm rows,
