@@ -179,18 +179,21 @@ function queueRow(item: QueueItem): HTMLElement {
         `FINRA CRD ${item.finraCrd ?? "Not available"}`
       )
     ),
-    el(
-      "div",
-      { class: "research-queue-row-status" },
-      Tag({ children: label(item.sourceType), kind: "ok" }),
-      Tag({ children: label(item.status ?? "never_checked") })
-    ),
+    queueStatus(item),
     queueRowField("Missing fields", missingFields(item)),
     queueRowField("Freshness", freshnessText(item)),
     queueRowField("Source check", provenanceText(item)),
     queueRowAction(item)
   );
 }
+
+const queueStatus = (item: QueueItem): HTMLElement =>
+  el(
+    "div",
+    { class: "research-queue-row-status" },
+    Tag({ children: label(item.sourceType), kind: "ok" }),
+    Tag({ children: label(item.status ?? "never_checked") })
+  );
 
 /**
  * Builds the advisor profile action for one research queue row.

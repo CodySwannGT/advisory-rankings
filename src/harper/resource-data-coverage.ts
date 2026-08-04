@@ -171,36 +171,41 @@ function rankingsSection(db: ResourceIndex): DataCoverageSection {
   return {
     id: "rankings",
     label: "Rankings coverage",
-    metrics: [
-      metric(
-        "ranking-lists",
-        "Ranking lists",
-        db.rankings.length,
-        "Ranking",
-        RANKINGS_EXPLORER_RESOURCE,
-        db.rankings.length === 0 ? "No ranking-list rows are loaded." : null
-      ),
-      metric(
-        "ranking-entries",
-        "Ranking entries",
-        coverage.totalEntries,
-        "RankingEntry",
-        RANKINGS_EXPLORER_RESOURCE,
-        coverage.emptyState === DATA_COVERAGE_RANKINGS_EMPTY
-          ? DATA_COVERAGE_RANKINGS_EMPTY
-          : (coverage.emptyState ?? null)
-      ),
-      metric(
-        "ranking-gap-buckets",
-        "Ranking gap buckets",
-        coverage.gapBuckets.length,
-        "RankingsExplorer.coverage.gapBuckets",
-        RANKINGS_EXPLORER_RESOURCE,
-        rankingGapWarning(coverage)
-      ),
-    ],
+    metrics: rankingsMetrics(db, coverage),
   };
 }
+
+const rankingsMetrics = (
+  db: ResourceIndex,
+  coverage: ReturnType<typeof rankingsCoverage>
+): readonly DataCoverageMetric[] => [
+  metric(
+    "ranking-lists",
+    "Ranking lists",
+    db.rankings.length,
+    "Ranking",
+    RANKINGS_EXPLORER_RESOURCE,
+    db.rankings.length === 0 ? "No ranking-list rows are loaded." : null
+  ),
+  metric(
+    "ranking-entries",
+    "Ranking entries",
+    coverage.totalEntries,
+    "RankingEntry",
+    RANKINGS_EXPLORER_RESOURCE,
+    coverage.emptyState === DATA_COVERAGE_RANKINGS_EMPTY
+      ? DATA_COVERAGE_RANKINGS_EMPTY
+      : (coverage.emptyState ?? null)
+  ),
+  metric(
+    "ranking-gap-buckets",
+    "Ranking gap buckets",
+    coverage.gapBuckets.length,
+    "RankingsExplorer.coverage.gapBuckets",
+    RANKINGS_EXPLORER_RESOURCE,
+    rankingGapWarning(coverage)
+  ),
+];
 
 const rankingGapWarning = (
   coverage: ReturnType<typeof rankingsCoverage>
@@ -270,16 +275,7 @@ function sourceContextMetrics(
   articleMentionCount: number
 ): ReadonlyArray<DataCoverageMetric> {
   return [
-    metric(
-      "field-assertions",
-      "Field assertions",
-      db.fieldAssertions.length,
-      "FieldAssertion",
-      null,
-      db.fieldAssertions.length === 0
-        ? "No field-level source assertions are loaded."
-        : "Field assertions are summarized only as aggregate counts."
-    ),
+    fieldAssertionsMetric(db.fieldAssertions.length),
     metric(
       "article-mentions",
       "Article mentions",
@@ -300,6 +296,18 @@ function sourceContextMetrics(
     ),
   ];
 }
+
+const fieldAssertionsMetric = (count: number): DataCoverageMetric =>
+  metric(
+    "field-assertions",
+    "Field assertions",
+    count,
+    "FieldAssertion",
+    null,
+    count === 0
+      ? "No field-level source assertions are loaded."
+      : "Field assertions are summarized only as aggregate counts."
+  );
 
 /**
  * Creates one coverage metric.

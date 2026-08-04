@@ -166,7 +166,16 @@ const discrepancyRow = (
   brokerCheckSourceType: "brokercheck",
   brokerCheckSourceRef: brokerCheckSourceRef(brokerCheck),
   brokerCheckValue: brokerCheck.normalizedValue,
-  sourceMetadata: JSON.stringify({
+  sourceMetadata: discrepancyMetadata(source, brokerCheck),
+  severity: "high",
+  status: "open",
+});
+
+const discrepancyMetadata = (
+  source: SourceAssertion,
+  brokerCheck: BrokerCheckValue
+): string =>
+  JSON.stringify({
     regulator: brokerCheck.disclosure.regulator ?? source.disclosure.regulator,
     docketNumber:
       brokerCheck.disclosure.docketNumber ?? source.disclosure.docketNumber,
@@ -174,10 +183,7 @@ const discrepancyRow = (
     brokerCheckDisclosureId: brokerCheck.disclosure.id,
     advisorHubSanctionId: source.sanction.id,
     brokerCheckSanctionId: brokerCheck.sanction.id,
-  }),
-  severity: "high",
-  status: "open",
-});
+  });
 
 const brokerCheckSourceRef = (brokerCheck: BrokerCheckValue): string =>
   brokerCheck.disclosure.sourceRef ??

@@ -67,11 +67,7 @@ function articleEvidenceMapBody(
       count: extractedFactCount(resources),
       rows: extractedFactRows(resources),
     }),
-    evidenceMapGroup({
-      title: "Event signals",
-      count: resources.events.length,
-      rows: eventSignalRows(resources),
-    }),
+    evidenceMapGroup(eventSignalGroup(resources)),
     evidenceMapGroup({
       title: "Source status",
       count: sourceStatusCount(article, resources),
@@ -84,6 +80,14 @@ function articleEvidenceMapBody(
     })
   );
 }
+
+const eventSignalGroup = (
+  resources: ArticleLimitationResources
+): EvidenceMapGroupOptions => ({
+  title: "Event signals",
+  count: resources.events.length,
+  rows: eventSignalRows(resources),
+});
 
 /**
  * Renders one evidence-map group.

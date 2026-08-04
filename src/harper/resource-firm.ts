@@ -87,12 +87,7 @@ export function firmAdvisorRows(
         status === "past" ? employment.endDate : employment.startDate
       ),
       _id: employment.id || advisor.id,
-      advisor: {
-        id: advisor.id,
-        name: advisorDisplayName(advisor),
-        headshotUrl: advisor.headshotUrl || null,
-        careerStatus: advisor.careerStatus,
-      },
+      advisor: firmAdvisorSummary(advisor),
       roleTitle: employment.roleTitle,
       roleCategory: employment.roleCategory,
       startDate: employment.startDate,
@@ -101,6 +96,15 @@ export function firmAdvisorRows(
       aumAtDeparture: employment.aumAtDeparture,
     }));
 }
+
+const firmAdvisorSummary = (
+  advisor: AdvisorRow
+): FirmAdvisorRow["advisor"] => ({
+  id: advisor.id,
+  name: advisorDisplayName(advisor),
+  headshotUrl: advisor.headshotUrl || null,
+  careerStatus: advisor.careerStatus,
+});
 
 /**
  * Counts current and past advisors associated with a firm.

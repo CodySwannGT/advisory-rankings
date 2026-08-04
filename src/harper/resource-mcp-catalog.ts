@@ -92,9 +92,8 @@ export async function buildMcpCatalog(
       probe.listResourceTemplates(),
     ]);
     const safeTools = filterSafeCatalogEntries(readArray(tools));
-    const safeTemplates = filterSafeCatalogEntries(
-      readArray(resourceTemplates)
-    );
+    const templateRows = readArray(resourceTemplates);
+    const safeTemplates = filterSafeCatalogEntries(templateRows);
     return {
       status: READY_STATE,
       generatedAt,
@@ -104,7 +103,7 @@ export async function buildMcpCatalog(
         filteredCapabilities:
           readArray(tools).length -
           safeTools.length +
-          readArray(resourceTemplates).length -
+          templateRows.length -
           safeTemplates.length,
         forbiddenTerms: FORBIDDEN_CAPABILITY_TERMS,
       },

@@ -1,5 +1,22 @@
 import type { DataCoverageMetric } from "../harper/resource-data-coverage.js";
 
+const SOURCE_TABLE_LABELS: Readonly<Record<string, string>> = {
+  Advisor: "advisor profiles",
+  AdvisorResearchCheck: "research freshness checks",
+  Article: "public articles",
+  Branch: "branch records",
+  DataCoverage: "coverage summary",
+  FieldAssertion: "source-backed facts",
+  Firm: "firm profiles",
+  FirmAlias: "firm aliases",
+  EmploymentHistory: "employment history",
+  Ranking: "rankings",
+  RankingEntry: "ranking records",
+  Team: "team profiles",
+  TransitionEvent: "recruiting move records",
+  ArticleTransitionEventMention: "article recruiting references",
+};
+
 /**
  * Formats the data source behind a headline metric for public readers.
  * @param metric - Public coverage metric.
@@ -48,38 +65,9 @@ export function publicResourceLabel(resource: string | null): string {
  */
 export function sourceTableLabel(source: string | null): string {
   const table = source?.split(".")[0] ?? null;
-  switch (table) {
-    case "Advisor":
-      return "advisor profiles";
-    case "AdvisorResearchCheck":
-      return "research freshness checks";
-    case "Article":
-      return "public articles";
-    case "Branch":
-      return "branch records";
-    case "DataCoverage":
-      return "coverage summary";
-    case "FieldAssertion":
-      return "source-backed facts";
-    case "Firm":
-      return "firm profiles";
-    case "FirmAlias":
-      return "firm aliases";
-    case "EmploymentHistory":
-      return "employment history";
-    case "Ranking":
-      return "rankings";
-    case "RankingEntry":
-      return "ranking records";
-    case "Team":
-      return "team profiles";
-    case "TransitionEvent":
-      return "recruiting move records";
-    case "ArticleTransitionEventMention":
-      return "article recruiting references";
-    default:
-      return routeLabel(table);
-  }
+  return table
+    ? (SOURCE_TABLE_LABELS[table] ?? routeLabel(table))
+    : routeLabel(table);
 }
 
 /**

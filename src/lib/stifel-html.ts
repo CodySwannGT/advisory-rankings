@@ -104,16 +104,20 @@ const parseAdvisor = (
     city: location.city,
     emailContactName: cleanText(String(emailButton.data("fa-name") ?? "")),
     emailUrlFriendlyName: emailUrlFriendlyName(emailButton),
-    headshotUrl: absoluteUrl(root.find(".search-results-fa-image").attr("src")),
-    linkedInUrl: normalizeUrl(
-      root.find('a[href*="linkedin.com"]').first().attr("href")
-    ),
+    headshotUrl: headshotUrl(root),
+    linkedInUrl: linkedInUrl(root),
     roleTitle: details.roleTitle,
     searchUrl,
     state: location.state,
     tollFreePhone: phones[1],
   };
 };
+
+const headshotUrl = (root: cheerio.Cheerio<Element>): string | undefined =>
+  absoluteUrl(root.find(".search-results-fa-image").attr("src"));
+
+const linkedInUrl = (root: cheerio.Cheerio<Element>): string | undefined =>
+  normalizeUrl(root.find('a[href*="linkedin.com"]').first().attr("href"));
 
 const emailUrlFriendlyName = (emailButton: cheerio.Cheerio<AnyNode>): string =>
   cleanText(String(emailButton.data("fa-url-friendly-name") ?? ""));

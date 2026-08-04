@@ -28,34 +28,39 @@ export function recruitingSection(db: ResourceIndex): DataCoverageSection {
   return {
     id: "recruiting",
     label: "Recruiting coverage",
-    metrics: [
-      metric(
-        "moves",
-        "Moves",
-        summary.count,
-        "TransitionEvent",
-        RECRUITING_MARKET_RESOURCE,
-        summary.count === 0 ? "No public recruiting moves are loaded." : null
-      ),
-      metric(
-        "source-backed-moves",
-        "Source-backed moves",
-        coverage.sourceBackedCount,
-        ARTICLE_TRANSITION_MENTION_SOURCE,
-        RECRUITING_MARKET_RESOURCE,
-        warningIf(coverage.missingSourceCount, MISSING_SOURCE_WARNING)
-      ),
-      metric(
-        "missing-location",
-        "Moves missing location",
-        coverage.missingLocationCount,
-        "Branch",
-        RECRUITING_MARKET_RESOURCE,
-        warningIf(coverage.missingLocationCount, MISSING_LOCATION_WARNING)
-      ),
-    ],
+    metrics: recruitingMetrics(summary, coverage),
   };
 }
+
+const recruitingMetrics = (
+  summary: ReturnType<typeof summarizeMoves>,
+  coverage: ReturnType<typeof sourceCoverage>
+): readonly DataCoverageMetric[] => [
+  metric(
+    "moves",
+    "Moves",
+    summary.count,
+    "TransitionEvent",
+    RECRUITING_MARKET_RESOURCE,
+    summary.count === 0 ? "No public recruiting moves are loaded." : null
+  ),
+  metric(
+    "source-backed-moves",
+    "Source-backed moves",
+    coverage.sourceBackedCount,
+    ARTICLE_TRANSITION_MENTION_SOURCE,
+    RECRUITING_MARKET_RESOURCE,
+    warningIf(coverage.missingSourceCount, MISSING_SOURCE_WARNING)
+  ),
+  metric(
+    "missing-location",
+    "Moves missing location",
+    coverage.missingLocationCount,
+    "Branch",
+    RECRUITING_MARKET_RESOURCE,
+    warningIf(coverage.missingLocationCount, MISSING_LOCATION_WARNING)
+  ),
+];
 
 /**
  * Creates one recruiting coverage metric.

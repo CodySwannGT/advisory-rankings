@@ -174,14 +174,8 @@ function renderRatingForm(
 ): void {
   const status = el("p", { class: "private-rating-status" });
   const numberControls = ratingControls(rating);
-  const review = asHtmlTextAreaElement(
-    el(
-      "textarea",
-      { name: "reviewText", maxlength: "1000", rows: "4" },
-      rating.reviewText ?? ""
-    )
-  );
-  const controls: RatingControls = { ...numberControls, reviewText: review };
+  const review = reviewTextArea(rating);
+  const controls = { ...numberControls, reviewText: review };
   const form = el(
     "form",
     {
@@ -202,6 +196,15 @@ function renderRatingForm(
   clear(body);
   body.appendChild(form);
 }
+
+const reviewTextArea = (rating: PrivateRating): HTMLTextAreaElement =>
+  asHtmlTextAreaElement(
+    el(
+      "textarea",
+      { name: "reviewText", maxlength: "1000", rows: "4" },
+      rating.reviewText ?? ""
+    )
+  );
 
 /**
  * Builds the private-rating submit button.

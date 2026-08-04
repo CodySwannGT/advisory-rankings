@@ -336,10 +336,9 @@ async function fieldCompleteness(
   return {
     table,
     fields: fieldResults.map(({ warnings: _warnings, ...field }) => field),
-    warnings: [
-      ...totalResult.warnings,
-      ...fieldResults.flatMap(result => result.warnings),
-    ],
+    warnings: totalResult.warnings.concat(
+      fieldResults.flatMap(result => result.warnings)
+    ),
   };
 }
 

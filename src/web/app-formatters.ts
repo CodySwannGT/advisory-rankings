@@ -260,12 +260,7 @@ export function articleSource(
   }
   const host = hostnameForUrl(url);
   const known = PUBLISHER_BY_HOST[host];
-  const source = known
-    ? known.source
-    : (host.replace(/^www\./, "").split(".")[0] || "External").replace(
-        /^\w/,
-        c => c.toUpperCase()
-      );
+  const source = known ? known.source : hostSourceLabel(host);
   const initialsText = known ? known.initials : initials(source);
   return {
     source,
@@ -274,6 +269,11 @@ export function articleSource(
     publicOriginalLink: true,
   };
 }
+
+const hostSourceLabel = (host: string): string =>
+  (host.replace(/^www\./, "").split(".")[0] || "External").replace(/^\w/, c =>
+    c.toUpperCase()
+  );
 
 /**
  * Safely extracts a lowercase hostname from an article URL.

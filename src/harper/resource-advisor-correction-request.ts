@@ -208,7 +208,6 @@ async function createRequest(
   body: CorrectionRequestBody,
   userId: string
 ): Promise<AdvisorCorrectionRequestRow> {
-  const pendingCount = await pendingCorrectionCount(userId);
   const advisorId = requiredText(body.advisorId, "advisor id required", 200);
   const fieldName = requiredText(
     body.fieldName,
@@ -220,7 +219,7 @@ async function createRequest(
     "proposed value required",
     MAX_VALUE_LENGTH
   );
-  if (pendingCount >= MAX_PENDING_PER_USER) {
+  if ((await pendingCorrectionCount(userId)) >= MAX_PENDING_PER_USER) {
     throwStatus("pending correction limit reached", 400);
   }
   const row: AdvisorCorrectionRequestRow = {

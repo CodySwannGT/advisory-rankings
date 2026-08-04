@@ -131,13 +131,18 @@ export function firmCenterSections(
     PartialFailureCard(movesAwayTitle, d.transitionsOut),
     disclosuresSection(disclosuresTitle, disclosuresAtThisFirm),
     PartialFailureCard(disclosuresTitle, d.disclosuresAtThisFirm),
-    SectionCardComponent({
-      title: `Coverage (${articles.length.toLocaleString()})`,
-      body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
-    }),
+    firmCoverageSection(articles),
     PartialFailureCard("Coverage", d.articles),
   ];
 }
+
+const firmCoverageSection = (
+  articles: readonly ArticleStubLike[]
+): HTMLElement =>
+  SectionCardComponent({
+    title: `Coverage (${articles.length.toLocaleString()})`,
+    body: ArticleListBlockComponent({ articles, fmtDate, articleSource }),
+  });
 
 /**
  * Builds the right-rail firm sections.

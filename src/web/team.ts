@@ -176,13 +176,7 @@ function teamProfileSections(
   } = rows;
   return [
     teamProfileHead(d.team, d, currentFirm, latest),
-    teamContinuityCard({
-      currentMembers,
-      pastMembers,
-      metricSnapshots,
-      transitions,
-      articles,
-    }),
+    teamContinuityCard(rows),
     currentMembersCard(currentMembers),
     PartialFailureCard("Current members", d.currentMembers),
     pastMembersCard(pastMembers),
