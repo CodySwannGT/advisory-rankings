@@ -191,6 +191,80 @@ describe("resource search edge scoring", () => {
       (globalThis as any).tables = previousTables;
     }
   });
+
+  it("hydrates advisor subtitles from current firms outside the firm search slice", async () => {
+    const currentFirmName = "Beacon Partners";
+    const previousTables = (globalThis as any).tables;
+    (globalThis as any).tables = {
+      AdvisorSearchIndex: serialSearchTable([
+        { advisorId: ADVISOR_ID, token: "alpha" },
+      ]),
+      Advisor: serialSearchTable([
+        {
+          careerStatus: "Career fallback",
+          firstName: "Alpha",
+          id: ADVISOR_ID,
+          lastName: "Advisor",
+          legalName: "Alpha Advisor",
+          preferredName: "",
+        },
+      ]),
+      EmploymentHistory: serialSearchTable([
+        {
+          advisorId: ADVISOR_ID,
+          endDate: "2020-01-01",
+          firmId: "firm-former",
+          id: "employment-former",
+          startDate: "2018-01-01",
+        },
+        {
+          advisorId: ADVISOR_ID,
+          endDate: "",
+          firmId: FIRM_ID,
+          id: "employment-current",
+          startDate: "2021-01-01",
+        },
+      ]),
+      Firm: serialSearchTable([
+        {
+          channel: "wirehouse",
+          hqCity: "New York",
+          hqState: "NY",
+          id: FIRM_ID,
+          legalName: "",
+          name: currentFirmName,
+        },
+      ]),
+      FirmAlias: serialSearchTable([]),
+      Team: serialSearchTable([]),
+    };
+
+    try {
+      const response = await runGlobalSearch({
+        cap: 5,
+        kind: "all",
+        norm: "alpha",
+      });
+
+      expect(response.items).toContainEqual(
+        expect.objectContaining({
+          id: ADVISOR_ID,
+          kind: "advisor",
+          sub: currentFirmName,
+        })
+      );
+      expect(response.items).not.toContainEqual(
+        expect.objectContaining({
+          id: ADVISOR_ID,
+          kind: "advisor",
+          sub: "Career fallback",
+        })
+      );
+      expect(response.counts).toMatchObject({ advisors: 1, firms: 0 });
+    } finally {
+      (globalThis as any).tables = previousTables;
+    }
+  });
 });
 
 /**
@@ -201,7 +275,23 @@ describe("resource search edge scoring", () => {
  * @returns Minimal table search surface.
  */
 function serialSearchTable<T extends Record<string, unknown>>(
+  rows: readonly T[]
+): ReturnType<typeof guardedSerialSearchTable<T>>;
+function serialSearchTable<T extends Record<string, unknown>>(
   activeReads: { count: number },
+  rows: readonly T[]
+): ReturnType<typeof guardedSerialSearchTable<T>>;
+function serialSearchTable<T extends Record<string, unknown>>(
+  first: { count: number } | readonly T[],
+  second?: readonly T[]
+) {
+  return Array.isArray(first)
+    ? guardedSerialSearchTable(null, first)
+    : guardedSerialSearchTable(first, second ?? []);
+}
+
+function guardedSerialSearchTable<T extends Record<string, unknown>>(
+  activeReads: { count: number } | null,
   rows: readonly T[]
 ) {
   return {
@@ -213,15 +303,19 @@ function serialSearchTable<T extends Record<string, unknown>>(
       }[];
       readonly limit?: number;
     }) {
-      activeReads.count += 1;
-      expect(activeReads.count).toBe(1);
+      if (activeReads) {
+        activeReads.count += 1;
+        expect(activeReads.count).toBe(1);
+      }
       await Promise.resolve();
       try {
         yield* rows
           .filter(rowMatches(query.conditions ?? []))
           .slice(0, query.limit ?? rows.length);
       } finally {
-        activeReads.count -= 1;
+        if (activeReads) {
+          activeReads.count -= 1;
+        }
       }
     },
   };
