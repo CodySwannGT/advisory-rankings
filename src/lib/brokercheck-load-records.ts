@@ -41,6 +41,12 @@ interface ParsedIndividual extends BrokerRow {
   readonly summary?: BrokerRow;
 }
 
+/** IDs shared while building one parsed individual load result. */
+interface IndividualBuildContext {
+  readonly advisorUuid: string;
+  readonly snapshotId: string;
+}
+
 /** Subset of `parseFirm` output consumed by the loader. */
 interface ParsedFirm extends BrokerRow {
   readonly firm: BrokerRow;
@@ -168,17 +174,14 @@ const buildIndividualRows = async (
 ): Promise<IndividualRows> => {
   const snapshotId = uid(`bcsnap:individual:${crd}`);
   const advisorUuid = await resolveParsedAdvisorUuid(parsed, resolver, crd);
-  const employmentResults = await Promise.all(
-    parsed.employments.map(emp =>
-      buildEmploymentRow(emp, resolver, advisorUuid, snapshotId)
-    )
-  );
-  const disclosureResults = await buildIndividualDisclosureRows(
+  const context = { advisorUuid, snapshotId };
+  const employmentResults = await buildEmploymentRows(
     parsed,
     resolver,
-    advisorUuid,
-    snapshotId
+    context
   );
+  const disclosureResults = await disclosures(parsed, resolver, context);
+  const snapshotRow = individualSnapshot(parsed, rawContent, crd, context);
   return {
     advisorRow: { ...parsed.advisor, id: advisorUuid },
     firmRows: firmRowsFromEmployments(employmentResults, resolver, snapshotId),
@@ -186,15 +189,46 @@ const buildIndividualRows = async (
     disclosureRows: disclosureResults.flatMap(result => result.disclosureRows),
     sanctionRows: disclosureResults.flatMap(result => result.sanctionRows),
     licenseRows: parsedLicenseRows(parsed, resolver, advisorUuid),
-    snapshotRow: parsedIndividualSnapshotRow(
-      parsed,
-      rawContent,
-      advisorUuid,
-      crd,
-      snapshotId
-    ),
+    snapshotRow,
   };
 };
+
+const buildEmploymentRows = (
+  parsed: ParsedIndividual,
+  resolver: Resolver,
+  context: IndividualBuildContext
+): Promise<ReadonlyArray<Awaited<ReturnType<typeof buildEmploymentRow>>>> =>
+  Promise.all(
+    parsed.employments.map(emp =>
+      buildEmploymentRow(emp, resolver, context.advisorUuid, context.snapshotId)
+    )
+  );
+
+const disclosures = (
+  parsed: ParsedIndividual,
+  resolver: Resolver,
+  context: IndividualBuildContext
+): ReturnType<typeof buildIndividualDisclosureRows> =>
+  buildIndividualDisclosureRows(
+    parsed,
+    resolver,
+    context.advisorUuid,
+    context.snapshotId
+  );
+
+const individualSnapshot = (
+  parsed: ParsedIndividual,
+  rawContent: unknown,
+  crd: string,
+  context: IndividualBuildContext
+): IndividualRows["snapshotRow"] =>
+  parsedIndividualSnapshotRow(
+    parsed,
+    rawContent,
+    context.advisorUuid,
+    crd,
+    context.snapshotId
+  );
 
 const parsedLicenseRows = (
   parsed: ParsedIndividual,

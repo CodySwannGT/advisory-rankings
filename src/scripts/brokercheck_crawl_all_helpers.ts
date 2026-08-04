@@ -56,13 +56,12 @@ export const runSelectedPhases = async (
     : {}),
   ...(!flags.skipFirmSnapshots
     ? {
-        firm_snapshots: await fetchFirmSnapshots(
+        firm_snapshots: await selectedFirmSnapshots(
           rest,
           client,
           resolver,
           state,
-          rosterOptions.force,
-          rosterOptions.log
+          rosterOptions
         ),
       }
     : {}),
@@ -78,6 +77,15 @@ export const runSelectedPhases = async (
       }
     : {}),
 });
+
+const selectedFirmSnapshots = (
+  rest: HarperREST,
+  client: BrokerCheckClient,
+  resolver: Resolver,
+  state: CrawlState,
+  options: WalkFirmRostersOptions
+): Promise<SnapshotSummary> =>
+  fetchFirmSnapshots(rest, client, resolver, state, options.force, options.log);
 
 /**
  * Logs the phase-1 banner, then loads every Firm row from Harper.

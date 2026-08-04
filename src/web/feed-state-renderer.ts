@@ -47,31 +47,83 @@ export function renderFeedState(
   renderSidebars: (visibleItems: readonly FeedItem[]) => void
 ): void {
   const categories = feedCategories(loadedItems);
-  const filters = readFeedFilters(categories);
-  const filteredItems = filterFeedItems(loadedItems, filters);
+  const filteredItems = filterFeedItems(
+    loadedItems,
+    readFeedFilters(categories)
+  );
   const visibleItems = filteredItems.slice(0, visibleLimit);
   const moreLoadedToReveal = visibleItems.length < filteredItems.length;
-  renderCenter(layout.center, visibleItems, {
+  const onLoadMore = loadMoreHandler(
+    cursor,
+    loadedItems,
+    moreLoadedToReveal,
+    renderCurrentState,
+    visibleLimit
+  );
+  const options = feedCenterOptions(
     categories,
-    count: visibleItems.length,
-    filters,
-    hasMore: moreLoadedToReveal || cursor.hasMore,
-    total: filteredItems.length,
-    onChange: (nextFilters: FeedFilterValues) => {
-      writeFeedFilters(nextFilters);
-      reloadFeed();
-    },
-    onLoadMore: () =>
-      loadMoreFeedItems({
+    filteredItems,
+    visibleItems.length,
+    moreLoadedToReveal || cursor.hasMore,
+    reloadFeed,
+    onLoadMore
+  );
+  renderCenter(layout.center, visibleItems, options);
+  renderSidebars(visibleItems);
+}
+
+const loadMoreHandler =
+  (
+    cursor: FeedCursor,
+    loadedItems: readonly FeedItem[],
+    moreLoadedToReveal: boolean,
+    renderCurrentState: FeedStateRenderer,
+    visibleLimit: number
+  ): (() => void) =>
+  () =>
+    loadMoreFeedItems(
+      loadMoreOptions(
         cursor,
         loadedItems,
         moreLoadedToReveal,
         renderCurrentState,
-        visibleLimit,
-      }),
-  });
-  renderSidebars(visibleItems);
-}
+        visibleLimit
+      )
+    );
+
+const feedCenterOptions = (
+  categories: readonly string[],
+  filteredItems: readonly FeedItem[],
+  visibleCount: number,
+  hasMore: boolean,
+  reloadFeed: () => void,
+  onLoadMore: () => void
+): Parameters<typeof renderCenter>[2] => ({
+  categories,
+  count: visibleCount,
+  filters: readFeedFilters(categories),
+  hasMore,
+  total: filteredItems.length,
+  onChange: (nextFilters: FeedFilterValues) => {
+    writeFeedFilters(nextFilters);
+    reloadFeed();
+  },
+  onLoadMore,
+});
+
+const loadMoreOptions = (
+  cursor: FeedCursor,
+  loadedItems: readonly FeedItem[],
+  moreLoadedToReveal: boolean,
+  renderCurrentState: FeedStateRenderer,
+  visibleLimit: number
+): LoadMoreFeedItemsOptions => ({
+  cursor,
+  loadedItems,
+  moreLoadedToReveal,
+  renderCurrentState,
+  visibleLimit,
+});
 
 /**
  * Reveals loaded feed rows or fetches the next cursor page.

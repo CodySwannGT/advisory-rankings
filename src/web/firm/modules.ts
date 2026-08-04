@@ -54,16 +54,25 @@ export function recruitingMomentumCard(
         signedMoney(module?.netAumMoved)
       )
     ),
-    module?.inbound?.unknownAumCount || module?.outbound?.unknownAumCount
-      ? el(
-          "p",
-          { class: "firm-dd-missing" },
-          `${fmtNumber((module?.inbound?.unknownAumCount || 0) + (module?.outbound?.unknownAumCount || 0))} move(s) have unknown AUM.`
-        )
-      : null,
+    unknownAumNote(module),
     recentMovesList(module?.recentMoves || [])
   );
 }
+
+const unknownAumNote = (
+  module: RecruitingMomentumModule | null | undefined
+): HTMLElement | null => {
+  const count =
+    (module?.inbound?.unknownAumCount || 0) +
+    (module?.outbound?.unknownAumCount || 0);
+  return count
+    ? el(
+        "p",
+        { class: "firm-dd-missing" },
+        `${fmtNumber(count)} move(s) have unknown AUM.`
+      )
+    : null;
+};
 
 /**
  * Builds the roster module.

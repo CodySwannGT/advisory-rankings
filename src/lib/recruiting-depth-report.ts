@@ -71,22 +71,32 @@ function recruitingValidationChecks(
       input.directionSliceCount,
       min.minDirectionSlices
     ),
-    validationCheck(
-      "source-backed-rows",
-      "Source-backed rows",
-      input.sourceBackedCount,
-      1
-    ),
+    sourceBackedCheck(input),
     validationCheck("known-aum-rows", "Known AUM rows", knownAumCount, 1),
-    validationCheck(
-      "unknown-aum-rows",
-      "Unknown AUM rows",
-      input.missingAumCount,
-      1
-    ),
+    unknownAumCheck(input),
     missingDealEconomicsStatusCheck(input),
   ];
 }
+
+const sourceBackedCheck = (
+  input: RecruitingValidationReportInput
+): ValidationCheck =>
+  validationCheck(
+    "source-backed-rows",
+    "Source-backed rows",
+    input.sourceBackedCount,
+    1
+  );
+
+const unknownAumCheck = (
+  input: RecruitingValidationReportInput
+): ValidationCheck =>
+  validationCheck(
+    "unknown-aum-rows",
+    "Unknown AUM rows",
+    input.missingAumCount,
+    1
+  );
 
 /**
  * Builds the validation check for missing deal-economics status coverage.

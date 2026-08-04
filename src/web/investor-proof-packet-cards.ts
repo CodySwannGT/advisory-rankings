@@ -141,18 +141,7 @@ function freshnessCard(packet: InvestorProofPacketResponse): HTMLElement {
     attrs: { class: "investor-proof-freshness" },
     body: [
       freshnessStats(packet),
-      packet.freshness.priorityGroups.length > 0
-        ? el(
-            "div",
-            { class: "investor-proof-tag-list" },
-            ...packet.freshness.priorityGroups.map(group =>
-              Tag({
-                children: `${group.label}: ${fmtNumber(group.count)}`,
-                kind: group.count > 0 ? "warn" : "neutral",
-              })
-            )
-          )
-        : null,
+      freshnessPriorityTags(packet),
       packet.freshness.representativeAdvisors.length > 0
         ? el(
             "div",
@@ -170,6 +159,22 @@ function freshnessCard(packet: InvestorProofPacketResponse): HTMLElement {
     ],
   });
 }
+
+const freshnessPriorityTags = (
+  packet: InvestorProofPacketResponse
+): HTMLElement | null =>
+  packet.freshness.priorityGroups.length > 0
+    ? el(
+        "div",
+        { class: "investor-proof-tag-list" },
+        ...packet.freshness.priorityGroups.map(group =>
+          Tag({
+            children: `${group.label}: ${fmtNumber(group.count)}`,
+            kind: group.count > 0 ? "warn" : "neutral",
+          })
+        )
+      )
+    : null;
 
 /**
  * Builds the freshness metric stat grid.

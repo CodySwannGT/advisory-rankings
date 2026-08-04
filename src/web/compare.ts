@@ -118,12 +118,7 @@ function renderComparison(
     SectionCardComponent({
       title: "Due diligence evidence",
       body: comparisonTable(payload.items, {
-        remove: id =>
-          updateComparisonSelection(
-            nextPayload => renderComparison(center, nextPayload),
-            payload,
-            payload.items.filter(item => item.id !== id)
-          ),
+        remove: id => removeComparisonItem(center, payload, id),
         move: (id, direction) =>
           updateComparisonSelection(
             nextPayload => renderComparison(center, nextPayload),
@@ -137,6 +132,18 @@ function renderComparison(
     privateOverlayMount(payload.items)
   );
 }
+
+const removeComparisonItem = (
+  center: HTMLElement,
+  payload: AdvisorComparisonPayload,
+  id: string
+): void => {
+  updateComparisonSelection(
+    nextPayload => renderComparison(center, nextPayload),
+    payload,
+    payload.items.filter(item => item.id !== id)
+  );
+};
 
 /**
  * Builds the under-limit recovery card when the route could accept more ids.

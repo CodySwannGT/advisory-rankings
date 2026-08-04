@@ -76,9 +76,7 @@ export const fetchOneCrd = async (
     log(`[skip] individual ${crd} fetched recently`);
     return null;
   }
-  const content = unwrapIndividual(
-    await client.getIndividual(crd)
-  ) as BrokerRecord | null;
+  const content = await individualContent(client, crd);
   if (!content) {
     log(`[warn] individual ${crd}: no content`);
     return null;
@@ -122,9 +120,7 @@ export const fetchOneFirm = async (
     log(`[skip] firm ${firmId} fetched recently`);
     return null;
   }
-  const content = unwrapFirm(
-    await client.getFirm(firmId)
-  ) as BrokerRecord | null;
+  const content = await firmContent(client, firmId);
   if (!content) {
     log(`[warn] firm ${firmId}: no content`);
     return null;
@@ -144,6 +140,18 @@ export const fetchOneFirm = async (
   log(`[firm ${firmId}] ${JSON.stringify(counts)}`);
   return counts;
 };
+
+const individualContent = async (
+  client: BrokerCheckClient,
+  crd: string
+): Promise<BrokerRecord | null> =>
+  unwrapIndividual(await client.getIndividual(crd)) as BrokerRecord | null;
+
+const firmContent = async (
+  client: BrokerCheckClient,
+  firmId: string
+): Promise<BrokerRecord | null> =>
+  unwrapFirm(await client.getFirm(firmId)) as BrokerRecord | null;
 
 /**
  * Builds the persisted crawl marker for one individual CRD fetch.
