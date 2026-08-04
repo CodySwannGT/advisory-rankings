@@ -173,4 +173,35 @@ No contact line here.
       headshotUrl: "https://www.raymondjames.com/dotcom/headshot?id=1",
     });
   });
+
+  it("falls back for generic branch metadata and preserves absolute links", () => {
+    const advisors = parseRaymondJamesBranchMarkdown(
+      `# Independent Advisor Page
+
+[![Image 1](https://images.example.com/headshot.jpg) Echo Echo Financial Advisor View Website](https://advisor.example.com/echo)
+
+[](tel:8135559999)
+`,
+      "https://www.raymondjames.com/independent"
+    );
+    expect(advisors).toEqual([
+      {
+        advisorName: "Echo",
+        roleTitle: "Financial Advisor",
+        advisorUrl: "https://advisor.example.com/echo",
+        headshotUrl: "https://images.example.com/headshot.jpg",
+        businessEmail: undefined,
+        businessPhone: "8135559999",
+        branch: {
+          name: "Raymond James Branch",
+          branchUrl: "https://www.raymondjames.com/independent",
+          address: undefined,
+          city: undefined,
+          state: undefined,
+          postalCode: undefined,
+          phone: undefined,
+        },
+      },
+    ]);
+  });
 });
