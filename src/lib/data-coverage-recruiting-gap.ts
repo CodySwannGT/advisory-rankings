@@ -71,11 +71,13 @@ export async function detectUnextractedRecruiting(
       .filter(id => id.length > 0)
   );
   const gap = findUnextractedRecruitingArticles(
-    articles.rows.map(row => ({
-      id: String(row.id ?? ""),
-      headline: row.headline == null ? null : String(row.headline),
-      category: row.category == null ? null : String(row.category),
-    })),
+    articles.rows
+      .map(row => ({
+        id: String(row.id ?? ""),
+        headline: row.headline == null ? null : String(row.headline),
+        category: row.category == null ? null : String(row.category),
+      }))
+      .filter(article => article.id.length > 0),
     mentionedIds
   );
   return {
