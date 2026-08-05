@@ -4,10 +4,12 @@ import {
   unextractedRecruitingWarnings,
 } from "../src/lib/data-coverage-recruiting-gap.js";
 
+const MENTION_TABLE = "data.ArticleTransitionEventMention";
+
 describe("detectUnextractedRecruiting", () => {
   it("coerces sparse rows and keeps only unlinked recruiting-shaped articles", async () => {
     const result = await detectUnextractedRecruiting(async query => {
-      if (query.includes("data.ArticleTransitionEventMention")) {
+      if (query.includes(MENTION_TABLE)) {
         return [{ articleId: "linked" }, { articleId: null }, {}];
       }
       return [
@@ -35,9 +37,43 @@ describe("detectUnextractedRecruiting", () => {
     });
   });
 
+  it("ignores blank article ids and duplicate transition mentions", async () => {
+    const result = await detectUnextractedRecruiting(async query => {
+      if (query.includes(MENTION_TABLE)) {
+        return [
+          { articleId: "linked" },
+          { articleId: "linked" },
+          { articleId: "" },
+        ];
+      }
+      return [
+        {
+          id: "linked",
+          headline: "Wirehouse Snags $2M Team",
+          category: "unknown",
+        },
+        {
+          id: "",
+          headline: "RIA Recruits Advisor",
+          category: "unknown",
+        },
+        {
+          id: "gap",
+          headline: "Advisor Joins Independent Firm",
+          category: "unknown",
+        },
+      ];
+    });
+
+    expect(result).toEqual({
+      rows: [{ id: "gap", headline: "Advisor Joins Independent Firm" }],
+      warnings: [],
+    });
+  });
+
   it("returns recoverable warning lines when either gap query fails", async () => {
     const result = await detectUnextractedRecruiting(async query => {
-      if (query.includes("data.ArticleTransitionEventMention")) {
+      if (query.includes(MENTION_TABLE)) {
         throw new Error("mentions failed\nwith details");
       }
       throw new Error("articles failed\nwith details");
