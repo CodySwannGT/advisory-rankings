@@ -239,9 +239,7 @@ function correctionControls(
     el(
       "select",
       { name: "fieldName", class: "advisor-correction-select" },
-      ...fields.map(option =>
-        el("option", { value: option.name }, option.label)
-      )
+      ...fields.map(correctionFieldOption)
     )
   );
   return {
@@ -266,6 +264,9 @@ function correctionControls(
     ),
   };
 }
+
+const correctionFieldOption = (option: CorrectionField): HTMLElement =>
+  el("option", { value: option.name }, option.label);
 
 /**
  * Submits a correction request and reflects the queued state.

@@ -222,22 +222,36 @@ async function createRequest(
   if ((await pendingCorrectionCount(userId)) >= MAX_PENDING_PER_USER) {
     throwStatus("pending correction limit reached", 400);
   }
-  const row: AdvisorCorrectionRequestRow = {
-    id: newId(userId),
+  const row = correctionRequestRow(
+    body,
+    userId,
     advisorId,
     fieldName,
-    displayedValue: textValue(body.displayedValue, MAX_VALUE_LENGTH),
-    proposedValue,
-    submitterId: userId,
-    submitterNote: textValue(body.submitterNote ?? body.note, MAX_NOTE_LENGTH),
-    sourceType: textValue(body.sourceType, MAX_SOURCE_LENGTH),
-    sourceRef: textValue(body.sourceRef, MAX_SOURCE_LENGTH),
-    sourceContext: textValue(body.sourceContext, MAX_CONTEXT_LENGTH),
-    status: "pending",
-  };
+    proposedValue
+  );
   await writeRow(correctionRequestTable(), row);
   return row;
 }
+
+const correctionRequestRow = (
+  body: CorrectionRequestBody,
+  userId: string,
+  advisorId: string,
+  fieldName: string,
+  proposedValue: string
+): AdvisorCorrectionRequestRow => ({
+  id: newId(userId),
+  advisorId,
+  fieldName,
+  displayedValue: textValue(body.displayedValue, MAX_VALUE_LENGTH),
+  proposedValue,
+  submitterId: userId,
+  submitterNote: textValue(body.submitterNote ?? body.note, MAX_NOTE_LENGTH),
+  sourceType: textValue(body.sourceType, MAX_SOURCE_LENGTH),
+  sourceRef: textValue(body.sourceRef, MAX_SOURCE_LENGTH),
+  sourceContext: textValue(body.sourceContext, MAX_CONTEXT_LENGTH),
+  status: "pending",
+});
 
 /**
  * Counts pending correction requests for a submitter.

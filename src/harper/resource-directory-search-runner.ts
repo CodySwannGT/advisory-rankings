@@ -126,13 +126,8 @@ interface BuildSearchResponseInput {
 const buildSearchResponse = async (
   input: BuildSearchResponseInput
 ): Promise<SearchResponse> => {
-  const { norm, kind, cap, advisors, firmMatches, teamMatches } = input;
-  const rows = canonicalizeForSearch({
-    firms: firmMatches,
-    teams: teamMatches,
-    employments: [],
-    firmAliases: input.firmAliases,
-  });
+  const { norm, kind, cap, advisors } = input;
+  const rows = canonicalSearchRows(input);
   const byFirm = new Map(rows.firms.map(firm => [firm.id, firm]));
   const matches = rankedSearchMatches({
     advisors,
@@ -157,6 +152,14 @@ const buildSearchResponse = async (
     counts: canonicalSearchCounts(input.counts, rows),
   };
 };
+
+const canonicalSearchRows = (input: BuildSearchResponseInput) =>
+  canonicalizeForSearch({
+    firms: input.firmMatches,
+    teams: input.teamMatches,
+    employments: [],
+    firmAliases: input.firmAliases,
+  });
 
 const advisorLookup = (
   advisors: readonly AdvisorRow[]

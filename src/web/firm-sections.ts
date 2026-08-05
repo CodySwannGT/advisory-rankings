@@ -57,14 +57,7 @@ export function firmDetailsCard(f: FirmRow): HTMLElement {
         [f.hqCity, f.hqState, f.hqCountry].filter(Boolean).join(", "),
       ],
       ["Founded", f.foundedYear],
-      [
-        "Dissolved",
-        f.dissolvedYear
-          ? [f.dissolvedYear, humanize(f.dissolutionReason)]
-              .filter(Boolean)
-              .join(" · ")
-          : null,
-      ],
+      ["Dissolved", dissolvedLabel(f)],
       ["FINRA CRD", f.finraCrd],
       ["SEC filer ID", f.secFilerId],
       [
@@ -80,6 +73,13 @@ export function firmDetailsCard(f: FirmRow): HTMLElement {
     ],
   });
 }
+
+const dissolvedLabel = (f: FirmRow): string | null =>
+  f.dissolvedYear
+    ? [f.dissolvedYear, humanize(f.dissolutionReason)]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
 
 /**
  * Builds the BrokerCheck regulatory-record card.

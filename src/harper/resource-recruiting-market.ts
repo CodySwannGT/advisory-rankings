@@ -13,9 +13,11 @@ import type { ResourceIndex } from "./resource-data.js";
 import type { WatchlistFilterItem } from "./resource-recruiting-watchlist.js";
 import type {
   PublicRecruitingFilters,
+  PublicMove,
   RecruitingDirection,
   RecruitingFilters,
   RecruitingMarketResponse,
+  RecruitingMove,
 } from "./resource-recruiting-market-types.js";
 
 import { loadAll } from "./resource-data.js";
@@ -67,11 +69,7 @@ export class RecruitingMarket extends Resource {
       firmMomentum: firmMomentum(db, moves),
       watchlist: watchlist.watchlistPayload(db, moves, filters, generatedAt),
       marketActivity: marketActivity(moves),
-      recentMoves: moves
-        .slice()
-        .sort(dateDesc("moveDate"))
-        .slice(0, filters.limit)
-        .map(publicMove),
+      recentMoves: recentMoves(moves, filters.limit),
       provenance: {
         sourceTables: [
           "TransitionEvent",
@@ -89,6 +87,12 @@ export class RecruitingMarket extends Resource {
     };
   }
 }
+
+const recentMoves = (
+  moves: readonly RecruitingMove[],
+  limit: number
+): readonly PublicMove[] =>
+  moves.slice().sort(dateDesc("moveDate")).slice(0, limit).map(publicMove);
 
 /**
  * Parses recruiting market filters from the request target.

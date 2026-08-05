@@ -124,17 +124,16 @@ const runSelectedCrawlMode = async (
       opts
     );
   const firmRoster = arg("--firm-roster");
-  return firmRoster
-    ? await crawlFirmRoster(
-        crawls,
-        client,
-        rest,
-        resolver,
-        state,
-        firmRoster,
-        opts
-      )
-    : null;
+  if (!firmRoster) return null;
+  return await crawlFirmRoster(
+    crawls,
+    client,
+    rest,
+    resolver,
+    state,
+    firmRoster,
+    opts
+  );
 };
 
 /**

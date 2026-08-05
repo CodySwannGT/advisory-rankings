@@ -122,14 +122,11 @@ export function tokensForAdvisor(row: AdvisorRow): readonly AdvisorToken[] {
   const preferredName = stringOrEmpty(row.preferredName);
 
   const fullName = normalizeQueryToken(legalName);
-  const legalParts = splitQueryTokens(legalName);
-  const firstParts = splitQueryTokens(firstName);
-  const lastParts = splitQueryTokens(lastName);
-  const preferredParts = splitQueryTokens(preferredName);
+  const parts = advisorNameParts(legalName, firstName, lastName, preferredName);
 
-  const lastSet: ReadonlySet<string> = new Set(lastParts);
-  const firstSet: ReadonlySet<string> = new Set(firstParts);
-  const preferredSet: ReadonlySet<string> = new Set(preferredParts);
+  const lastSet: ReadonlySet<string> = new Set(parts.last);
+  const firstSet: ReadonlySet<string> = new Set(parts.first);
+  const preferredSet: ReadonlySet<string> = new Set(parts.preferred);
 
   // Classify a single-word token by the most-specific source it appears in.
   // lastName > firstName > preferredName > name. The full normalized
@@ -144,10 +141,10 @@ export function tokensForAdvisor(row: AdvisorRow): readonly AdvisorToken[] {
   };
 
   const allSingles = uniqueOrdered([
-    ...legalParts,
-    ...firstParts,
-    ...lastParts,
-    ...preferredParts,
+    ...parts.legal,
+    ...parts.first,
+    ...parts.last,
+    ...parts.preferred,
   ]);
 
   const seeded: ReadonlyMap<string, TokenKind> = new Map();
@@ -160,3 +157,15 @@ export function tokensForAdvisor(row: AdvisorRow): readonly AdvisorToken[] {
     .slice(0, MAX_TOKENS_PER_ADVISOR)
     .map(([token, kind]) => ({ token, kind }));
 }
+
+const advisorNameParts = (
+  legal: string,
+  first: string,
+  last: string,
+  preferred: string
+) => ({
+  legal: splitQueryTokens(legal),
+  first: splitQueryTokens(first),
+  last: splitQueryTokens(last),
+  preferred: splitQueryTokens(preferred),
+});

@@ -50,33 +50,27 @@ export const runSelectedPhases = async (
   state: CrawlState,
   rosterOptions: WalkFirmRostersOptions,
   flags: CrawlPhaseFlags
-): Promise<Readonly<Record<string, unknown>>> => ({
-  ...(!flags.skipFirmLookup
-    ? { firm_lookup: await lookupFirmCrds(rest, client, rosterOptions.log) }
-    : {}),
-  ...(!flags.skipFirmSnapshots
-    ? {
-        firm_snapshots: await selectedFirmSnapshots(
-          rest,
-          client,
-          resolver,
-          state,
-          rosterOptions
-        ),
-      }
-    : {}),
-  ...(!flags.skipRosters
-    ? {
-        rosters: await walkFirmRosters(
-          rest,
-          client,
-          resolver,
-          state,
-          rosterOptions
-        ),
-      }
-    : {}),
-});
+): Promise<Readonly<Record<string, unknown>>> => {
+  const phases = await Promise.all([
+    phaseEntry("firm_lookup", flags.skipFirmLookup, () =>
+      lookupFirmCrds(rest, client, rosterOptions.log)
+    ),
+    phaseEntry("firm_snapshots", flags.skipFirmSnapshots, () =>
+      selectedFirmSnapshots(rest, client, resolver, state, rosterOptions)
+    ),
+    phaseEntry("rosters", flags.skipRosters, () =>
+      walkFirmRosters(rest, client, resolver, state, rosterOptions)
+    ),
+  ]);
+  return Object.fromEntries(phases.flat());
+};
+
+const phaseEntry = async (
+  name: string,
+  skipped: boolean,
+  load: () => Promise<unknown>
+): Promise<ReadonlyArray<readonly [string, unknown]>> =>
+  skipped ? [] : [[name, await load()]];
 
 const selectedFirmSnapshots = (
   rest: HarperREST,

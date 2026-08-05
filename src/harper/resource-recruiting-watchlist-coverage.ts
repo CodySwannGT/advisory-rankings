@@ -60,10 +60,7 @@ export function branchCoverage(
     firmBranches.length - counts.branchesWithCurrentAdvisors;
 
   return {
-    status:
-      partialBranchCount > 0 || counts.missingSourceCount > 0
-        ? "partial"
-        : "loaded",
+    status: branchCoverageStatus(partialBranchCount, counts),
     branchCount: firmBranches.length,
     currentAdvisorCount: counts.currentAdvisorCount,
     branchesWithCurrentAdvisors: counts.branchesWithCurrentAdvisors,
@@ -77,6 +74,14 @@ export function branchCoverage(
     ),
   };
 }
+
+const branchCoverageStatus = (
+  partialBranchCount: number,
+  counts: BranchCoverageCounts
+): "partial" | "loaded" =>
+  partialBranchCount > 0 || counts.missingSourceCount > 0
+    ? "partial"
+    : "loaded";
 
 /**
  * Builds explicit null coverage for an unresolved firm query.

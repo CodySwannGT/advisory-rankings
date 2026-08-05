@@ -69,16 +69,7 @@ const loadBranches = (center: HTMLElement, right: HTMLElement): void => {
     .then(page => {
       stopLoadingFeedback();
       if (loadId !== loadState.id) return;
-      renderLoadedState(
-        {
-          filters,
-          items: page.items,
-          total: page.total,
-          nextCursor: page.nextCursor,
-        },
-        center,
-        right
-      );
+      renderLoadedState(branchState(filters, page), center, right);
     })
     .catch((error: unknown) => {
       stopLoadingFeedback();
@@ -87,6 +78,16 @@ const loadBranches = (center: HTMLElement, right: HTMLElement): void => {
       renderError(error, center, right);
     });
 };
+
+const branchState = (
+  filters: BranchExplorerState["filters"],
+  page: BranchPage
+): BranchExplorerState => ({
+  filters,
+  items: page.items,
+  total: page.total,
+  nextCursor: page.nextCursor,
+});
 
 const loadMore = (
   state: BranchExplorerState,
