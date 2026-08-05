@@ -48,10 +48,6 @@ interface FieldCoverage {
   readonly pct: number;
 }
 
-/** Field coverage plus warnings captured while reading that field. */
-type FieldCoverageResult = FieldCoverage &
-  Readonly<Record<"warnings", ReadonlyArray<string>>>;
-
 /**
  *
  */
@@ -314,25 +310,22 @@ async function fieldCompleteness(
 ) {
   const totalResult = await safeRows<CountRow>(query, countSql(table));
   const total = countValue(totalResult.rows);
-  const fieldResults = await fields.reduce<
-    Promise<readonly FieldCoverageResult[]>
-  >(async (previous, field) => {
-    const filledResult = await safeRows<CountRow>(
-      query,
-      filledSql(table, field)
-    );
-    const filled = countValue(filledResult.rows);
-    return [
-      ...(await previous),
-      {
+  const fieldResults = await Promise.all(
+    fields.map(async field => {
+      const filledResult = await safeRows<CountRow>(
+        query,
+        filledSql(table, field)
+      );
+      const filled = countValue(filledResult.rows);
+      return {
         field,
         filled,
         total,
         pct: pct(filled, total),
         warnings: filledResult.warnings,
-      },
-    ];
-  }, Promise.resolve([]));
+      };
+    })
+  );
   return {
     table,
     fields: fieldResults.map(({ warnings: _warnings, ...field }) => field),

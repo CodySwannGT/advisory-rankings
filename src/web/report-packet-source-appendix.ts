@@ -34,11 +34,7 @@ function packetSourceAppendixAdvisor(item: AdvisorComparisonItem): HTMLElement {
 
   return el(
     "article",
-    {
-      class: "report-packet-source-advisor",
-      "data-advisor-id": item.id,
-      "data-status": item.status,
-    },
+    sourceAdvisorAttrs(item),
     el("h4", {}, item.displayName),
     el(
       "dl",
@@ -62,6 +58,12 @@ function packetSourceAppendixAdvisor(item: AdvisorComparisonItem): HTMLElement {
     )
   );
 }
+
+const sourceAdvisorAttrs = (item: AdvisorComparisonItem) => ({
+  class: "report-packet-source-advisor",
+  "data-advisor-id": item.id,
+  "data-status": item.status,
+});
 
 /**
  * Builds the data-confidence source appendix row.

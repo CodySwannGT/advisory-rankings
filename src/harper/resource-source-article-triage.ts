@@ -153,11 +153,7 @@ async function loadTriagePage(
     .map(pair => triageRow(pair, assertions))
     .filter(row => matchesReason(row, filters.reason));
   const nextOffset = offset + articlePage.items.length;
-  if (
-    matches.length >= limit ||
-    nextOffset >= articlePage.total ||
-    articlePage.items.length === 0
-  ) {
+  if (triagePageComplete(matches, limit, nextOffset, articlePage)) {
     return {
       items: matches.slice(0, limit),
       nextOffset,
@@ -175,6 +171,16 @@ async function loadTriagePage(
     hasMore: next.hasMore,
   };
 }
+
+const triagePageComplete = (
+  matches: readonly SourceArticleTriageRow[],
+  limit: number,
+  nextOffset: number,
+  articlePage: Awaited<ReturnType<typeof feedArticlePage>>
+): boolean =>
+  matches.length >= limit ||
+  nextOffset >= articlePage.total ||
+  articlePage.items.length === 0;
 
 /**
  * Hydrates Article rows with Feed cards for shared public event/entity counts.

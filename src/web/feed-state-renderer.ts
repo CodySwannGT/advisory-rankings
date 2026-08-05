@@ -46,13 +46,9 @@ export function renderFeedState(
   renderCurrentState: FeedStateRenderer,
   renderSidebars: (visibleItems: readonly FeedItem[]) => void
 ): void {
-  const categories = feedCategories(loadedItems);
-  const filteredItems = filterFeedItems(
-    loadedItems,
-    readFeedFilters(categories)
-  );
-  const visibleItems = filteredItems.slice(0, visibleLimit);
-  const moreLoadedToReveal = visibleItems.length < filteredItems.length;
+  const view = visibleFeedView(loadedItems, visibleLimit);
+  const moreLoadedToReveal =
+    view.visibleItems.length < view.filteredItems.length;
   const onLoadMore = loadMoreHandler(
     cursor,
     loadedItems,
@@ -60,17 +56,50 @@ export function renderFeedState(
     renderCurrentState,
     visibleLimit
   );
-  const options = feedCenterOptions(
-    categories,
-    filteredItems,
-    visibleItems.length,
+  const options = feedOptionsForState(
+    view.categories,
+    view.filteredItems,
+    view.visibleItems.length,
     moreLoadedToReveal || cursor.hasMore,
     reloadFeed,
     onLoadMore
   );
-  renderCenter(layout.center, visibleItems, options);
-  renderSidebars(visibleItems);
+  renderCenter(layout.center, view.visibleItems, options);
+  renderSidebars(view.visibleItems);
 }
+
+const visibleFeedView = (
+  loadedItems: readonly FeedItem[],
+  visibleLimit: number
+) => {
+  const categories = feedCategories(loadedItems);
+  const filteredItems = filterFeedItems(
+    loadedItems,
+    readFeedFilters(categories)
+  );
+  return {
+    categories,
+    filteredItems,
+    visibleItems: filteredItems.slice(0, visibleLimit),
+  };
+};
+
+const feedOptionsForState = (
+  categories: readonly string[],
+  filteredItems: readonly FeedItem[],
+  visibleCount: number,
+  hasMore: boolean,
+  reloadFeed: () => void,
+  onLoadMore: () => void
+) =>
+  feedCenterOptions(
+    categories,
+    filteredItems,
+    visibleCount,
+    hasMore,
+    reloadFeed,
+    onLoadMore
+  );
 
 const loadMoreHandler =
   (

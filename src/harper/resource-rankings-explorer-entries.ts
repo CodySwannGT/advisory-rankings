@@ -130,11 +130,7 @@ export function rankingEntries(
     const ranking = db.byRanking.get(row.rankingId) || null;
     const subject = entrySubject(db, row, ranking);
     const firm = entryFirm(db, row);
-    const location: RankingLocation = {
-      city: row.city || null,
-      state: normalizeState(row.state),
-      label: [row.city, normalizeState(row.state)].filter(Boolean).join(", "),
-    };
+    const location = rankingLocation(row);
     return {
       id: row.id,
       ranking: rankingPayload(ranking, row),
@@ -157,6 +153,12 @@ export function rankingEntries(
     };
   });
 }
+
+const rankingLocation = (row: RankingEntryRow): RankingLocation => ({
+  city: row.city || null,
+  state: normalizeState(row.state),
+  label: [row.city, normalizeState(row.state)].filter(Boolean).join(", "),
+});
 
 /**
  * Builds provenance metadata for one ranking entry.

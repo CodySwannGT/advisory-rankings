@@ -20,18 +20,7 @@ export function renderCenter(
   clear(root);
   root.appendChild(feedFilterCard(state));
   if (!items.length) {
-    const empty = state.filters.active
-      ? filterEmptyState(state.filters)
-      : {
-          title: "No articles yet",
-          body: "Once the ingest crawler runs, articles appear here.",
-        };
-    root.appendChild(
-      EmptyCardC({
-        title: empty.title,
-        body: empty.body,
-      })
-    );
+    root.appendChild(EmptyCardC(feedEmptyState(state)));
     return;
   }
   for (const item of items) root.appendChild(FeedPostCardC(item, fmts));
@@ -46,3 +35,11 @@ export function renderCenter(
     );
   }
 }
+
+const feedEmptyState = (state: FeedRenderState) =>
+  state.filters.active
+    ? filterEmptyState(state.filters)
+    : {
+        title: "No articles yet",
+        body: "Once the ingest crawler runs, articles appear here.",
+      };

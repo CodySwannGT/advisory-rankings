@@ -319,12 +319,18 @@ function advisorCenterSections(
     PartialFailureCard("Reviewed discrepancy notes", reviewed.all),
     outsideActivitiesSection(advisorOutsideBusinessActivities(d)),
     PartialFailureCard("Outside activities", d.outsideBusinessActivities),
-    advisorTransitionsSection(resourceRows(d.transitions)),
-    PartialFailureCard("Transitions involving this advisor", d.transitions),
-    advisorCoverageSection(resourceRows(d.articles)),
-    PartialFailureCard("Coverage", d.articles),
+    ...advisorActivitySections(d),
   ];
 }
+
+const advisorActivitySections = (
+  d: AdvisorProfilePayload
+): readonly (HTMLElement | null)[] => [
+  advisorTransitionsSection(resourceRows(d.transitions)),
+  PartialFailureCard("Transitions involving this advisor", d.transitions),
+  advisorCoverageSection(resourceRows(d.articles)),
+  PartialFailureCard("Coverage", d.articles),
+];
 
 const advisorSectionRows = (d: AdvisorProfilePayload) => ({
   designations: narrowRows(resourceRows(d.designations), isDesignationStub),

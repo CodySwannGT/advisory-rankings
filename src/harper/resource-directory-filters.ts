@@ -240,14 +240,7 @@ export function branchMatchesFilters(
   })
 ): boolean {
   return (
-    textMatches(filters.q, [
-      branch.name,
-      branch.buildingName,
-      branch.address,
-      branch.city,
-      branch.state,
-      firm?.name,
-    ]) &&
+    textMatches(filters.q, branchSearchTerms(branch, firm)) &&
     textMatches(filters.firm, [branch.firmId, firm?.id, firm?.name]) &&
     exactMatches(filters.gapGroup, gapGroup) &&
     exactMatches(filters.state, branch.state) &&
@@ -261,6 +254,18 @@ export function branchMatchesFilters(
       currentAdvisorCount >= filters.minAdvisorCount)
   );
 }
+
+const branchSearchTerms = (
+  branch: BranchRow,
+  firm: FirmRow | null
+): ReadonlyArray<string | undefined> => [
+  branch.name,
+  branch.buildingName,
+  branch.address,
+  branch.city,
+  branch.state,
+  firm?.name,
+];
 
 /**
  * Builds searchable city terms for branch directory filtering.

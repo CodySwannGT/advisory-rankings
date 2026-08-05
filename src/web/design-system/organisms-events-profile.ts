@@ -74,11 +74,7 @@ function articleListRowOptions(
     : { source: "External", initials: "?" };
   const subParts: ReadonlyArray<string | null> = [
     formatInlineLabelFn(article.category ?? null),
-    fmtDate
-      ? fmtDate(article.publishedDate ?? null)
-      : article.publishedDate != null
-        ? String(article.publishedDate)
-        : null,
+    articlePublishedLabel(article, fmtDate),
   ];
   return {
     avatar: src.initials,
@@ -98,6 +94,16 @@ function articleListRowOptions(
         : null,
   };
 }
+
+const articlePublishedLabel = (
+  article: ArticleStubLike,
+  fmtDate: FmtDate | undefined
+): string | null =>
+  fmtDate
+    ? fmtDate(article.publishedDate ?? null)
+    : article.publishedDate != null
+      ? String(article.publishedDate)
+      : null;
 
 // ─── CareerTimeline ───────────────────────────────────────────
 // Vertical timeline of EmploymentHistory steps with status markers.

@@ -98,15 +98,12 @@ export async function buildMcpCatalog(
       status: READY_STATE,
       generatedAt,
       endpoint: endpointInfo(),
-      readOnlyBoundary: {
-        status: READ_ONLY_STATUS,
-        filteredCapabilities:
-          readArray(tools).length -
-          safeTools.length +
-          templateRows.length -
-          safeTemplates.length,
-        forbiddenTerms: FORBIDDEN_CAPABILITY_TERMS,
-      },
+      readOnlyBoundary: readOnlyBoundary(
+        tools,
+        safeTools,
+        templateRows,
+        safeTemplates
+      ),
       initialize,
       tools: safeTools,
       resourceTemplates: safeTemplates,
@@ -115,6 +112,21 @@ export async function buildMcpCatalog(
     return unavailableCatalog(generatedAt, error);
   }
 }
+
+const readOnlyBoundary = (
+  tools: unknown,
+  safeTools: readonly unknown[],
+  templateRows: readonly unknown[],
+  safeTemplates: readonly unknown[]
+): McpCatalogBoundary => ({
+  status: READ_ONLY_STATUS,
+  filteredCapabilities:
+    readArray(tools).length -
+    safeTools.length +
+    templateRows.length -
+    safeTemplates.length,
+  forbiddenTerms: FORBIDDEN_CAPABILITY_TERMS,
+});
 
 const defaultMcpCatalogProbe: McpCatalogProbe = {
   initialize: async () =>

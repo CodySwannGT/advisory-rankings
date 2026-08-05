@@ -118,18 +118,20 @@ export function investorProofPacketResponse(
     freshness: proofPacketFreshness(freshness),
     proofLinks,
     provenance: {
-      publicResources: [
-        DATA_COVERAGE_RESOURCE,
-        ADVISOR_RESEARCH_QUEUE_RESOURCE,
-        FEED_RESOURCE,
-        PUBLIC_FIRMS_RESOURCE,
-        RANKINGS_EXPLORER_RESOURCE,
-        RECRUITING_MARKET_RESOURCE,
-      ],
+      publicResources: investorProofPublicResources(),
       sourceTables: coverage.provenance.sourceTables,
     },
   };
 }
+
+const investorProofPublicResources = (): readonly string[] => [
+  DATA_COVERAGE_RESOURCE,
+  ADVISOR_RESEARCH_QUEUE_RESOURCE,
+  FEED_RESOURCE,
+  PUBLIC_FIRMS_RESOURCE,
+  RANKINGS_EXPLORER_RESOURCE,
+  RECRUITING_MARKET_RESOURCE,
+];
 
 /**
  * Builds the freshness slice for the proof packet.

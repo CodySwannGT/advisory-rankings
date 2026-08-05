@@ -53,11 +53,7 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
       { class: "rankings-filters", method: "get", action: "/rankings" },
       rankingCategoryField(data),
       rankingYearField(data),
-      facetInput("Firm", "firm", data.filters.firmQuery || "", {
-        name: "firm",
-        options: data.facets.firms,
-        placeholder: "Search known firms",
-      }),
+      firmFacetInput(data),
       facetInput("State", "state", data.filters.state || "", {
         name: "state",
         options: data.facets.states,
@@ -79,6 +75,13 @@ export function filterCard(data: RankingsFilterPayload): HTMLElement {
     ),
   });
 }
+
+const firmFacetInput = (data: RankingsFilterPayload): HTMLElement =>
+  facetInput("Firm", "firm", data.filters.firmQuery || "", {
+    name: "firm",
+    options: data.facets.firms,
+    placeholder: "Search known firms",
+  });
 
 /**
  * Renders the ranking year facet select.
