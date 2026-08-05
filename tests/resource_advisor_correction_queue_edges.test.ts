@@ -77,6 +77,63 @@ describe("advisor correction request queue edges", () => {
       sourceRef: null,
     });
   });
+
+  it("keeps advisor display labels when current firm data is unavailable", async () => {
+    const noEmploymentAdvisorId = "advisor-no-employment";
+    const missingFirmAdvisorId = "advisor-missing-firm";
+
+    loadAll.mockResolvedValue({
+      byAdvisor: new Map([
+        [
+          noEmploymentAdvisorId,
+          {
+            id: noEmploymentAdvisorId,
+            firstName: "Grace",
+            lastName: "Hopper",
+          },
+        ],
+        [
+          missingFirmAdvisorId,
+          {
+            id: missingFirmAdvisorId,
+            firstName: "Katherine",
+            lastName: "Johnson",
+          },
+        ],
+      ]),
+      byFirm: new Map(),
+      employments: [
+        {
+          advisorId: missingFirmAdvisorId,
+          firmId: "firm-not-loaded",
+          startDate: "2026-01-01",
+        },
+      ],
+    });
+
+    const response = await correctionRequestQueue(
+      table([
+        correctionRow({
+          id: "no-employment",
+          advisorId: noEmploymentAdvisorId,
+          createdAt: "2026-02-01",
+        }),
+        correctionRow({
+          id: "missing-firm",
+          advisorId: missingFirmAdvisorId,
+          createdAt: "2026-02-02",
+        }),
+      ])
+    );
+
+    expect(response.items).toHaveLength(2);
+    expect(
+      response.items.map(item => [item.advisorName, item.firmName])
+    ).toEqual([
+      ["Grace Hopper", null],
+      ["Katherine Johnson", null],
+    ]);
+  });
 });
 
 function table(rows: readonly AdvisorCorrectionRequestRow[]): {
