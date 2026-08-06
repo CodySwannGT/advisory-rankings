@@ -4744,6 +4744,16 @@ describe("Harper resource endpoints", () => {
         roleTitle: "Advisor",
         startDate: "2023-01-01",
       },
+      {
+        id: "employment-morgan-advisorhub",
+        advisorId: "advisor-c",
+        firmId: SHORTLIST_MORGAN_FIRM_ID,
+        branchId: SHORTLIST_MORGAN_LOADED_BRANCH_ID,
+        roleTitle: "Advisor",
+        startDate: "2024-01-01",
+        sourceType: "advisorhub",
+        sourceRef: "advisorhub-article",
+      },
     ]);
 
     const market = await new (resources as any).RecruitingMarket().get(
@@ -4759,11 +4769,11 @@ describe("Harper resource endpoints", () => {
       branchCoverage: {
         status: "partial",
         branchCount: 2,
-        currentAdvisorCount: 2,
+        currentAdvisorCount: 3,
         branchesWithCurrentAdvisors: 1,
         partialBranchCount: 1,
-        sourceTypes: ["firm_roster"],
-        sourceRefCount: 1,
+        sourceTypes: ["advisorhub", "firm_roster"],
+        sourceRefCount: 2,
         missingSourceCount: 1,
         limitation: expect.stringContaining("branch rows"),
       },
