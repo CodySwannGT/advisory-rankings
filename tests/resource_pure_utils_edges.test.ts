@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildBranchCoverageRows } from "../src/harper/resource-branch-coverage-read-model.js";
 import {
   branchSourceSummary,
   publicBranchSourceLabel,
@@ -15,6 +16,72 @@ import {
 import type { EmploymentHistoryRow } from "../src/types/harper-schema.js";
 
 describe("resource pure utility edge cases", () => {
+  it("ignores employment rows without usable branch ids in branch coverage", () => {
+    const rows = buildBranchCoverageRows(
+      {
+        branches: [
+          {
+            id: "branch-1",
+            firmId: "firm-1",
+            level: "office",
+          },
+        ],
+        firms: [{ id: "firm-1" }],
+        employments: [
+          {
+            id: "employment-valid",
+            advisorId: "advisor-1",
+            firmId: "firm-1",
+            branchId: "branch-1",
+            sourceType: "brokercheck",
+          },
+          {
+            id: "employment-ended",
+            advisorId: "advisor-ended",
+            firmId: "firm-1",
+            branchId: "branch-1",
+            endDate: "2024-01-01",
+            sourceType: "major-firm-roster",
+          },
+          {
+            id: "employment-empty-branch",
+            advisorId: "advisor-empty",
+            firmId: "firm-1",
+            branchId: "",
+            sourceType: "ignored",
+          },
+          {
+            id: "employment-missing-branch",
+            advisorId: "advisor-missing",
+            firmId: "firm-1",
+            sourceType: "ignored",
+          },
+          {
+            id: "employment-numeric-branch",
+            advisorId: "advisor-numeric",
+            firmId: "firm-1",
+            branchId: 42,
+            sourceType: "ignored",
+          } as unknown as EmploymentHistoryRow,
+        ],
+      },
+      "2026-08-06T00:00:00.000Z"
+    );
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        branchId: "branch-1",
+        coverageStatus: "loaded",
+        currentAdvisorCount: 1,
+        sourceTypes: ["brokercheck", "major-firm-roster"],
+        sourceLabels: [
+          "FINRA BrokerCheck registration data",
+          "Major Firm Roster public source",
+        ],
+      }),
+    ]);
+  });
+
   it("summarizes branch sources with public labels and readable fallbacks", () => {
     const sourceRows = [
       { sourceType: "brokercheck" },
