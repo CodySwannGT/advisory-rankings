@@ -98,6 +98,35 @@ describe("Harper client edge behavior", () => {
     }
   });
 
+  it("surfaces local socket operation failures", async () => {
+    const hdbRoot = await mkdtemp(join(tmpdir(), "advisorbook-harper-"));
+    const socketPath = join(hdbRoot, "operations-server");
+    const server = createServer((_req, res) => {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("socket unavailable");
+    });
+
+    try {
+      await new Promise<void>((resolveListen, rejectListen) => {
+        server.once("error", rejectListen);
+        server.listen(socketPath, resolveListen);
+      });
+      process.env.HDB_TARGET_URL = "";
+      process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+      process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+      process.env.HDB_ROOT = hdbRoot;
+
+      await expect(op({ operation: "status" })).rejects.toThrow(
+        "Harper operation -> HTTP 500\nsocket unavailable"
+      );
+    } finally {
+      await new Promise<void>((resolveClose, rejectClose) => {
+        server.close(error => (error ? rejectClose(error) : resolveClose()));
+      });
+      await rm(hdbRoot, { force: true, recursive: true });
+    }
+  });
+
   it("falls back to REST upsert when hosted operations upsert is unavailable", async () => {
     process.env.HDB_TARGET_URL = OPERATIONS_TARGET_URL;
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
@@ -175,6 +204,17 @@ describe("Harper client edge behavior", () => {
     await expect(op({ operation: "restart" })).rejects.toThrow(
       "Harper restart -> HTTP 503"
     );
+  });
+
+  it("describes hosted errors without an operation name", async () => {
+    process.env.HDB_TARGET_URL = TARGET_URL;
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    globalThis.fetch = vi.fn(
+      async () => new Response("not ready", { status: 503 })
+    );
+
+    await expect(op({})).rejects.toThrow("Harper operation -> HTTP 503");
   });
 
   it("returns an empty array when SQL response is empty", async () => {
