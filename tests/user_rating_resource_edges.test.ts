@@ -28,6 +28,23 @@ beforeEach(() => {
 });
 
 describe("AdvisorRating resource edges", () => {
+  it("keeps resource policy open while enforcing per-request auth", async () => {
+    const endpoint = resource(null);
+
+    expect(endpoint.allowRead()).toBe(true);
+    expect(endpoint.allowCreate()).toBe(true);
+    await expect(endpoint.get({ id: ADVISOR_ID })).resolves.toEqual({
+      authenticated: false,
+      rating: null,
+    });
+    await expect(
+      endpoint.post({ id: ADVISOR_ID }, { ratingInt: 3 })
+    ).rejects.toMatchObject({
+      message: "Sign in required",
+      status: 401,
+    });
+  });
+
   it("returns signed-out state without touching the table", async () => {
     await expect(resource(null).get({ id: ADVISOR_ID })).resolves.toEqual({
       authenticated: false,
