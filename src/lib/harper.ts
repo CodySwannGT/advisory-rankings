@@ -44,6 +44,7 @@ function stripTrailingSlashes(value: string): string {
 function publicRestTarget(target: string): string {
   try {
     const parsed = new URL(target);
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
     const port = parsed.port === "9925" ? "" : parsed.port;
     return `${parsed.protocol}//${parsed.hostname}${port ? `:${port}` : ""}`;
   } catch {
