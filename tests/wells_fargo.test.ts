@@ -33,6 +33,17 @@ describe("Wells Fargo Advisors scraper mapping", () => {
     expect(url.searchParams.get("chkBIS")).toBe("020");
   });
 
+  it("omits location parameters for blank locator searches", () => {
+    const url = new URL(
+      buildWellsFargoSearchUrl({ input: "   ", limit: 25, offset: 0 })
+    );
+
+    expect(url.searchParams.has("zip5")).toBe(false);
+    expect(url.searchParams.has("city")).toBe(false);
+    expect(url.searchParams.get("limit")).toBe("25");
+    expect(url.searchParams.has("start")).toBe(false);
+  });
+
   it("describes the observed HTML source contract and limitation", () => {
     const discovery = WELLS_FARGO_SOURCE_ADAPTER.discover();
     const cityUrl = new URL(
