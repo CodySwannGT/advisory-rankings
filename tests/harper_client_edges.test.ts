@@ -193,6 +193,28 @@ describe("Harper client edge behavior", () => {
     );
   });
 
+  it("falls back to a public REST host from bare operations targets", async () => {
+    process.env.HDB_TARGET_URL = "harper.internal:9925";
+    process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
+    process.env.HDB_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    const fetchMock = vi.fn(async () =>
+      fetchMock.mock.calls.length === 1
+        ? new Response(MISSING_OPERATION, { status: 404 })
+        : new Response("", { status: 201 })
+    );
+    globalThis.fetch = fetchMock;
+
+    await expect(upsert("Firm", [{ id: "firm-1" }])).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "harper.internal/Firm/firm-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ id: "firm-1" }),
+      })
+    );
+  });
+
   it("surfaces hosted operation errors that are not REST fallbacks", async () => {
     process.env.HDB_TARGET_URL = TARGET_URL;
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
