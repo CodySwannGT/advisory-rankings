@@ -37,6 +37,17 @@ describe("Harper client edge behavior", () => {
     ).toBe("https://cluster.example.com:9443");
   });
 
+  it("normalizes bare operation targets before fetch receives them", () => {
+    expect(
+      harperConfig({
+        HDB_TARGET_URL: "harper.internal:9925///",
+        HDB_ADMIN_USERNAME: ADMIN_USERNAME,
+        HDB_ADMIN_PASSWORD: ADMIN_PASSWORD,
+        HDB_ROOT: "/tmp/hdb",
+      }).target
+    ).toBe("https://harper.internal:9925");
+  });
+
   it("describes local socket mode when target is explicitly empty", () => {
     process.env.HDB_TARGET_URL = "";
     process.env.HDB_ADMIN_USERNAME = ADMIN_USERNAME;
@@ -206,8 +217,21 @@ describe("Harper client edge behavior", () => {
 
     await expect(upsert("Firm", [{ id: "firm-1" }])).resolves.toBe(1);
     expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://harper.internal:9925/",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          operation: "upsert",
+          database: "data",
+          table: "Firm",
+          records: [{ id: "firm-1" }],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "harper.internal/Firm/firm-1",
+      "https://harper.internal/Firm/firm-1",
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify({ id: "firm-1" }),

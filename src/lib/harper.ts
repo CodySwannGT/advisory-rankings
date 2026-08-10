@@ -28,6 +28,23 @@ function defaultOperationsTarget(clusterUrl: string | undefined): string {
 }
 
 /**
+ * Normalizes configured Harper targets before fetch sees them.
+ * @param value - Configured target value.
+ * @returns Absolute HTTP(S) URL for non-empty targets.
+ */
+function normalizeTarget(value: string): string {
+  const target = stripTrailingSlashes(value);
+  if (!target) return "";
+  try {
+    const parsed = new URL(target);
+    if (["http:", "https:"].includes(parsed.protocol)) return target;
+  } catch {
+    // Fall through to the bare host handling below.
+  }
+  return `https://${target}`;
+}
+
+/**
  * Removes trailing slashes from a configured Harper URL.
  * @param value - URL value that may include trailing slashes.
  * @returns URL without trailing slash characters.
@@ -42,14 +59,9 @@ function stripTrailingSlashes(value: string): string {
  * @returns Data-plane URL without the operations port.
  */
 function publicRestTarget(target: string): string {
-  try {
-    const parsed = new URL(target);
-    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
-    const port = parsed.port === "9925" ? "" : parsed.port;
-    return `${parsed.protocol}//${parsed.hostname}${port ? `:${port}` : ""}`;
-  } catch {
-    return target.endsWith(":9925") ? target.slice(0, -5) : target;
-  }
+  const parsed = new URL(normalizeTarget(target));
+  const port = parsed.port === "9925" ? "" : parsed.port;
+  return `${parsed.protocol}//${parsed.hostname}${port ? `:${port}` : ""}`;
 }
 
 /**
@@ -96,11 +108,10 @@ export function harperConfig(
     env.HDB_ADMIN_USERNAME === undefined ||
     env.HDB_ADMIN_PASSWORD === undefined;
   const creds = needsFabricCreds ? loadCreds(env) : undefined;
-  const target = stripTrailingSlashes(
+  const target =
     env.HDB_TARGET_URL !== undefined
-      ? env.HDB_TARGET_URL
-      : defaultOperationsTarget(creds?.clusterUrl)
-  );
+      ? normalizeTarget(env.HDB_TARGET_URL)
+      : defaultOperationsTarget(creds?.clusterUrl);
   const hdbRoot = env.HDB_ROOT ?? `${env.HOME}/.harperdb`;
   const socket = `${hdbRoot}/operations-server`;
   const user = env.HDB_ADMIN_USERNAME ?? creds?.username ?? "admin";
