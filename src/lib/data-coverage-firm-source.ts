@@ -22,6 +22,15 @@ interface QueryResult<T> {
   readonly warnings: ReadonlyArray<string>;
 }
 
+/** Grouped firm-source coverage result returned to the main report. */
+type FirmSourceCoverageResult = Readonly<
+  Record<
+    "coverage",
+    Readonly<Record<FirmSourceCoverageMetric, ReadonlyArray<GroupCountRow>>>
+  > &
+    Record<"warnings", ReadonlyArray<string>>
+>;
+
 /**
  * Compute source-lane metrics emitted by firm-source adapters.
  * @param query SQL reader.
@@ -34,15 +43,7 @@ export async function firmSourceCoverage(
     query: CoverageQuery,
     sqlText: string
   ) => Promise<QueryResult<T>>
-): Promise<
-  Readonly<
-    Record<
-      "coverage",
-      Readonly<Record<FirmSourceCoverageMetric, ReadonlyArray<GroupCountRow>>>
-    > &
-      Record<"warnings", ReadonlyArray<string>>
-  >
-> {
+): Promise<FirmSourceCoverageResult> {
   const results = await Promise.all(
     FIRM_SOURCE_COVERAGE_METRICS.map(async metric => ({
       metric,

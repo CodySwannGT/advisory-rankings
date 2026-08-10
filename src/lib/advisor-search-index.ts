@@ -170,36 +170,66 @@ const escapeSqlString = (value: string): string =>
  */
 export function createHarperOpAdvisorSearchIndexHandle(): AdvisorSearchIndexHandle {
   return {
-    getAdvisor: async (id: string) => {
-      const rows = await sql(
-        `SELECT id, legalName, firstName, lastName, preferredName FROM data.Advisor WHERE id = ${escapeSqlString(id)} LIMIT 1`
-      );
-      const first = rows[0];
-      return first ? narrowAdvisorRow(first) : null;
-    },
-    listTokensForAdvisor: async (advisorId: string) => {
-      const rows = await sql(
-        `SELECT id, advisorId, token, kind FROM data.AdvisorSearchIndex WHERE advisorId = ${escapeSqlString(advisorId)}`
-      );
-      return rows.map(narrowTokenRow);
-    },
-    upsertTokens: async (rows: readonly AdvisorSearchIndexRow[]) => {
-      if (rows.length === 0) return;
-      await upsert(
-        "AdvisorSearchIndex",
-        rows.map(r => ({ ...r }))
-      );
-    },
-    deleteTokens: async (ids: readonly string[]) => {
-      if (ids.length === 0) return;
-      await op({
-        operation: "delete",
-        database: "data",
-        table: "AdvisorSearchIndex",
-        hash_values: ids,
-      });
-    },
+    getAdvisor: getHarperOpAdvisor,
+    listTokensForAdvisor: listHarperOpTokensForAdvisor,
+    upsertTokens: upsertHarperOpTokens,
+    deleteTokens: deleteHarperOpTokens,
   };
+}
+
+/**
+ * Loads one advisor row through Harper operations SQL.
+ * @param id - Advisor id to read.
+ * @returns Advisor row, or null when missing.
+ */
+async function getHarperOpAdvisor(id: string): Promise<AdvisorRow | null> {
+  const rows = await sql(
+    `SELECT id, legalName, firstName, lastName, preferredName FROM data.Advisor WHERE id = ${escapeSqlString(id)} LIMIT 1`
+  );
+  const first = rows[0];
+  return first ? narrowAdvisorRow(first) : null;
+}
+
+/**
+ * Lists existing search-index tokens for one advisor via Harper operations SQL.
+ * @param advisorId - Advisor id whose tokens should be listed.
+ * @returns Existing search-index rows for the advisor.
+ */
+async function listHarperOpTokensForAdvisor(
+  advisorId: string
+): Promise<readonly AdvisorSearchIndexRow[]> {
+  const rows = await sql(
+    `SELECT id, advisorId, token, kind FROM data.AdvisorSearchIndex WHERE advisorId = ${escapeSqlString(advisorId)}`
+  );
+  return rows.map(narrowTokenRow);
+}
+
+/**
+ * Upserts advisor search-index token rows through Harper operations.
+ * @param rows - Token rows to upsert.
+ */
+async function upsertHarperOpTokens(
+  rows: readonly AdvisorSearchIndexRow[]
+): Promise<void> {
+  if (rows.length === 0) return;
+  await upsert(
+    "AdvisorSearchIndex",
+    rows.map(r => ({ ...r }))
+  );
+}
+
+/**
+ * Deletes advisor search-index token rows through Harper operations.
+ * @param ids - Search-index row ids to delete.
+ */
+async function deleteHarperOpTokens(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await op({
+    operation: "delete",
+    database: "data",
+    table: "AdvisorSearchIndex",
+    hash_values: ids,
+  });
 }
 
 // ── Harper REST handle ────────────────────────────────────────────────────

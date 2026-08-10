@@ -76,11 +76,8 @@ export const fetchOneCrd = async (
     log(`[skip] individual ${crd} fetched recently`);
     return null;
   }
-  const content = await individualContent(client, crd);
-  if (!content) {
-    log(`[warn] individual ${crd}: no content`);
-    return null;
-  }
+  const content = await individualContentOrLog(client, crd, log);
+  if (!content) return null;
   const parsed = parseIndividual(content);
   const counts = await loadIndividual(parsed, content, {
     rest,
@@ -120,11 +117,8 @@ export const fetchOneFirm = async (
     log(`[skip] firm ${firmId} fetched recently`);
     return null;
   }
-  const content = await firmContent(client, firmId);
-  if (!content) {
-    log(`[warn] firm ${firmId}: no content`);
-    return null;
-  }
+  const content = await firmContentOrLog(client, firmId, log);
+  if (!content) return null;
   const parsed = parseFirm(content);
   const counts = await loadFirm(parsed, content, {
     rest,
@@ -140,6 +134,42 @@ export const fetchOneFirm = async (
   log(`[firm ${firmId}] ${JSON.stringify(counts)}`);
   return counts;
 };
+
+/**
+ * Fetches individual content and logs a warning when BrokerCheck returns none.
+ * @param client - BrokerCheck API client.
+ * @param crd - Individual CRD.
+ * @param log - Logger for skip warnings.
+ * @returns BrokerCheck content, or null when unavailable.
+ */
+async function individualContentOrLog(
+  client: BrokerCheckClient,
+  crd: string,
+  log: NonNullable<CrawlOptions["log"]>
+): Promise<BrokerRecord | null> {
+  const content = await individualContent(client, crd);
+  if (content) return content;
+  log(`[warn] individual ${crd}: no content`);
+  return null;
+}
+
+/**
+ * Fetches firm content and logs a warning when BrokerCheck returns none.
+ * @param client - BrokerCheck API client.
+ * @param firmId - Firm CRD.
+ * @param log - Logger for skip warnings.
+ * @returns BrokerCheck content, or null when unavailable.
+ */
+async function firmContentOrLog(
+  client: BrokerCheckClient,
+  firmId: string,
+  log: NonNullable<CrawlOptions["log"]>
+): Promise<BrokerRecord | null> {
+  const content = await firmContent(client, firmId);
+  if (content) return content;
+  log(`[warn] firm ${firmId}: no content`);
+  return null;
+}
 
 const individualContent = async (
   client: BrokerCheckClient,

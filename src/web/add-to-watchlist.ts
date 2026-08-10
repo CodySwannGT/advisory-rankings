@@ -247,10 +247,7 @@ function listForm(
     "form",
     {
       class: "add-watchlist-form",
-      onSubmit: (event: Event): void => {
-        event.preventDefault();
-        void addAdvisor(advisorId, lists, select.value, status);
-      },
+      onSubmit: watchlistSubmitHandler(advisorId, lists, select, status),
     },
     select,
     Button({
@@ -261,6 +258,26 @@ function listForm(
     }),
     status
   );
+}
+
+/**
+ * Builds the add-to-watchlist submit handler.
+ * @param advisorId - Advisor being added.
+ * @param lists - Normalized watchlists.
+ * @param select - Watchlist select control.
+ * @param status - Inline status node updated with the result.
+ * @returns Submit event handler for the list form.
+ */
+function watchlistSubmitHandler(
+  advisorId: string,
+  lists: ReadonlyArray<WatchlistView>,
+  select: HTMLSelectElement,
+  status: HTMLElement
+): (event: Event) => void {
+  return (event: Event): void => {
+    event.preventDefault();
+    void addAdvisor(advisorId, lists, select.value, status);
+  };
 }
 
 /**

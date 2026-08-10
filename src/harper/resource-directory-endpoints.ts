@@ -3,7 +3,6 @@ import type {
   BranchRow,
   EmploymentHistoryRow,
   FirmAliasRow,
-  FirmMergeAuditRow,
   FirmRow,
   TeamRow,
 } from "../types/harper-schema.js";
@@ -48,11 +47,8 @@ import {
 } from "./resource-directory-sorting.js";
 import { runAdvisorDirectoryQuery } from "./resource-directory-advisor-query.js";
 import { runGlobalSearch } from "./resource-directory-search-runner.js";
-import {
-  branchCoverageByBranch,
-  type BranchCoverageByBranch,
-} from "./resource-branch-coverage-read-model.js";
-import { fallbackEmploymentsByBranch } from "./resource-directory-branch-employment.js";
+import type { BranchCoverageByBranch } from "./resource-branch-coverage-read-model.js";
+import { loadBranchDirectoryContext } from "./resource-directory-branch-context.js";
 import { branchDirectoryMatchContext } from "./resource-directory-branch-match.js";
 
 export type {
@@ -191,21 +187,14 @@ export class PublicBranches extends Resource {
    * @returns Branch page, next cursor, and total row count.
    */
   async get(target?: RouteTarget): Promise<DirectoryPage<BranchDirectoryRow>> {
-    const [branches, firms, branchCoverages] = await Promise.all([
-      allRows<BranchRow>(tables.Branch),
-      allRows<FirmRow>(tables.Firm),
-      optionalAll<BranchCoverageRow>(tables.BranchCoverage),
-    ]);
-    const byFirm = new Map(firms.map(firm => [firm.id, firm]));
-    const coverageByBranch = branchCoverageByBranch(branchCoverages);
-    const employmentsByBranch =
-      coverageByBranch.size === branches.length
-        ? new Map<string, ReadonlyArray<EmploymentHistoryRow>>()
-        : await fallbackEmploymentsByBranch(
-            { EmploymentHistory: tables.EmploymentHistory },
-            branches,
-            await optionalAll<FirmMergeAuditRow>(tables.FirmMergeAudit)
-          );
+    const { branches, byFirm, coverageByBranch, employmentsByBranch } =
+      await loadBranchDirectoryContext({
+        Branch: tables.Branch,
+        BranchCoverage: tables.BranchCoverage,
+        EmploymentHistory: tables.EmploymentHistory,
+        Firm: tables.Firm,
+        FirmMergeAudit: tables.FirmMergeAudit,
+      });
     const filters = parseBranchDirectoryFilters(target);
     const rows = matchingBranchDirectoryRows(
       branches,

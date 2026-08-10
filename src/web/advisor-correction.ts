@@ -14,6 +14,7 @@ import {
   correctionFields,
   type CorrectionField,
 } from "./advisor-correction-fields.js";
+import { clearCorrectionTextControls } from "./advisor-correction-controls.js";
 import { correctionRequestPayload } from "./advisor-correction-payload.js";
 
 const NOTE_CLASS = "advisor-correction-note";
@@ -294,11 +295,10 @@ async function submitCorrection(
       "/AdvisorCorrectionRequest",
       correctionRequestPayload(advisorId, field, controls)
     );
-    const id = correctionRequestId(response);
-    [controls.proposed, controls.note].forEach(control =>
-      Object.assign(control, { value: "" })
+    clearCorrectionTextControls(controls);
+    status.replaceChildren(
+      correctionQueuedMessage(correctionRequestId(response))
     );
-    status.replaceChildren(correctionQueuedMessage(id));
   } catch (error) {
     status.replaceChildren(
       isAuthFailure(error)

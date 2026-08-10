@@ -315,11 +315,20 @@ export class Resolver {
     );
     if (matched) {
       this.state.stats.disclosure_matched++;
-      this.cache.set(cacheKey, matched);
-      return matched;
+      return this.cacheDisclosureId(cacheKey, matched);
     }
     const id = mintedDisclosureId(idParts);
     this.state.stats.disclosure_minted++;
+    return this.cacheDisclosureId(cacheKey, id);
+  }
+
+  /**
+   * Caches a resolved disclosure id and returns it for call-site chaining.
+   * @param cacheKey - Disclosure deduplication cache key.
+   * @param id - Resolved or minted disclosure id.
+   * @returns The cached disclosure id.
+   */
+  private cacheDisclosureId(cacheKey: string, id: string): string {
     this.cache.set(cacheKey, id);
     return id;
   }

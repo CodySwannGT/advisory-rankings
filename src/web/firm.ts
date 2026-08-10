@@ -52,30 +52,40 @@ mountThreeColumnPage({
       return;
     }
 
-    const loadFirmProfile = (): void => {
-      clear(center);
-      clear(right);
-      renderDetailLoading({ center, right, label: "firm profile" });
-      api<FirmProfilePayloadOrError>(`/FirmProfile/${encodeURIComponent(id)}`)
-        .then(d => {
-          clear(center);
-          clear(right);
-          render(d, center, right);
-        })
-        .catch((err: unknown) => {
-          renderRecoverableDetailError({
-            center,
-            right,
-            title: "Could not load firm",
-            error: err,
-            onRetry: loadFirmProfile,
-          });
-        });
-    };
-
-    loadFirmProfile();
+    loadFirmProfile(id, center, right);
   },
 });
+
+/**
+ * Loads and renders one firm profile page.
+ * @param id - Firm id from the route.
+ * @param center - Main content column.
+ * @param right - Right sidebar column.
+ */
+function loadFirmProfile(
+  id: string,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  clear(center);
+  clear(right);
+  renderDetailLoading({ center, right, label: "firm profile" });
+  api<FirmProfilePayloadOrError>(`/FirmProfile/${encodeURIComponent(id)}`)
+    .then(d => {
+      clear(center);
+      clear(right);
+      render(d, center, right);
+    })
+    .catch((err: unknown) => {
+      renderRecoverableDetailError({
+        center,
+        right,
+        title: "Could not load firm",
+        error: err,
+        onRetry: () => loadFirmProfile(id, center, right),
+      });
+    });
+}
 
 /**
  * Renders the firm profile into the page.

@@ -92,10 +92,7 @@ const parseAdvisor = (
   const emailButton = root.find(".search-results-email-image").first();
   const details = parseNameDetails($, root, advisorName);
   const location = parseLocation(details.location);
-  const phones = contact
-    .find(".search-results-phone-desktop")
-    .toArray()
-    .map(element => normalizePhone(cleanText($(element).text())));
+  const phones = advisorPhones($, contact);
   return {
     advisorName,
     advisorUrl: absoluteUrl(link.attr("href")),
@@ -112,6 +109,22 @@ const parseAdvisor = (
     tollFreePhone: phones[1],
   };
 };
+
+/**
+ * Extracts desktop phone values from one Stifel advisor card.
+ * @param $ - Cheerio parser for the result document.
+ * @param contact - Advisor contact-info element.
+ * @returns Normalized phone values in display order.
+ */
+const advisorPhones = (
+  $: cheerio.CheerioAPI,
+  contact: cheerio.Cheerio<Element>
+): ReadonlyArray<string> =>
+  contact
+    .find(".search-results-phone-desktop")
+    .toArray()
+    .map(element => normalizePhone(cleanText($(element).text())))
+    .filter((phone): phone is string => Boolean(phone));
 
 const headshotUrl = (root: cheerio.Cheerio<Element>): string | undefined =>
   absoluteUrl(root.find(".search-results-fa-image").attr("src"));

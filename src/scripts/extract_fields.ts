@@ -63,11 +63,6 @@ function parseMoney(raw: string, unit = ""): number | null {
  * @returns Candidate facts used for manual data enrichment.
  */
 export function extract(text: string): Record<string, unknown> {
-  const moneyMentions = [
-    ...text.matchAll(/\$([\d,.]+)\s*(billion|million|k)?/gi),
-  ]
-    .map(m => ({ value: parseMoney(m[1], m[2]), phrase: m[0] }))
-    .filter(x => x.value);
   const sentencesWithRoles = text
     .split(/[.!?]\s+/)
     .filter(sentence => ROLE_PATTERN.test(sentence));
@@ -78,8 +73,8 @@ export function extract(text: string): Record<string, unknown> {
   );
 
   return {
-    money_mentions: moneyMentions,
-    pct_mentions: [...text.matchAll(/(\d{1,4}(?:\.\d+)?)\s*%/g)].map(m => m[0]),
+    money_mentions: moneyMentions(text),
+    pct_mentions: pctMentions(text),
     years_mentioned: sortStrings(
       new Set([...text.matchAll(/\b(?:19|20)\d{2}\b/g)].map(m => m[0]))
     ),
@@ -95,6 +90,30 @@ export function extract(text: string): Record<string, unknown> {
       ),
     ].map(m => m[0]),
   };
+}
+
+/**
+ * Extracts money phrases with normalized numeric values.
+ * @param text - Plain text article body.
+ * @returns Matched money mentions with parsed values.
+ */
+function moneyMentions(
+  text: string
+): ReadonlyArray<
+  Readonly<Record<"value", number | null> & Record<"phrase", string>>
+> {
+  return [...text.matchAll(/\$([\d,.]+)\s*(billion|million|k)?/gi)]
+    .map(m => ({ value: parseMoney(m[1], m[2]), phrase: m[0] }))
+    .filter(x => x.value);
+}
+
+/**
+ * Extracts percentage phrases from article text.
+ * @param text - Plain text article body.
+ * @returns Matched percentage strings.
+ */
+function pctMentions(text: string): ReadonlyArray<string> {
+  return [...text.matchAll(/(\d{1,4}(?:\.\d+)?)\s*%/g)].map(m => m[0]);
 }
 
 /**

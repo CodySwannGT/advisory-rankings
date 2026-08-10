@@ -108,7 +108,6 @@ export function firmCell(firm: FirmCellChip | null | undefined): DomChild {
  * @returns Watchlist item node.
  */
 export function watchlistItem(item: WatchlistItem): HTMLElement {
-  const hasMoves = item.sourceCoverage.moveCount > 0;
   const statuses = item.sourceStatus.filter(
     status => status !== NO_MATCHING_MOVES
   );
@@ -121,15 +120,7 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
       item.firm ? firmCell(item.firm) : unresolvedFirmCell(),
       item.query ? el("span", { class: "watchlist-query" }, item.query) : null
     ),
-    hasMoves
-      ? el(
-          "div",
-          { class: "watchlist-metrics" },
-          metricBlock("Inbound", summaryValue(item.inbound)),
-          metricBlock("Outbound", summaryValue(item.outbound)),
-          metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
-        )
-      : watchlistNoMatch(Boolean(item.firm)),
+    watchlistMoveSummary(item),
     coverageBlock(item.sourceCoverage),
     statuses.length
       ? el(
@@ -138,6 +129,23 @@ export function watchlistItem(item: WatchlistItem): HTMLElement {
           ...statuses.map(status => statusTag(status))
         )
       : null
+  );
+}
+
+/**
+ * Builds move metrics or no-match copy for one watchlist item.
+ * @param item - Watchlist item payload.
+ * @returns Move summary node.
+ */
+function watchlistMoveSummary(item: WatchlistItem): HTMLElement {
+  if (item.sourceCoverage.moveCount <= 0)
+    return watchlistNoMatch(Boolean(item.firm));
+  return el(
+    "div",
+    { class: "watchlist-metrics" },
+    metricBlock("Inbound", summaryValue(item.inbound)),
+    metricBlock("Outbound", summaryValue(item.outbound)),
+    metricBlock("Net", netValue(item.netKnownAum, item.netMoveCount))
   );
 }
 

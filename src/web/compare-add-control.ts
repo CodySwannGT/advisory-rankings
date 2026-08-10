@@ -84,21 +84,42 @@ function handleCompareAddInput({
   if (q.length < 2) return;
   searchTimers.set(
     input,
-    setTimeout(async () => {
-      const envelope = await search(q, "advisor").catch(() => null);
-      if (currentRequestId !== searchRequestIds.get(input)) return;
-      const advisors = (envelope?.items ?? []).filter(
-        item => item.kind === "advisor" && !selectedIds.includes(item.id)
-      );
-      if (!advisors.length) {
-        status.replaceChildren("No additional advisors found.");
-        return;
-      }
-      status.replaceChildren("");
-      results.replaceChildren(
-        ...advisors.slice(0, 6).map(item => compareAddResult(item, selectedIds))
-      );
-    }, 150)
+    setTimeout(
+      () =>
+        void renderCompareAddResults({
+          input,
+          results,
+          selectedIds,
+          status,
+          q,
+          currentRequestId,
+        }),
+      150
+    )
+  );
+}
+
+/**
+ * Loads and renders debounced comparison add results.
+ * @param context - Inline add control state plus current query metadata.
+ */
+async function renderCompareAddResults(
+  context: CompareAddInputContext &
+    Readonly<Record<"q", string> & Record<"currentRequestId", number>>
+): Promise<void> {
+  const { input, results, selectedIds, status, q, currentRequestId } = context;
+  const envelope = await search(q, "advisor").catch(() => null);
+  if (currentRequestId !== searchRequestIds.get(input)) return;
+  const advisors = (envelope?.items ?? []).filter(
+    item => item.kind === "advisor" && !selectedIds.includes(item.id)
+  );
+  if (!advisors.length) {
+    status.replaceChildren("No additional advisors found.");
+    return;
+  }
+  status.replaceChildren("");
+  results.replaceChildren(
+    ...advisors.slice(0, 6).map(item => compareAddResult(item, selectedIds))
   );
 }
 

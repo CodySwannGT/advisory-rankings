@@ -193,11 +193,7 @@ function applyCuratedMerge(
   const firmIdValue = String(firm.id);
   if (canonicalId === firmIdValue) return current;
   if (canonicalName === name) return current;
-  const canonical = current.byId.get(canonicalId) ?? {
-    id: canonicalId,
-    name: canonicalName,
-    channel: firm.channel ?? "unknown",
-  };
+  const canonical = canonicalFirmRow(current, firm, canonicalId, canonicalName);
   const merged = mergeFirmRows(canonical, firm, canonicalName);
   const alias = aliasRow(canonicalId, name, "curated_merge", firmIdValue);
   return {
@@ -213,6 +209,29 @@ function applyCuratedMerge(
     mergedFirmIds: [...current.mergedFirmIds, firmIdValue],
     auditRows: [...current.auditRows, auditRow(firm, merged, canonicalId)],
   };
+}
+
+/**
+ * Resolves the existing or fallback canonical row for a curated merge.
+ * @param current - Current merge accumulator.
+ * @param firm - Source firm row being merged.
+ * @param canonicalId - Target canonical firm id.
+ * @param canonicalName - Target canonical firm name.
+ * @returns Existing canonical row or a fallback row seeded from the source firm.
+ */
+function canonicalFirmRow(
+  current: ReturnType<typeof initialMergeAccumulator>,
+  firm: Readonly<Record<string, unknown>>,
+  canonicalId: string,
+  canonicalName: string
+): Readonly<Record<string, unknown>> {
+  return (
+    current.byId.get(canonicalId) ?? {
+      id: canonicalId,
+      name: canonicalName,
+      channel: firm.channel ?? "unknown",
+    }
+  );
 }
 
 /**

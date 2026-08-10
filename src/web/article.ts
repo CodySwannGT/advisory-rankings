@@ -76,13 +76,11 @@ mountThreeColumnPage({
       return;
     }
     const loadArticle = (): void => {
-      clear(center);
-      clear(right);
+      [center, right].forEach(clear);
       renderDetailLoading({ center, right, label: "article" });
       api<ArticleViewPayload>(`/ArticleView/${encodeURIComponent(id)}`)
         .then(d => {
-          clear(center);
-          clear(right);
+          [center, right].forEach(clear);
           render(d, center, right);
         })
         .catch((err: unknown) => {

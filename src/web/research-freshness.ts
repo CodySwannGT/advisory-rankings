@@ -4,7 +4,6 @@ import {
   SectionCard,
   AsyncStateCard,
   DetailsCard,
-  Button,
   Tag,
   el,
   clear,
@@ -13,8 +12,8 @@ import {
   filterControlsCard,
   queueResourcePath,
   readQueueFilters,
-  writeQueueFilters,
 } from "./research-freshness-filters.js";
+import { priorityGroupRow } from "./research-freshness-priority-groups.js";
 import type { AdvisorResearchQueueResponse } from "../harper/resource-advisor-research-queue.js";
 
 /** One rendered queue item from the AdvisorResearchQueue resource. */
@@ -257,29 +256,7 @@ function priorityGroupsCard(
   return SectionCard({
     title: "Priority groups",
     body: payload.summary.priorityGroups.map(group =>
-      el(
-        "p",
-        { class: "research-priority-group" },
-        Button({
-          variant: "ghost",
-          children: group.label,
-          attrs: {
-            class: "research-priority-group-button",
-            disabled: group.count === 0 ? "true" : undefined,
-          },
-          onClick: () => {
-            writeQueueFilters({
-              sourceType: group.filters.sourceType,
-              staleDays: String(group.filters.staleDays),
-              status: group.filters.status ?? "",
-              missingField: group.filters.missingField ?? "",
-              limit: String(group.filters.limit),
-            });
-            onChange();
-          },
-        }),
-        `: ${group.count}`
-      )
+      priorityGroupRow(group, onChange)
     ),
   });
 }

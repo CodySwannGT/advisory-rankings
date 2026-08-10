@@ -118,16 +118,36 @@ export function setupSnippetsCard(
  */
 function setupSnippets(endpointUrl: string): readonly SetupSnippet[] {
   return [
-    {
-      title: "Inspector setup",
-      body: `Transport: Streamable HTTP
+    inspectorSetupSnippet(endpointUrl),
+    genericHttpSnippet(endpointUrl),
+    boundedQuerySnippet(),
+  ];
+}
+
+/**
+ * Builds the MCP inspector setup snippet.
+ * @param endpointUrl - Catalog-derived MCP endpoint URL.
+ * @returns Inspector setup snippet.
+ */
+function inspectorSetupSnippet(endpointUrl: string): SetupSnippet {
+  return {
+    title: "Inspector setup",
+    body: `Transport: Streamable HTTP
 Server URL: ${endpointUrl}
 Headers: none
 Credentials: none`,
-    },
-    {
-      title: "Generic Streamable HTTP call",
-      body: `fetch("${endpointUrl}", {
+  };
+}
+
+/**
+ * Builds a generic Streamable HTTP request snippet.
+ * @param endpointUrl - Catalog-derived MCP endpoint URL.
+ * @returns Generic HTTP snippet.
+ */
+function genericHttpSnippet(endpointUrl: string): SetupSnippet {
+  return {
+    title: "Generic Streamable HTTP call",
+    body: `fetch("${endpointUrl}", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({
@@ -140,14 +160,20 @@ Credentials: none`,
     }
   })
 })`,
-    },
-    {
-      title: "Bounded sample query",
-      body: `Tool: search_advisorbook
+  };
+}
+
+/**
+ * Builds the bounded sample query snippet.
+ * @returns Sample AdvisorBook MCP query snippet.
+ */
+function boundedQuerySnippet(): SetupSnippet {
+  return {
+    title: "Bounded sample query",
+    body: `Tool: search_advisorbook
 Arguments: {"query":"Morgan Stanley","limit":3}
 Expected freshness: read counts and returned urls with the catalog generated timestamp before citing results.`,
-    },
-  ];
+  };
 }
 
 /**
