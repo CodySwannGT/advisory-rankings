@@ -228,11 +228,7 @@ async function collectModeFilteredFeedItems(
     ...items.filter(item => matchesFeedMode(item, filters.mode)),
   ];
   const nextOffset = offset + page.items.length;
-  if (
-    nextMatches.length >= limit ||
-    nextOffset >= page.total ||
-    page.items.length === 0
-  ) {
+  if (hasLoadedFilteredFeedPage(nextMatches, limit, nextOffset, page)) {
     return {
       categoryTotal: page.total,
       items: nextMatches.slice(0, limit),
@@ -246,6 +242,27 @@ async function collectModeFilteredFeedItems(
     nextPage,
     nextOffset,
     nextMatches
+  );
+}
+
+/**
+ * Returns true once recursive feed loading has enough matching rows.
+ * @param matches - Matching feed items collected so far.
+ * @param limit - Requested page size.
+ * @param nextOffset - Raw article offset after the current page.
+ * @param page - Current raw article page.
+ * @returns True when feed loading can stop.
+ */
+function hasLoadedFilteredFeedPage(
+  matches: readonly FeedItem[],
+  limit: number,
+  nextOffset: number,
+  page: Awaited<ReturnType<typeof feedArticlePage>>
+): boolean {
+  return (
+    matches.length >= limit ||
+    nextOffset >= page.total ||
+    page.items.length === 0
   );
 }
 

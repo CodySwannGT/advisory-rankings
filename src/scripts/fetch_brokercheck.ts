@@ -31,6 +31,7 @@ import {
 const MODE_REQUIRED_ERROR = "one BrokerCheck fetch mode is required";
 /** BrokerCheck crawl module loaded lazily after direct fetch modes are skipped. */
 type BrokerCheckCrawls = typeof import("./fetch_brokercheck_crawls.js");
+
 const arg = (name: string): string | undefined => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
@@ -110,21 +111,63 @@ const runSelectedCrawlMode = async (
   state: CrawlState,
   opts: CrawlOptions
 ): Promise<unknown | null> => {
+  const context = { crawls, client, rest, resolver, state, opts };
   if (has("--enrich"))
     return await runEnrich(crawls, client, rest, resolver, state, opts);
   const searchName = arg("--search-name");
-  if (searchName)
-    return await crawlNameSearch(
-      crawls,
-      client,
-      rest,
-      resolver,
-      state,
-      searchName,
-      opts
-    );
+  if (searchName) return await runNameMode(context, searchName);
   const firmRoster = arg("--firm-roster");
   if (!firmRoster) return null;
+  return await runRosterMode(context, firmRoster);
+};
+
+/**
+ * Runs the explicit BrokerCheck name-search crawl mode.
+ * @param context - Shared BrokerCheck crawl mode context.
+ * @param searchName - Advisor name to search.
+ * @returns Name-search crawl result.
+ */
+async function runNameMode(
+  context: Readonly<
+    Record<"crawls", BrokerCheckCrawls> &
+      Record<"client", BrokerCheckClient> &
+      Record<"rest", HarperREST> &
+      Record<"resolver", Resolver> &
+      Record<"state", CrawlState> &
+      Record<"opts", CrawlOptions>
+  >,
+  searchName: string
+): Promise<unknown> {
+  const { crawls, client, rest, resolver, state, opts } = context;
+  return await crawlNameSearch(
+    crawls,
+    client,
+    rest,
+    resolver,
+    state,
+    searchName,
+    opts
+  );
+}
+
+/**
+ * Runs the explicit BrokerCheck firm-roster crawl mode.
+ * @param context - Shared BrokerCheck crawl mode context.
+ * @param firmRoster - Firm CRD whose roster should be crawled.
+ * @returns Firm-roster crawl result.
+ */
+async function runRosterMode(
+  context: Readonly<
+    Record<"crawls", BrokerCheckCrawls> &
+      Record<"client", BrokerCheckClient> &
+      Record<"rest", HarperREST> &
+      Record<"resolver", Resolver> &
+      Record<"state", CrawlState> &
+      Record<"opts", CrawlOptions>
+  >,
+  firmRoster: string
+): Promise<unknown> {
+  const { crawls, client, rest, resolver, state, opts } = context;
   return await crawlFirmRoster(
     crawls,
     client,
@@ -134,7 +177,7 @@ const runSelectedCrawlMode = async (
     firmRoster,
     opts
   );
-};
+}
 
 /**
  * Runs the existing-advisor enrichment mode.

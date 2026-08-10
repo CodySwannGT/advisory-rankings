@@ -160,31 +160,37 @@ function render(
   showAnalystDetails: boolean
 ): void {
   if (isErrorPayload(d)) return renderAdvisorNotFound(center, d.id);
-  const a = d.advisor;
   const mobileEvidenceRoot = el("div", { class: "advisor-mobile-evidence" });
   const desktopEvidenceRoot = el("div", { class: "advisor-desktop-evidence" });
-  const evidenceSections = advisorEvidenceProfileSections(d, {
-    showAnalystDetails,
-  });
-  canonicalizeEntityRoute("advisor", { ...a, name: d.displayName });
+  const sections = advisorEvidenceProfileSections(d, { showAnalystDetails });
+  canonicalizeEntityRoute("advisor", { ...d.advisor, name: d.displayName });
   appendSections(center, [
-    ProfileHeadComponent({
-      initialsText: initials(d.displayName),
-      imageUrl: a.headshotUrl,
-      title: d.displayName,
-      subtitle: advisorSubtitle(d),
-      tags: advisorTags(a),
-    }),
+    advisorProfileHead(d),
     ...advisorCenterSections(d, mobileEvidenceRoot),
   ]);
   appendAdvisorRightRail(right, d, desktopEvidenceRoot);
   mountResponsiveEvidenceSections({
     desktopRoot: desktopEvidenceRoot,
     mobileRoot: mobileEvidenceRoot,
-    sections: evidenceSections,
+    sections,
   });
   mobileEvidenceRoot.appendChild(publicReadinessCard(d));
   appendRegistrationApplications(right, d);
+}
+
+/**
+ * Builds the advisor profile header component.
+ * @param profile - Advisor profile payload.
+ * @returns Rendered profile header.
+ */
+function advisorProfileHead(profile: AdvisorProfilePayload): HTMLElement {
+  return ProfileHeadComponent({
+    initialsText: initials(profile.displayName),
+    imageUrl: profile.advisor.headshotUrl,
+    title: profile.displayName,
+    subtitle: advisorSubtitle(profile),
+    tags: advisorTags(profile.advisor),
+  });
 }
 
 /**

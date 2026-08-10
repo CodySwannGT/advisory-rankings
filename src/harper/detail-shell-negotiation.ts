@@ -152,20 +152,33 @@ export function requestHeadersFromContext(
   }
   const getter = bag["get"];
   if (typeof getter === "function") {
-    const read = (name: string): string =>
-      String((getter as (n: string) => unknown).call(bag, name) ?? "");
-    return {
-      accept: read("accept"),
-      host: read("host"),
-      origin: read("origin"),
-      referer: read("referer"),
-      "sec-fetch-dest": read("sec-fetch-dest"),
-      "sec-fetch-mode": read("sec-fetch-mode"),
-      "x-forwarded-host": read("x-forwarded-host"),
-      "x-requested-with": read("x-requested-with"),
-    };
+    return headersFromGetter(bag, getter);
   }
   return bag as DetailRequestHeaders;
+}
+
+/**
+ * Builds a normalized header bag from a Headers-like getter object.
+ * @param bag - Headers-like object used as the getter receiver.
+ * @param getter - Header getter function from the bag.
+ * @returns Normalized detail request headers.
+ */
+function headersFromGetter(
+  bag: Readonly<Record<string, unknown>>,
+  getter: unknown
+): DetailRequestHeaders {
+  const read = (name: string): string =>
+    String((getter as (n: string) => unknown).call(bag, name) ?? "");
+  return {
+    accept: read("accept"),
+    host: read("host"),
+    origin: read("origin"),
+    referer: read("referer"),
+    "sec-fetch-dest": read("sec-fetch-dest"),
+    "sec-fetch-mode": read("sec-fetch-mode"),
+    "x-forwarded-host": read("x-forwarded-host"),
+    "x-requested-with": read("x-requested-with"),
+  };
 }
 
 /**

@@ -224,9 +224,8 @@ const crawlRosterPage = async (
   const crds = rosterPageCrds(hits, opts, seen);
   const summary = await load(client, rest, resolver, state, opts, firmId, crds);
   logRosterPage(opts, firmId, page, hits.length);
-  if (rosterPageComplete(hits.length, opts.max || 0, seen + crds.length)) {
+  if (rosterPageComplete(hits.length, opts.max || 0, seen + crds.length))
     return summary;
-  }
   return addCrawlSummaries(
     summary,
     await nextRosterPageSummary(

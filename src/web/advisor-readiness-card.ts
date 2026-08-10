@@ -15,34 +15,45 @@ export function publicReadinessCard(
   profile: AdvisorProfilePayload
 ): HTMLElement {
   const readiness = advisorReadiness(profile.advisor, freshnessState(profile));
-  const missingFields = readiness.limitations.join(" ");
   return DetailsCard({
     attrs: { id: "public-readiness" },
     title: "Public readiness",
-    pairs: [
-      [
-        "Contact",
-        readiness.contact === "ready"
-          ? "Contact ready"
-          : "Missing contact data",
-      ],
-      [
-        "Profile",
-        readiness.profileSubstance === "present"
-          ? "Profile substance present"
-          : "Missing profile substance",
-      ],
-      ["Business email", profile.advisor.businessEmail],
-      ["Business phone", profile.advisor.businessPhone],
-      ["LinkedIn URL", profile.advisor.linkedinUrl],
-      [
-        "FINRA CRD",
-        readiness.crd === "present" ? profile.advisor.finraCrd : "Missing CRD",
-      ],
-      ["Freshness", readinessFreshnessLabel(readiness.freshness)],
-      ["Missing public fields", missingFields || "No public readiness gaps"],
-    ],
+    pairs: publicReadinessPairs(profile, readiness),
   });
+}
+
+/**
+ * Builds details-card pairs for advisor public readiness.
+ * @param profile - Advisor profile payload.
+ * @param readiness - Derived public readiness state.
+ * @returns Details-card label/value pairs.
+ */
+function publicReadinessPairs(
+  profile: AdvisorProfilePayload,
+  readiness: ReturnType<typeof advisorReadiness>
+): ReadonlyArray<readonly [string, string | null | undefined]> {
+  const missingFields = readiness.limitations.join(" ");
+  return [
+    [
+      "Contact",
+      readiness.contact === "ready" ? "Contact ready" : "Missing contact data",
+    ],
+    [
+      "Profile",
+      readiness.profileSubstance === "present"
+        ? "Profile substance present"
+        : "Missing profile substance",
+    ],
+    ["Business email", profile.advisor.businessEmail],
+    ["Business phone", profile.advisor.businessPhone],
+    ["LinkedIn URL", profile.advisor.linkedinUrl],
+    [
+      "FINRA CRD",
+      readiness.crd === "present" ? profile.advisor.finraCrd : "Missing CRD",
+    ],
+    ["Freshness", readinessFreshnessLabel(readiness.freshness)],
+    ["Missing public fields", missingFields || "No public readiness gaps"],
+  ];
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   detectUnextractedRecruiting,
   type RecruitingGapEntry,
 } from "./data-coverage-recruiting-gap.js";
+import { recruitingCoverageSpecs } from "./data-coverage-recruiting-specs.js";
 import { coverageFreshnessResults } from "./data-coverage-freshness.js";
 import { coverageWarnings } from "./data-coverage-warnings.js";
 
@@ -343,14 +344,7 @@ async function fieldCompleteness(
 async function recruitingCoverage(
   query: CoverageQuery
 ): Promise<QueryResult<GroupCountRow>> {
-  const specs = [
-    ["transition_events", countSql("TransitionEvent")],
-    ["article_transition_mentions", countSql("ArticleTransitionEventMention")],
-    [
-      "transition_field_assertions",
-      "SELECT COUNT(*) AS n FROM data.FieldAssertion WHERE targetTable = 'TransitionEvent'",
-    ],
-  ] as const;
+  const specs = recruitingCoverageSpecs();
   const results = await specs.reduce<
     Promise<
       ReadonlyArray<
@@ -359,7 +353,7 @@ async function recruitingCoverage(
       >
     >
   >(
-    async (previous, [label, sqlText]) => [
+    async (previous, { label, sqlText }) => [
       ...(await previous),
       { label, result: await safeRows<CountRow>(query, sqlText) },
     ],

@@ -288,18 +288,7 @@ function inferredRankingSubject(row: RankingEntryRow): string {
 export function regulatorySnapshotModule(
   snapshot: FirmBrokerCheckSnapshotSlice | null
 ): RegulatorySnapshotModule {
-  if (!snapshot)
-    return {
-      status: "unavailable",
-      note: "No firm BrokerCheck snapshot is loaded for this firm.",
-      snapshot: null,
-      source: brokerCheckSource(null, null),
-      provenance: { sourceTable: "BrokerCheckSnapshot", sourceIds: [] },
-      freshness: freshnessNote(
-        null,
-        "BrokerCheck freshness is unavailable because no firm snapshot is loaded."
-      ),
-    };
+  if (!snapshot) return unavailableRegulatorySnapshotModule();
   return {
     status: "loaded",
     note: "Regulatory values are source-backed by the loaded firm BrokerCheck snapshot.",
@@ -315,6 +304,24 @@ export function regulatorySnapshotModule(
     freshness: freshnessNote(
       snapshot.fetchedAt ?? null,
       "BrokerCheck fetched date is unavailable for this snapshot."
+    ),
+  };
+}
+
+/**
+ * Builds the empty regulatory snapshot payload for firms without BrokerCheck data.
+ * @returns Regulatory snapshot module with unavailable status.
+ */
+function unavailableRegulatorySnapshotModule(): RegulatorySnapshotModule {
+  return {
+    status: "unavailable",
+    note: "No firm BrokerCheck snapshot is loaded for this firm.",
+    snapshot: null,
+    source: brokerCheckSource(null, null),
+    provenance: { sourceTable: "BrokerCheckSnapshot", sourceIds: [] },
+    freshness: freshnessNote(
+      null,
+      "BrokerCheck freshness is unavailable because no firm snapshot is loaded."
     ),
   };
 }

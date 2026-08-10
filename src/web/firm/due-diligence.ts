@@ -49,14 +49,7 @@ export function dueDiligenceSection(
   const body = el("div", { class: "firm-dd" });
   const moduleEntries = dueDiligenceModules(diligence.modules);
   const emptyState = dueDiligenceEmptyState();
-  const grid = el(
-    "div",
-    { class: "firm-dd-grid" },
-    ...moduleEntries.map(({ key, node }) => {
-      node.dataset.firmDdStatus = moduleStatusGroup(diligence.modules[key]);
-      return node;
-    })
-  );
+  const grid = dueDiligenceGrid(diligence.modules, moduleEntries);
   const filters = dueDiligenceFilters(grid, emptyState);
   appendDueDiligenceBody(
     body,
@@ -74,6 +67,26 @@ export function dueDiligenceSection(
     attrs: { class: "firm-dd-card" },
     body,
   });
+}
+
+/**
+ * Builds the filterable due-diligence module grid.
+ * @param modules - Source due-diligence modules keyed by module name.
+ * @param moduleEntries - Renderable module entries.
+ * @returns Grid element with status metadata applied.
+ */
+function dueDiligenceGrid(
+  modules: FirmDueDiligencePayload["modules"],
+  moduleEntries: readonly ModuleEntry[]
+): HTMLElement {
+  return el(
+    "div",
+    { class: "firm-dd-grid" },
+    ...moduleEntries.map(({ key, node }) => {
+      node.dataset.firmDdStatus = moduleStatusGroup(modules[key]);
+      return node;
+    })
+  );
 }
 
 /**

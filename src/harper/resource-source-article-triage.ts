@@ -233,9 +233,7 @@ function triageRow(
     headline: article.headline,
     publishedDate: article.publishedDate,
     sourceUrl: article.url,
-    articleViewPath: article.slug
-      ? `/articles/${encodeURIComponent(article.slug)}-${encodeURIComponent(article.id)}`
-      : `/articles/${encodeURIComponent(article.id)}`,
+    articleViewPath: triageArticleViewPath(article),
     category: article.category,
     advisorCount: item.advisors.length,
     firmCount: item.firms.length,
@@ -247,6 +245,18 @@ function triageRow(
     reasons: summary.reasons,
     reasonTokens: summary.reasonTokens,
   };
+}
+
+/**
+ * Builds the public detail path for a source-triage article row.
+ * @param article - Source article row.
+ * @returns Public article detail path.
+ */
+function triageArticleViewPath(article: ArticleRow): string {
+  const encodedId = encodeURIComponent(article.id);
+  return article.slug
+    ? `/articles/${encodeURIComponent(article.slug)}-${encodedId}`
+    : `/articles/${encodedId}`;
 }
 
 /**

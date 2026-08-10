@@ -80,30 +80,40 @@ mountThreeColumnPage({
       );
       return;
     }
-    const loadTeamProfile = (): void => {
-      clear(center);
-      clear(right);
-      renderDetailLoading({ center, right, label: "team profile" });
-      api<TeamProfilePayloadOrError>(`/TeamProfile/${encodeURIComponent(id)}`)
-        .then(d => {
-          clear(center);
-          clear(right);
-          render(d, center, right);
-        })
-        .catch((err: unknown) => {
-          renderRecoverableDetailError({
-            center,
-            right,
-            title: "Could not load team",
-            error: err,
-            onRetry: loadTeamProfile,
-          });
-        });
-    };
-
-    loadTeamProfile();
+    loadTeamProfile(id, center, right);
   },
 });
+
+/**
+ * Loads and renders one team profile page.
+ * @param id - Team id from the route.
+ * @param center - Main content column.
+ * @param right - Right sidebar column.
+ */
+function loadTeamProfile(
+  id: string,
+  center: HTMLElement,
+  right: HTMLElement
+): void {
+  clear(center);
+  clear(right);
+  renderDetailLoading({ center, right, label: "team profile" });
+  api<TeamProfilePayloadOrError>(`/TeamProfile/${encodeURIComponent(id)}`)
+    .then(d => {
+      clear(center);
+      clear(right);
+      render(d, center, right);
+    })
+    .catch((err: unknown) => {
+      renderRecoverableDetailError({
+        center,
+        right,
+        title: "Could not load team",
+        error: err,
+        onRetry: () => loadTeamProfile(id, center, right),
+      });
+    });
+}
 
 /**
  * Discriminates a not-found error envelope from a team profile payload.

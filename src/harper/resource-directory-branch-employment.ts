@@ -32,15 +32,7 @@ export async function employmentRowsForBranches(
 ): Promise<ReadonlyArray<EmploymentHistoryRow>> {
   const branchIds = new Set(branches.map(branch => branch.id));
   const firmIds = firmIdsForBranches(branches, firmMergeAudits);
-  const batches = Array.from(
-    { length: Math.ceil(firmIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
-    (_unused, batchIndex) =>
-      firmIds.slice(
-        batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH,
-        batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH +
-          BRANCH_EMPLOYMENT_LOOKUP_BATCH
-      )
-  );
+  const batches = branchEmploymentLookupBatches(firmIds);
   const rows = await batches.reduce<
     Promise<ReadonlyArray<ReadonlyArray<EmploymentHistoryRow>>>
   >(async (accumulated, batch) => {
@@ -57,6 +49,25 @@ export async function employmentRowsForBranches(
     return [...collected, ...next];
   }, Promise.resolve([]));
   return rows.flat().filter(row => row.branchId && branchIds.has(row.branchId));
+}
+
+/**
+ * Splits firm ids into lookup batches for Harper indexed reads.
+ * @param firmIds - Firm ids to load employment rows for.
+ * @returns Firm id batches sized for indexed lookup.
+ */
+function branchEmploymentLookupBatches(
+  firmIds: ReadonlyArray<string>
+): ReadonlyArray<ReadonlyArray<string>> {
+  return Array.from(
+    { length: Math.ceil(firmIds.length / BRANCH_EMPLOYMENT_LOOKUP_BATCH) },
+    (_unused, batchIndex) =>
+      firmIds.slice(
+        batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH,
+        batchIndex * BRANCH_EMPLOYMENT_LOOKUP_BATCH +
+          BRANCH_EMPLOYMENT_LOOKUP_BATCH
+      )
+  );
 }
 
 /**

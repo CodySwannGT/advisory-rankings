@@ -152,9 +152,7 @@ const fetchFirmSnapshots = async (
   force: boolean,
   log: CrawlLogger
 ): Promise<SnapshotSummary> => {
-  const firms = rowsFrom(await rest.get("/Firm/")).filter(
-    firm => firm.finraCrd
-  );
+  const firms = firmSnapshotTargets(await rest.get("/Firm/"));
   const snapshotResolver = Object.assign(resolver, { firmListing: null });
   const summary = await firms.reduce<Promise<SnapshotSummary>>(
     async (previous, firm) => {
@@ -177,6 +175,14 @@ const fetchFirmSnapshots = async (
   await log(`phase 2 summary: ${JSON.stringify(summary)}`);
   return summary;
 };
+
+/**
+ * Filters Harper firm rows down to firms with FINRA CRDs.
+ * @param value - Raw `/Firm/` response body.
+ * @returns Firm rows eligible for snapshot fetches.
+ */
+const firmSnapshotTargets = (value: unknown): ReadonlyArray<BrokerRecord> =>
+  rowsFrom(value).filter(firm => firm.finraCrd);
 
 const rowsFrom = (value: unknown): ReadonlyArray<BrokerRecord> =>
   Array.isArray(value) ? value.filter(isRecord) : [];

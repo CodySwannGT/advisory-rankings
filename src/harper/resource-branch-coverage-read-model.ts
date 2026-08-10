@@ -34,32 +34,59 @@ export function buildBranchCoverageRows(
 ): ReadonlyArray<BranchCoverageRow> {
   const knownFirmIds = new Set(input.firms.map(firm => firm.id));
   const employmentsByBranch = groupEmploymentsByBranch(input.employments);
-  return input.branches.map(branch => {
-    const linkedEmployments = employmentsByBranch.get(branch.id) ?? [];
-    const firm = knownFirmIds.has(branch.firmId) ? { id: branch.firmId } : null;
-    const currentAdvisorCount = currentBranchAdvisorCount(linkedEmployments);
-    const sourceMetadata = branchCoverageSourceSummary(linkedEmployments);
-    const gapGroup = branchGapGroup({
-      firm,
-      currentAdvisorCount,
-      sourceMetadata,
-    });
-    return {
-      id: branch.id,
-      branchId: branch.id,
-      firmId: branch.firmId,
-      currentAdvisorCount,
-      coverageStatus: firm
-        ? currentAdvisorCount > 0
-          ? "loaded"
-          : "partial"
-        : "unavailable",
-      gapGroup,
-      sourceTypes: sourceMetadata.sourceTypes,
-      sourceLabels: sourceMetadata.sourceLabels,
-      builtAt,
-    };
+  return input.branches.map(branch =>
+    branchCoverageRow(branch, knownFirmIds, employmentsByBranch, builtAt)
+  );
+}
+
+/**
+ * Builds one materialized coverage row from branch employment context.
+ * @param branch - Branch row to project.
+ * @param knownFirmIds - Loaded firm ids used to mark unavailable branches.
+ * @param employmentsByBranch - Employment rows grouped by branch id.
+ * @param builtAt - Timestamp recorded on the generated row.
+ * @returns Materialized branch coverage row.
+ */
+function branchCoverageRow(
+  branch: BranchRow,
+  knownFirmIds: ReadonlySet<string>,
+  employmentsByBranch: ReadonlyMap<string, ReadonlyArray<EmploymentHistoryRow>>,
+  builtAt: string
+): BranchCoverageRow {
+  const linkedEmployments = employmentsByBranch.get(branch.id) ?? [];
+  const firm = knownFirmIds.has(branch.firmId) ? { id: branch.firmId } : null;
+  const currentAdvisorCount = currentBranchAdvisorCount(linkedEmployments);
+  const sourceMetadata = branchCoverageSourceSummary(linkedEmployments);
+  const gapGroup = branchGapGroup({
+    firm,
+    currentAdvisorCount,
+    sourceMetadata,
   });
+  return {
+    id: branch.id,
+    branchId: branch.id,
+    firmId: branch.firmId,
+    currentAdvisorCount,
+    coverageStatus: branchCoverageStatus(firm, currentAdvisorCount),
+    gapGroup,
+    sourceTypes: sourceMetadata.sourceTypes,
+    sourceLabels: sourceMetadata.sourceLabels,
+    builtAt,
+  };
+}
+
+/**
+ * Selects the public coverage status for one branch.
+ * @param firm - Resolved firm row, or null when the branch firm is missing.
+ * @param currentAdvisorCount - Current advisors linked to the branch.
+ * @returns Coverage status for the materialized row.
+ */
+function branchCoverageStatus(
+  firm: Readonly<Record<"id", string>> | null,
+  currentAdvisorCount: number
+): BranchCoverageRow["coverageStatus"] {
+  if (!firm) return "unavailable";
+  return currentAdvisorCount > 0 ? "loaded" : "partial";
 }
 
 /**
