@@ -136,4 +136,88 @@ describe("feedArticlePage with date-less Article rows present", () => {
     ]);
     expect(EPOCH_FLOOR).toBe("1970-01-01");
   });
+
+  it("merges public web research category aliases before applying feed offsets", async () => {
+    (globalThis as Record<string, unknown>).tables = {
+      Article: articleTableLike([
+        {
+          id: "research-new",
+          category: "public_web_research",
+          publishedDate: "2026-06-05",
+        },
+        {
+          id: "web-old",
+          category: "web_research",
+          publishedDate: "2026-06-01",
+        },
+        {
+          id: "research-middle",
+          category: "public_web_research",
+          publishedDate: "2026-06-03",
+        },
+        {
+          id: "web-missing-date",
+          category: "web_research",
+          publishedDate: undefined,
+        },
+      ]),
+    };
+    const { feedArticlePage } =
+      await import("../src/harper/resource-directory-search-queries.js");
+
+    const page = await feedArticlePage("public_web_research", 2, 1);
+
+    expect(page.items.map(row => (row as { id: string }).id)).toEqual([
+      "research-middle",
+      "web-old",
+    ]);
+    expect(page.total).toBe(3);
+  });
+
+  it("counts unsorted helper pages without adding a sort seed", async () => {
+    const queries: SearchQuery[] = [];
+    const table = {
+      async *search(query: SearchQuery): AsyncIterable<Record<string, string>> {
+        queries.push(query);
+        const [condition] = query.conditions ?? [];
+        const matched = [
+          { id: "a1", category: "news" },
+          { id: "a2", category: "news" },
+          { id: "a3", category: "research" },
+        ].filter(row =>
+          condition ? row[condition.attribute] === condition.value : true
+        );
+        yield* matched.slice(
+          query.offset ?? 0,
+          (query.offset ?? 0) + (query.limit ?? matched.length)
+        );
+      },
+    };
+    const { searchPageAndCount } =
+      await import("../src/harper/resource-directory-search-queries.js");
+
+    const page = await searchPageAndCount(table, {
+      conditions: [
+        { attribute: "category", comparator: "equals", value: "news" },
+      ],
+      limit: 1,
+      offset: 1,
+    });
+
+    expect(page).toEqual({ items: [{ id: "a2", category: "news" }], total: 2 });
+    expect(queries).toEqual([
+      {
+        conditions: [
+          { attribute: "category", comparator: "equals", value: "news" },
+        ],
+        limit: 1,
+        offset: 1,
+      },
+      {
+        conditions: [
+          { attribute: "category", comparator: "equals", value: "news" },
+        ],
+      },
+    ]);
+  });
 });
