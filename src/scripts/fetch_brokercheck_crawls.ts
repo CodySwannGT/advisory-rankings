@@ -222,10 +222,10 @@ const crawlRosterPage = async (
   const hits = searchHits(await client.firmRoster(firmId, page, PAGE_SIZE));
   if (!hits.length) return emptyCrawlSummary();
   const crds = rosterPageCrds(hits, opts, seen);
+  const nextSeen = seen + crds.length;
   const summary = await load(client, rest, resolver, state, opts, firmId, crds);
   logRosterPage(opts, firmId, page, hits.length);
-  if (rosterPageComplete(hits.length, opts.max || 0, seen + crds.length))
-    return summary;
+  if (rosterPageComplete(hits.length, opts.max || 0, nextSeen)) return summary;
   return addCrawlSummaries(
     summary,
     await nextRosterPageSummary(
@@ -236,8 +236,7 @@ const crawlRosterPage = async (
       firmId,
       opts,
       page,
-      seen,
-      crds
+      nextSeen
     )
   );
 };
@@ -271,19 +270,9 @@ const nextRosterPageSummary = (
   firmId: string,
   opts: CrawlOptions,
   page: number,
-  seen: number,
-  crds: readonly string[]
+  seen: number
 ): Promise<CrawlSummary> =>
-  crawlNextRosterPage(
-    client,
-    rest,
-    resolver,
-    state,
-    firmId,
-    opts,
-    page,
-    seen + crds.length
-  );
+  crawlNextRosterPage(client, rest, resolver, state, firmId, opts, page, seen);
 
 const logRosterPage = (
   opts: CrawlOptions,

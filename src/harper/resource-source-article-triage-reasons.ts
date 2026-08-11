@@ -69,16 +69,13 @@ export function sourceArticleTriageReasons(
     isCandidateProvenance
   ).length;
   const hasBody = Boolean(input.article.bodyText?.trim());
-  const candidates: readonly (SourceArticleTriageReason | null)[] = [
-    isUncategorized(input.article.category) ? "uncategorized" : null,
-    input.eventCardCount === 0 ? "no-event-cards" : null,
-    entityCount === 0 ? "no-entity-chips" : null,
-    hasBody ? null : "no-body-text",
-    provenanceCount === 0 ? "missing-provenance" : null,
-    provenanceCount > 0 && candidateProvenanceCount === provenanceCount
-      ? "candidate-only-provenance"
-      : null,
-  ];
+  const candidates = triageReasonCandidates(
+    input,
+    entityCount,
+    provenanceCount,
+    candidateProvenanceCount,
+    hasBody
+  );
   const reasonTokens = candidates.filter(isReasonToken);
   return {
     reasons: reasonTokens.map(token => ({
@@ -92,6 +89,23 @@ export function sourceArticleTriageReasons(
     entityCount,
   };
 }
+
+const triageReasonCandidates = (
+  input: SourceArticleTriageReasonInput,
+  entityCount: number,
+  provenanceCount: number,
+  candidateProvenanceCount: number,
+  hasBody: boolean
+): readonly (SourceArticleTriageReason | null)[] => [
+  isUncategorized(input.article.category) ? "uncategorized" : null,
+  input.eventCardCount === 0 ? "no-event-cards" : null,
+  entityCount === 0 ? "no-entity-chips" : null,
+  hasBody ? null : "no-body-text",
+  provenanceCount === 0 ? "missing-provenance" : null,
+  provenanceCount > 0 && candidateProvenanceCount === provenanceCount
+    ? "candidate-only-provenance"
+    : null,
+];
 
 /**
  * Converts a triage reason token into public display copy.

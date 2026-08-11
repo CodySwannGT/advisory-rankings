@@ -15,6 +15,7 @@ import {
   type CorrectionField,
 } from "./advisor-correction-fields.js";
 import { clearCorrectionTextControls } from "./advisor-correction-controls.js";
+import { correctionFailureMessage } from "./advisor-correction-messages.js";
 import { correctionRequestPayload } from "./advisor-correction-payload.js";
 
 const NOTE_CLASS = "advisor-correction-note";
@@ -252,14 +253,7 @@ function correctionControls(
         value: fields[0]?.value ?? "",
       })
     ),
-    proposed: asHtmlTextAreaElement(
-      el("textarea", {
-        name: "proposedValue",
-        maxlength: "2000",
-        rows: "4",
-        required: true,
-      })
-    ),
+    proposed: correctionProposedTextArea(),
     note: asHtmlTextAreaElement(
       el("textarea", { name: "submitterNote", maxlength: "2000", rows: "3" })
     ),
@@ -268,6 +262,16 @@ function correctionControls(
 
 const correctionFieldOption = (option: CorrectionField): HTMLElement =>
   el("option", { value: option.name }, option.label);
+
+const correctionProposedTextArea = (): HTMLTextAreaElement =>
+  asHtmlTextAreaElement(
+    el("textarea", {
+      name: "proposedValue",
+      maxlength: "2000",
+      rows: "4",
+      required: true,
+    })
+  );
 
 /**
  * Submits a correction request and reflects the queued state.
@@ -300,11 +304,7 @@ async function submitCorrection(
       correctionQueuedMessage(correctionRequestId(response))
     );
   } catch (error) {
-    status.replaceChildren(
-      isAuthFailure(error)
-        ? "Sign in again to submit corrections."
-        : "Could not queue correction request."
-    );
+    status.replaceChildren(correctionFailureMessage(error));
   } finally {
     setCorrectionControlsDisabled(controls, false);
   }

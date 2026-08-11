@@ -92,13 +92,7 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
   const otherNames = [...(bi.otherNames ?? [])];
   const successions = successionRows(otherNames, bi.firmName);
   const owners = ownerRows(payload);
-  const discCounts: Readonly<Record<string, number | null | undefined>> =
-    Object.fromEntries(
-      (payload.disclosures ?? []).map(disclosure => [
-        disclosure.disclosureType,
-        disclosure.disclosureCount,
-      ])
-    );
+  const discCounts = disclosureCounts(payload);
   const regs = payload.registrations ?? {};
   return {
     firm,
@@ -116,6 +110,16 @@ export function parseFirm(content: BrokerRecord): ParsedFirm {
     },
   };
 }
+
+const disclosureCounts = (
+  payload: BrokerCheckFirmPayload
+): Readonly<Record<string, number | null | undefined>> =>
+  Object.fromEntries(
+    (payload.disclosures ?? []).map(disclosure => [
+      disclosure.disclosureType,
+      disclosure.disclosureCount,
+    ])
+  );
 
 /**
  * Builds prior-name succession rows while excluding the current legal name.

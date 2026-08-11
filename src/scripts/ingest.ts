@@ -162,9 +162,7 @@ function rowsForPost(post: RawWpPost): PostIngestRows {
     ...articleDates(post),
     category: deriveArticleCategory(headline),
   };
-  const aliasMatches = FIRM_ALIASES.filter(
-    ([alias]) => body.includes(alias) || headline.includes(alias)
-  );
+  const aliasMatches = matchingFirmAliases(headline, body);
   const firms: ReadonlyArray<FirmRow> = aliasMatches.map(([, canonical]) => ({
     id: firmId(canonical),
     name: canonical,
@@ -179,6 +177,11 @@ function rowsForPost(post: RawWpPost): PostIngestRows {
   const fieldAssertions = moneyAssertionsForArticle(aid, body);
   return { article, firms, firmMentions, fieldAssertions };
 }
+
+const matchingFirmAliases = (headline: string, body: string) =>
+  FIRM_ALIASES.filter(
+    ([alias]) => body.includes(alias) || headline.includes(alias)
+  );
 
 /**
  * Extracts candidate money mentions from article prose.

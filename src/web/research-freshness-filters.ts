@@ -114,12 +114,7 @@ function queueFilterForm(
         applyQueueFilters(form, onChange);
       },
     },
-    FormLabel({
-      label: "Source type",
-      control: selectControl("sourceType", filters.sourceType, [
-        ...SOURCE_TYPE_OPTIONS,
-      ]),
-    }),
+    sourceTypeLabel(filters),
     numberLabel("Stale days", "staleDays", filters.staleDays, "3650"),
     FormLabel({
       label: "Status",
@@ -131,6 +126,14 @@ function queueFilterForm(
   ) as HTMLFormElement;
   return form;
 }
+
+const sourceTypeLabel = (filters: QueueFilters): HTMLElement =>
+  FormLabel({
+    label: "Source type",
+    control: selectControl("sourceType", filters.sourceType, [
+      ...SOURCE_TYPE_OPTIONS,
+    ]),
+  });
 
 const missingFieldLabel = (filters: QueueFilters): HTMLElement =>
   FormLabel({

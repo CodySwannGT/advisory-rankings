@@ -212,19 +212,22 @@ function profileSkeleton(label: string): HTMLElement {
           height: 104,
           attrs: { class: "profile-avatar" },
         }),
-        el(
-          "div",
-          { class: "profile-title" },
-          el("h1", { id: titleId }, title),
-          el("p", {}, "Profile details are loading."),
-          SkeletonComponent({ width: "60%", height: 28 }),
-          SkeletonComponent({ width: "42%", height: 14 }),
-          SkeletonComponent({ width: "34%", height: 22 })
-        )
+        profileTitleSkeleton(titleId, title)
       ),
     ],
   });
 }
+
+const profileTitleSkeleton = (titleId: string, title: string): HTMLElement =>
+  el(
+    "div",
+    { class: "profile-title" },
+    el("h1", { id: titleId }, title),
+    el("p", {}, "Profile details are loading."),
+    SkeletonComponent({ width: "60%", height: 28 }),
+    SkeletonComponent({ width: "42%", height: 14 }),
+    SkeletonComponent({ width: "34%", height: 22 })
+  );
 
 /**
  * Builds a section card skeleton.

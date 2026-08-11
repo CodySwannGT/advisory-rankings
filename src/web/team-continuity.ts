@@ -91,32 +91,36 @@ function memberItems(
 ): readonly ContinuityItem[] {
   return [
     ...currentRosterItem(currentMembers),
-    ...pastMembers.map(member => ({
-      kind: "Roster change",
-      title: `${member.advisor.name} listed as a past member`,
-      body: `${humanize(member.role ?? undefined) || "Past team member"}; ${
-        member.endDate
-          ? "departure date is loaded"
-          : "departure date is not loaded"
-      }`,
-      date: member.endDate ?? member.startDate,
-      href: memberHref(member),
-      order: 20,
-      provenance: [
-        member.endDate
-          ? "Date note: past-member end date."
-          : "Date note: past-member date unavailable; using start date when present.",
-        "Source: public team profile past member row.",
-        memberHref(member)
-          ? "Evidence: public advisor profile."
-          : "Evidence unavailable in this public member row.",
-        PUBLIC_TIMELINE_PRIVACY,
-      ],
-      trust:
-        "Supported by public roster history; open details for date and evidence notes.",
-    })),
+    ...pastMembers.map(pastRosterItem),
   ];
 }
+
+const pastRosterItem = (member: TeamMemberRow): ContinuityItem => ({
+  kind: "Roster change",
+  title: `${member.advisor.name} listed as a past member`,
+  body: `${humanize(member.role ?? undefined) || "Past team member"}; ${
+    member.endDate ? "departure date is loaded" : "departure date is not loaded"
+  }`,
+  date: member.endDate ?? member.startDate,
+  href: memberHref(member),
+  order: 20,
+  provenance: pastRosterProvenance(member),
+  trust:
+    "Supported by public roster history; open details for date and evidence notes.",
+});
+
+const pastRosterProvenance = (
+  member: TeamMemberRow
+): ContinuityItem["provenance"] => [
+  member.endDate
+    ? "Date note: past-member end date."
+    : "Date note: past-member date unavailable; using start date when present.",
+  "Source: public team profile past member row.",
+  memberHref(member)
+    ? "Evidence: public advisor profile."
+    : "Evidence unavailable in this public member row.",
+  PUBLIC_TIMELINE_PRIVACY,
+];
 
 /**
  * Builds the current-roster continuity item when current members are loaded.

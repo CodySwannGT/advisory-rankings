@@ -80,6 +80,7 @@ function branchCoverageMetrics(
   db: ResourceIndex
 ): ReadonlyArray<DataCoverageMetric> {
   const coverageRows = publicBranchCoverageRows(db);
+  const branchCount = db.branches.length;
   const branchIdsWithCurrentAdvisors = new Set(
     coverageRows
       .filter(row => row.currentAdvisorCount > 0)
@@ -90,11 +91,9 @@ function branchCoverageMetrics(
     branchMetric(
       "branches",
       "Branches",
-      db.branches.length,
+      branchCount,
       "Branch",
-      db.branches.length === 0
-        ? "Branch rows are unavailable; this does not imply firms have no offices."
-        : null
+      branchCoverageAvailabilityNote(branchCount)
     ),
     branchMetric(
       "branches-with-current-advisors",
@@ -108,6 +107,11 @@ function branchCoverageMetrics(
     ...branchGapMetrics(gapCounts),
   ];
 }
+
+const branchCoverageAvailabilityNote = (branchCount: number): string | null =>
+  branchCount === 0
+    ? "Branch rows are unavailable; this does not imply firms have no offices."
+    : null;
 
 /**
  * Counts public branch rows by gap group.

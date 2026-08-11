@@ -88,19 +88,22 @@ function feedFilterForm(state: FeedFilterCardState): HTMLElement {
         (value): FeedFilterOption => [value, categoryLabel(value)]
       ),
     ]),
-    Button({
-      variant: "neutral",
-      onClick: () => state.onChange({ mode: DEFAULT_FEED_MODE, category: "" }),
-      children: "Clear",
-      attrs: {
-        class: "feed-filter-clear",
-        disabled: state.filters.active ? undefined : true,
-      },
-    })
+    clearFeedFiltersButton(state)
   );
   form.addEventListener("change", () => state.onChange(readFormFilters(form)));
   return form;
 }
+
+const clearFeedFiltersButton = (state: FeedFilterCardState): HTMLElement =>
+  Button({
+    variant: "neutral",
+    onClick: () => state.onChange({ mode: DEFAULT_FEED_MODE, category: "" }),
+    children: "Clear",
+    attrs: {
+      class: "feed-filter-clear",
+      disabled: state.filters.active ? undefined : true,
+    },
+  });
 
 /**
  * Reads and validates feed filters from the current URL.

@@ -243,18 +243,17 @@ const loadMentionedEntities = async (
   };
 };
 
-const loadMentionRows = async (
-  ids: MentionedEntityIds
-): Promise<
-  readonly [
-    readonly AdvisorRow[],
-    readonly TeamRow[],
-    readonly FirmRow[],
-    readonly EmploymentHistoryRow[],
-    readonly TeamMetricSnapshotRow[],
-    readonly SanctionRow[],
-  ]
-> =>
+/** Loaded row groups for all entity ids mentioned by the feed page. */
+type MentionRows = readonly [
+  readonly AdvisorRow[],
+  readonly TeamRow[],
+  readonly FirmRow[],
+  readonly EmploymentHistoryRow[],
+  readonly TeamMetricSnapshotRow[],
+  readonly SanctionRow[],
+];
+
+const loadMentionRows = async (ids: MentionedEntityIds): Promise<MentionRows> =>
   await Promise.all([
     rowsByIds<AdvisorRow>(tables.Advisor, ids.advisorIds),
     rowsByIds<TeamRow>(tables.Team, ids.teamIds),

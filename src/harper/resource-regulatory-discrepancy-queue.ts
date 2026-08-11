@@ -242,12 +242,16 @@ function queueItem(
     createdAt: dateString(row.createdAt),
     updatedAt: dateString(row.updatedAt),
     availableActions: REVIEW_ACTIONS,
-    provenance: {
-      sourceTable: "RegulatoryDiscrepancy",
-      sourceIds: [row.id],
-    },
+    provenance: queueItemProvenance(row),
   };
 }
+
+const queueItemProvenance = (
+  row: RegulatoryDiscrepancyRow
+): RegulatoryDiscrepancyQueueItem["provenance"] => ({
+  sourceTable: "RegulatoryDiscrepancy",
+  sourceIds: [row.id],
+});
 
 const advisorHubValue = (
   row: RegulatoryDiscrepancyRow

@@ -174,23 +174,36 @@ function metadataCandidates(
       ? ['link[rel~="apple-touch-icon"]', 'link[rel~="icon"]']
       : [];
   const imageRows = imageSelectors.map(selector =>
-    mediaCandidate({
-      rawUrl: $(selector).attr("content"),
-      sourceUrl,
-      score: mode === "advisor" ? 3 : 2,
-      reason: selector,
-    })
+    mediaCandidate(metadataImageCandidate($, selector, sourceUrl, mode))
   );
   const iconRows = iconSelectors.map(selector =>
-    mediaCandidate({
-      rawUrl: $(selector).attr("href"),
-      sourceUrl,
-      score: 3,
-      reason: selector,
-    })
+    mediaCandidate(metadataIconCandidate($, selector, sourceUrl))
   );
   return [...imageRows, ...iconRows].filter(isMediaCandidate);
 }
+
+const metadataImageCandidate = (
+  $: ReturnType<typeof cheerio.load>,
+  selector: string,
+  sourceUrl: string,
+  mode: "advisor" | "firm"
+) => ({
+  rawUrl: $(selector).attr("content"),
+  sourceUrl,
+  score: mode === "advisor" ? 3 : 2,
+  reason: selector,
+});
+
+const metadataIconCandidate = (
+  $: ReturnType<typeof cheerio.load>,
+  selector: string,
+  sourceUrl: string
+) => ({
+  rawUrl: $(selector).attr("href"),
+  sourceUrl,
+  score: 3,
+  reason: selector,
+});
 
 /**
  * Scores ordinary `<img>` tags using alt/class/id/url hints.
@@ -212,14 +225,7 @@ function imageCandidates(
       const img = $(element);
       const rawUrl =
         img.attr("src") ?? img.attr("data-src") ?? img.attr("data-lazy-src");
-      const descriptor = [
-        img.attr("alt"),
-        img.attr("class"),
-        img.attr("id"),
-        rawUrl,
-      ]
-        .filter(Boolean)
-        .join(" ");
+      const descriptor = imageDescriptor(img, rawUrl);
       const score = textScore(descriptor, targetName, mode);
       return score === 0
         ? null
@@ -232,6 +238,14 @@ function imageCandidates(
     })
     .filter(isMediaCandidate);
 }
+
+const imageDescriptor = (
+  img: ReturnType<ReturnType<typeof cheerio.load>>,
+  rawUrl: string | undefined
+): string =>
+  [img.attr("alt"), img.attr("class"), img.attr("id"), rawUrl]
+    .filter(Boolean)
+    .join(" ");
 
 /**
  * Narrows optional candidate results after URL validation.

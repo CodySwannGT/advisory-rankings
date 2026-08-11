@@ -276,15 +276,23 @@ function branchDirectoryMatch(
     context.currentAdvisorCount,
     context.gapGroup
   )
-    ? branchDirectoryRow(
-        branch,
-        firm,
-        context.currentAdvisorCount,
-        context.sourceMetadata,
-        coverage
-      )
+    ? matchedBranchDirectoryRow(branch, firm, context, coverage)
     : null;
 }
+
+const matchedBranchDirectoryRow = (
+  branch: BranchRow,
+  firm: FirmRow | null,
+  context: ReturnType<typeof branchDirectoryMatchContext>,
+  coverage: BranchCoverageRow | null
+): BranchDirectoryRow =>
+  branchDirectoryRow(
+    branch,
+    firm,
+    context.currentAdvisorCount,
+    context.sourceMetadata,
+    coverage
+  );
 
 /**
  * Narrows nullable branch rows.
