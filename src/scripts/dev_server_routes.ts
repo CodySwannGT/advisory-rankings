@@ -70,6 +70,9 @@ interface ResourceConstructor {
   };
 }
 
+/** Instance shape for generated Harper resource classes. */
+type ResourceInstance = InstanceType<ResourceConstructor>;
+
 /**
  * Constructor signature for the generated `mcp` resource. The local POST
  * bridge calls `instance.post(body)`; no other method is needed in dev.
@@ -195,13 +198,7 @@ async function sendResource(
   const instance = Reflect.construct(ResourceClass as ResourceConstructor, []);
   installCurrentUser(instance, req);
   if (req.method === "POST") {
-    if (typeof instance.post !== "function")
-      return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
-    return sendJsonHandled(
-      res,
-      200,
-      await instance.post(makeTarget(id, searchParams), await readJsonBody(req))
-    );
+    return sendPostResource(instance, req, res, id, searchParams);
   }
   if (req.method !== "GET" && req.method !== "HEAD")
     return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
@@ -213,6 +210,22 @@ async function sendResource(
     await instance.get(makeTarget(id, searchParams))
   );
 }
+
+const sendPostResource = async (
+  instance: ResourceInstance,
+  req: IncomingMessage,
+  res: ServerResponse,
+  id: string | undefined,
+  searchParams: URLSearchParams
+): Promise<true> => {
+  if (typeof instance.post !== "function")
+    return sendJsonHandled(res, 405, { error: METHOD_NOT_ALLOWED });
+  return sendJsonHandled(
+    res,
+    200,
+    await instance.post(makeTarget(id, searchParams), await readJsonBody(req))
+  );
+};
 
 /**
  * Installs a local-session current-user hook on generated resources.

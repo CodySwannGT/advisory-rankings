@@ -42,22 +42,21 @@ export function reviewedDiscrepancyNotesSection(
       "div",
       {},
       EntityListC({
-        rows: notes.map(note =>
-          EntityRowC({
-            avatar: "BC",
-            name: reviewedDiscrepancyTitle(note),
-            sub: note.reviewerNote,
-            tail: note.reviewedAt
-              ? fmtDate(note.reviewedAt, { mode: "short" })
-              : null,
-            extras: [reviewedDiscrepancySourceLine(note)],
-          })
-        ),
+        rows: notes.map(reviewedDiscrepancyRow),
       }),
       brokerCheckAttribution(snapshot)
     ),
   });
 }
+
+const reviewedDiscrepancyRow = (note: ReviewedProfileNote): HTMLElement =>
+  EntityRowC({
+    avatar: "BC",
+    name: reviewedDiscrepancyTitle(note),
+    sub: note.reviewerNote,
+    tail: note.reviewedAt ? fmtDate(note.reviewedAt, { mode: "short" }) : null,
+    extras: [reviewedDiscrepancySourceLine(note)],
+  });
 
 /**
  * Builds conservative row title copy for a reviewed discrepancy note.

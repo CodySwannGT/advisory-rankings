@@ -149,20 +149,8 @@ function comparisonColumnControls(
   return el(
     "div",
     { class: "comparison-column-controls", role: "group" },
-    comparisonControlButton({
-      label: `Move ${item.displayName} left`,
-      className: "comparison-move-left",
-      disabled: index === 0,
-      icon: "arrow-left",
-      onClick: () => actions.move(item.id, -1),
-    }),
-    comparisonControlButton({
-      label: `Move ${item.displayName} right`,
-      className: "comparison-move-right",
-      disabled: index === count - 1,
-      icon: "arrow-right",
-      onClick: () => actions.move(item.id, 1),
-    }),
+    comparisonMoveButton(item, "left", index === 0, actions),
+    comparisonMoveButton(item, "right", index === count - 1, actions),
     comparisonControlButton({
       label: `Remove ${item.displayName}`,
       className: "comparison-remove",
@@ -172,6 +160,20 @@ function comparisonColumnControls(
     })
   );
 }
+
+const comparisonMoveButton = (
+  item: AdvisorComparisonItem,
+  direction: "left" | "right",
+  disabled: boolean,
+  actions: ComparisonColumnActions
+): HTMLElement =>
+  comparisonControlButton({
+    label: `Move ${item.displayName} ${direction}`,
+    className: `comparison-move-${direction}`,
+    disabled,
+    icon: `arrow-${direction}`,
+    onClick: () => actions.move(item.id, direction === "left" ? -1 : 1),
+  });
 
 /**
  * Updates the shareable comparison URL and rerenders ordered columns.

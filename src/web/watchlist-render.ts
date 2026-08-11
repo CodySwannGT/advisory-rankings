@@ -193,14 +193,7 @@ function entryRow(
     { class: "watchlist-firm-row", "data-advisor-id": entry.advisorId },
     compareEntryInput(entry),
     elC("span", { class: "watchlist-rank" }, String(entry.rank ?? "")),
-    elC(
-      "a",
-      {
-        class: "watchlist-advisor-link",
-        href: `/advisor.html?id=${encodeURIComponent(entry.advisorId)}`,
-      },
-      entry.advisorId
-    ),
+    watchlistAdvisorLink(entry),
     note,
     moveButton(ctx, list, entry, "up", "↑", "Move up"),
     moveButton(ctx, list, entry, "down", "↓", "Move down"),
@@ -209,6 +202,16 @@ function entryRow(
     status
   );
 }
+
+const watchlistAdvisorLink = (entry: WatchlistEntryView): HTMLElement =>
+  elC(
+    "a",
+    {
+      class: "watchlist-advisor-link",
+      href: `/advisor.html?id=${encodeURIComponent(entry.advisorId)}`,
+    },
+    entry.advisorId
+  );
 
 const compareEntryInput = (entry: WatchlistEntryView): HTMLInputElement =>
   elC("input", {

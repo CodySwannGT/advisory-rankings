@@ -114,10 +114,8 @@ export function firmCenterSections(
     isDisclosureEventCard
   );
   const articles = narrowRows(resourceRows(d.articles), isArticleStub);
-  const shortName = d.firm.short || d.firm.name;
-  const movesToTitle = `Recent moves to ${shortName}`;
-  const movesAwayTitle = `Recent moves away from ${shortName}`;
-  const disclosuresTitle = `Disclosures filed while advisors were at ${shortName}`;
+  const { movesToTitle, movesAwayTitle, disclosuresTitle } =
+    firmSectionTitles(d);
   return [
     dueDiligenceSection(d.dueDiligence),
     aboutSection(d.firm as unknown as FirmExtraFields),
@@ -135,6 +133,15 @@ export function firmCenterSections(
     PartialFailureCard("Coverage", d.articles),
   ];
 }
+
+const firmSectionTitles = (d: FirmProfileResponse) => {
+  const shortName = d.firm.short || d.firm.name;
+  return {
+    movesToTitle: `Recent moves to ${shortName}`,
+    movesAwayTitle: `Recent moves away from ${shortName}`,
+    disclosuresTitle: `Disclosures filed while advisors were at ${shortName}`,
+  };
+};
 
 const firmCoverageSection = (
   articles: readonly ArticleStubLike[]

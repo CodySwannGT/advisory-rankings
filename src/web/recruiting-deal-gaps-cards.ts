@@ -95,12 +95,7 @@ export function dealGapFilterCard(data: DealGapResponse): HTMLElement {
       textField("Year", "year", data.filters.year ?? "", "2026"),
       directionField(data),
       selectField("Gap", "gapType", data.filters.gapType ?? "", GAP_OPTIONS),
-      selectField(
-        "Unresolved",
-        "unresolved",
-        data.filters.unresolved,
-        UNRESOLVED_OPTIONS
-      ),
+      unresolvedDealGapField(data),
       el("input", {
         type: "hidden",
         name: "limit",
@@ -111,6 +106,14 @@ export function dealGapFilterCard(data: DealGapResponse): HTMLElement {
     ),
   });
 }
+
+const unresolvedDealGapField = (data: DealGapResponse): HTMLElement =>
+  selectField(
+    "Unresolved",
+    "unresolved",
+    data.filters.unresolved,
+    UNRESOLVED_OPTIONS
+  );
 
 /**
  * Builds the clear-filters action for the deal-gap form.

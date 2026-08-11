@@ -150,19 +150,25 @@ function careerTimelineStep(
       careerStepTitle(c),
       el("div", { class: "when" }, formatCareerRange(c, fmtDate)),
       c.roleTitle ? el("div", { class: "role" }, c.roleTitle) : null,
-      c.reasonForLeaving === "terminated_for_cause"
-        ? Tag({ kind: "danger", children: "terminated for cause" })
-        : null,
-      c.u5Filed
-        ? Tag({
-            kind: "warn",
-            attrs: { style: "margin-left:6px;" },
-            children: "U5 filed",
-          })
-        : null
+      careerDepartureTag(c),
+      careerU5Tag(c)
     )
   );
 }
+
+const careerDepartureTag = (c: CareerTimelineStep): HTMLElement | null =>
+  c.reasonForLeaving === "terminated_for_cause"
+    ? Tag({ kind: "danger", children: "terminated for cause" })
+    : null;
+
+const careerU5Tag = (c: CareerTimelineStep): HTMLElement | null =>
+  c.u5Filed
+    ? Tag({
+        kind: "warn",
+        attrs: { style: "margin-left:6px;" },
+        children: "U5 filed",
+      })
+    : null;
 
 /**
  * Builds the firm + branch title line for a {@link CareerTimeline} step.

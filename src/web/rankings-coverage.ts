@@ -135,13 +135,7 @@ function coverageBucketCard(bucket: CoverageBucket): HTMLElement {
     el(
       "div",
       { class: "rankings-coverage-bucket-head" },
-      el(
-        "strong",
-        {},
-        [bucket.category || "Unknown ranking", bucket.year]
-          .filter(Boolean)
-          .join(" ")
-      ),
+      coverageBucketTitle(bucket),
       el("span", {}, `${fmtNumber(bucket.total)} rankings`)
     ),
     bucketStatGrid([
@@ -160,6 +154,15 @@ function coverageBucketCard(bucket: CoverageBucket): HTMLElement {
     sampleRows(bucket.sampleRows)
   );
 }
+
+const coverageBucketTitle = (bucket: CoverageBucket): HTMLElement =>
+  el(
+    "strong",
+    {},
+    [bucket.category || "Unknown ranking", bucket.year]
+      .filter(Boolean)
+      .join(" ")
+  );
 
 /**
  * Builds source-status gap sample buckets.

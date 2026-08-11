@@ -112,15 +112,7 @@ export function AsyncStateCard({
   const defaults = ASYNC_STATE_DEFAULTS[kind] ?? ASYNC_STATE_DEFAULTS.transient;
   const cls =
     `ab-async-state ab-async-state--${kind} ${attrs.class ?? ""}`.trim();
-  const action =
-    actionLabel && onAction
-      ? Button({
-          variant: "neutral",
-          onClick: onAction,
-          children: actionLabel,
-          attrs: { class: "ab-async-state-action" },
-        })
-      : null;
+  const action = asyncStateAction(actionLabel, onAction);
 
   return SectionCard({
     title: title ?? defaults.title,
@@ -134,6 +126,19 @@ export function AsyncStateCard({
     ],
   });
 }
+
+const asyncStateAction = (
+  actionLabel: AsyncStateCardOptions["actionLabel"],
+  onAction: AsyncStateCardOptions["onAction"]
+): HTMLElement | null =>
+  actionLabel && onAction
+    ? Button({
+        variant: "neutral",
+        onClick: onAction,
+        children: actionLabel,
+        attrs: { class: "ab-async-state-action" },
+      })
+    : null;
 
 // ─── ChipRow ──────────────────────────────────────────────────
 // Horizontal flex of EntityChip elements.

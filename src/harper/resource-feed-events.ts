@@ -1,5 +1,6 @@
 import { advisorDisplayName } from "./resource-routing.js";
 import type {
+  AdvisorRow,
   DisclosureRow,
   TransitionEventRow,
 } from "../types/harper-schema.js";
@@ -69,9 +70,7 @@ export function disclosureRow(
   const advisor = db.byAdvisor.get(disclosure.advisorId);
   return {
     id: disclosure.id,
-    advisor: advisor
-      ? { id: advisor.id, name: advisorDisplayName(advisor) }
-      : undefined,
+    advisor: disclosureAdvisor(advisor),
     disclosureType: disclosure.disclosureType,
     regulator: disclosure.regulator,
     regulatorState: disclosure.regulatorState,
@@ -90,6 +89,11 @@ export function disclosureRow(
     sanctions,
   };
 }
+
+const disclosureAdvisor = (
+  advisor: AdvisorRow | undefined
+): DisclosureRowPayload["advisor"] =>
+  advisor ? { id: advisor.id, name: advisorDisplayName(advisor) } : undefined;
 
 /**
  * Wraps a transition in the feed event-card envelope.

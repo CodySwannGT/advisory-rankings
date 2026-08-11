@@ -97,12 +97,7 @@ export function watchlistCard(
         "Generated ",
         fmtDate(watchlist.generatedAt, { mode: "rel" })
       ),
-      anyMoves
-        ? null
-        : EmptyText({
-            children:
-              "No watched firms have matching moves under the current filters. Your selected firms and filters remain editable above.",
-          }),
+      watchlistEmptyText(anyMoves),
       el(
         "div",
         { class: "watchlist-grid" },
@@ -111,6 +106,14 @@ export function watchlistCard(
     ],
   });
 }
+
+const watchlistEmptyText = (anyMoves: boolean): HTMLElement | null =>
+  anyMoves
+    ? null
+    : EmptyText({
+        children:
+          "No watched firms have matching moves under the current filters. Your selected firms and filters remain editable above.",
+      });
 
 /**
  * Builds selected watchlist inbound/outbound/net metrics.
