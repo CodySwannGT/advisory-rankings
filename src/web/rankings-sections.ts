@@ -199,14 +199,19 @@ function activeFilterLabels(
 ): readonly string[] {
   if (!filters) return [];
   return [
-    filters.category ? `ranking list ${filters.category}` : "",
-    filters.year ? `year ${filters.year}` : "",
-    filters.firmQuery ? `firm ${filters.firmQuery}` : "",
-    filters.state ? `state ${filters.state}` : "",
-    filters.city ? `city ${filters.city}` : "",
+    labelForValue("ranking list", filters.category),
+    labelForValue("year", filters.year),
+    labelForValue("firm", filters.firmQuery),
+    labelForValue("state", filters.state),
+    labelForValue("city", filters.city),
     filters.resolved ? profileMatchLabel(filters.resolved) : "",
   ].filter((label): label is string => Boolean(label));
 }
+
+const labelForValue = (
+  prefix: string,
+  value: string | number | null | undefined
+): string => (value ? `${prefix} ${value}` : "");
 
 /**
  * Converts profile-match filter values to reader-facing text.

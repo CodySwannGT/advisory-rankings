@@ -13,14 +13,15 @@ import {
 export function parseMoney(value: unknown): number | null {
   if (value == null || value === "") return null;
   if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const cleaned = value.replace(/[^\d.-]/g, "");
-    if (!cleaned) return null;
-    const parsed = Number(cleaned);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  return typeof value === "string" ? parseMoneyString(value) : null;
 }
+
+const parseMoneyString = (value: string): number | null => {
+  const cleaned = value.replace(/[^\d.-]/g, "");
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 /**
  * Parses duration months from source data.
@@ -37,11 +38,19 @@ export function parseDurationMonths(text?: string | null): number | null {
   const days = /^(\d+)\s*day/.exec(t);
 
   if (wordNumber != null) return durationByUnit(wordNumber, t);
-  if (months) return Number(months[1]);
-  if (years) return Number(years[1]) * 12;
-  if (days) return Number(days[1]) / 30;
-  return null;
+  return durationFromMatchEntries([
+    [months, 1],
+    [years, 12],
+    [days, 1 / 30],
+  ]);
 }
+
+const durationFromMatchEntries = (
+  entries: ReadonlyArray<readonly [RegExpExecArray | null, number]>
+): number | null => {
+  const entry = entries.find(([match]) => match != null);
+  return entry?.[0] ? Number(entry[0][1]) * entry[1] : null;
+};
 
 /**
  * Applies the time unit embedded in BrokerCheck sanction duration text.

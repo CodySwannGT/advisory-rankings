@@ -185,23 +185,26 @@ async function handleSingle(request: unknown): Promise<JsonRpcResponse | null> {
     );
   if (isNotification(request)) return null;
   const id = request.id ?? null;
-  if (request.method === "initialize")
-    return successResponse(id, initializeResult(request.params));
-  if (request.method === "tools/list")
-    return successResponse(id, { tools: MCP_TOOL_DEFINITIONS });
-  if (request.method === "tools/call")
-    return handleToolCallRequest(id, request.params);
-  if (request.method === "resources/templates/list")
-    return successResponse(id, {
-      resourceTemplates: MCP_RESOURCE_TEMPLATES,
-    });
-  if (request.method === "resources/read")
-    return handleResourceReadRequest(id, request.params);
-  return errorResponse(
-    id,
-    METHOD_NOT_FOUND,
-    `Method not found: ${request.method}`
-  );
+  switch (request.method) {
+    case "initialize":
+      return successResponse(id, initializeResult(request.params));
+    case "tools/list":
+      return successResponse(id, { tools: MCP_TOOL_DEFINITIONS });
+    case "tools/call":
+      return handleToolCallRequest(id, request.params);
+    case "resources/templates/list":
+      return successResponse(id, {
+        resourceTemplates: MCP_RESOURCE_TEMPLATES,
+      });
+    case "resources/read":
+      return handleResourceReadRequest(id, request.params);
+    default:
+      return errorResponse(
+        id,
+        METHOD_NOT_FOUND,
+        `Method not found: ${request.method}`
+      );
+  }
 }
 
 /**

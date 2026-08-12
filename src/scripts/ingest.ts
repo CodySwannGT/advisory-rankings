@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import type { Dirent } from "node:fs";
 import { join } from "node:path";
 import * as cheerio from "cheerio";
 import { articleDates } from "../lib/article-dates.js";
@@ -99,17 +100,24 @@ function textFromHtml(html: string): string {
  */
 async function* postFiles(root: string): AsyncGenerator<string> {
   if (!existsSync(root)) return;
+  for (const entry of await crawlRootEntries(root)) {
+    if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
+  }
+}
+
+const crawlRootEntries = async (
+  root: string
+): Promise<ReadonlyArray<Dirent>> => {
   try {
-    for (const entry of await readdir(root, { withFileTypes: true })) {
-      if (entry.isDirectory()) yield* postFilesForEntry(root, entry.name);
-    }
+    return await readdir(root, { withFileTypes: true });
   } catch (error) {
     console.error(
       `[ingest] failed to read crawl directory ${root}:`,
       error instanceof Error ? error.message : String(error)
     );
+    return [];
   }
-}
+};
 
 /**
  * Finds saved WordPress post JSON files inside one crawl-output directory.

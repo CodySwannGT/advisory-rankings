@@ -6,9 +6,6 @@
 // from atoms.js + dom.js. They never reach into organisms or
 // pages.
 //
-// New composed-but-still-small components go here. Search this
-// file before adding a new one.
-// See docs/design-system.md.
 
 import { el } from "./dom.js";
 import type { DomAttrs, DomAttrValue, DomChild } from "./dom.js";
@@ -349,11 +346,6 @@ export function SanctionPill(bits: SanctionPillBits): HTMLElement {
   return el("span", { class: "sanction-pill" }, text);
 }
 
-// ─── DealStrip ────────────────────────────────────────────────
-// Dashed-top strip used at the bottom of TransitionEventCard to
-// render a recruiting deal summary.
-//
-//   deal = { upfrontPctT12?, producerTier?, backendMetrics? }
 /**
  * Handles deal strip for this workflow.
  * @param root0 - Deal strip rendering options.
@@ -375,10 +367,16 @@ export function DealStrip({
     "Recruiting deal: ",
     upfrontText != null ? el("strong", {}, upfrontText) : null,
     upfrontText != null ? " upfront on T-12 · " : "",
-    deal.producerTier ? `tier: ${formatInlineLabel(deal.producerTier)}` : "",
-    deal.backendMetrics ? ` · ${deal.backendMetrics}` : ""
+    dealTierText(deal),
+    dealBackendText(deal)
   );
 }
+
+const dealTierText = (deal: DealStripPayload): string =>
+  deal.producerTier ? `tier: ${formatInlineLabel(deal.producerTier)}` : "";
+
+const dealBackendText = (deal: DealStripPayload): string =>
+  deal.backendMetrics ? ` · ${deal.backendMetrics}` : "";
 
 // ─── EventStat (a single key statistic in an event card) ──────
 //   { value: '$1.2B', label: 'AUM moved' }
@@ -523,5 +521,4 @@ function formatInlineLabel(value: OptionalScalar): string | null {
     .join(" ");
 }
 
-// Re-export atoms used at the molecule layer for ergonomic imports.
 export { Avatar, Tag, Icon, TextInput };

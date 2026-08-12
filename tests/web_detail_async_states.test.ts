@@ -2171,32 +2171,33 @@ async function helpDisclosureMetrics(
         element: HTMLElement,
         rect: DOMRect
       ): boolean => {
-        if (
-          rect.left < 0 ||
-          rect.top < 0 ||
-          rect.right > window.innerWidth ||
-          rect.bottom > window.innerHeight
-        ) {
-          return true;
-        }
+        if (isOutsideViewport(rect)) return true;
 
         let ancestor = element.parentElement;
         while (ancestor) {
-          const overflow = getComputedStyle(ancestor).overflow;
-          if (/(auto|hidden|clip|scroll)/u.test(overflow)) {
-            const ancestorRect = ancestor.getBoundingClientRect();
-            if (
-              rect.left < ancestorRect.left ||
-              rect.top < ancestorRect.top ||
-              rect.right > ancestorRect.right ||
-              rect.bottom > ancestorRect.bottom
-            ) {
-              return true;
-            }
-          }
+          if (isClippedByAncestor(rect, ancestor)) return true;
           ancestor = ancestor.parentElement;
         }
         return false;
+      };
+      const isOutsideViewport = (rect: DOMRect): boolean =>
+        rect.left < 0 ||
+        rect.top < 0 ||
+        rect.right > window.innerWidth ||
+        rect.bottom > window.innerHeight;
+      const isClippedByAncestor = (
+        rect: DOMRect,
+        ancestor: HTMLElement
+      ): boolean => {
+        const overflow = getComputedStyle(ancestor).overflow;
+        if (!/(auto|hidden|clip|scroll)/u.test(overflow)) return false;
+        const ancestorRect = ancestor.getBoundingClientRect();
+        return (
+          rect.left < ancestorRect.left ||
+          rect.top < ancestorRect.top ||
+          rect.right > ancestorRect.right ||
+          rect.bottom > ancestorRect.bottom
+        );
       };
       const summary = document.querySelector<HTMLElement>(
         `${helpQuery} summary`

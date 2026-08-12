@@ -292,11 +292,15 @@ function compareValues(left: unknown, right: unknown): number {
   if (left === right) return 0;
   if (left == null) return -1;
   if (right == null) return 1;
-  if (typeof left === "number" && typeof right === "number") {
-    return left < right ? -1 : 1;
-  }
+  const numberComparison = compareNumberValues(left, right);
+  if (numberComparison != null) return numberComparison;
   return String(left).localeCompare(String(right));
 }
+
+const compareNumberValues = (left: unknown, right: unknown): number | null => {
+  if (typeof left !== "number" || typeof right !== "number") return null;
+  return left < right ? -1 : 1;
+};
 
 /**
  * Reads a field off an object row.
@@ -305,9 +309,8 @@ function compareValues(left: unknown, right: unknown): number {
  * @returns Field value.
  */
 function rowValue(row: unknown, attribute: string): unknown {
-  return row && typeof row === "object"
-    ? Reflect.get(row, attribute)
-    : undefined;
+  if (!row || typeof row !== "object") return undefined;
+  return Reflect.get(row, attribute);
 }
 
 /**

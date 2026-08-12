@@ -191,13 +191,7 @@ const handleAdvisorCandidates = async (
 ): Promise<EnrichSummary> => {
   const log = opts.log ?? console.error;
   if (candidates.length !== 1) {
-    log(
-      `[enrich] ${legalName}: ${candidates.length ? "ambiguous" : "no exact match"}`
-    );
-    return incrementEnrich(
-      summary,
-      candidates.length ? "ambiguous" : "no_match"
-    );
+    return logUnmatchedAdvisor(legalName, candidates.length, log, summary);
   }
   const crd = crdFromSource(candidates[0]);
   if (!crd) return incrementEnrich(summary, "no_match");
@@ -207,6 +201,18 @@ const handleAdvisorCandidates = async (
     incrementEnrich(summary, "matched"),
     counts ? "loaded" : undefined
   );
+};
+
+const logUnmatchedAdvisor = (
+  legalName: string,
+  candidateCount: number,
+  log: NonNullable<CrawlOptions["log"]>,
+  summary: EnrichSummary
+): EnrichSummary => {
+  const label = candidateCount ? "ambiguous" : "no exact match";
+  const key = candidateCount ? "ambiguous" : "no_match";
+  log(`[enrich] ${legalName}: ${label}`);
+  return incrementEnrich(summary, key);
 };
 
 const crawlRosterPage = async (
