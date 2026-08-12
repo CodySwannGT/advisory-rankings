@@ -79,6 +79,12 @@ describe("requireSameOrigin", () => {
     ).not.toThrow();
   });
 
+  it("allows source headers when Harper does not expose a serving host", () => {
+    expect(() =>
+      requireSameOrigin(contextWith({ origin: `https://${appHost}` }))
+    ).not.toThrow();
+  });
+
   it("rejects a cross-origin Origin with a 403", () => {
     expect(() =>
       requireSameOrigin(
