@@ -6,6 +6,8 @@ import {
   unwrapDuckDuckGoUrl,
 } from "../src/lib/media-enrichment.js";
 
+const EXAMPLE_TEAM_URL = "https://example.com/team";
+
 describe("media enrichment helpers", () => {
   it("normalizes and filters URLs", () => {
     expect(absoluteHttpUrl("/logo.png", "https://example.com/about")).toBe(
@@ -14,6 +16,7 @@ describe("media enrichment helpers", () => {
     expect(
       absoluteHttpUrl("mailto:hello@example.com", "https://example.com")
     ).toBeNull();
+    expect(absoluteHttpUrl("/logo.png", "not a url")).toBeNull();
   });
 
   it("parses DuckDuckGo result links", () => {
@@ -46,7 +49,7 @@ describe("media enrichment helpers", () => {
     expect(
       extractMediaCandidates(
         html,
-        "https://example.com/team",
+        EXAMPLE_TEAM_URL,
         "Example Wealth",
         "firm"
       )[0]
@@ -56,12 +59,40 @@ describe("media enrichment helpers", () => {
     expect(
       extractMediaCandidates(
         html,
-        "https://example.com/team",
+        EXAMPLE_TEAM_URL,
         "Alex Example",
         "advisor"
       )[0]
     ).toMatchObject({
       url: "https://example.com/assets/alex.jpg",
     });
+  });
+
+  it("keeps the strongest candidate for duplicate image URLs", () => {
+    const html = `
+      <html>
+        <head>
+          <meta property="og:image" content="/assets/example-logo.png">
+        </head>
+        <body>
+          <img
+            alt="Example Wealth logo"
+            class="brand-logo"
+            src="/assets/example-logo.png"
+          >
+        </body>
+      </html>
+    `;
+
+    expect(
+      extractMediaCandidates(html, EXAMPLE_TEAM_URL, "Example Wealth", "firm")
+    ).toEqual([
+      {
+        url: "https://example.com/assets/example-logo.png",
+        sourceUrl: EXAMPLE_TEAM_URL,
+        score: 6,
+        reason: "img:Example Wealth logo brand-logo /assets/example-logo.png",
+      },
+    ]);
   });
 });
