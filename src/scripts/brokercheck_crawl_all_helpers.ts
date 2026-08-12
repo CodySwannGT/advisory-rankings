@@ -273,17 +273,30 @@ const lookupFirmCrd = async (
     const hits = searchHitSources(raw);
     const candidates = firmSearchCandidates(raw, name);
     if (candidates.length !== 1) {
-      const key = candidates.length ? "ambiguous" : "no_match";
-      await log(
-        `  ${name}: ${candidates.length ? "ambiguous" : "no exact match"} (${hits.length} hits)`
+      return await unmatchedFirmSummary(
+        name,
+        candidates.length,
+        hits.length,
+        log
       );
-      return { ...emptyFirmLookupSummary(), [key]: 1 };
     }
     return await writeFirmCrd(rest, firm, name, candidates[0], log);
   } catch (error) {
     await log(`  ${name}: lookup failed: ${error}`);
     return { ...emptyFirmLookupSummary(), errors: 1 };
   }
+};
+
+const unmatchedFirmSummary = async (
+  name: string,
+  candidateCount: number,
+  hitCount: number,
+  log: CrawlLogger
+): Promise<FirmLookupSummary> => {
+  const key = candidateCount ? "ambiguous" : "no_match";
+  const label = candidateCount ? "ambiguous" : "no exact match";
+  await log(`  ${name}: ${label} (${hitCount} hits)`);
+  return { ...emptyFirmLookupSummary(), [key]: 1 };
 };
 
 const writeFirmCrd = async (

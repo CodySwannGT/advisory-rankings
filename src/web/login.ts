@@ -186,16 +186,17 @@ function setSubmitting(controls: SignInControls, submitting: boolean): void {
  * @param error - Error thrown by the login request, or empty to clear.
  */
 function setError(controls: SignInControls, error: unknown): void {
-  const message = error
-    ? isExpectedCredentialFailure(error)
-      ? "Email or password is incorrect."
-      : error instanceof Error
-        ? error.message
-        : String(error)
-    : "";
+  const message = loginErrorMessage(error);
   Object.assign(controls.error, { textContent: message });
   Object.assign(controls.error.style, { display: message ? "block" : "none" });
 }
+
+const loginErrorMessage = (error: unknown): string => {
+  if (!error) return "";
+  if (isExpectedCredentialFailure(error))
+    return "Email or password is incorrect.";
+  return error instanceof Error ? error.message : String(error);
+};
 
 /**
  * Detects authentication failures that should be shown as normal sign-in copy.

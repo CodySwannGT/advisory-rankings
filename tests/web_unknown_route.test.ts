@@ -1,4 +1,4 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type Server, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -100,16 +100,7 @@ function shellMetrics(page: Page): Promise<{
  */
 async function startStaticServer(): Promise<Server> {
   const localServer = createServer(async (request, response) => {
-    if (request.url?.startsWith("/Me")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ authenticated: false }));
-      return;
-    }
-    if (request.url?.startsWith("/Search")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(searchPayload()));
-      return;
-    }
+    if (writeMockApiResponse(request.url || "/", response)) return;
 
     const resolvedPath = resolveStaticPath(request.url || "/");
     try {
@@ -138,6 +129,20 @@ async function startStaticServer(): Promise<Server> {
     });
   });
   return localServer;
+}
+
+function writeMockApiResponse(url: string, response: ServerResponse): boolean {
+  const payload = mockApiPayload(url);
+  if (payload == null) return false;
+  response.writeHead(200, { "Content-Type": "application/json" });
+  response.end(JSON.stringify(payload));
+  return true;
+}
+
+function mockApiPayload(url: string): unknown {
+  if (url.startsWith("/Me")) return { authenticated: false };
+  if (url.startsWith("/Search")) return searchPayload();
+  return null;
 }
 
 /**

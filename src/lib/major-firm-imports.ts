@@ -71,11 +71,17 @@ export function summarizeAdapterStatus(
   writeRun: AdapterModeArtifact | undefined
 ): AdapterStatus {
   if (!dryRun.ok) return "blocked";
-  if (!writeRun) return dryRun.totalRows > 0 ? "mapped" : "source-limited";
+  if (!writeRun) return unmappedAdapterStatus(dryRun);
   if (!writeRun.ok) return "write-blocked";
   if (writeRun.totalTouched > 0) return "written";
-  return dryRun.totalRows > 0 ? "write-blocked" : "source-limited";
+  return emptyWriteAdapterStatus(dryRun);
 }
+
+const unmappedAdapterStatus = (dryRun: AdapterModeArtifact): AdapterStatus =>
+  dryRun.totalRows > 0 ? "mapped" : "source-limited";
+
+const emptyWriteAdapterStatus = (dryRun: AdapterModeArtifact): AdapterStatus =>
+  dryRun.totalRows > 0 ? "write-blocked" : "source-limited";
 
 /**
  * Converts adapter JSON stdout into a compact, auditable mode artifact.

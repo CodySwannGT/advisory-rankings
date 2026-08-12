@@ -380,16 +380,19 @@ export function addToSummary(
   const hasAumValue = move.aumMoved != null && move.aumMoved !== "";
   const aum = Number(move.aumMoved);
   const hasKnownAum = hasAumValue && Number.isFinite(aum);
-  const hasT12Value = move.productionT12 != null && move.productionT12 !== "";
-  const t12 = Number(move.productionT12);
   return {
     count: summary.count + 1,
     knownAum: summary.knownAum + (hasKnownAum ? aum : 0),
     unknownAumCount: summary.unknownAumCount + (hasKnownAum ? 0 : 1),
-    missingT12Count:
-      summary.missingT12Count + (hasT12Value && Number.isFinite(t12) ? 0 : 1),
+    missingT12Count: summary.missingT12Count + missingT12Increment(move),
   };
 }
+
+const missingT12Increment = (move: WatchlistMove): number => {
+  const hasT12Value = move.productionT12 != null && move.productionT12 !== "";
+  const t12 = Number(move.productionT12);
+  return hasT12Value && Number.isFinite(t12) ? 0 : 1;
+};
 
 /**
  * Projects an internal RecruitingMove into the client-facing PublicMove, stripping non-public fields.

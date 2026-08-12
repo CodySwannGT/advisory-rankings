@@ -14,19 +14,20 @@ export function toIsoDate(value?: string | null): string | null {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const parts = s.split("/");
-  if (parts.length === 3) {
-    const [mm, dd, yyyy] = parts.map(Number);
-    const d = new Date(Date.UTC(yyyy, mm - 1, dd));
-    if (
-      d.getUTCFullYear() === yyyy &&
-      d.getUTCMonth() === mm - 1 &&
-      d.getUTCDate() === dd
-    ) {
-      return d.toISOString().slice(0, 10);
-    }
-  }
-  return null;
+  return parts.length === 3 ? datePartsToIso(parts) : null;
 }
+
+const datePartsToIso = (parts: readonly string[]): string | null => {
+  const [mm, dd, yyyy] = parts.map(Number);
+  const d = new Date(Date.UTC(yyyy, mm - 1, dd));
+  if (
+    d.getUTCFullYear() !== yyyy ||
+    d.getUTCMonth() !== mm - 1 ||
+    d.getUTCDate() !== dd
+  )
+    return null;
+  return d.toISOString().slice(0, 10);
+};
 
 /**
  * Title-cases BrokerCheck display-name fragments.

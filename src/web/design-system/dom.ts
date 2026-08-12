@@ -168,21 +168,42 @@ const applyAttr = (
   value: DomAttrValue
 ): void => {
   if (value == null || value === false) return;
-  if (key === "class" || key === "className") {
-    Object.assign(node, { className: String(value) });
-    return;
-  }
-  if (key === "dataset" && isDatasetMap(value)) {
-    Object.assign(node.dataset, value);
-    return;
-  }
+  if (applyClassAttr(node, key, value)) return;
+  if (applyDatasetAttr(node, key, value)) return;
   if (key.startsWith("on") && isEventListener(value)) {
     node.addEventListener(key.slice(2).toLowerCase(), value);
     return;
   }
-  if (key === "html") {
-    Object.assign(node, { innerHTML: String(value) });
-    return;
-  }
+  if (applyHtmlAttr(node, key, value)) return;
   node.setAttribute(key, String(value));
+};
+
+const applyClassAttr = (
+  node: HTMLElement,
+  key: string,
+  value: DomAttrValue
+): boolean => {
+  if (key !== "class" && key !== "className") return false;
+  Object.assign(node, { className: String(value) });
+  return true;
+};
+
+const applyDatasetAttr = (
+  node: HTMLElement,
+  key: string,
+  value: DomAttrValue
+): boolean => {
+  if (key !== "dataset" || !isDatasetMap(value)) return false;
+  Object.assign(node.dataset, value);
+  return true;
+};
+
+const applyHtmlAttr = (
+  node: HTMLElement,
+  key: string,
+  value: DomAttrValue
+): boolean => {
+  if (key !== "html") return false;
+  Object.assign(node, { innerHTML: String(value) });
+  return true;
 };

@@ -89,15 +89,8 @@ function transitionStats(
 ): readonly HTMLElement[] {
   const { fmtMoney, fmtDate } = fmts;
   const cells: ReadonlyArray<HTMLElement | null> = [
-    transition.aumMoved != null && fmtMoney
-      ? EventStatC({ value: fmtMoney(transition.aumMoved), label: "AUM moved" })
-      : null,
-    transition.productionT12 != null && fmtMoney
-      ? EventStatC({
-          value: fmtMoney(transition.productionT12),
-          label: "T-12 production",
-        })
-      : null,
+    moneyStat(transition.aumMoved, "AUM moved", fmtMoney),
+    moneyStat(transition.productionT12, "T-12 production", fmtMoney),
     transition.headcountMoved != null
       ? EventStatC({
           value: transition.headcountMoved,
@@ -110,6 +103,15 @@ function transitionStats(
   ];
   return cells.filter((cell): cell is HTMLElement => cell != null);
 }
+
+const moneyStat = (
+  value: number | null | undefined,
+  label: string,
+  fmtMoney: EventFormatters["fmtMoney"]
+): HTMLElement | null =>
+  value != null && fmtMoney
+    ? EventStatC({ value: fmtMoney(value), label })
+    : null;
 
 // ─── DisclosureEventCard ──────────────────────────────────────
 // The red-bordered card for a Disclosure. Regulator + status,

@@ -279,9 +279,7 @@ export class StudioSession {
       headers,
       redirect: "manual",
     });
-    const getter: (() => ReadonlyArray<string>) | undefined =
-      response.headers.getSetCookie?.bind(response.headers);
-    const setCookies: ReadonlyArray<string> = getter ? getter() : [];
+    const setCookies = responseSetCookies(response);
     for (const cookie of setCookies) {
       const [pair] = cookie.split(";");
       if (!pair) continue;
@@ -351,6 +349,12 @@ export class StudioSession {
     }
   }
 }
+
+const responseSetCookies = (response: Response): ReadonlyArray<string> => {
+  const getter: (() => ReadonlyArray<string>) | undefined =
+    response.headers.getSetCookie?.bind(response.headers);
+  return getter ? getter() : [];
+};
 
 /**
  * Type predicate for an `HarperAuthTokens` body returned by the

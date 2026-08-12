@@ -1,4 +1,4 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type Server, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -350,36 +350,7 @@ async function expectRouteClick(
 async function startStaticServer(): Promise<Server> {
   const localServer = createServer(async (request, response) => {
     const url = request.url || "/";
-    if (url.startsWith("/Feed")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ items: [], nextCursor: null, total: 0 }));
-      return;
-    }
-    if (url.startsWith("/PublicFirms")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ items: [], nextCursor: null, total: 0 }));
-      return;
-    }
-    if (url.startsWith("/Search")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ advisors: [], firms: [], teams: [] }));
-      return;
-    }
-    if (url.startsWith("/AdvisorCorrectionRequest")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ items: [], nextCursor: null, total: 0 }));
-      return;
-    }
-    if (url.startsWith("/DataCoverage")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(dataCoveragePayload()));
-      return;
-    }
-    if (url.startsWith("/SourceArticleTriage")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(sourceArticleTriagePayload()));
-      return;
-    }
+    if (writeMockApiResponse(url, response)) return;
 
     const resolvedPath = resolveStaticPath(url);
     try {
@@ -400,6 +371,27 @@ async function startStaticServer(): Promise<Server> {
     });
   });
   return localServer;
+}
+
+function writeMockApiResponse(url: string, response: ServerResponse): boolean {
+  const payload = mockApiPayload(url);
+  if (payload == null) return false;
+  response.writeHead(200, { "Content-Type": "application/json" });
+  response.end(JSON.stringify(payload));
+  return true;
+}
+
+function mockApiPayload(url: string): unknown {
+  if (url.startsWith("/Feed")) return { items: [], nextCursor: null, total: 0 };
+  if (url.startsWith("/PublicFirms"))
+    return { items: [], nextCursor: null, total: 0 };
+  if (url.startsWith("/Search")) return { advisors: [], firms: [], teams: [] };
+  if (url.startsWith("/AdvisorCorrectionRequest"))
+    return { items: [], nextCursor: null, total: 0 };
+  if (url.startsWith("/DataCoverage")) return dataCoveragePayload();
+  if (url.startsWith("/SourceArticleTriage"))
+    return sourceArticleTriagePayload();
+  return null;
 }
 
 /**

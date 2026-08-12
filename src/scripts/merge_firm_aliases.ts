@@ -114,15 +114,7 @@ async function deleteFirmRows(ids: ReadonlyArray<string>): Promise<void> {
   if (ids.length === 0) return;
   const { target, auth } = harperConfig();
   if (target) {
-    for (const id of ids) {
-      const res = await fetch(`${target}/Firm/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Basic ${auth}` },
-      });
-      if (![200, 202, 204, 404].includes(res.status)) {
-        throw new Error(`DELETE Firm/${id} -> HTTP ${res.status}`);
-      }
-    }
+    await deleteRemoteFirmRows(target, auth, ids);
     return;
   }
 
@@ -131,6 +123,28 @@ async function deleteFirmRows(ids: ReadonlyArray<string>): Promise<void> {
     operation: "sql",
     sql: `DELETE FROM data.Firm WHERE id IN (${quoted})`,
   });
+}
+
+/**
+ * Deletes duplicate Firm rows through the REST endpoint.
+ * @param target - Harper REST target URL.
+ * @param auth - Basic-auth value.
+ * @param ids - Duplicate Firm ids to delete.
+ */
+async function deleteRemoteFirmRows(
+  target: string,
+  auth: string,
+  ids: ReadonlyArray<string>
+): Promise<void> {
+  for (const id of ids) {
+    const res = await fetch(`${target}/Firm/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (![200, 202, 204, 404].includes(res.status)) {
+      throw new Error(`DELETE Firm/${id} -> HTTP ${res.status}`);
+    }
+  }
 }
 
 /**

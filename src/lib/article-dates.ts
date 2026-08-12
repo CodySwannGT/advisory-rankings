@@ -69,16 +69,19 @@ function firstValidDate(candidates: readonly unknown[]): string | null {
  * @returns Normalized date string, or null when invalid.
  */
 function parseDateOnly(value: unknown): string | null {
-  if (value instanceof Date && Number.isFinite(value.getTime()))
-    return dateOnly(value.toISOString());
-  if (typeof value !== "string" && typeof value !== "number") return null;
+  if (value instanceof Date) return isoDateValue(value);
+  if (!isDateParseablePrimitive(value)) return null;
   const text = String(value).trim();
   if (!text) return null;
   if (DATE_ONLY.test(text)) return text;
   const parsed = new Date(text);
-  return Number.isFinite(parsed.getTime())
-    ? dateOnly(parsed.toISOString())
-    : null;
+  return isoDateValue(parsed);
 }
 
 const dateOnly = (value: string): string => value.slice(0, 10);
+
+const isoDateValue = (value: Date): string | null =>
+  Number.isFinite(value.getTime()) ? dateOnly(value.toISOString()) : null;
+
+const isDateParseablePrimitive = (value: unknown): boolean =>
+  typeof value === "string" || typeof value === "number";

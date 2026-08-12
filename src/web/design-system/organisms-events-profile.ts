@@ -269,11 +269,7 @@ function snapshotRow(
   return el(
     "tr",
     {},
-    el(
-      "td",
-      {},
-      s.asOf && fmtDate ? fmtDate(s.asOf) : s.asOf ? String(s.asOf) : "?"
-    ),
+    el("td", {}, snapshotDateText(s.asOf, fmtDate)),
     el("td", { class: "num" }, s.aum != null ? fmtMoney(s.aum) : "—"),
     el(
       "td",
@@ -285,3 +281,11 @@ function snapshotRow(
     el("td", {}, s.sourceType ? humanize(s.sourceType) : "—")
   );
 }
+
+const snapshotDateText = (
+  asOf: TeamMetricSnapshotRow["asOf"],
+  fmtDate: FmtDate | undefined
+): string => {
+  if (asOf && fmtDate) return fmtDate(asOf);
+  return asOf ? String(asOf) : "?";
+};

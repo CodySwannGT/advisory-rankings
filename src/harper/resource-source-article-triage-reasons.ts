@@ -102,10 +102,16 @@ const triageReasonCandidates = (
   entityCount === 0 ? "no-entity-chips" : null,
   hasBody ? null : "no-body-text",
   provenanceCount === 0 ? "missing-provenance" : null,
+  candidateOnlyProvenanceReason(provenanceCount, candidateProvenanceCount),
+];
+
+const candidateOnlyProvenanceReason = (
+  provenanceCount: number,
+  candidateProvenanceCount: number
+): SourceArticleTriageReason | null =>
   provenanceCount > 0 && candidateProvenanceCount === provenanceCount
     ? "candidate-only-provenance"
-    : null,
-];
+    : null;
 
 /**
  * Converts a triage reason token into public display copy.
