@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { loadAll, RESOURCE_TABLE_NAMES } from "../src/harper/resource-data.js";
 
@@ -75,6 +75,42 @@ describe("resource-data loadAll edges", () => {
       expect(db.rankingEntries).toEqual([]);
       expect(db.byRanking.size).toBe(0);
     } finally {
+      globals.tables = previousTables;
+    }
+  });
+
+  it("treats malformed canonicalized table rows as empty collections", async () => {
+    const globals = globalThis as { tables?: Record<string, TestTable> };
+    const previousTables = globals.tables;
+
+    vi.resetModules();
+    vi.doMock("../src/harper/resource-firm-canonicalization.js", () => ({
+      canonicalizeFirmResourceRows: (
+        rows: Readonly<Record<string, unknown>>
+      ) => ({
+        ...rows,
+        rankings: "not-an-array",
+      }),
+    }));
+
+    try {
+      installTables({
+        Advisor: [{ id: REQUIRED_ADVISOR_ID }],
+        Article: [{ id: REQUIRED_ARTICLE_ID }],
+        Ranking: [{ id: "ranking-before-canonicalization" }],
+      });
+
+      const { loadAll: loadAllWithMalformedCanonicalRows } =
+        await import("../src/harper/resource-data.js");
+      const db = await loadAllWithMalformedCanonicalRows();
+
+      expect(db.advisors).toEqual([{ id: REQUIRED_ADVISOR_ID }]);
+      expect(db.articles).toEqual([{ id: REQUIRED_ARTICLE_ID }]);
+      expect(db.rankings).toEqual([]);
+      expect(db.byRanking.size).toBe(0);
+    } finally {
+      vi.doUnmock("../src/harper/resource-firm-canonicalization.js");
+      vi.resetModules();
       globals.tables = previousTables;
     }
   });
