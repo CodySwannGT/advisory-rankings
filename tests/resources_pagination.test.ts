@@ -30,6 +30,15 @@ describe("resource pagination helpers", () => {
     ).toBeUndefined();
   });
 
+  it("round-trips empty cursor parts without leaking null text", () => {
+    expect(
+      resources.decodeCursor(resources.encodeCursor(null, undefined))
+    ).toEqual({
+      sortKey: "",
+      id: "",
+    });
+  });
+
   it("walks all rows without skips or duplicates", () => {
     const rows = Array.from({ length: 250 }, (_, i) => ({
       id: `id-${String(i).padStart(4, "0")}`,
@@ -87,8 +96,38 @@ describe("resource pagination helpers", () => {
     });
   });
 
+  it("falls back cleanly when cursor paging reaches the end", () => {
+    const rows = [
+      { id: "a", k: null },
+      { id: "b", k: "smith" },
+    ];
+
+    const beyondLast = resources.paginate(
+      rows,
+      { cursor: { sortKey: "zulu", id: "z" }, limit: 2 },
+      (r: any) => r.k
+    );
+    const withEmptyKey = resources.paginate(
+      rows,
+      { cursor: null, limit: 1 },
+      (r: any) => r.k
+    );
+
+    expect(beyondLast).toEqual({ items: [], nextCursor: null });
+    expect(withEmptyKey.nextCursor).toBe(resources.encodeCursor("", "a"));
+  });
+
   it("sorts inverse dates newest first", () => {
     const keys = ["2020-01-01", "2026-05-03"].map(resources.inverseDateKey);
     expect(keys[1] < keys[0]).toBe(true);
+  });
+
+  it("normalizes date-like values for comparators", () => {
+    expect(resources.dateMs(null)).toBe(0);
+    expect(resources.dateMs(new Date("2026-05-03T00:00:00.000Z"))).toBe(
+      Date.parse("2026-05-03T00:00:00.000Z")
+    );
+    expect(resources.dateMs(42)).toBe(42);
+    expect(resources.dateMs("not-a-date")).toBe(0);
   });
 });
