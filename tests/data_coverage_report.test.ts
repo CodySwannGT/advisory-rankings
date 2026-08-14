@@ -210,6 +210,24 @@ describe("data coverage report", () => {
     expect(report.warnings).toContain("query failed");
   });
 
+  it("keeps report-owned query warnings to the first useful line", async () => {
+    const report = await buildDataCoverageReport(async query => {
+      if (query.includes("GROUP BY targetTable")) {
+        throw new Error("source count failed\nwith sql detail");
+      }
+      if (query.includes("GROUP BY category")) {
+        throw "";
+      }
+      return mockCoverageQuery(query);
+    });
+
+    expect(report.sourceCounts).toEqual([]);
+    expect(report.articleCategories).toEqual([]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining(["Error: source count failed", ""])
+    );
+  });
+
   it("handles empty query result sets as zero coverage", async () => {
     const report = await buildDataCoverageReport(async () => []);
 
