@@ -1270,6 +1270,13 @@ describe("Harper feed and profile builders", () => {
         rank: 2,
       },
       {
+        id: "ranking-entry-top-ranked",
+        rankingId: "ranking-b",
+        subjectAdvisorId: "advisor-a",
+        sourceLabel: "Top List",
+        rank: 1,
+      },
+      {
         id: "ranking-entry-beta",
         rankingId: "ranking-a",
         subjectAdvisorId: "advisor-a",
@@ -1294,6 +1301,7 @@ describe("Harper feed and profile builders", () => {
     expect(
       comparison.items[0].rankings.map((row: any) => row.entry.id)
     ).toEqual([
+      "ranking-entry-top-ranked",
       "ranking-entry-ranked",
       "ranking-entry-alpha",
       "ranking-entry-beta",
