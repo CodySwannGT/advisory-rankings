@@ -104,7 +104,7 @@ describe("resource search edge scoring", () => {
   });
 
   it("selects the first-seen current employment when start dates tie", () => {
-    const currentFirmByAdvisor = currentEmploymentByAdvisor([
+    const employments = [
       {
         advisorId: ADVISOR_ID,
         endDate: "",
@@ -126,9 +126,12 @@ describe("resource search edge scoring", () => {
         id: "employment-ended",
         startDate: "2023-01-01",
       },
-    ] as never);
+    ] as const;
+    const currentFirmByAdvisor = currentEmploymentByAdvisor(
+      employments as never
+    );
     const currentFirmNames = currentFirmNameByAdvisor(
-      [...currentFirmByAdvisor.values()] as never,
+      employments as never,
       new Map([
         [FIRM_ID, { id: FIRM_ID, name: FIRM_NAME }],
         [LATER_FIRM_ID, { id: LATER_FIRM_ID, name: "Later Firm" }],
