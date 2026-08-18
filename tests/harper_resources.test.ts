@@ -1328,11 +1328,39 @@ describe("Harper feed and profile builders", () => {
       ids: [],
       items: [],
     });
+    await expect(
+      new (resources as any).AdvisorComparison().get()
+    ).resolves.toMatchObject({
+      selection: {
+        status: "empty_selection",
+        requestedIds: [],
+        normalizedIds: [],
+        cappedIds: [],
+      },
+      count: 0,
+      ids: [],
+    });
 
     await expect(
       new (resources as any).AdvisorComparison().get(
         routeTarget("", { advisorIds: "advisor-a, advisor-b" })
       )
+    ).resolves.toMatchObject({
+      selection: {
+        status: "ready",
+        requestedIds: ["advisor-a", "advisor-b"],
+        normalizedIds: ["advisor-a", "advisor-b"],
+        cappedIds: ["advisor-a", "advisor-b"],
+        missingIds: [],
+      },
+      count: 2,
+      ids: ["advisor-a", "advisor-b"],
+    });
+    await expect(
+      new (resources as any).AdvisorComparison().get({
+        get: (name: string) =>
+          name === "advisorIds" ? "advisor-a, advisor-b" : null,
+      })
     ).resolves.toMatchObject({
       selection: {
         status: "ready",
