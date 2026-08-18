@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   advisorSearchMatches,
+  currentEmploymentByAdvisor,
+  currentFirmNameByAdvisor,
   firmSearchMatches,
   searchCounts,
   teamSearchMatches,
@@ -9,9 +11,11 @@ import {
 import { runGlobalSearch } from "../src/harper/resource-directory-search-runner.js";
 
 const FIRM_ID = "firm-1";
+const LATER_FIRM_ID = "firm-later";
 const FIRM_NAME = "Alpha Firm";
 const ADVISOR_ID = "advisor-1";
 const SECOND_ADVISOR_ID = "advisor-2";
+const TIED_CURRENT_START_DATE = "2024-01-01";
 
 describe("resource search edge scoring", () => {
   it("scores firm names and subtitles across fallback paths", () => {
@@ -62,6 +66,80 @@ describe("resource search edge scoring", () => {
         score: 2.5,
       }),
     ]);
+  });
+
+  it("keeps legal-name-only firm matches while excluding nonmatches", () => {
+    const matches = firmSearchMatches(
+      [
+        {
+          id: "firm-legal-only",
+          name: "",
+          legalName: "Alpha Legal Group",
+          hqCity: "",
+          hqState: "",
+          channel: "RIA",
+        },
+        {
+          id: "firm-nonmatch",
+          name: "Beta Wealth",
+          legalName: "Gamma Capital",
+          hqCity: "",
+          hqState: "",
+          channel: "Wirehouse",
+        },
+      ] as never,
+      "alpha"
+    );
+
+    expect(matches).toEqual([
+      {
+        id: "firm-legal-only",
+        kind: "firm",
+        name: "",
+        score: 2.5,
+        sortKey: "",
+        sub: "RIA",
+      },
+    ]);
+  });
+
+  it("selects the first-seen current employment when start dates tie", () => {
+    const currentFirmByAdvisor = currentEmploymentByAdvisor([
+      {
+        advisorId: ADVISOR_ID,
+        endDate: "",
+        firmId: FIRM_ID,
+        id: "employment-current-first",
+        startDate: TIED_CURRENT_START_DATE,
+      },
+      {
+        advisorId: ADVISOR_ID,
+        endDate: "",
+        firmId: LATER_FIRM_ID,
+        id: "employment-current-second",
+        startDate: TIED_CURRENT_START_DATE,
+      },
+      {
+        advisorId: SECOND_ADVISOR_ID,
+        endDate: "2025-01-01",
+        firmId: FIRM_ID,
+        id: "employment-ended",
+        startDate: "2023-01-01",
+      },
+    ] as never);
+    const currentFirmNames = currentFirmNameByAdvisor(
+      [...currentFirmByAdvisor.values()] as never,
+      new Map([
+        [FIRM_ID, { id: FIRM_ID, name: FIRM_NAME }],
+        [LATER_FIRM_ID, { id: LATER_FIRM_ID, name: "Later Firm" }],
+      ]) as never
+    );
+
+    expect(currentFirmByAdvisor.get(ADVISOR_ID)).toMatchObject({
+      id: "employment-current-first",
+    });
+    expect(currentFirmByAdvisor.has(SECOND_ADVISOR_ID)).toBe(false);
+    expect(currentFirmNames).toEqual(new Map([[ADVISOR_ID, FIRM_NAME]]));
   });
 
   it("scores advisors and teams with firm and fallback subtitles", () => {
