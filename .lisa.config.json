@@ -37,6 +37,11 @@
       "production": "main"
     }
   },
+  "gates": {
+    "test-node-suites": {
+      "pull-request": "off"
+    }
+  },
   "exploration": {
     "default": "production",
     "environments": {
