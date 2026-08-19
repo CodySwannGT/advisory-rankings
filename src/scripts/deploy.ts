@@ -850,7 +850,8 @@ async function listRolesForSync(
 async function applyAppUserRole(
   studio: StudioSession,
   expected: ReturnType<typeof loadCommittedAppUserRole>,
-  liveRole: ReturnType<typeof findLiveAppUserRole>
+  liveRole: ReturnType<typeof findLiveAppUserRole>,
+  attempt = 1
 ): Promise<boolean> {
   const operation = liveRole ? "alter_role" : "add_role";
   const roleId = typeof liveRole?.id === "string" ? liveRole.id : "app_user";
@@ -862,6 +863,18 @@ async function applyAppUserRole(
     { timeoutMs: DEPLOY_TIMEOUT_MS }
   );
   if (mutation.status === 200) return true;
+  if (
+    isFabricInstanceSocketMissing(mutation.status, mutation.body) &&
+    attempt < ROLE_SYNC_READINESS_ATTEMPTS
+  ) {
+    console.log(
+      `  ${operation} app_user role waiting for restarted instance socket (${ROLE_SYNC_READINESS_ATTEMPTS - attempt} left)`
+    );
+    await new Promise(resolve =>
+      setTimeout(resolve, ROLE_SYNC_READINESS_INTERVAL_MS)
+    );
+    return applyAppUserRole(studio, expected, liveRole, attempt + 1);
+  }
   console.error(
     `${operation} failed: ${mutation.status} ${JSON.stringify(mutation.body).slice(0, 300)}`
   );

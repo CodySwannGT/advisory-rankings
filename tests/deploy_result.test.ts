@@ -45,6 +45,15 @@ describe("isFabricInstanceSocketMissing", () => {
     ).toBe(true);
   });
 
+  it("accepts raw Fabric socket-missing response text", () => {
+    expect(
+      isFabricInstanceSocketMissing(
+        500,
+        "Instance domain socket does not exist."
+      )
+    ).toBe(true);
+  });
+
   it("does not retry unrelated Fabric control-plane failures", () => {
     expect(
       isFabricInstanceSocketMissing(500, {
