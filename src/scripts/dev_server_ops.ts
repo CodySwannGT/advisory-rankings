@@ -63,8 +63,12 @@ async function readOpsResponse(
   const buf = chunks.join("");
   try {
     resolveP(JSON.parse(buf) as unknown);
-  } catch (_error) {
-    reject(new Error(`bad json from ops API: ${buf.slice(0, 200)}`));
+  } catch (error) {
+    reject(
+      new Error(`bad json from ops API: ${buf.slice(0, 200)}`, {
+        cause: error,
+      })
+    );
   }
 }
 
