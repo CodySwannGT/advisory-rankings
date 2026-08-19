@@ -56,7 +56,8 @@ export async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   if (!text.trim()) return undefined;
   try {
     return JSON.parse(text) as unknown;
-  } catch (_error) {
-    return undefined;
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
   }
 }
