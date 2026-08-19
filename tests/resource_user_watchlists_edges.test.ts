@@ -15,6 +15,9 @@ const rows = {
   entries: [] as UserWatchlistEntryRow[],
 };
 
+const ADVISOR_ONE_ENTRY_ID = "list-b:advisor-1";
+const ADVISOR_TWO_ENTRY_ID = "list-b:advisor-2";
+
 const matches = (row: Record<string, unknown>, query?: any): boolean =>
   (query?.conditions ?? []).every(
     (condition: any) => row[condition.attribute] === condition.value
@@ -60,14 +63,14 @@ describe("UserWatchlists edge cases", () => {
     ];
     rows.entries = [
       {
-        id: "list-b:advisor-2",
+        id: ADVISOR_TWO_ENTRY_ID,
         listId: "list-b",
         advisorId: "advisor-2",
         rank: undefined,
         note: undefined,
       },
       {
-        id: "list-b:advisor-1",
+        id: ADVISOR_ONE_ENTRY_ID,
         listId: "list-b",
         advisorId: "advisor-1",
         rank: 1,
@@ -127,12 +130,55 @@ describe("UserWatchlists edge cases", () => {
       resourceFor({ id: "user-1" }).post({ action: "rename", listId: "" })
     ).rejects.toMatchObject({ message: "watchlist id required", status: 400 });
     await expect(
+      resourceFor({ id: "user-1" }).post({ action: "create", name: "   " })
+    ).rejects.toMatchObject({
+      message: "watchlist name required",
+      status: 400,
+    });
+    await expect(
       resourceFor({ id: "user-1" }).post({
         action: "addEntry",
         listId: "list-a",
         advisorId: "",
       })
     ).rejects.toMatchObject({ message: "advisor id required", status: 400 });
+  });
+
+  it("rejects missing or cross-user watchlist mutations", async () => {
+    await expect(
+      resourceFor({ id: "user-1" }).post({
+        action: "rename",
+        listId: "missing",
+        name: "No match",
+      })
+    ).rejects.toMatchObject({ message: "watchlist not found", status: 404 });
+    await expect(
+      resourceFor({ id: "user-1" }).post({
+        action: "rename",
+        listId: "list-c",
+        name: "Cross-user",
+      })
+    ).rejects.toMatchObject({ message: "watchlist not found", status: 404 });
+    expect(rows.lists.find(row => row.id === "list-c")?.name).toBe("Other");
+  });
+
+  it("enforces the per-user watchlist limit before creating more lists", async () => {
+    rows.lists = Array.from({ length: 50 }, (_, index) => ({
+      id: `list-${index}`,
+      userId: "user-1",
+      name: `List ${index}`,
+    }));
+
+    await expect(
+      resourceFor({ id: "user-1" }).post({
+        action: "create",
+        name: "One too many",
+      })
+    ).rejects.toMatchObject({
+      message: "watchlist limit reached (50)",
+      status: 400,
+    });
+    expect(rows.lists).toHaveLength(50);
   });
 
   it("rejects missing entries during entry updates and deletes", async () => {
@@ -190,6 +236,30 @@ describe("UserWatchlists edge cases", () => {
             note: "Updated note",
           }),
         ]),
+      },
+    });
+    await expect(
+      resource.post({
+        action: "deleteEntry",
+        listId: "list-b",
+        advisorId: "advisor-1",
+      })
+    ).resolves.toEqual({
+      authenticated: true,
+      deleted: true,
+      entryId: ADVISOR_ONE_ENTRY_ID,
+      list: {
+        id: "list-b",
+        name: "Beta",
+        entries: [
+          {
+            id: ADVISOR_TWO_ENTRY_ID,
+            listId: "list-b",
+            advisorId: "advisor-2",
+            rank: null,
+            note: "",
+          },
+        ],
       },
     });
     await expect(
