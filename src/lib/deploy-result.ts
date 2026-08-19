@@ -1,5 +1,6 @@
 const DIRECT_REPLICATION_FAILURE =
   "was deployed on the origin node but failed to replicate";
+const INSTANCE_SOCKET_MISSING = "Instance domain socket does not exist";
 
 /**
  * Detects Harper's partial-success direct deploy response.
@@ -19,6 +20,21 @@ export function isFreshnessCheckableDirectDeployFailure(
 ): boolean {
   return (
     status === 500 && deployMessage(body).includes(DIRECT_REPLICATION_FAILURE)
+  );
+}
+
+/**
+ * Detects Fabric's transient control-plane response while Harper restarts.
+ * @param status - HTTP status returned by the Studio cluster operation.
+ * @param body - Parsed response body from Fabric.
+ * @returns True when the caller should retry after restart readiness delay.
+ */
+export function isFabricInstanceSocketMissing(
+  status: number,
+  body: unknown
+): boolean {
+  return (
+    status === 500 && deployMessage(body).includes(INSTANCE_SOCKET_MISSING)
   );
 }
 

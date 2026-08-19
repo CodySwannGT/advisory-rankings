@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isFreshnessCheckableDirectDeployFailure } from "../src/lib/deploy-result.js";
+import {
+  isFabricInstanceSocketMissing,
+  isFreshnessCheckableDirectDeployFailure,
+} from "../src/lib/deploy-result.js";
 
 describe("isFreshnessCheckableDirectDeployFailure", () => {
   it("continues verification when direct deploy lands but replication fails", () => {
@@ -30,5 +33,23 @@ describe("isFreshnessCheckableDirectDeployFailure", () => {
 
   it("ignores missing deploy response bodies", () => {
     expect(isFreshnessCheckableDirectDeployFailure(500, undefined)).toBe(false);
+  });
+});
+
+describe("isFabricInstanceSocketMissing", () => {
+  it("retries Fabric role reads while the restarted instance socket is absent", () => {
+    expect(
+      isFabricInstanceSocketMissing(500, {
+        error: "Instance domain socket does not exist.",
+      })
+    ).toBe(true);
+  });
+
+  it("does not retry unrelated Fabric control-plane failures", () => {
+    expect(
+      isFabricInstanceSocketMissing(500, {
+        error: "Unauthorized",
+      })
+    ).toBe(false);
   });
 });
