@@ -25,7 +25,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadCreds, StudioSession } from "./_auth.js";
-import { isFreshnessCheckableDirectDeployFailure } from "../lib/deploy-result.js";
+import {
+  isFabricInstanceSocketMissing,
+  isFreshnessCheckableDirectDeployFailure,
+} from "../lib/deploy-result.js";
 import { recoverPublicRuntime } from "../lib/deploy-runtime-recovery.js";
 import {
   appUserRoleOperationPayload,
@@ -65,6 +68,8 @@ const FEED_READINESS_TIMEOUT_MS = 10000;
 const ROUTE_READINESS_ATTEMPTS = 6;
 const ROUTE_READINESS_INTERVAL_MS = 5000;
 const ROUTE_READINESS_TIMEOUT_MS = 15000;
+const ROLE_SYNC_READINESS_ATTEMPTS = 12;
+const ROLE_SYNC_READINESS_INTERVAL_MS = 5000;
 const creds = loadCreds();
 
 /**
@@ -807,7 +812,8 @@ async function syncAppUserRole(studio: StudioSession): Promise<boolean> {
  */
 async function listRolesForSync(
   studio: StudioSession,
-  phase: "before" | "after"
+  phase: "before" | "after",
+  attempt = 1
 ): Promise<Readonly<{ body: unknown }> | undefined> {
   const response = await studio.clusterOp(
     creds.clusterId,
@@ -816,6 +822,18 @@ async function listRolesForSync(
     { timeoutMs: DEPLOY_TIMEOUT_MS }
   );
   if (response.status === 200) return response;
+  if (
+    isFabricInstanceSocketMissing(response.status, response.body) &&
+    attempt < ROLE_SYNC_READINESS_ATTEMPTS
+  ) {
+    console.log(
+      `  list_roles ${phase} role sync waiting for restarted instance socket (${ROLE_SYNC_READINESS_ATTEMPTS - attempt} left)`
+    );
+    await new Promise(resolve =>
+      setTimeout(resolve, ROLE_SYNC_READINESS_INTERVAL_MS)
+    );
+    return listRolesForSync(studio, phase, attempt + 1);
+  }
   console.error(
     `list_roles failed ${phase} role sync: ${response.status} ${JSON.stringify(response.body).slice(0, 200)}`
   );
