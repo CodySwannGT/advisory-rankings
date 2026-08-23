@@ -396,8 +396,8 @@ const expectDataCoverageMetricContract = (payload: any) => {
     expect(
       metric.limitation === null || typeof metric.limitation === "string"
     ).toBe(true);
-    expect(metric.publicResource ?? metric.limitation).toEqual(
-      expect.any(String)
+    expect([metric.publicResource, metric.limitation]).toContainEqual(
+      expect.stringMatching(/\S/u)
     );
   }
 };
