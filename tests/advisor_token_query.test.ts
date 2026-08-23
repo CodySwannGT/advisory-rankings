@@ -143,6 +143,21 @@ describe("searchAdvisorsByTokens", () => {
     const result = await searchAdvisorsByTokens(table, "José");
     expect(new Set(result.ids)).toEqual(new Set(["a-1"]));
   });
+
+  it("wraps AdvisorSearchIndex failures with the searched token", async () => {
+    const cause = new Error("index unavailable");
+    const table = {
+      search: () => {
+        throw cause;
+      },
+    };
+
+    await expect(searchAdvisorsByTokens(table, "stone")).rejects.toMatchObject({
+      message:
+        'advisor-token-query: AdvisorSearchIndex starts_with("stone") failed: Error: index unavailable',
+      cause,
+    });
+  });
 });
 
 describe("advisorIdsForToken", () => {
