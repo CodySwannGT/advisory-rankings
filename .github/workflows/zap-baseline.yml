@@ -25,7 +25,7 @@ jobs:
       ZAP_TARGET_URL: ${{ inputs.target_url || vars.ZAP_TARGET_URL || 'http://host.docker.internal:9926' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
