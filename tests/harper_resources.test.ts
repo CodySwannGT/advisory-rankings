@@ -389,7 +389,16 @@ const expectDataCoverageMetricContract = (payload: any) => {
   for (const metric of dataCoverageMetrics(payload)) {
     expect(metric.source).toEqual(expect.any(String));
     expect(metric.source.length).toBeGreaterThan(0);
-    expect(metric.publicResource || metric.limitation).toBeTruthy();
+    expect(
+      metric.publicResource === null ||
+        typeof metric.publicResource === "string"
+    ).toBe(true);
+    expect(
+      metric.limitation === null || typeof metric.limitation === "string"
+    ).toBe(true);
+    expect(metric.publicResource ?? metric.limitation).toEqual(
+      expect.any(String)
+    );
   }
 };
 
