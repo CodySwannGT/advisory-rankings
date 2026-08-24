@@ -1,0 +1,53 @@
+{
+  "_readme": [
+    "Two REVIEWED SNAPSHOTS that scripts/check-skipped-required-checks.mjs makes police each other.",
+    "Neither is derivable from this repository: `required_contexts` lives in a GitHub ruleset that humans edit in an admin console, and the skip_jobs token -> job name map lives in Lisa's quality.yml, which is not vendored here.",
+    "Why it matters: GitHub counts a SKIPPED required status check as SATISFIED. A job named in `skip_jobs` still reports green against its required context having run zero steps, so the merge gate can never be red and therefore can never block anything.",
+    "⚠️ `required_contexts` SHIPS EMPTY AND UNSTAMPED ON PURPOSE. Lisa cannot know what YOUR ruleset requires, and an earlier version of this seed shipped a guess that was measured WRONG (#2476): it claimed `🔗 Work-Item Traceability` was required when no ruleset required it, and omitted six contexts that were. Until `ruleset.baseline_fetched_at` carries the date you transcribed the real list, the guard reports NOT CHECKED rather than answering from fiction.",
+    "To arm it: gh api repos/OWNER/NAME/rulesets --jq '.[] | \"\\(.id) \\(.name)\"' to find the ids, then gh api repos/OWNER/NAME/rulesets/ID --jq '.rules[] | select(.type==\"required_status_checks\") | .parameters.required_status_checks[].context' for the contexts. Paste them into `required_contexts` BYTE FOR BYTE (emoji and the ' / ' separator included), fill in `ruleset.repo` / `ruleset.ids`, and set `baseline_fetched_at` to today.",
+    "The guard compares with exact string equality on purpose: a repo routinely carries confusable pairs (an external app's required `SonarCloud Code Analysis` beside a skippable, not-required `SonarCloud SAST`; `🧹 Lint` beside `🐢 Slow Lint Rules`, whose skip tokens `lint` and `lint_slow` are a strict prefix pair), and a fuzzy match would raise a false alarm whose obvious fix is to delete the guard.",
+    "The worst confusable pair Lisa ever shipped was a NOT-required `🧪 Run Tests` beside the required `🧪 Run Unit Tests` — it merged red on two PRs because 'Run Tests failed' reads like the required test gate failing. It was DELETED in #2485, not renamed, because it only re-ran what the two coverage-carrying required contexts already run. If you find a near-duplicate advisory check in your own roster, prefer deleting it over trusting a reader to tell three similar names apart.",
+    "A transcription expires after 90 days, because a ruleset can be edited with no signal in this repository. The shipped `.github/workflows/required-checks-drift.yml` runs `--remote` weekly to catch that; `--remote` reads the ruleset live and so answers even when the cache is untrusted.",
+    "Lisa's quality.yml runs the offline arm on every pull request. Lisa's seed ships `\"enforcement\": \"warn\"`, which downgrades findings AND the NOT-CHECKED refusal to reports so a fresh install does not go red on arrival. This repo has transcribed the live ruleset snapshot, so the warn key is absent and the guard blocks.",
+    "`skip_jobs` is matched as an exact comma-delimited token and GitHub Actions expression syntax has no string-replace, so write the list with no spaces: `skip_jobs: 'a,b'`, never `skip_jobs: 'a, b'`. A spaced token matches nothing and the job runs — reported as `whitespace_in_skip_token`.",
+    "`_example_required_contexts` below is a STARTING POINT FOR TYPING, never read by the guard. Verify every line against your own ruleset before promoting any of it.",
+    "THE FAMILY: required-and-red is loud; required-and-vacuous is not; advisory-and-stale is invisible. All three are one gate reporting satisfied without proving anything. `required_contexts` + `skip_job_declarations` above cover the SKIPPED variant; `evidence_bearing_checks` below covers the VACUOUS one.",
+    "VACUOUS, measured (CodySwannGT/lisa#2497): a required `CodeRabbit` context posted `success` with the description `Review rate limited`, having reviewed nothing, on two security-relevant PRs that then merged and shipped. `gh pr checks` prints `pass` for that exactly as it does for a real review — only the DESCRIPTION tells them apart.",
+    "Run it per PR: `npm run check:vacuous-required-checks -- --pr=1234` (or `node scripts/check-skipped-required-checks.mjs --pr=1234`). It reads `gh pr checks --json name,state,bucket,description`, which is the only route that carries the description for a legacy commit status like CodeRabbit's.",
+    "`evidence_bearing_checks` names the checks whose GREEN is supposed to mean something reviewed the code. Use `{}` to accept the shipped description vocabulary, or add `proof` / `no_work` arrays to extend it — extensions ADD to the defaults, they do not replace them. Undeclared checks are never examined, because most CI jobs ship an empty description and flagging them all would bury the one finding that matters.",
+    "This arm REPORTS AND NEVER BLOCKS, in every enforcement mode. A review bot can go hollow because an org-wide SPENDING CAP was hit, and a gate that reddens every PR on a billing state is worse than the one it criticises. What it changes is what you may CLAIM: a PR carrying a `vacuous_required_check` finding has not been shown to be reviewed, so do not record it as reviewed."
+  ],
+  "ruleset": {
+    "repo": "CodySwannGT/advisory-rankings",
+    "ids": [16800144, 18805260],
+    "baseline_fetched_at": "2026-08-24"
+  },
+  "workflows": [
+    ".github/workflows/ci.yml"
+  ],
+  "exemption_ticket_pattern": "^[A-Z][A-Z0-9]+-\\d+$",
+  "required_contexts": [
+    "CodeRabbit",
+    "GitGuardian Security Checks",
+    "🔍 Quality Checks / 🧹 Lint",
+    "🔍 Quality Checks / 🔍 Type Check",
+    "🔍 Quality Checks / 🏗️ Build",
+    "🔍 Quality Checks / 📐 Check Formatting",
+    "🔍 Quality Checks / 🔒 Security Scan",
+    "🔍 Quality Checks / 🧪 Run Unit Tests",
+    "🔍 Quality Checks / 🧪 Run Integration Tests"
+  ],
+  "_example_required_contexts": [
+    "🔍 Quality Checks / 🧹 Lint",
+    "🔍 Quality Checks / 🔍 Type Check",
+    "🔍 Quality Checks / 🏗️ Build",
+    "🔍 Quality Checks / 📐 Check Formatting",
+    "🔍 Quality Checks / 🔒 Security Scan",
+    "🔍 Quality Checks / 🧪 Run Unit Tests",
+    "🔍 Quality Checks / 🧪 Run Integration Tests"
+  ],
+  "skip_job_declarations": {},
+  "evidence_bearing_checks": {
+    "CodeRabbit": {}
+  }
+}
