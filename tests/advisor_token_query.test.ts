@@ -73,6 +73,15 @@ describe("intersectTokenIdSets", () => {
     expect(result.truncated).toBe(false);
   });
 
+  it("keeps the same result when a later token has fewer candidates", () => {
+    const result = intersectTokenIdSets([
+      new Set(["advisor-1", "advisor-2", "advisor-3", "advisor-4"]),
+      new Set(["advisor-2", "advisor-4"]),
+    ]);
+    expect(result.ids).toEqual(["advisor-2", "advisor-4"]);
+    expect(result.truncated).toBe(false);
+  });
+
   it("returns empty (not truncated) when the intersection is empty", () => {
     const result = intersectTokenIdSets([new Set(["a"]), new Set(["b"])]);
     expect(result.ids).toEqual([]);
