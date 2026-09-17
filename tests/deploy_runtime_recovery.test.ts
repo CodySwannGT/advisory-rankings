@@ -75,4 +75,20 @@ describe("recoverPublicRuntime", () => {
     );
     warn.mockRestore();
   });
+
+  it("stringifies non-error final feed verification failures", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const actions = {
+      deployPublicRuntime: vi.fn(async () => 200),
+      restartPublicRuntime: vi.fn(async () => 200),
+      verifyFeed: vi.fn(() => Promise.reject("feed timeout")),
+    };
+
+    await expect(recoverPublicRuntime("stale", actions)).resolves.toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      "public runtime recovery attempt failed:",
+      "feed timeout"
+    );
+    warn.mockRestore();
+  });
 });
