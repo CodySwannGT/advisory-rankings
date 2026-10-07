@@ -49,6 +49,66 @@
       "id": "GHSA-mh99-v99m-4gvg",
       "package": "brace-expansion",
       "reason": "Transitive through local tooling and HarperDB dependency resolution. The vulnerable expansion is not reached by project runtime input paths, and the deployed Fabric app bundle does not include this dependency tree."
+    },
+    {
+      "id": "GHSA-6j4f-fj2g-mc7p",
+      "package": "brace-expansion",
+      "reason": "Transitive through Lisa/dev tooling glob handling. Project runtime does not expand attacker-controlled brace patterns, and deployed Fabric resources do not include this dependency tree."
+    },
+    {
+      "id": "GHSA-qhr7-859c-m2p7",
+      "package": "brace-expansion",
+      "reason": "Transitive through Lisa/dev tooling glob handling. Project runtime does not expand attacker-controlled nested brace patterns, and deployed Fabric resources do not include this dependency tree."
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "Transitive through local build and lint tooling. No production code accepts untrusted glob patterns for braces expansion, and the deployed Fabric app bundle does not include this tooling tree."
+    },
+    {
+      "id": "GHSA-667r-xxjv-c9mm",
+      "package": "fastify",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. Project code does not expose a Fastify server, and the deployed Fabric runtime is Harper-managed rather than this npm dependency tree."
+    },
+    {
+      "id": "GHSA-p68q-wchp-6fh7",
+      "package": "fastify",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. Project code does not expose encapsulated Fastify not-found handlers, and deployed Fabric routing is Harper-managed."
+    },
+    {
+      "id": "GHSA-hwr6-493r-vm6h",
+      "package": "fastify",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. Project code does not define Fastify schemas, and deployed Fabric resources are generated app files rather than this local runtime dependency tree."
+    },
+    {
+      "id": "GHSA-9q9j-q6p8-xq58",
+      "package": "fastify",
+      "reason": "Transitive through the HarperDB local CLI/runtime HTTP server. Project code does not expose Fastify header validation, and deployed Fabric runtime routing is managed separately."
+    },
+    {
+      "id": "GHSA-6h2x-m376-mqjq",
+      "package": "joi",
+      "reason": "Transitive through HarperDB local runtime validation. Project runtime code does not call Joi isoDate validation on attacker-controlled values, and deployed Fabric resources do not bundle this dependency tree."
+    },
+    {
+      "id": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "reason": "Transitive through local tooling/runtime dependencies. Project code does not use node-forge RSA signature verification on untrusted signatures, and deployed Fabric resources do not include this dependency tree."
+    },
+    {
+      "id": "GHSA-jqcg-44mw-7w3h",
+      "package": "proxy-addr",
+      "reason": "Transitive through the HarperDB local Fastify runtime. Project code does not make trust decisions through proxy-addr, and deployed Fabric ingress is Harper-managed."
+    },
+    {
+      "id": "GHSA-rfgv-xxqx-mfg5",
+      "package": "undici",
+      "reason": "Transitive through local tooling/runtime dependencies. Project code does not expose attacker-controlled WebSocket subprotocol negotiation through undici, and deployed Fabric resources do not bundle this dependency tree."
+    },
+    {
+      "id": "GHSA-w293-vg96-wgc3",
+      "package": "undici",
+      "reason": "Transitive through local tooling/runtime dependencies. Project code does not create attacker-controlled BalancedPool TLS connect options, and deployed Fabric resources do not bundle this dependency tree."
     }
   ]
 }

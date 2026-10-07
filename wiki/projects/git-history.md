@@ -1,7 +1,7 @@
 ---
 type: project
 created: 2026-05-23
-updated: 2026-06-27
+updated: 2026-10-07
 related:
   - ../architecture/project-architecture.md
 sources:
@@ -28,6 +28,7 @@ sources:
   - ../sources/git/2026-06-25-advisory-rankings-git.md
   - ../sources/git/2026-06-26-advisory-rankings-git.md
   - ../sources/git/2026-06-27-advisory-rankings-git.md
+  - ../sources/git/2026-10-07-advisory-rankings-git.md
 ---
 
 # Git history
@@ -146,10 +147,15 @@ commits since the 2026-06-25 cursor, bringing the branch total to 1914 commits, 
 PR metadata through #1416, "Fix desktop login header search overlap." Source:
 wiki/sources/git/2026-06-26-advisory-rankings-git.md.
 
-The 2026-06-27 git ingest ran at HEAD `027cd458a86301b8b69e92e0c449c8f388b4e1f9`. It added 68
+The 2026-06-27 git ingest ran at HEAD `027cd45cea2e8fa51eba9537ea11786dcc139e42`. It added 68
 commits since the 2026-06-26 cursor, bringing the branch total to 1982 commits, and refreshed merged
 PR metadata through #1464, "test: cover recruiting deal gap route." Source:
 wiki/sources/git/2026-06-27-advisory-rankings-git.md.
+
+The 2026-10-07 git ingest ran at HEAD `8cf13b8543da54da4fa06dcb6cae82c248c690d6`. It added 468
+commits since the corrected 2026-06-27 cursor, bringing the branch total to 2450 commits, and
+refreshed recent merged PR metadata through #1724, "test: increase deploy recovery coverage."
+Source: wiki/sources/git/2026-10-07-advisory-rankings-git.md.
 
 ## Recent themes
 
@@ -248,6 +254,11 @@ wiki/sources/git/2026-06-27-advisory-rankings-git.md.
   recruiting-depth assertion hardening, coverage/max-lines threshold maintenance, source article
   triage resource/route/replay work, recruiting deal-gap resource/route/provenance work, Fabric
   deploy freshness hardening, and release markers through 0.1.544.
+- The 2026-10-07 ingest window covers releases through 0.1.686 and shows continued nightly
+  coverage/complexity ratchets, deploy restart/recovery retry handling, public MCP catalog/gallery
+  work, advisor research selection and token-query coverage, bare Harper REST fallback handling,
+  source-triage/recruiting/watchlist edge coverage, and CI gates for Lisa floor collisions and
+  skipped required checks.
 
 ## Use
 
@@ -274,4 +285,5 @@ wiki/sources/git/2026-06-17-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-24-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-25-advisory-rankings-git.md, and
 wiki/sources/git/2026-06-26-advisory-rankings-git.md, and
-wiki/sources/git/2026-06-27-advisory-rankings-git.md.
+wiki/sources/git/2026-06-27-advisory-rankings-git.md, and
+wiki/sources/git/2026-10-07-advisory-rankings-git.md.

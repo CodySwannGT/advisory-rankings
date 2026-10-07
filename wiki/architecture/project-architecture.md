@@ -1,7 +1,7 @@
 ---
 type: architecture
 created: 2026-05-23
-updated: 2026-06-27
+updated: 2026-10-07
 related:
   - ../playbooks/local-operations.md
   - ../architecture/harper-fabric-operations.md
@@ -22,6 +22,7 @@ sources:
   - ../sources/git/2026-06-25-advisory-rankings-git.md
   - ../sources/git/2026-06-26-advisory-rankings-git.md
   - ../sources/git/2026-06-27-advisory-rankings-git.md
+  - ../sources/git/2026-10-07-advisory-rankings-git.md
 ---
 
 # Project architecture
@@ -132,3 +133,9 @@ deal-gap operations: both areas now have resource, route, replay, provenance, an
 recorded in the same window. It also records Fabric deploy hardening for partial deploys and
 deployed runtime freshness checks, plus continued coverage and max-lines threshold maintenance.
 Source: wiki/sources/git/2026-06-27-advisory-rankings-git.md.
+
+The 2026-10-07 git ingest shows the architecture emphasis shifting toward reliability and operating
+surface depth: deploy role sync/mutation retries during restarts, deploy feed recovery routing, bare
+Harper operation-target normalization, public MCP catalog/gallery resources and routes, advisor
+research token-query coverage, and CI guards for Lisa floor collisions and skipped required checks.
+Source: wiki/sources/git/2026-10-07-advisory-rankings-git.md.

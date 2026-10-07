@@ -1,0 +1,219 @@
+---
+type: source
+created: 2026-10-07
+updated: 2026-10-07
+related: []
+sources: []
+source_system: git
+project: advisory-rankings
+---
+
+# git history — advisory-rankings (2026-10-07)
+
+- Repo: `/Users/codysai/.codex/worktrees/2190/advisory-rankings`
+- HEAD: `8cf13b8543da54da4fa06dcb6cae82c248c690d6`
+- Total commits on HEAD: 2450
+- New commits since last ingest (`027cd45cea2e8fa51eba9537ea11786dcc139e42`): 468
+- Merged PRs: 20 recent merged PR(s) in CodySwannGT/advisory-rankings; latest #1724 "test: increase deploy recovery coverage"
+
+## New commits
+- 8cf13b85 · 2026-09-17 · chore(release): 0.1.686 [skip ci]
+- e3fc0486 · 2026-09-17 · Merge pull request #1724 from CodySwannGT/codex/nightly-coverage-20260917
+- aacfc1c6 · 2026-09-17 · fix: bump fast-uri security floor
+- 9c61e232 · 2026-09-17 · test: increase deploy recovery coverage
+- 6732a3be · 2026-08-24 · chore(release): 0.1.685 [skip ci]
+- 1363cd8d · 2026-08-24 · Merge pull request #1723 from CodySwannGT/codex/install-skipped-required-checks
+- 2e3a59b3 · 2026-08-24 · ci: install skipped required checks guard
+- b3cd5997 · 2026-08-24 · chore(release): 0.1.684 [skip ci]
+- b659e8da · 2026-08-24 · Merge pull request #1722 from CodySwannGT/codex/nightly-token-query-coverage
+- 9f62c9f4 · 2026-08-24 · test: cover advisor research selection edges
+- bafbc40d · 2026-08-24 · chore(release): 0.1.683 [skip ci]
+- 22fef55b · 2026-08-24 · Merge pull request #1720 from CodySwannGT/codex/nightly-token-intersection-size-tests
+- a532743e · 2026-08-24 · test: cover token intersection size ordering
+- 1ce30e0f · 2026-08-23 · chore(release): 0.1.682 [skip ci]
+- 478294d5 · 2026-08-23 · Merge pull request #1717 from CodySwannGT/codex/nightly-data-coverage-contract-tests
+- 66a5618f · 2026-08-23 · test: require non-empty coverage audit metadata
+- ad7c57b3 · 2026-08-23 · chore(release): 0.1.681 [skip ci]
+- b99a5500 · 2026-08-23 · chore: install threshold ratchet gate
+- 30e07314 · 2026-08-23 · Merge pull request #1718 from CodySwannGT/codex/nightly-test-coverage-token-query-20260823
+- d38437b4 · 2026-08-23 · test: cover advisor token query failures
+- f98deb24 · 2026-08-23 · test: tighten data coverage metric contract
+- 2b6994ff · 2026-08-19 · chore(release): 0.1.680 [skip ci]
+- 2334070f · 2026-08-19 · Merge pull request #1715 from CodySwannGT/codex/deploy-role-mutation-socket-retry
+- 2cc4a38f · 2026-08-19 · fix: retry deploy role mutation during restart
+- c9d3e71b · 2026-08-19 · chore(release): 0.1.679 [skip ci]
+- 339350e0 · 2026-08-19 · Merge pull request #1714 from CodySwannGT/codex/deploy-role-sync-socket-retry
+- f562dc4a · 2026-08-19 · fix: retry deploy role sync during restart
+- d7a58914 · 2026-08-19 · chore(release): 0.1.678 [skip ci]
+- 855126de · 2026-08-19 · Merge pull request #1712 from CodySwannGT/codex/nightly-watchlist-test-edges-20260819
+- 9274c4bc · 2026-08-19 · fix: handle dev server json parse errors
+- b51ae15b · 2026-08-19 · ci: install lisa floor collision runner
+- 67418479 · 2026-08-19 · Merge origin/main into codex/nightly-watchlist-test-edges-20260819
+- ee4d12ca · 2026-08-19 · ci: align lisa gate runners
+- 40e4774c · 2026-08-19 · chore(release): 0.1.677 [skip ci]
+- 600f78d1 · 2026-08-19 · Merge pull request #1711 from CodySwannGT/test/advisor-discrepancy-notes-coverage
+- 4cd2ecf5 · 2026-08-19 · test: cover advisor discrepancy note builders
+- 987ad7c7 · 2026-08-19 · test: cover user watchlist mutation edges
+- 791a9031 · 2026-08-18 · chore(release): 0.1.676 [skip ci]
+- 05656b3a · 2026-08-18 · Merge pull request #1710 from CodySwannGT/test/advisor-comparison-input-coverage
+- 50c61feb · 2026-08-18 · test: cover advisor comparison input fallbacks
+- 7a0bad06 · 2026-08-18 · chore(release): 0.1.675 [skip ci]
+- 24b7de74 · 2026-08-18 · Merge pull request #1709 from CodySwannGT/automation/nightly-search-edge-tests-2026-08-18
+- 86e2e74a · 2026-08-18 · test: strengthen search subtitle coverage
+- 25178e8b · 2026-08-18 · test: cover search edge fallbacks
+- d9317f29 · 2026-08-17 · chore(release): 0.1.674 [skip ci]
+- 3be23a12 · 2026-08-17 · Merge pull request #1707 from CodySwannGT/codex/nightly-advisor-comparison-coverage
+- daf4bac4 · 2026-08-17 · Merge https://github.com/CodySwannGT/advisory-rankings into codex/nightly-advisor-comparison-coverage
+- 2e417931 · 2026-08-17 · test: increase advisor comparison branch coverage
+- ebda9f04 · 2026-08-17 · chore(release): 0.1.673 [skip ci]
+- dafff0cc · 2026-08-17 · Merge pull request #1705 from CodySwannGT/automation/nightly-test-feed-fallbacks-2026-08-17
+- 46abedf6 · 2026-08-17 · test: cover feed summary fallback edges
+- c977f347 · 2026-08-14 · chore(release): 0.1.672 [skip ci]
+- 3410eb0b · 2026-08-14 · Merge pull request #1700 from CodySwannGT/codex/nightly-test-coverage-2026-08-14
+- 61c9387c · 2026-08-14 · test: cover data coverage report warning fallbacks
+- 049b92ba · 2026-08-14 · chore(release): 0.1.671 [skip ci]
+- 2c8164fe · 2026-08-14 · Merge pull request #1698 from CodySwannGT/codex/nightly-test-improvement-2026-08-14
+- 1df555bc · 2026-08-14 · test: cover pagination edge cases
+- cfd7f85c · 2026-08-13 · chore(release): 0.1.670 [skip ci]
+- 98523c61 · 2026-08-13 · Merge pull request #1697 from CodySwannGT/codex/nightly-resource-data-coverage
+- 9427cf3c · 2026-08-13 · test: increase resource data coverage
+- f074187f · 2026-08-13 · chore(release): 0.1.669 [skip ci]
+- 4d37f942 · 2026-08-13 · Merge pull request #1696 from CodySwannGT/codex/nightly-test-improvement-2026-08-13
+- eda29dc1 · 2026-08-13 · test: cover recruiting watchlist edge cases
+- 3f082b54 · 2026-08-12 · chore(release): 0.1.668 [skip ci]
+- 60016d31 · 2026-08-12 · Merge pull request #1695 from CodySwannGT/codex/nightly-code-complexity-2026-08-12
+- ae90bbec · 2026-08-12 · refactor: reduce cognitive complexity threshold
+- ca62ff7c · 2026-08-12 · chore(release): 0.1.667 [skip ci]
+- 36d7bc3c · 2026-08-12 · Merge pull request #1694 from CodySwannGT/codex/nightly-coverage-2026-08-12
+- 1b7c5a9b · 2026-08-12 · test: increase request origin coverage
+- bc136781 · 2026-08-12 · chore(release): 0.1.666 [skip ci]
+- f9b27fa7 · 2026-08-12 · Merge pull request #1693 from CodySwannGT/codex/nightly-media-enrichment-test
+- 7e345585 · 2026-08-12 · test: cover media enrichment URL edge cases
+- a8af15c1 · 2026-08-11 · chore(release): 0.1.665 [skip ci]
+- 57d9d5da · 2026-08-11 · Merge pull request #1692 from CodySwannGT/codex/nightly-code-complexity-20260811
+- 3edc08c2 · 2026-08-11 · refactor: lower max-lines-per-function threshold
+- 73d8ae8e · 2026-08-11 · chore(release): 0.1.664 [skip ci]
+- 1c2815e3 · 2026-08-11 · Merge pull request #1691 from CodySwannGT/codex/nightly-mcp-format-coverage
+- fc25cfc8 · 2026-08-11 · Merge origin/main into codex/nightly-mcp-format-coverage
+- 24e73743 · 2026-08-11 · test: increase mcp format branch coverage
+- 0615cdcc · 2026-08-11 · chore(release): 0.1.663 [skip ci]
+- e065c6bf · 2026-08-11 · Merge pull request #1690 from CodySwannGT/automation/nightly-test-improvement-2026-08-11
+- 7411186a · 2026-08-11 · test: cover feed alias pagination
+- dcdda983 · 2026-08-10 · chore(release): 0.1.662 [skip ci]
+- 77978684 · 2026-08-10 · Merge pull request #1689 from CodySwannGT/automation/nightly-code-complexity-2026-08-10
+- 68038148 · 2026-08-10 · refactor: lower max lines per function threshold
+- 41976574 · 2026-08-10 · chore(release): 0.1.661 [skip ci]
+- 92ea9f9c · 2026-08-10 · Merge pull request #1688 from CodySwannGT/codex/fix-harper-bare-target-followup
+- e215a26d · 2026-08-10 · fix: normalize bare Harper operation targets
+- 980eccb2 · 2026-08-10 · chore(release): 0.1.660 [skip ci]
+- 082935ff · 2026-08-10 · Merge pull request #1685 from CodySwannGT/codex/nightly-test-improvement-2026-08-10
+- e5274a41 · 2026-08-10 · chore(release): 0.1.659 [skip ci]
+- 204d97c0 · 2026-08-10 · Merge pull request #1686 from CodySwannGT/codex/nightly-test-coverage-2026-08-10
+- 57e9b83d · 2026-08-10 · test: raise branch coverage floor
+- e91c4390 · 2026-08-10 · test: cover bare Harper REST fallback targets
+- d859d024 · 2026-08-07 · chore(release): 0.1.658 [skip ci]
+- 52773e83 · 2026-08-07 · Merge pull request #1682 from CodySwannGT/codex/nightly-test-coverage-2026-08-07
+- 0f18b24b · 2026-08-07 · test: increase Harper transport branch coverage
+- 1ba957a1 · 2026-08-07 · chore(release): 0.1.657 [skip ci]
+- 0b1af016 · 2026-08-07 · Merge pull request #1681 from CodySwannGT/codex/nightly-test-improvement-2026-08-07
+- ecc7edf6 · 2026-08-07 · test: cover advisor rating resource policy
+- 15c517a0 · 2026-08-06 · chore(release): 0.1.656 [skip ci]
+- 87127dcc · 2026-08-06 · Merge pull request #1680 from CodySwannGT/codex/nightly-test-coverage-2026-08-06
+- 6c7d5c6d · 2026-08-06 · test: cover branch coverage employment filtering
+- 897ff063 · 2026-08-06 · chore(release): 0.1.655 [skip ci]
+- d0efb08b · 2026-08-06 · Merge pull request #1679 from CodySwannGT/test/recruiting-watchlist-source-types
+- 41dd9a22 · 2026-08-06 · test: cover recruiting watchlist source types
+- b2ca98eb · 2026-08-05 · chore(release): 0.1.654 [skip ci]
+- cc6ec417 · 2026-08-05 · Merge pull request #1677 from CodySwannGT/codex/nightly-code-complexity-33
+- 497c9570 · 2026-08-05 · refactor: reduce max function length threshold
+- c3c54d97 · 2026-08-05 · chore(release): 0.1.653 [skip ci]
+- df188abd · 2026-08-05 · Merge pull request #1676 from CodySwannGT/test/advisor-correction-queue-firm-coverage
+- e335e160 · 2026-08-05 · test: cover correction queue missing firm data
+- 8452c077 · 2026-08-05 · chore(release): 0.1.652 [skip ci]
+- 807bde78 · 2026-08-05 · Merge pull request #1675 from CodySwannGT/codex/nightly-recruiting-gap-blank-ids
+- 88776906 · 2026-08-05 · test: cover recruiting gap blank ids
+- 49df2f24 · 2026-08-04 · chore(release): 0.1.651 [skip ci]
+- fe942a1c · 2026-08-04 · Merge pull request #1673 from CodySwannGT/codex/nightly-code-complexity-34
+- dfbca8d5 · 2026-08-04 · refactor: reduce max function length threshold
+- f6fad648 · 2026-08-04 · chore(release): 0.1.650 [skip ci]
+- 67944454 · 2026-08-04 · Merge pull request #1672 from CodySwannGT/codex/nightly-raymond-james-coverage
+- 5fcb5329 · 2026-08-04 · Merge origin/main into codex/nightly-raymond-james-coverage
+- 24c1452a · 2026-08-04 · test: cover raymond james markdown fallbacks
+- d6fb2e41 · 2026-08-04 · chore(release): 0.1.649 [skip ci]
+- 8bcd3eef · 2026-08-04 · Merge pull request #1670 from CodySwannGT/codex/nightly-search-subtitle-regression
+- d1c4b53e · 2026-08-04 · test: cover search subtitle firm hydration
+- a05a7e87 · 2026-08-03 · chore(release): 0.1.648 [skip ci]
+- a4fcc0da · 2026-08-03 · Merge pull request #1669 from CodySwannGT/codex/nightly-complexity-threshold-35
+- 16f82f2c · 2026-08-03 · chore: lower function length threshold
+- 873862ce · 2026-08-03 · chore(release): 0.1.647 [skip ci]
+- fc4afbc5 · 2026-08-03 · Merge pull request #1668 from CodySwannGT/codex/nightly-firm-advisor-roster-coverage
+- 225c094a · 2026-08-03 · test: cover firm advisor roster pagination
+- 6d8ae8e1 · 2026-08-03 · chore(release): 0.1.646 [skip ci]
+- 00ed741b · 2026-08-03 · Merge pull request #1666 from CodySwannGT/codex/nightly-login-throttle-eviction-tests
+- 4b528337 · 2026-08-03 · test: cover login throttle eviction
+- 9b213b24 · 2026-07-31 · chore(release): 0.1.645 [skip ci]
+- 0a90a62e · 2026-07-31 · Merge pull request #1662 from CodySwannGT/codex/nightly-complexity-36-20260731
+- 962d8c79 · 2026-07-31 · fix: route deploy feed failures through recovery
+- 9f5699b9 · 2026-07-31 · refactor: reduce max lines per function to 36
+- 88c74a42 · 2026-07-31 · chore(release): 0.1.644 [skip ci]
+- 69caac38 · 2026-07-31 · Merge pull request #1661 from CodySwannGT/codex/nightly-test-coverage-20260731
+- 7b5016f2 · 2026-07-31 · test: cover major firm default runner failures
+- 843a6533 · 2026-07-31 · chore(release): 0.1.643 [skip ci]
+- bf0fb4fa · 2026-07-31 · Merge pull request #1660 from CodySwannGT/codex/nightly-test-improvement-20260731
+- fdb6a5fd · 2026-07-31 · test: cover recruiting backfill edge summaries
+- 19626673 · 2026-07-30 · chore(release): 0.1.642 [skip ci]
+- 282914e0 · 2026-07-30 · Merge pull request #1656 from CodySwannGT/codex/nightly-code-complexity-2026-07-29
+- aa736a2e · 2026-07-30 · chore(release): 0.1.641 [skip ci]
+- deed7d2c · 2026-07-30 · Merge pull request #1652 from CodySwannGT/codex/nightly-test-coverage-20260728
+- ec449c39 · 2026-07-30 · Merge remote-tracking branch 'origin/main' into codex/nightly-test-coverage-20260728
+- 69f75f13 · 2026-07-30 · chore(release): 0.1.640 [skip ci]
+- ad26b9f1 · 2026-07-30 · Merge pull request #1657 from CodySwannGT/codex/nightly-feed-hydration-test-specificity
+- 7b63f828 · 2026-07-30 · test: tighten feed hydration stale-index assertions
+- f556bf07 · 2026-07-29 · refactor: reduce code complexity threshold
+- 30231ed4 · 2026-07-29 · chore(release): 0.1.639 [skip ci]
+- 9b05fca3 · 2026-07-29 · Merge pull request #1654 from CodySwannGT/codex/nightly-source-triage-filter-fallback
+- 63e66163 · 2026-07-29 · test: cover source triage reason aliases
+- c644a9d7 · 2026-07-29 · test: cover source triage filter fallbacks
+- 029f52a9 · 2026-07-28 · chore(release): 0.1.638 [skip ci]
+- 317ff78f · 2026-07-28 · Merge pull request #1653 from CodySwannGT/codex/nightly-complexity-web-prep-20260728
+- b489d33c · 2026-07-28 · refactor: prepare web cards for complexity threshold
+- 29cbb69d · 2026-07-28 · test: cover Merrill blank search input
+- 03bee330 · 2026-07-28 · chore(release): 0.1.637 [skip ci]
+- 8c7ed3f5 · 2026-07-28 · Merge pull request #1650 from CodySwannGT/codex/nightly-test-improvement-20260728
+- a657c8f9 · 2026-07-28 · test: cover source triage filtered pagination
+- bb031340 · 2026-07-27 · chore(release): 0.1.636 [skip ci]
+- de1709bd · 2026-07-27 · Merge pull request #1646 from CodySwannGT/codex/test-freshness-empty-warning
+- fcbf2851 · 2026-07-27 · test: cover empty freshness query warnings
+- 351d0127 · 2026-07-23 · chore(release): 0.1.635 [skip ci]
+- 79016649 · 2026-07-23 · Merge pull request #1642 from CodySwannGT/codex/nightly-code-complexity-38
+- b8b105ad · 2026-07-23 · refactor: reduce max lines per function threshold
+- 0eac5292 · 2026-07-23 · chore(release): 0.1.634 [skip ci]
+- 47220b66 · 2026-07-23 · Merge pull request #1641 from CodySwannGT/codex/nightly-test-coverage-20260723
+- 770a6746 · 2026-07-23 · test: clarify advisor firm lookup coverage
+- fb89bc17 · 2026-07-23 · chore: rerun ci for coverage PR
+- 8fc7accc · 2026-07-23 · test: cover advisor firm directory lookup edges
+- 94140650 · 2026-07-23 · chore(release): 0.1.633 [skip ci]
+- 4c76b963 · 2026-07-23 · Merge pull request #1639 from CodySwannGT/codex/nightly-test-improvement-coverage-20260723
+- 46e45a1e · 2026-07-23 · test: cover stifel city-only locations
+- 2c76bac9 · 2026-07-22 · chore(release): 0.1.632 [skip ci]
+- 75a40206 · 2026-07-22 · Merge pull request #1637 from CodySwannGT/codex/nightly-complexity-39
+- bf4cebea · 2026-07-22 · refactor: reduce max lines per function threshold
+- 372d3d29 · 2026-07-22 · chore(release): 0.1.631 [skip ci]
+- 4dd4fe7e · 2026-07-22 · Merge pull request #1636 from CodySwannGT/codex/nightly-test-coverage-20260722
+- dcfca2a0 · 2026-07-22 · test: cover directory table helpers
+- b6be0b35 · 2026-07-22 · chore(release): 0.1.630 [skip ci]
+- fd58c9a6 · 2026-07-22 · Merge pull request #1634 from CodySwannGT/codex/nightly-resource-data-optional-table-test
+- 3c563a40 · 2026-07-22 · chore: patch audit transitive dependencies
+- 17c2005c · 2026-07-22 · test: cover missing optional resource tables
+- 8a3de5cf · 2026-07-20 · chore(release): 0.1.629 [skip ci]
+- c49c7fc6 · 2026-07-20 · Merge pull request #1632 from CodySwannGT/codex/nightly-code-complexity-2026-07-20
+- e3a46138 · 2026-07-20 · fix: keep smoke page evaluations self contained
+- 8f016cbf · 2026-07-20 · refactor: lower max lines per function threshold
+- b4d97fb3 · 2026-07-20 · chore(release): 0.1.628 [skip ci]
+- 8897ec25 · 2026-07-20 · Merge pull request #1631 from CodySwannGT/codex/nightly-test-coverage-20260720
+- bd570128 · 2026-07-20 · test: cover unkeyed brokercheck snapshots
+- 5b61b681 · 2026-07-20 · chore(release): 0.1.627 [skip ci]
+- 5969e4e3 · 2026-07-20 · Merge pull request #1629 from CodySwannGT/codex/fix-global-search-multiword-firms
+- ef79d390 · 2026-07-20 · fix: serialize global search index reads
+- 0b571f6e · 2026-07-20 · chore(release): 0.1.626 [skip ci]
+- 3789c171 · 2026-07-20 · Merge pull request #1627 from CodySwannGT/codex/nightly-recruiting-verification-tests
