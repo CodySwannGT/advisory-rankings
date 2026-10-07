@@ -94,7 +94,7 @@ describe("resource routing edge resolvers", () => {
   });
 
   it("selects directory, profile, and login shells for clean web routes", async () => {
-    const { advisors, firms, login } =
+    const { advisors, articles, corrections, firms, login, teams } =
       await import("../src/harper/resource-clean-web-routes.js");
 
     await expect(new advisors().get()).resolves.toEqual(
@@ -119,6 +119,24 @@ describe("resource routing edge resolvers", () => {
       expect.objectContaining({
         ...HTML_RESPONSE,
         data: expect.stringContaining("<title>Firm "),
+      })
+    );
+    await expect(new teams().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Teams "),
+      })
+    );
+    await expect(new articles().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Article "),
+      })
+    );
+    await expect(new corrections().get()).resolves.toEqual(
+      expect.objectContaining({
+        ...HTML_RESPONSE,
+        data: expect.stringContaining("<title>Correction request inbox "),
       })
     );
     await expect(new login().get()).resolves.toEqual(

@@ -102,3 +102,8 @@
 | 2026-06-27 | INGEST | wiki/sources/roles/2026-06-27-roles.md | Roles ingest confirmed there are still no declared digital staff roles or staff pages. |
 | 2026-06-27 | UPDATE | wiki/projects/git-history.md | Refreshed the git-history synthesis with source triage, recruiting deal gaps, Fabric deploy freshness, and maintenance themes. |
 | 2026-06-27 | UPDATE | wiki/index.md | Pointed the source index at the latest git and roles source notes after the 2026-06-27 ingest. |
+| 2026-10-07 | INGEST | wiki/sources/git/2026-10-07-advisory-rankings-git.md | Incremental git history ingest captured 468 commits since the corrected 2026-06-27 cursor and refreshed recent merged PR metadata through #1724. |
+| 2026-10-07 | INGEST | wiki/sources/roles/2026-10-07-roles.md | Roles ingest confirmed there are still no declared digital staff roles or staff pages. |
+| 2026-10-07 | UPDATE | wiki/projects/git-history.md | Refreshed the git-history synthesis with deploy retry/recovery, public MCP, advisor research, CI gate, and coverage themes. |
+| 2026-10-07 | UPDATE | wiki/architecture/project-architecture.md | Added the 2026-10-07 architecture summary for reliability, public MCP, and CI guard work. |
+| 2026-10-07 | UPDATE | wiki/index.md | Pointed the source index at the latest git and roles source notes after the 2026-10-07 ingest. |
